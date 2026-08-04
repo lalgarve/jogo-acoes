@@ -1,71 +1,70 @@
-# language: pt-br
-Funcionalidade: Login via link enviado por e-mail
-  Como usuário do sistema
-  Eu quero fazer login através de um link recebido por e-mail
-  Para acessar o sistema sem precisar de senha
+Feature: Login via link sent by e-mail
+  As a system user
+  I want to log in through a link received by e-mail
+  So that I can access the system without a password
 
-  Esquema do Cenário: Novo jogador faz login e confirma entrada na competição
-    Dado que o usuário é um novo jogador
-    E <situação>
-    E clicou no link de login recebido por e-mail
-    Quando informa o nome
-    E confirma a entrada na competição
-    Então o sistema cadastra o jogador
-    E o inclui na competição
-    E o redireciona para a página da competição
+  Scenario Outline: New player logs in and confirms entry into the competition
+    Given the user is a new player
+    And <situation>
+    And clicked the login link received by e-mail
+    When they enter their name
+    And confirm entry into the competition
+    Then the system registers the player
+    And includes them in the competition
+    And redirects them to the competition page
 
-    Exemplos:
-      | situação                                             |
-      | solicitou entrada em uma nova competição pública     |
-      | foi convidado para entrar em uma competição privada  |
+    Examples:
+      | situation                                       |
+      | requested entry into a new public competition   |
+      | was invited to join a private competition       |
 
-  Esquema do Cenário: Jogador cadastrado confirma entrada em competição após solicitação ou convite
-    Dado que o usuário é um jogador cadastrado
-    E <situação>
-    E clicou no link de login recebido por e-mail
-    Quando confirma a entrada na competição
-    Então o sistema adiciona o jogador na competição
-    E o redireciona para a página da competição
+  Scenario Outline: Registered player confirms entry into a competition after requesting or being invited
+    Given the user is a registered player
+    And <situation>
+    And clicked the login link received by e-mail
+    When they confirm entry into the competition
+    Then the system adds the player to the competition
+    And redirects them to the competition page
 
-    Exemplos:
-      | situação                                             |
-      | solicitou entrada em uma nova competição pública     |
-      | foi convidado para entrar em uma competição privada  |
+    Examples:
+      | situation                                       |
+      | requested entry into a new public competition   |
+      | was invited to join a private competition       |
 
-  Cenário: Jogador cadastrado solicita novamente entrada em competição que já participa
-    Dado que o usuário é um jogador cadastrado
-    E já participa de uma competição pública
-    E solicitou novamente entrada nessa competição
-    Quando clica no link de login recebido por e-mail
-    Então o sistema o redireciona diretamente para a página da competição
+  Scenario: Registered player requests entry again into a competition they already participate in
+    Given the user is a registered player
+    And already participates in a public competition
+    And requested entry into that competition again
+    When they click the login link received by e-mail
+    Then the system redirects them directly to the competition page
 
-  Cenário: Jogador que participou de uma competição encerrada acessa o link e vê o resultado final
-    Dado que o usuário é um jogador cadastrado
-    E a competição referenciada no link já está encerrada
-    E o jogador participou dessa competição
-    Quando clica no link de login recebido por e-mail
-    Então o sistema o redireciona para a página da competição
-    E exibe o resultado final
+  Scenario: Player who participated in a closed competition accesses the link and sees the final result
+    Given the user is a registered player
+    And the competition referenced in the link is already closed
+    And the player participated in that competition
+    When they click the login link received by e-mail
+    Then the system redirects them to the competition page
+    And shows the final result
 
-  Esquema do Cenário: Jogador com cadastro não finalizado acessa o link de uma competição encerrada e recebe erro
-    Dado que o status do jogador é <status>
-    E a competição referenciada no link já está encerrada
-    Quando clica no link de login recebido por e-mail
-    Então o sistema exibe uma mensagem de erro
+  Scenario Outline: Player with unfinished registration accesses the link of a closed competition and gets an error
+    Given the player's status is <status>
+    And the competition referenced in the link is already closed
+    When they click the login link received by e-mail
+    Then the system shows an error message
 
-    Exemplos:
-      | status                                                              |
-      | solicitou entrada em competição pública e não finalizou o cadastro  |
-      | foi convidado para competição privada e não finalizou o cadastro    |
+    Examples:
+      | status                                                          |
+      | requested entry into a public competition and did not finish registration |
+      | was invited to a private competition and did not finish registration      |
 
-  Cenário: Jogador cadastrado pede link de login
-    Dado que o usuário é um jogador cadastrado
-    E pediu o link para login
-    Quando clica no link de login recebido por e-mail
-    Então o sistema o redireciona para a página listando as competições que está participando ou já participou
+  Scenario: Registered player requests the login link
+    Given the user is a registered player
+    And requested the login link
+    When they click the login link received by e-mail
+    Then the system redirects them to the page listing the competitions they are participating in or have participated in
 
-  Cenário: Administrador pede link de login
-    Dado que o usuário é o administrador do sistema
-    E pediu o link para login
-    Quando clica no link de login recebido por e-mail
-    Então o sistema o redireciona para a página de administração
+  Scenario: Administrator requests the login link
+    Given the user is the system administrator
+    And requested the login link
+    When they click the login link received by e-mail
+    Then the system redirects them to the administration page
