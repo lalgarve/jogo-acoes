@@ -52,3 +52,24 @@ Feature: Manage competition players
     When the administrator edits the player's e-mail to that e-mail
     And confirms the change
     Then the system rejects the change and shows an error message
+
+  Scenario: Administrator removes a player from the competition
+    Given a player is listed in the competition
+    When the administrator chooses to remove that player
+    And confirms the removal
+    Then the system removes the player from the competition
+    And the player no longer appears in the player list
+
+  Scenario: Administrator cancels a pending invite
+    Given a player has status "e-mail sent but link not clicked" in the competition
+    When the administrator chooses to cancel the invite
+    And confirms the cancellation
+    Then the system removes the player from the competition
+    And the player no longer appears in the player list
+
+  Scenario: Administrator invites new players to an existing private competition
+    Given the competition is private
+    When the administrator enters a new list of e-mails to invite
+    And confirms the invitation
+    Then the system adds the new players to the competition with status "e-mail not sent"
+    And sends the invite e-mail to each of them

@@ -68,3 +68,9 @@ Feature: Login via link sent by e-mail
     And requested the login link
     When they click the login link received by e-mail
     Then the system redirects them to the administration page
+
+  Scenario: Player accesses an invalid or expired login link
+    Given the user clicked a login link that is invalid or expired
+    When the system validates the link
+    Then the system shows an error message
+    And offers the option to request a new login link
