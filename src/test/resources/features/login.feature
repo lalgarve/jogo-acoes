@@ -74,3 +74,27 @@ Feature: Login via link sent by e-mail
     When the system validates the link
     Then the system shows an error message
     And offers the option to request a new login link
+
+  Scenario: Player tries to use a login link that was already used on another device
+    Given a registered player used the login link to log in on one device
+    And they are not logged in on this other device
+    When they click the same login link on this other device
+    Then the system shows an error message
+
+  Scenario: Already logged-in player clicks a login link originally used on a different device
+    Given the player is already logged in on this device
+    And the login link was already used to log in on a different device
+    When they click the login link received by e-mail
+    Then the system redirects them to the competition page
+
+  Scenario: Requesting a new login link invalidates the previous one
+    Given a registered player has an active login link that has not been used yet
+    When they request a new login link
+    Then the previous login link is invalidated
+    And only the new login link can be used to log in
+
+  Scenario: Player logs in on a new device beyond the configured limit
+    Given the player is already logged in on the maximum number of devices allowed by the system
+    When they log in successfully on one more device
+    Then the system ends the oldest active session
+    And the player remains within the configured device limit

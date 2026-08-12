@@ -32,13 +32,13 @@ Feature: Create Competition
       And define the sell brokerage fee
       And click the "create" button
       And the system creates the new private competition and shows the success screen asking whether to send the invite e-mails now or not
-      When the administrator chooses <option>
+      When the administrator decides to send the invite e-mails <timing>
       Then <result>
 
       Examples:
-        | option              | result                                                                                 |
-        | send invites now    | the system sends the invite e-mails to the provided list                              |
-        | send invites later  | the system does not send the invite e-mails and keeps the competition awaiting sending |
+        | timing | result                                                                                 |
+        | now    | the system sends the invite e-mails to the provided list                              |
+        | later  | the system does not send the invite e-mails and keeps the competition awaiting sending |
 
     Scenario Outline: Administrator tries to create a competition with invalid data
       Given they choose the public competition option
