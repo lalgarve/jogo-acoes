@@ -3,21 +3,26 @@ services:
     image: postgres:16
     environment:
       POSTGRES_DB: jogo_acoes
-      POSTGRES_USER: jogo_acoes
-      POSTGRES_PASSWORD: jogo_acoes
+      POSTGRES_USER: jogo_acoes_admin
+      POSTGRES_PASSWORD: jogo_acoes_admin
     ports:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
 
   app:
     build: .
     depends_on:
       - db
     environment:
+      # Local/dev only: the app owns the schema here, so it connects as the admin role
+      # and runs Flyway itself. Homologacao/producao use the limited jogo_acoes_app role
+      # instead — see application-homologacao.yml / application-producao.yml.
+      SPRING_PROFILES_ACTIVE: dev
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/jogo_acoes
-      SPRING_DATASOURCE_USERNAME: jogo_acoes
-      SPRING_DATASOURCE_PASSWORD: jogo_acoes
+      SPRING_DATASOURCE_USERNAME: jogo_acoes_admin
+      SPRING_DATASOURCE_PASSWORD: jogo_acoes_admin
     ports:
       - "8080:8080"
 

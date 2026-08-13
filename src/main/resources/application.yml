@@ -1,13 +1,9 @@
 spring:
   application:
     name: jogo-acoes
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/jogo_acoes}
-    username: ${SPRING_DATASOURCE_USERNAME:jogo_acoes}
-    password: ${SPRING_DATASOURCE_PASSWORD:jogo_acoes}
+  profiles:
+    default: dev
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
-  flyway:
-    enabled: true

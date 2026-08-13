@@ -226,3 +226,48 @@ JUnit Platform (não como *skipped*), então o build só fica verde quando os st
 implementação e asserções reais. Rodando aqui, os 33 cenários/exemplos aparecem
 uniformemente como `Pending TODO: implement me`, sem nenhum erro de infraestrutura — esse é
 o estado esperado até a Iteração 3.
+
+## Revisão da PR #2: dois usuários de banco, config por ambiente, tabela de log
+
+Três decisões acrescentadas depois da revisão da PR do esqueleto:
+
+**1. Dois papéis de banco.** `docker/postgres/init/01-roles.sql` cria `jogo_acoes_app`
+(papel de execução, sem DDL) além do `jogo_acoes_admin` (dono do schema, bootstrap via
+`POSTGRES_USER`). `ALTER DEFAULT PRIVILEGES FOR ROLE jogo_acoes_admin` garante que toda
+tabela criada dali em diante já nasce com `SELECT`/`INSERT`/`UPDATE`/`DELETE` liberado pra
+`jogo_acoes_app`, sem precisar editar o script a cada migration nova. Em desenvolvimento e
+integração o `app` conecta como `jogo_acoes_admin` (é quem roda o Flyway); em homologação e
+produção uma equipe separada provisiona os papéis e roda as migrations manualmente — o app
+nesses ambientes só tem o papel limitado.
+
+**2. Um `application-{profile}.yml` por ambiente**, substituindo o `application.yml` único
+genérico anterior:
+
+| Perfil | Usuário de banco | Flyway |
+|---|---|---|
+| `dev` (padrão, `spring.profiles.default`) | `jogo_acoes_admin` | habilitado |
+| `integracao` | `jogo_acoes_admin` | habilitado |
+| `homologacao` | `jogo_acoes_app` (sem senha/URL padrão — vem da equipe responsável) | desabilitado |
+| `producao` | `jogo_acoes_app` (sem senha/URL padrão — vem da equipe responsável) | desabilitado |
+
+`docker-compose.yml` seta `SPRING_PROFILES_ACTIVE=dev` no serviço `app`.
+
+**3. Tabela `LOG` (auditoria).** Nova entidade no DER: `related_object_id` (referência
+polimórfica — sem FK estrutural, já que a tabela referenciada varia por `log_type`),
+`user_id` (opcional — nem todo evento tem um usuário por trás), `created_at`, `log_type`,
+`message`. `V2__add_log_table.sql` cria a tabela e faz
+`REVOKE UPDATE, DELETE ON log FROM jogo_acoes_app` logo em seguida, estreitando o
+default (que seria CRUD completo) pra só `SELECT`/`INSERT` — o log é imutável pra
+aplicação. Validado rodando de verdade contra H2 (com a linha `REVOKE` temporariamente
+removida, já que o papel não existe fora do Postgres) nesta sessão.
+
+`LogType` (`br.com.jogoacoes.domain.LogType`) é um catálogo **placeholder mínimo**
+(`COMPETITION_CREATED`, `PARTICIPATION_STATUS_CHANGED`, `LOGIN_LINK_ISSUED`), cada
+constante carregando descrição + tabela relacionada — o catálogo real de eventos
+auditáveis é decisão de negócio da Iteração 3.
+
+`LogRepository.findFiltered` (JPQL com parâmetros opcionais — `:x IS NULL OR campo = :x`)
+cobre filtro por tipo, usuário e intervalo de datas, combinável. `LogRepositoryTest`
+(`@DataJpaTest`) cobre os cinco casos (sem filtro, cada filtro isolado, e dois combinados) —
+5/5 passando. Sem endpoint REST ainda (fica pra quando as regras de negócio forem
+implementadas, junto com o resto da API).
