@@ -1,8 +1,13 @@
 # Iteração 2 — Planejamento técnico
 
 Este documento registra as decisões técnicas da Iteração 2 (ver objetivo geral em
-[`roadmap.md`](roadmap.md)) antes da implementação, para servir de resumo caso a conversa
-precise mudar de contexto. Nada aqui foi implementado ainda — é o plano acordado.
+[`roadmap.md`](roadmap.md)), para servir de resumo caso a conversa precise mudar de
+contexto.
+
+**Status: implementado.** O esqueleto (`pom.xml`, entidades JPA, migration Flyway, perfis
+de banco, Docker Compose, runner do Cucumber com todos os steps registrados como
+*pending*) está no repositório e validado com `mvn test` nesta sessão — ver
+"Status da implementação" no fim deste documento.
 
 ## Objetivo
 
@@ -22,7 +27,7 @@ Versões verificadas contra o Maven Central nesta sessão (disponíveis e resolv
 | Cucumber | 7.34.6 (`cucumber-java`, `cucumber-junit-platform-engine`, `cucumber-spring`, via `cucumber-bom`) |
 | Runner de teste | JUnit Platform Suite (`org.junit.platform:junit-platform-suite`) |
 | Testes HTTP (API) | RestAssured 6.0.1 (`io.rest-assured:rest-assured`) |
-| Migrations | Flyway — `flyway-core` + `flyway-database-postgresql` (a partir do Flyway 10 o suporte por banco é um módulo separado) |
+| Migrations | Flyway — `spring-boot-flyway` + `flyway-core` + `flyway-database-postgresql` (ver nota abaixo sobre o módulo `spring-boot-flyway`) |
 
 **RestAssured** faz as chamadas HTTP reais aos endpoints REST do Spring Boot dentro dos
 *steps* do Cucumber (`@SpringBootTest(webEnvironment = RANDOM_PORT)`), em vez de invocar
@@ -170,3 +175,99 @@ Os novos cenários de dispositivo (`login.feature`) também precisam de fixtures
 `LOGIN_LINK` de origem) associadas ao mesmo `user_id`, com `ended_at` nulo (sessão ativa). O
 mesmo `ParticipationMother`/uma `LoginSessionMother` própria deve expor algo como
 `LoginSessionMother.activeSessionsFor(user, count)`.
+
+## Status da implementação
+
+Esqueleto criado e validado com `mvn test` nesta sessão (pacote base `br.com.jogoacoes`):
+
+- `pom.xml`: stack completa da tabela acima.
+- `src/main/java/br/com/jogoacoes/domain`: sete entidades JPA (`User`/`app_user`, `Role`,
+  `UserRole`+`UserRoleId`, `Competition`, `Participation`, `LoginLink`, `LoginSession`) e os
+  quatro enums do DER.
+- `src/main/java/br/com/jogoacoes/repository`: um `JpaRepository` por entidade (sem query
+  customizada — isso é Iteração 3).
+- `src/main/resources/db/migration/V1__init_schema.sql`: schema Flyway espelhando o DER
+  (incluindo `LOGIN_SESSION`), validado rodando de verdade contra H2 em modo PostgreSQL
+  nesta sessão (`Successfully applied 1 migration`), e conferido contra o mapeamento JPA via
+  `ddl-auto=validate` — os dois batem.
+- `docker-compose.yml` + `Dockerfile`: sintaxe validada com `docker compose config`;
+  `docker pull` real não testável nesta sessão (Docker Hub bloqueado, ver nota da tabela de
+  ambientes acima).
+- `src/test/resources/application.yml`: H2 + `ddl-auto=create-drop` + Flyway desabilitado,
+  exatamente como decidido na tabela de ambientes.
+- `RunCucumberTest` (`@Suite`) + `CucumberSpringConfiguration` (`@SpringBootTest`,
+  `RANDOM_PORT`) + step definitions em `src/test/java/br/com/jogoacoes/steps/` — um step
+  Java por texto único dos quatro `.feature`, seguindo as parametrizações já decididas
+  (`the user is {}`, `the player is {}`, `the administrator chooses to {}`, etc.), todos com
+  corpo `throw new PendingException()` (sem lógica real — isso é Iteração 3).
+
+**Duas descobertas técnicas não previstas no plano original:**
+
+1. **Módulo `spring-boot-flyway` obrigatório.** No Spring Boot 4.x a autoconfiguração do
+   Flyway foi extraída do `spring-boot-autoconfigure` monolítico para um módulo próprio
+   (`org.springframework.boot:spring-boot-flyway`), que não é puxado automaticamente só por
+   ter `flyway-core`/`flyway-database-postgresql` no classpath (diferente do Boot 2.x/3.x).
+   Sem essa dependência explícita, o Flyway simplesmente não roda — nenhum erro, nenhum log,
+   silêncio total — e o Hibernate falha depois com "missing table". Confirmado rodando
+   `mvn test` de verdade nesta sessão.
+2. **Step genérico `{}` demais colide com step literal.** Ao rodar os testes, `the user is
+   {}` (que deveria casar só com "the system administrator"/"a new player"/"a registered
+   player") também casava com "the user is logged into the system" — erro
+   `AmbiguousStepDefinitions`, exatamente o risco que a regra de consolidação já alertava.
+   Mesma coisa com `the player is {}` capturando texto de `login.feature` que começa com
+   "the player is already logged in...". Corrigido trocando os dois steps de Cucumber
+   Expression (`{}`) para Regular Expression com alternância explícita (`^the user is (the
+   system administrator|a new player|a registered player)$`), restringindo o casamento só
+   aos valores realmente decididos.
+
+**Por que `mvn test` fica vermelho mesmo com o esqueleto correto:** a partir do Cucumber 5,
+não existe mais modo "não estrito" — todo step com `PendingException` conta como erro no
+JUnit Platform (não como *skipped*), então o build só fica verde quando os steps tiverem
+implementação e asserções reais. Rodando aqui, os 33 cenários/exemplos aparecem
+uniformemente como `Pending TODO: implement me`, sem nenhum erro de infraestrutura — esse é
+o estado esperado até a Iteração 3.
+
+## Revisão da PR #2: dois usuários de banco, config por ambiente, tabela de log
+
+Três decisões acrescentadas depois da revisão da PR do esqueleto:
+
+**1. Dois papéis de banco.** `docker/postgres/init/01-roles.sql` cria `jogo_acoes_app`
+(papel de execução, sem DDL) além do `jogo_acoes_admin` (dono do schema, bootstrap via
+`POSTGRES_USER`). `ALTER DEFAULT PRIVILEGES FOR ROLE jogo_acoes_admin` garante que toda
+tabela criada dali em diante já nasce com `SELECT`/`INSERT`/`UPDATE`/`DELETE` liberado pra
+`jogo_acoes_app`, sem precisar editar o script a cada migration nova. Em desenvolvimento e
+integração o `app` conecta como `jogo_acoes_admin` (é quem roda o Flyway); em homologação e
+produção uma equipe separada provisiona os papéis e roda as migrations manualmente — o app
+nesses ambientes só tem o papel limitado.
+
+**2. Um `application-{profile}.yml` por ambiente**, substituindo o `application.yml` único
+genérico anterior:
+
+| Perfil | Usuário de banco | Flyway |
+|---|---|---|
+| `dev` (padrão, `spring.profiles.default`) | `jogo_acoes_admin` | habilitado |
+| `integracao` | `jogo_acoes_admin` | habilitado |
+| `homologacao` | `jogo_acoes_app` (sem senha/URL padrão — vem da equipe responsável) | desabilitado |
+| `producao` | `jogo_acoes_app` (sem senha/URL padrão — vem da equipe responsável) | desabilitado |
+
+`docker-compose.yml` seta `SPRING_PROFILES_ACTIVE=dev` no serviço `app`.
+
+**3. Tabela `LOG` (auditoria).** Nova entidade no DER: `related_object_id` (referência
+polimórfica — sem FK estrutural, já que a tabela referenciada varia por `log_type`),
+`user_id` (opcional — nem todo evento tem um usuário por trás), `created_at`, `log_type`,
+`message`. `V2__add_log_table.sql` cria a tabela e faz
+`REVOKE UPDATE, DELETE ON log FROM jogo_acoes_app` logo em seguida, estreitando o
+default (que seria CRUD completo) pra só `SELECT`/`INSERT` — o log é imutável pra
+aplicação. Validado rodando de verdade contra H2 (com a linha `REVOKE` temporariamente
+removida, já que o papel não existe fora do Postgres) nesta sessão.
+
+`LogType` (`br.com.jogoacoes.domain.LogType`) é um catálogo **placeholder mínimo**
+(`COMPETITION_CREATED`, `PARTICIPATION_STATUS_CHANGED`, `LOGIN_LINK_ISSUED`), cada
+constante carregando descrição + tabela relacionada — o catálogo real de eventos
+auditáveis é decisão de negócio da Iteração 3.
+
+`LogRepository.findFiltered` (JPQL com parâmetros opcionais — `:x IS NULL OR campo = :x`)
+cobre filtro por tipo, usuário e intervalo de datas, combinável. `LogRepositoryTest`
+(`@DataJpaTest`) cobre os cinco casos (sem filtro, cada filtro isolado, e dois combinados) —
+5/5 passando. Sem endpoint REST ainda (fica pra quando as regras de negócio forem
+implementadas, junto com o resto da API).

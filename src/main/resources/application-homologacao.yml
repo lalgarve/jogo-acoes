@@ -1,0 +1,10 @@
+# A separate team owns the schema here and runs migrations by hand — the app only ever
+# holds the limited jogo_acoes_app role and never runs Flyway itself. No default
+# url/password: both must be provided by that team, never hardcoded in the repo.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME:jogo_acoes_app}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  flyway:
+    enabled: false
