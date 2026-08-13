@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: jogo_acoes
+      POSTGRES_USER: jogo_acoes
+      POSTGRES_PASSWORD: jogo_acoes
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/jogo_acoes
+      SPRING_DATASOURCE_USERNAME: jogo_acoes
+      SPRING_DATASOURCE_PASSWORD: jogo_acoes
+    ports:
+      - "8080:8080"
+
+volumes:
+  db_data:
