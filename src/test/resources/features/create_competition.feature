@@ -6,7 +6,7 @@ Feature: Create Competition
 
     Background:
       Given the user is the system administrator
-      And is logged into the system
+      And the user is logged into the system
       And is on the competition creation screen
 
     Scenario: Administrator successfully creates a public competition

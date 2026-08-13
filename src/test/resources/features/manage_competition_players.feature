@@ -5,7 +5,7 @@ Feature: Manage competition players
 
   Background:
     Given the user is the system administrator
-    And is logged into the system
+    And the user is logged into the system
     And is on the player management screen for a competition
 
   Scenario Outline: Player list shows and can be filtered by status

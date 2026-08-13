@@ -117,6 +117,12 @@ prefixo com outros steps, sem necessidade de unificação:
    desloga a sessão mais antiga automaticamente (padrão tipo streaming) — a sessão mais
    antiga é invalidada silenciosamente e o novo login é permitido, sem erro exibido ao
    usuário. O número do limite continua fora do BDD (configurável, não fixo).
+5. ~~Texto duplicado do step de sessão~~ — **resolvido**: os `Background` de
+   `create_competition.feature` e `manage_competition_players.feature` usavam
+   `is logged into the system` (texto de step diferente de `the user is logged into the
+   system`, usado em `create_competition.feature`/Rule "Only the administrator..."). Os dois
+   `Background` foram alinhados para `the user is logged into the system`, evitando glue
+   code duplicado pro mesmo conceito.
 
 ## Dados de teste
 
