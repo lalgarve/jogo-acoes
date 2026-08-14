@@ -88,11 +88,23 @@ consciente antes (ou logo no início) da implementação:
    arquivo, ou se ele fica só como contrato de referência para os controllers escritos à
    mão — ver próximo ponto.
 
-2. **Geração de código a partir do OpenAPI ou não.** Ferramentas como
-   `openapi-generator-maven-plugin` conseguem gerar interfaces de `@RestController` (e
-   DTOs) a partir do `docs/openapi.yaml`, garantindo que a implementação não diverge do
-   contrato. Alternativa mais simples: usar o arquivo só como referência e escrever os
-   controllers à mão. Ainda sem decisão.
+2. ~~Geração de código a partir do OpenAPI ou não~~ — **resolvido: sim, com
+   `openapi-generator-maven-plugin`** (versão 7.24.0, verificada contra o Maven Central
+   nesta sessão). Configurado no `pom.xml`, gerador `spring`, `interfaceOnly=true`
+   (só interfaces + DTOs — a implementação continua sendo escrita à mão),
+   `useTags=true` (uma interface por *tag* do YAML: `CompetitionsApi`, `EntryRequestsApi`,
+   `LoginApi`, `PlayersApi`), rodando na fase `generate-sources` — ou seja, todo `mvn
+   compile` regenera a partir de `docs/openapi.yaml`, e a implementação para de compilar
+   se ficar desalinhada do contrato.
+
+   **Testado nesta sessão, `mvn compile`/`mvn test` passam** com a stack atual (Spring
+   Boot 4.1, Java 21). Duas coisas precisaram de ajuste que não eram óbvias de antemão:
+   - Faltava `operationId` explícito em cada rota do YAML — sem isso o gerador inventa
+     nomes de método a partir do path (`login_requestsPost`, feio e frágil a mudanças de
+     rota). Adicionado um `operationId` por operação.
+   - O código gerado pelo template `spring` depende de duas bibliotecas que não estavam
+     no projeto: `io.swagger.core.v3:swagger-annotations` (2.2.53) e
+     `org.openapitools:jackson-databind-nullable` (0.2.11) — adicionadas ao `pom.xml`.
 3. ~~Sessão/"usuário logado"~~ — **resolvido: opção (c), Spring Security.**
    `spring-boot-starter-security` entra no `pom.xml` agora. Como não há senha (login é só
    por `LOGIN_LINK`), não tem `UserDetailsService` com credencial pra validar — o fluxo é:

@@ -118,6 +118,18 @@
       <version>${rest-assured.version}</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- Required by the code the openapi-generator-maven-plugin produces (spring generator). -->
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-annotations</artifactId>
+      <version>2.2.53</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openapitools</groupId>
+      <artifactId>jackson-databind-nullable</artifactId>
+      <version>0.2.11</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -125,6 +137,31 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.openapitools</groupId>
+        <artifactId>openapi-generator-maven-plugin</artifactId>
+        <version>7.24.0</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <inputSpec>${project.basedir}/docs/openapi.yaml</inputSpec>
+              <generatorName>spring</generatorName>
+              <library>spring-boot</library>
+              <apiPackage>br.com.jogoacoes.api</apiPackage>
+              <modelPackage>br.com.jogoacoes.api.model</modelPackage>
+              <configOptions>
+                <interfaceOnly>true</interfaceOnly>
+                <useTags>true</useTags>
+                <dateLibrary>java8</dateLibrary>
+                <useSpringBoot3>true</useSpringBoot3>
+              </configOptions>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

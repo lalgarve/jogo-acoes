@@ -21,6 +21,7 @@ paths:
   /competitions:
     get:
       tags: [entry-requests]
+      operationId: listPublicCompetitions
       summary: List public competitions open to entry requests
       parameters:
         - name: type
@@ -38,6 +39,7 @@ paths:
                   $ref: '#/components/schemas/Competition'
     post:
       tags: [competitions]
+      operationId: createCompetition
       summary: Create a competition (public or private)
       description: Requires an authenticated administrator (ROLE_ADMINISTRATOR).
       requestBody:
@@ -69,6 +71,7 @@ paths:
   /competitions/{competitionId}/invite-emails:
     post:
       tags: [competitions]
+      operationId: decideInviteEmailTiming
       summary: Decide when to send invite e-mails for a newly created private competition
       description: >
         "the administrator decides to send the invite e-mails <timing>" — timing is `now`
@@ -99,6 +102,7 @@ paths:
   /competitions/{competitionId}/entry-requests:
     post:
       tags: [entry-requests]
+      operationId: requestOrConfirmEntry
       summary: Request entry into a public competition, or confirm entry if already logged in
       description: >
         Behavior depends on the caller's auth state (request_competition_entry.feature):
@@ -139,6 +143,7 @@ paths:
   /login-requests:
     post:
       tags: [login]
+      operationId: requestLoginLink
       summary: Request a login link for an already-registered player or the administrator
       requestBody:
         required: true
@@ -155,6 +160,7 @@ paths:
   /login-links/{token}:
     get:
       tags: [login]
+      operationId: consumeLoginLink
       summary: Validate and consume a login link
       description: >
         Establishes the HTTP session (Spring Security Authentication in SecurityContext)
@@ -191,6 +197,7 @@ paths:
   /login-links/{token}/registration:
     post:
       tags: [login]
+      operationId: completeRegistration
       summary: Complete registration for a new player and confirm competition entry
       parameters:
         - name: token
@@ -218,6 +225,7 @@ paths:
   /competitions/{competitionId}/players:
     get:
       tags: [players]
+      operationId: listPlayers
       summary: List/filter a competition's players
       parameters:
         - name: competitionId
@@ -241,6 +249,7 @@ paths:
         '403': { description: Not an administrator }
     post:
       tags: [players]
+      operationId: invitePlayers
       summary: Invite new players to an existing private competition
       parameters:
         - name: competitionId
@@ -264,6 +273,7 @@ paths:
   /competitions/{competitionId}/players/{participationId}:
     patch:
       tags: [players]
+      operationId: updatePlayerEmail
       summary: Edit a player's e-mail
       parameters:
         - name: competitionId
@@ -298,6 +308,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       tags: [players]
+      operationId: removePlayer
       summary: Remove a player from the competition, or cancel a pending invite
       description: >
         Same underlying action for "remove that player" and "cancel the invite" — a
@@ -317,6 +328,7 @@ paths:
   /competitions/{competitionId}/players/{participationId}/invite-emails:
     post:
       tags: [players]
+      operationId: resendPlayerInviteEmail
       summary: Send or resend the invite e-mail to one player
       parameters:
         - name: competitionId
@@ -333,6 +345,7 @@ paths:
   /competitions/{competitionId}/players/invite-emails:
     post:
       tags: [players]
+      operationId: resendPlayerInviteEmails
       summary: Send or resend the invite e-mail to a group of players
       parameters:
         - name: competitionId
