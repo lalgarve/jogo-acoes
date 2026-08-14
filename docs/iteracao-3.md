@@ -76,13 +76,24 @@ Diferente da Iteração 2 (onde as decisões técnicas foram resolvidas antes de
 aqui há mais perguntas de arquitetura em aberto — a lista abaixo é o que precisa de decisão
 consciente antes (ou logo no início) da implementação:
 
-1. **Camada HTTP.** Nenhum `@RestController` existe ainda. Os *steps* do Cucumber vão
-   usar RestAssured contra endpoints reais (`@SpringBootTest(webEnvironment = RANDOM_PORT)`
-   já está configurado pra isso desde a Iteração 2) — ou seja, esta iteração também cria a
-   API REST, não só os *services*. Precisa decidir o desenho básico das rotas (ex.:
-   `POST /competitions`, `POST /competitions/{id}/entry-requests`, `GET /login/{token}`
-   etc.) antes de escrever os steps.
-2. ~~Sessão/"usuário logado"~~ — **resolvido: opção (c), Spring Security.**
+1. ~~Camada HTTP~~ — **resolvido: API-first com OpenAPI.** Mesmo espírito do projeto até
+   aqui (Gherkin antes do código, DER antes das entidades): as rotas estão desenhadas em
+   [`docs/openapi.yaml`](openapi.yaml) antes de qualquer `@RestController` existir,
+   cobrindo as ações dos quatro `.feature` (`POST /competitions`,
+   `POST /competitions/{id}/entry-requests`, `GET /login-links/{token}`, endpoints de
+   `players`, etc.) — os *steps* do Cucumber (RestAssured,
+   `@SpringBootTest(webEnvironment = RANDOM_PORT)` já configurado desde a Iteração 2) devem
+   seguir esse contrato. Validado com `openapi-spec-validator` (`docs/openapi.yaml: OK`).
+   Falta decidir se haverá geração de código (client/interfaces de controller) a partir do
+   arquivo, ou se ele fica só como contrato de referência para os controllers escritos à
+   mão — ver próximo ponto.
+
+2. **Geração de código a partir do OpenAPI ou não.** Ferramentas como
+   `openapi-generator-maven-plugin` conseguem gerar interfaces de `@RestController` (e
+   DTOs) a partir do `docs/openapi.yaml`, garantindo que a implementação não diverge do
+   contrato. Alternativa mais simples: usar o arquivo só como referência e escrever os
+   controllers à mão. Ainda sem decisão.
+3. ~~Sessão/"usuário logado"~~ — **resolvido: opção (c), Spring Security.**
    `spring-boot-starter-security` entra no `pom.xml` agora. Como não há senha (login é só
    por `LOGIN_LINK`), não tem `UserDetailsService` com credencial pra validar — o fluxo é:
    ao validar o `LOGIN_LINK` (token válido, não expirado, não usado/invalidado, dispositivo
@@ -104,34 +115,35 @@ consciente antes (ou logo no início) da implementação:
    (útil se a aplicação rodar em mais de uma instância no futuro — o registro em memória
    padrão não é compartilhado entre instâncias). Fica como *sub-decisão* pra quando
    chegar em `login.feature`.
-3. ~~Autorização (`USER_ROLE` = administrador)~~ — **resolvido, decorre da #2**: com
+4. ~~Autorização (`USER_ROLE` = administrador)~~ — **resolvido, decorre da #3**: com
    Spring Security no lugar, autorização vira `@PreAuthorize("hasRole('ADMINISTRATOR')")`
    nos métodos de *service*/*controller* (ou `SecurityFilterChain` com
    `.requestMatchers(...).hasRole(...)` pras rotas), em vez de checagem manual.
-4. **Stub de e-mail.** Interface `EmailSender` (`send(to, template, data)` ou similar) com
+5. **Stub de e-mail.** Interface `EmailSender` (`send(to, template, data)` ou similar) com
    implementação `LogEmailSender` (loga em vez de enviar) — decisão de baixo risco, sem
    pergunta em aberto, só falta desenhar a interface.
-5. **Stub de captcha.** `request_competition_entry.feature` tem cenários de captcha
+6. **Stub de captcha.** `request_competition_entry.feature` tem cenários de captcha
    passando/falhando — precisa de uma forma determinística de simular os dois casos nos
    testes (ex.: um `CaptchaValidator` com implementação fake controlável pelo cenário).
-6. **Estado compartilhado entre *steps* de um mesmo cenário.** Hoje cada classe de *step*
+7. **Estado compartilhado entre *steps* de um mesmo cenário.** Hoje cada classe de *step*
    é independente; para implementar de verdade (ex.: guardar a resposta HTTP do `POST
    /competitions` num *Given/When* e checar no *Then*) precisa de um "World" — um bean
    `@CucumberContextConfiguration`-escopado por cenário (`cucumber-spring` já cuida do
    ciclo de vida) guardando coisas como o builder de competição em construção, a última
    resposta HTTP, o usuário "logado" na sessão do RestAssured.
-7. **Dados de teste.** O desenho de `CompetitionMother`/`ParticipationMother`/
+8. **Dados de teste.** O desenho de `CompetitionMother`/`ParticipationMother`/
    `LoginSessionMother` já está em `iteracao-2.md` ("Dados de teste") — falta implementar
    as classes.
 
 ## Ordem sugerida de implementação
 
-1. Resolver as decisões 1–3 acima (HTTP, sessão, autorização) — são a base de tudo o
+1. Decidir geração de código a partir do OpenAPI ou não (decisão 2), e resolver a
+   sub-decisão do `LOGIN_SESSION` vs. `SessionRegistry` (decisão 3) — são a base de tudo o
    resto.
-2. `EmailSender`/`LogEmailSender` e `CaptchaValidator` fake (decisões 4–5, sem
+2. `EmailSender`/`LogEmailSender` e `CaptchaValidator` fake (decisões 5–6, sem
    dependência das outras).
-3. World/contexto compartilhado do Cucumber (decisão 6).
-4. Test Data Builders / Object Mothers (decisão 7).
+3. World/contexto compartilhado do Cucumber (decisão 7).
+4. Test Data Builders / Object Mothers (decisão 8).
 5. Implementar feature por feature, da mais simples pra mais dependente:
    `create_competition` → `request_competition_entry` → `login` →
    `manage_competition_players` (esta última depende de competições/participações já

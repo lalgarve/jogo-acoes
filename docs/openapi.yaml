@@ -1,0 +1,427 @@
+openapi: 3.0.3
+info:
+  title: Jogo de Ações API
+  version: "0.1.0"
+  description: >
+    API-first draft for Iteração 3 — routes derived from the four .feature files
+    (create_competition, request_competition_entry, login, manage_competition_players).
+    Written before any controller exists; adjust here first, then implement. Session-based
+    auth (Spring Security, HttpSession/JSESSIONID cookie) established by consuming a login
+    link — there is no password login.
+servers:
+  - url: /api
+
+tags:
+  - name: competitions
+  - name: entry-requests
+  - name: login
+  - name: players
+
+paths:
+  /competitions:
+    get:
+      tags: [entry-requests]
+      summary: List public competitions open to entry requests
+      parameters:
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/CompetitionType'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Competition'
+    post:
+      tags: [competitions]
+      summary: Create a competition (public or private)
+      description: Requires an authenticated administrator (ROLE_ADMINISTRATOR).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompetitionCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Competition'
+        '400':
+          description: >
+            Validation error — missing name, missing e-mail list (private), invalid e-mail,
+            invalid start date, invalid duration, or invalid brokerage fee.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Not logged in
+        '403':
+          description: Logged in, but not an administrator
+
+  /competitions/{competitionId}/invite-emails:
+    post:
+      tags: [competitions]
+      summary: Decide when to send invite e-mails for a newly created private competition
+      description: >
+        "the administrator decides to send the invite e-mails <timing>" — timing is `now`
+        or `later`. `later` leaves the competition AWAITING_INVITES with no e-mails sent yet.
+      parameters:
+        - name: competitionId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [timing]
+              properties:
+                timing:
+                  type: string
+                  enum: [now, later]
+      responses:
+        '204':
+          description: No Content
+        '401': { description: Not logged in }
+        '403': { description: Not an administrator }
+        '404': { description: Competition not found }
+
+  /competitions/{competitionId}/entry-requests:
+    post:
+      tags: [entry-requests]
+      summary: Request entry into a public competition, or confirm entry if already logged in
+      description: >
+        Behavior depends on the caller's auth state (request_competition_entry.feature):
+        unregistered/registered-but-logged-out players must supply `email` + `captchaToken`
+        and get a registration/confirmation link by e-mail; a registered, logged-in player
+        needs no body — entry is confirmed immediately from the session. A private
+        competition without a prior invite always rejects (404, so as not to reveal it
+        exists). Requesting again while a request is still pending resends the link instead
+        of creating a duplicate.
+      parameters:
+        - name: competitionId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryRequest'
+      responses:
+        '202':
+          description: Accepted — confirmation/registration link sent (or resent) by e-mail
+        '200':
+          description: Logged-in player added directly to the competition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Participation'
+        '400':
+          description: Invalid e-mail, or failed captcha
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Private competition (no visible entry point), or competition not found
+
+  /login-requests:
+    post:
+      tags: [login]
+      summary: Request a login link for an already-registered player or the administrator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '202': { description: Accepted — link sent by e-mail if the address is known }
+
+  /login-links/{token}:
+    get:
+      tags: [login]
+      summary: Validate and consume a login link
+      description: >
+        Establishes the HTTP session (Spring Security Authentication in SecurityContext)
+        on success. Covers login.feature's device rules: a link only logs in the device
+        that first used it (used on a different device → error, unless already logged in
+        on the current device, which just redirects); a fresh link for the same player
+        invalidates any previous unused link; exceeding the configured device limit ends
+        the oldest session instead of blocking the new login.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: >
+            Valid link, already-registered player — session established, redirect target
+            in the response body (competition page, admin page, or competitions list).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResult'
+        '202':
+          description: Valid link, new player — registration (name) still required
+        '400':
+          description: Link invalid or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Link already used to log in on a different device
+
+  /login-links/{token}/registration:
+    post:
+      tags: [login]
+      summary: Complete registration for a new player and confirm competition entry
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '200':
+          description: Registered, session established, added to the competition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResult'
+        '400': { description: Link invalid or expired }
+
+  /competitions/{competitionId}/players:
+    get:
+      tags: [players]
+      summary: List/filter a competition's players
+      parameters:
+        - name: competitionId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ParticipationStatus'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Participation'
+        '401': { description: Not logged in }
+        '403': { description: Not an administrator }
+    post:
+      tags: [players]
+      summary: Invite new players to an existing private competition
+      parameters:
+        - name: competitionId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emails]
+              properties:
+                emails:
+                  type: array
+                  items: { type: string, format: email }
+      responses:
+        '202': { description: "Accepted — players added with status e-mail not sent, then invited" }
+
+  /competitions/{competitionId}/players/{participationId}:
+    patch:
+      tags: [players]
+      summary: Edit a player's e-mail
+      parameters:
+        - name: competitionId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - name: participationId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Participation'
+        '400':
+          description: Invalid e-mail format, or already used by another player in the competition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: [players]
+      summary: Remove a player from the competition, or cancel a pending invite
+      description: >
+        Same underlying action for "remove that player" and "cancel the invite" — a
+        pending invite is just a player whose status hasn't reached IN_COMPETITION yet.
+      parameters:
+        - name: competitionId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - name: participationId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '204': { description: No Content }
+
+  /competitions/{competitionId}/players/{participationId}/invite-emails:
+    post:
+      tags: [players]
+      summary: Send or resend the invite e-mail to one player
+      parameters:
+        - name: competitionId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - name: participationId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '202': { description: Accepted }
+
+  /competitions/{competitionId}/players/invite-emails:
+    post:
+      tags: [players]
+      summary: Send or resend the invite e-mail to a group of players
+      parameters:
+        - name: competitionId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [participationIds]
+              properties:
+                participationIds:
+                  type: array
+                  items: { type: integer, format: int64 }
+      responses:
+        '202': { description: Accepted }
+
+components:
+  schemas:
+    CompetitionType:
+      type: string
+      enum: [PUBLIC, PRIVATE]
+    CompetitionStatus:
+      type: string
+      enum: [AWAITING_INVITES, OPEN, CLOSED]
+    ParticipationStatus:
+      type: string
+      enum: [EMAIL_NOT_SENT, EMAIL_SENT, LINK_CLICKED, IN_COMPETITION]
+
+    Competition:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        type: { $ref: '#/components/schemas/CompetitionType' }
+        startDate: { type: string, format: date }
+        durationDays: { type: integer }
+        recurring: { type: boolean }
+        buyFee: { type: number, format: double }
+        sellFee: { type: number, format: double }
+        status: { $ref: '#/components/schemas/CompetitionStatus' }
+        creatorId: { type: integer, format: int64 }
+
+    CompetitionCreateRequest:
+      type: object
+      required: [name, type, startDate, durationDays, buyFee, sellFee]
+      properties:
+        name: { type: string }
+        type: { $ref: '#/components/schemas/CompetitionType' }
+        startDate: { type: string, format: date }
+        durationDays: { type: integer }
+        recurring: { type: boolean, default: false }
+        buyFee: { type: number, format: double }
+        sellFee: { type: number, format: double }
+        emails:
+          description: Required and non-empty when type is PRIVATE; ignored otherwise.
+          type: array
+          items: { type: string, format: email }
+
+    Participation:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        competitionId: { type: integer, format: int64 }
+        userId: { type: integer, format: int64, nullable: true }
+        email: { type: string, format: email }
+        status: { $ref: '#/components/schemas/ParticipationStatus' }
+        requestType: { type: string, enum: [INVITE, REQUEST] }
+        firstEmailSentDate: { type: string, format: date, nullable: true }
+        joinedAt: { type: string, format: date, nullable: true }
+
+    EntryRequest:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        captchaToken: { type: string }
+
+    LoginResult:
+      type: object
+      properties:
+        redirectTo:
+          type: string
+          enum: [competition-page, competitions-list, admin-page]
+        competitionId: { type: integer, format: int64, nullable: true }
+
+    Error:
+      type: object
+      properties:
+        message: { type: string }
