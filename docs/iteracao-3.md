@@ -121,12 +121,44 @@ consciente antes (ou logo no início) da implementação:
    (`SessionManagementConfigurer.maximumSessions(n)` + `SessionRegistry`,
    `maxSessionsPreventsLogin(false)` pra expulsar a mais antiga em vez de bloquear o
    login novo) — é exatamente a regra de negócio de "limite de dispositivos" de
-   `login.feature`. Ainda precisa decidir se `LOGIN_SESSION` (nossa tabela) vira só um
-   log de auditoria alimentado pelos eventos do `SessionRegistry`, ou se substituímos o
-   `SessionRegistry` em memória por uma implementação própria apoiada em `LOGIN_SESSION`
-   (útil se a aplicação rodar em mais de uma instância no futuro — o registro em memória
-   padrão não é compartilhado entre instâncias). Fica como *sub-decisão* pra quando
-   chegar em `login.feature`.
+   `login.feature`.
+
+   **Sub-decisão `LOGIN_SESSION` vs. `SessionRegistry` — resolvida.** O ponto de partida
+   ("`SessionRegistry` em memória serve por enquanto, só importa se escalar horizontalmente")
+   não se sustentou: **mesmo com uma única instância**, tanto a `HttpSession` quanto o
+   `SessionRegistry` padrão vivem só na memória do processo — um restart da aplicação
+   desloga todo mundo, o que contraria um requisito direto do produto (jogador continua
+   logado por dias, sem precisar pedir link de novo a cada reinício/deploy). Resolvido com
+   **Spring Session** (`spring-session-jdbc` 4.1.0), que troca o armazenamento da
+   `HttpSession` (com a `Authentication` dentro dela) por um apoiado no PostgreSQL — a
+   sessão sobrevive a restart porque está no banco, não na memória. De bônus, o Spring
+   Session já integra `SpringSessionBackedSessionRegistry`, então o controle de sessões
+   concorrentes citado acima também fica persistido, sem precisar de `SessionRegistry`
+   customizado nem de uma implementação própria apoiada em `LOGIN_SESSION`. Timeout de
+   sessão configurado em 30 dias (`spring.session.timeout`) — ajustável, é só um ponto de
+   partida razoável para "logado por dias", não uma decisão de produto fechada.
+
+   `LOGIN_SESSION` (nossa tabela) continua existindo, mas como registro de domínio (qual
+   `LOGIN_LINK` originou a sessão, nome do dispositivo pra mostrar pro jogador) — a
+   persistência técnica da sessão em si é responsabilidade do Spring Session agora.
+
+   **Testado nesta sessão:**
+   - `spring-session-jdbc` sozinho não ativa nada (mesmo padrão do Flyway/`@DataJpaTest`
+     no Boot 4.x): faltavam os módulos de autoconfiguração
+     `org.springframework.boot:spring-boot-session` e `spring-boot-session-jdbc`
+     (ambos 4.1.0) — sem eles, nenhum bean `SessionRepository` existe no contexto.
+   - `V3__add_spring_session_schema.sql` (schema oficial `schema-postgresql.sql`, extraído
+     do próprio jar do `spring-session-jdbc`) aplicado de verdade contra H2 nesta sessão,
+     junto com V1 e V2 (`Successfully applied 3 migrations`), sem conflito com a
+     auto-inicialização de schema do Spring Session (que só roda se as tabelas ainda não
+     existirem).
+   - `SpringSessionSmokeTest`: cria uma sessão, salva, confirma a linha **direto no banco
+     via `JdbcTemplate`** (não só via o mesmo objeto em memória), recarrega por um
+     `findById` novo e confere o atributo — 1/1 passando, prova a persistência de ponta a
+     ponta.
+   - `org.json:json` (usado pelo ALTCHA) colidia com `com.vaadin.external.google:android-json`
+     (trazido pelo `jsonassert`, transitivo de `spring-boot-starter-test`) — mesma classe
+     `org.json.JSONObject` duplicada no classpath de teste. Excluído o `android-json`.
 4. ~~Autorização (`USER_ROLE` = administrador)~~ — **resolvido, decorre da #3**: com
    Spring Security no lugar, autorização vira `@PreAuthorize("hasRole('ADMINISTRATOR')")`
    nos métodos de *service*/*controller* (ou `SecurityFilterChain` com
