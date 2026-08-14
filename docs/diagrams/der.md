@@ -69,6 +69,14 @@ erDiagram
         LogType log_type
         string message
     }
+    SENT_EMAIL {
+        int id PK
+        int user_id FK
+        string email
+        string link
+        EmailTemplate template
+        datetime sent_at
+    }
 
     USER          ||--o{ USER_ROLE      : has
     ROLE          ||--o{ USER_ROLE      : "assigned as"
@@ -80,6 +88,7 @@ erDiagram
     USER          ||--o{ LOGIN_SESSION  : has
     LOGIN_LINK    ||--o| LOGIN_SESSION  : establishes
     USER          |o--o{ LOG            : performs
+    USER          |o--o{ SENT_EMAIL     : receives
 ```
 
 ## Notas de modelagem
@@ -94,6 +103,7 @@ erDiagram
 - **Só um `LOGIN_LINK` fica ativo por vez por jogador** — gerar um novo (ex.: reenvio) invalida qualquer link anterior ainda não usado/expirado desse jogador (`invalidated_at` preenchido no anterior).
 - **LOGIN_SESSION** é o log de sessões/dispositivos logados, criado para sustentar um limite de dispositivos simultâneos por usuário (`login.feature`). Cada uso bem-sucedido de um `LOGIN_LINK` cria no máximo uma `LOGIN_SESSION` (por isso `LOGIN_LINK ||--o| LOGIN_SESSION`). O **valor do limite** é configuração do sistema, não um dado modelado aqui; o que acontece ao ser excedido (ex.: encerrar a sessão mais antiga) é regra de negócio a confirmar antes da Iteração 3 — ver `docs/iteracao-2.md`.
 - **LOG** é o registro de auditoria do sistema. `related_object_id` aponta pro registro que originou o evento (qual tabela é dada pelo `log_type`, não por uma FK — a referência é polimórfica, então não há restrição estrutural de integridade referencial nesse campo). `user_id` é opcional: nem todo evento de log é iniciado por um usuário (ex.: um job de sistema). O papel de banco da aplicação (`jogo_acoes_app`, ver `docker-compose.yml`) só tem `SELECT`/`INSERT` em `LOG` — nunca `UPDATE`/`DELETE`, pra manter o log imutável.
+- **SENT_EMAIL** registra cada envio de e-mail (Iteração 3: `EmailSender`/`StubEmailSender` só grava aqui, não envia de verdade — a geração de texto via Thymeleaf fica pra outra iteração). `user_id` é opcional pelo mesmo motivo de `PARTICIPATION`/`LOGIN_LINK`: o destinatário pode ainda não ter conta. `link` é o link enviado (convite, confirmação de registro ou login) e `template` (`EmailTemplate`) identifica qual modelo foi usado. Mesma regra de imutabilidade de `LOG`: `jogo_acoes_app` só tem `SELECT`/`INSERT`.
 - Regras de validação (data no passado, taxa negativa, e-mail duplicado/inválido, captcha) são regras de negócio, não entidades, e por isso não aparecem no DER.
 - Não modelado (fora do escopo atual): unicidade de `(competition_id, email)` em `PARTICIPATION` e o relacionamento entre edições de uma competição recorrente — ambos regras/decisões de implementação a definir antes da próxima iteração.
 
@@ -108,6 +118,7 @@ Campos String com conjunto fixo de valores viraram tipos `enum`, com constantes 
 | `ParticipationStatus` | `EMAIL_NOT_SENT`, `EMAIL_SENT`, `LINK_CLICKED`, `IN_COMPETITION` |
 | `RequestType` | `INVITE`, `REQUEST` |
 | `LogType` | catálogo inicial/placeholder — ver nota abaixo |
+| `EmailTemplate` | `INVITE`, `REGISTRATION_LINK`, `LOGIN_LINK` |
 
 `ROLE` não é um enum fixo (é uma tabela) justamente para permitir adicionar novos papéis sem alterar código; hoje o catálogo tem apenas `ADMINISTRATOR` e `PLAYER`.
 

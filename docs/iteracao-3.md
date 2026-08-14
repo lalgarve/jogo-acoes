@@ -163,9 +163,21 @@ consciente antes (ou logo no início) da implementação:
    Spring Security no lugar, autorização vira `@PreAuthorize("hasRole('ADMINISTRATOR')")`
    nos métodos de *service*/*controller* (ou `SecurityFilterChain` com
    `.requestMatchers(...).hasRole(...)` pras rotas), em vez de checagem manual.
-5. **Stub de e-mail.** Interface `EmailSender` (`send(to, template, data)` ou similar) com
-   implementação `LogEmailSender` (loga em vez de enviar) — decisão de baixo risco, sem
-   pergunta em aberto, só falta desenhar a interface.
+5. ~~Stub de e-mail~~ — **resolvido.** `br.com.jogoacoes.email.EmailSender`:
+   `send(Long userId, String email, String link, EmailTemplate template)` — `userId` opcional
+   (destinatário pode não ter conta ainda). `StubEmailSender` (única implementação por
+   enquanto) não envia nada de verdade, só grava uma linha na nova tabela `sent_email`
+   (entidade `SentEmail`, migration `V4__add_sent_email_table.sql`) com o e-mail, o link e
+   o template usado — mesma regra de imutabilidade de `LOG` (`jogo_acoes_app` só tem
+   `SELECT`/`INSERT`, ver `docs/diagrams/der.md`). `EmailTemplate` (enum, placeholder por
+   enquanto): `INVITE`, `REGISTRATION_LINK`, `LOGIN_LINK` — cobre os três tipos de e-mail
+   que os `.feature` pedem hoje (convite, link de confirmação de registro, link de login).
+   Gerar o texto de verdade (Thymeleaf) fica pra outra iteração.
+
+   **Testado nesta sessão:** `StubEmailSenderTest` — grava com usuário associado, grava
+   sem usuário (destinatário sem conta), rejeita `userId` inexistente — 3/3 passando.
+   `V4` validada rodando de verdade contra H2 junto com V1–V3
+   (`Successfully applied 4 migrations`).
 6. ~~Stub de captcha~~ — **resolvido: ALTCHA (v2), sem stub.** Captcha de prova-de-trabalho
    auto-hospedado (`org.altcha:altcha:2.0.3` + `org.json:json:20260814`, versões
    verificadas contra o Maven Central nesta sessão) — sem depender de serviço de
