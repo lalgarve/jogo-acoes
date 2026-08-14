@@ -271,3 +271,32 @@ cobre filtro por tipo, usuário e intervalo de datas, combinável. `LogRepositor
 (`@DataJpaTest`) cobre os cinco casos (sem filtro, cada filtro isolado, e dois combinados) —
 5/5 passando. Sem endpoint REST ainda (fica pra quando as regras de negócio forem
 implementadas, junto com o resto da API).
+
+## Validação local com PostgreSQL real (fora do sandbox)
+
+O sandbox do Claude Code na nuvem bloqueia `docker pull` (403 no CDN do Docker Hub — ver nota
+na tabela de ambientes acima), então até aqui o Postgres real só tinha a sintaxe do
+`docker-compose.yml` validada, nunca uma subida de verdade. Rodando numa sessão local (Windows,
+Docker Desktop) em 2026-08-13, isso foi resolvido:
+
+- `docker compose up -d db` — imagem `postgres:16` baixou normalmente e o container subiu
+  saudável, com `docker/postgres/init/01-roles.sql` executado no boot.
+- Papéis confirmados via `\du`: `jogo_acoes_admin` (superuser, dono do schema) e
+  `jogo_acoes_app` (sem atributos especiais) — os dois existem, como esperado.
+- App subiu com `spring-boot:run -Dspring-boot.run.profiles=integracao` contra esse Postgres
+  real (não H2): as duas migrations do Flyway (`V1__init_schema`, `V2__add_log_table`)
+  aplicaram sem erro, e o Hibernate inicializou o `EntityManagerFactory` sem divergência entre
+  o mapeamento JPA e o schema real.
+- `ALTER DEFAULT PRIVILEGES` confirmado na prática via
+  `information_schema.role_table_grants`: `jogo_acoes_app` tem CRUD completo
+  (SELECT/INSERT/UPDATE/DELETE) em todas as tabelas normais.
+- **O `REVOKE UPDATE, DELETE ON log FROM jogo_acoes_app` da `V2` — que só tinha sido testado
+  com a linha removida contra H2 (papel não existe fora do Postgres) — agora está confirmado
+  rodando de verdade**: `\dp log` mostra `jogo_acoes_app=ar` (só SELECT/INSERT), diferente das
+  outras tabelas.
+
+**Detalhe de ambiente, só relevante pra rodar local nesta máquina:** não há Maven nem JDK 21
+instalados globalmente aqui — foi usado o Maven e o JBR (JetBrains Runtime, OpenJDK 21.0.6)
+embutidos na instalação do IntelliJ (`...\IntelliJ IDEA 2024.3.5\plugins\maven\lib\maven3\bin`
+e `...\IntelliJ IDEA 2024.3.5\jbr`, com `JAVA_HOME` apontado pro segundo). Não é uma decisão de
+projeto, só um contorno de ambiente desta máquina.
