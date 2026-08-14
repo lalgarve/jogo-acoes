@@ -134,9 +134,17 @@ consciente antes (ou logo no início) da implementação:
 5. **Stub de e-mail.** Interface `EmailSender` (`send(to, template, data)` ou similar) com
    implementação `LogEmailSender` (loga em vez de enviar) — decisão de baixo risco, sem
    pergunta em aberto, só falta desenhar a interface.
-6. **Stub de captcha.** `request_competition_entry.feature` tem cenários de captcha
-   passando/falhando — precisa de uma forma determinística de simular os dois casos nos
-   testes (ex.: um `CaptchaValidator` com implementação fake controlável pelo cenário).
+6. ~~Stub de captcha~~ — **resolvido: ALTCHA (v2), sem stub.** Captcha de prova-de-trabalho
+   auto-hospedado (`org.altcha:altcha:2.0.3` + `org.json:json:20260814`, versões
+   verificadas contra o Maven Central nesta sessão) — sem depender de serviço de
+   terceiros (diferente de reCAPTCHA/hCaptcha), o que também evita ter que simular
+   chamada de rede externa nos testes. Como o desafio é autocontido (servidor cria,
+   cliente resolve, servidor verifica — tudo local), os cenários de
+   `request_competition_entry.feature` são testados *de verdade*, não com um fake:
+   "passou o teste" = resolver o desafio certo (`Altcha.solveChallenge`), "falhou o
+   teste" = submeter uma solução adulterada. Validado nesta sessão com
+   `AltchaSmokeTest` (cria desafio → resolve → verifica; e o caso de solução
+   adulterada falhando) — 2/2 passando, round-trip completo confirmado nesta stack.
 7. **Estado compartilhado entre *steps* de um mesmo cenário.** Hoje cada classe de *step*
    é independente; para implementar de verdade (ex.: guardar a resposta HTTP do `POST
    /competitions` num *Given/When* e checar no *Then*) precisa de um "World" — um bean
