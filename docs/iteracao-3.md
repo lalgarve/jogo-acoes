@@ -82,16 +82,32 @@ consciente antes (ou logo no início) da implementação:
    API REST, não só os *services*. Precisa decidir o desenho básico das rotas (ex.:
    `POST /competitions`, `POST /competitions/{id}/entry-requests`, `GET /login/{token}`
    etc.) antes de escrever os steps.
-2. **Sessão/"usuário logado".** `login.feature` e os *Background* de `create_competition`/
-   `manage_competition_players` dependem de saber quem é "o usuário logado" numa
-   requisição. Sem Spring Security no `pom.xml` ainda, as opções são: (a) `HttpSession` +
-   cookie simples, criando uma sessão HTTP quando o `LOGIN_LINK` é validado; (b) token
-   próprio (ex.: no header, associado a `LOGIN_SESSION`); (c) adicionar Spring Security de
-   verdade agora. Isso também decide como o RestAssured simula "estar logado" entre uma
-   chamada e outra dentro de um cenário.
-3. **Autorização (`USER_ROLE` = administrador).** Depende da decisão acima — checagem
-   manual no *service* (mais simples, menos infraestrutura) ou anotação/filtro de
-   segurança.
+2. ~~Sessão/"usuário logado"~~ — **resolvido: opção (c), Spring Security.**
+   `spring-boot-starter-security` entra no `pom.xml` agora. Como não há senha (login é só
+   por `LOGIN_LINK`), não tem `UserDetailsService` com credencial pra validar — o fluxo é:
+   ao validar o `LOGIN_LINK` (token válido, não expirado, não usado/invalidado, dispositivo
+   correto), o *controller*/*service* monta a `Authentication` (`GrantedAuthority` por
+   `USER_ROLE` do usuário, ex. `ROLE_ADMINISTRATOR`, `ROLE_PLAYER`) e coloca no
+   `SecurityContextHolder` — o `SecurityContextHolderFilter` do Spring Security já
+   persiste isso na `HttpSession` (cookie `JSESSIONID`) automaticamente, sem código extra
+   de sessão. Nos *steps* do Cucumber, o RestAssured mantém a sessão entre chamadas de um
+   mesmo cenário via `io.restassured.filter.session.SessionFilter` (guardado no World do
+   *step*, reaproveitado entre `Given`/`When`/`Then`).
+
+   **Achado favorável:** o Spring Security tem controle de sessões concorrentes pronto
+   (`SessionManagementConfigurer.maximumSessions(n)` + `SessionRegistry`,
+   `maxSessionsPreventsLogin(false)` pra expulsar a mais antiga em vez de bloquear o
+   login novo) — é exatamente a regra de negócio de "limite de dispositivos" de
+   `login.feature`. Ainda precisa decidir se `LOGIN_SESSION` (nossa tabela) vira só um
+   log de auditoria alimentado pelos eventos do `SessionRegistry`, ou se substituímos o
+   `SessionRegistry` em memória por uma implementação própria apoiada em `LOGIN_SESSION`
+   (útil se a aplicação rodar em mais de uma instância no futuro — o registro em memória
+   padrão não é compartilhado entre instâncias). Fica como *sub-decisão* pra quando
+   chegar em `login.feature`.
+3. ~~Autorização (`USER_ROLE` = administrador)~~ — **resolvido, decorre da #2**: com
+   Spring Security no lugar, autorização vira `@PreAuthorize("hasRole('ADMINISTRATOR')")`
+   nos métodos de *service*/*controller* (ou `SecurityFilterChain` com
+   `.requestMatchers(...).hasRole(...)` pras rotas), em vez de checagem manual.
 4. **Stub de e-mail.** Interface `EmailSender` (`send(to, template, data)` ou similar) com
    implementação `LogEmailSender` (loga em vez de enviar) — decisão de baixo risco, sem
    pergunta em aberto, só falta desenhar a interface.
