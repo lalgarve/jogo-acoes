@@ -178,13 +178,13 @@ mesmo `ParticipationMother`/uma `LoginSessionMother` própria deve expor algo co
 
 ## Status da implementação
 
-Esqueleto criado e validado com `mvn test` nesta sessão (pacote base `br.com.jogoacoes`):
+Esqueleto criado e validado com `mvn test` nesta sessão (pacote base `io.deployo.jogoacoes`):
 
 - `pom.xml`: stack completa da tabela acima.
-- `src/main/java/br/com/jogoacoes/domain`: sete entidades JPA (`User`/`app_user`, `Role`,
+- `src/main/java/io/deployo/jogoacoes/domain`: sete entidades JPA (`User`/`app_user`, `Role`,
   `UserRole`+`UserRoleId`, `Competition`, `Participation`, `LoginLink`, `LoginSession`) e os
   quatro enums do DER.
-- `src/main/java/br/com/jogoacoes/repository`: um `JpaRepository` por entidade (sem query
+- `src/main/java/io/deployo/jogoacoes/repository`: um `JpaRepository` por entidade (sem query
   customizada — isso é Iteração 3).
 - `src/main/resources/db/migration/V1__init_schema.sql`: schema Flyway espelhando o DER
   (incluindo `LOGIN_SESSION`), validado rodando de verdade contra H2 em modo PostgreSQL
@@ -196,7 +196,7 @@ Esqueleto criado e validado com `mvn test` nesta sessão (pacote base `br.com.jo
 - `src/test/resources/application.yml`: H2 + `ddl-auto=create-drop` + Flyway desabilitado,
   exatamente como decidido na tabela de ambientes.
 - `RunCucumberTest` (`@Suite`) + `CucumberSpringConfiguration` (`@SpringBootTest`,
-  `RANDOM_PORT`) + step definitions em `src/test/java/br/com/jogoacoes/steps/` — um step
+  `RANDOM_PORT`) + step definitions em `src/test/java/io/deployo/jogoacoes/steps/` — um step
   Java por texto único dos quatro `.feature`, seguindo as parametrizações já decididas
   (`the user is {}`, `the player is {}`, `the administrator chooses to {}`, etc.), todos com
   corpo `throw new PendingException()` (sem lógica real — isso é Iteração 3).
@@ -261,7 +261,7 @@ default (que seria CRUD completo) pra só `SELECT`/`INSERT` — o log é imutáv
 aplicação. Validado rodando de verdade contra H2 (com a linha `REVOKE` temporariamente
 removida, já que o papel não existe fora do Postgres) nesta sessão.
 
-`LogType` (`br.com.jogoacoes.domain.LogType`) é um catálogo **placeholder mínimo**
+`LogType` (`io.deployo.jogoacoes.domain.LogType`) é um catálogo **placeholder mínimo**
 (`COMPETITION_CREATED`, `PARTICIPATION_STATUS_CHANGED`, `LOGIN_LINK_ISSUED`), cada
 constante carregando descrição + tabela relacionada — o catálogo real de eventos
 auditáveis é decisão de negócio da Iteração 3.

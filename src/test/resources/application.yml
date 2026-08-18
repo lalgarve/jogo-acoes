@@ -10,3 +10,6 @@ spring:
       ddl-auto: create-drop
   flyway:
     enabled: false
+  session:
+    store-type: jdbc
+    timeout: 30d
