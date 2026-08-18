@@ -93,6 +93,13 @@ sem relação numa mesma mensagem.
   (recriado a partir do estado atual da branch principal) em vez de acumular branches novos
   a cada retomada — mantém o histórico de PRs correspondendo 1:1 a unidades de trabalho
   reais, não a sessões de chat.
+- Essa regra não tem exceção por tipo de mudança nem por onde a sessão está rodando: uma
+  continuação pequena, só de documentação, ou uma correção de CI ainda pertence à mesma
+  linha de trabalho — não é motivo pra abrir um branch novo. E o mesmo vale trocando de
+  ferramenta (Claude Code no navegador numa sessão, Claude Code local na outra): a
+  continuidade é da linha de trabalho, não da sessão nem da ferramenta que a executa.
+  Antes de criar um branch, checar se já existe um branch/PR abordando a mesma iteração e
+  reaproveitar esse em vez de abrir outro.
 
 ## Documentação viva por fase/iteração
 
