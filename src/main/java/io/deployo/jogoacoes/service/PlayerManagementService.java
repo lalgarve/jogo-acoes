@@ -2,17 +2,21 @@ package io.deployo.jogoacoes.service;
 
 import io.deployo.jogoacoes.domain.Competition;
 import io.deployo.jogoacoes.domain.EmailTemplate;
+import io.deployo.jogoacoes.domain.LogType;
 import io.deployo.jogoacoes.domain.LoginLink;
 import io.deployo.jogoacoes.domain.Participation;
 import io.deployo.jogoacoes.domain.ParticipationStatus;
 import io.deployo.jogoacoes.domain.RequestType;
+import io.deployo.jogoacoes.domain.User;
 import io.deployo.jogoacoes.email.EmailSender;
 import io.deployo.jogoacoes.repository.CompetitionRepository;
 import io.deployo.jogoacoes.repository.LoginLinkRepository;
 import io.deployo.jogoacoes.repository.ParticipationRepository;
+import io.deployo.jogoacoes.repository.UserRepository;
 import io.deployo.jogoacoes.web.CompetitionNotFoundException;
 import io.deployo.jogoacoes.web.PlayerNotFoundException;
 import io.deployo.jogoacoes.web.PlayerValidationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,13 +34,18 @@ public class PlayerManagementService {
     private final ParticipationRepository participationRepository;
     private final LoginLinkRepository loginLinkRepository;
     private final EmailSender emailSender;
+    private final UserRepository userRepository;
+    private final AuditLogService auditLogService;
 
     public PlayerManagementService(CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
-                                    LoginLinkRepository loginLinkRepository, EmailSender emailSender) {
+                                    LoginLinkRepository loginLinkRepository, EmailSender emailSender,
+                                    UserRepository userRepository, AuditLogService auditLogService) {
         this.competitionRepository = competitionRepository;
         this.participationRepository = participationRepository;
         this.loginLinkRepository = loginLinkRepository;
         this.emailSender = emailSender;
+        this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
     }
 
     public List<Participation> listPlayers(Long competitionId, ParticipationStatus statusFilter) {
@@ -75,7 +84,14 @@ public class PlayerManagementService {
     @Transactional
     public void removePlayer(Long competitionId, Long participationId) {
         Participation participation = findParticipation(competitionId, participationId);
+        String email = participation.getEmail();
+        // A player invited (or who requested entry) and already e-mailed has a LoginLink
+        // pointing at this participation -- LOGIN_LINK.participation_id is a real FK, unlike
+        // LOG's, so it must go first or the delete below violates referential integrity.
+        loginLinkRepository.deleteByParticipation_Id(participationId);
         participationRepository.delete(participation);
+        auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participationId, currentUser(),
+                "Participation for " + email + " removed from competition");
     }
 
     @Transactional
@@ -100,6 +116,8 @@ public class PlayerManagementService {
         link.setEmailSentAt(LocalDateTime.now());
         link.setExpiresAt(LocalDateTime.now().plusDays(LINK_VALIDITY_DAYS));
         loginLinkRepository.save(link);
+        auditLogService.record(LogType.LOGIN_LINK_ISSUED, link.getId(), currentUser(),
+                "Invite login link issued to " + participation.getEmail());
 
         Long userId = participation.getUser() != null ? participation.getUser().getId() : null;
         emailSender.send(userId, participation.getEmail(), "/login-links/" + token, templateFor(participation));
@@ -109,6 +127,8 @@ public class PlayerManagementService {
         }
         participation.setStatus(ParticipationStatus.EMAIL_SENT);
         participationRepository.save(participation);
+        auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participation.getId(), currentUser(),
+                "Participation status changed to EMAIL_SENT");
     }
 
     private static EmailTemplate templateFor(Participation participation) {
@@ -126,5 +146,11 @@ public class PlayerManagementService {
     private Participation findParticipation(Long competitionId, Long participationId) {
         return participationRepository.findByIdAndCompetition_Id(participationId, competitionId)
                 .orElseThrow(() -> new PlayerNotFoundException(competitionId, participationId));
+    }
+
+    private User currentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + email));
     }
 }

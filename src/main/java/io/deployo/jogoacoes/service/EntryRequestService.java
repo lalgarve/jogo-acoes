@@ -5,6 +5,7 @@ import io.deployo.jogoacoes.captcha.CaptchaService;
 import io.deployo.jogoacoes.domain.Competition;
 import io.deployo.jogoacoes.domain.CompetitionType;
 import io.deployo.jogoacoes.domain.EmailTemplate;
+import io.deployo.jogoacoes.domain.LogType;
 import io.deployo.jogoacoes.domain.LoginLink;
 import io.deployo.jogoacoes.domain.Participation;
 import io.deployo.jogoacoes.domain.ParticipationStatus;
@@ -38,16 +39,18 @@ public class EntryRequestService {
     private final UserRepository userRepository;
     private final EmailSender emailSender;
     private final CaptchaService captchaService;
+    private final AuditLogService auditLogService;
 
     public EntryRequestService(CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
                                 LoginLinkRepository loginLinkRepository, UserRepository userRepository,
-                                EmailSender emailSender, CaptchaService captchaService) {
+                                EmailSender emailSender, CaptchaService captchaService, AuditLogService auditLogService) {
         this.competitionRepository = competitionRepository;
         this.participationRepository = participationRepository;
         this.loginLinkRepository = loginLinkRepository;
         this.userRepository = userRepository;
         this.emailSender = emailSender;
         this.captchaService = captchaService;
+        this.auditLogService = auditLogService;
     }
 
     /** Logged-in player confirming entry directly from their session -- no e-mail round trip. */
@@ -73,7 +76,10 @@ public class EntryRequestService {
         }
         participation.setStatus(ParticipationStatus.IN_COMPETITION);
         participation.setJoinedAt(LocalDate.now());
-        return participationRepository.save(participation);
+        participation = participationRepository.save(participation);
+        auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participation.getId(), user,
+                "Participation status changed to IN_COMPETITION");
+        return participation;
     }
 
     /** Unregistered or logged-out player: e-mail + captcha, gets a link instead of immediate entry. */
@@ -120,6 +126,8 @@ public class EntryRequestService {
         link.setEmailSentAt(LocalDateTime.now());
         link.setExpiresAt(LocalDateTime.now().plusDays(LINK_VALIDITY_DAYS));
         loginLinkRepository.save(link);
+        auditLogService.record(LogType.LOGIN_LINK_ISSUED, link.getId(), existingUser.orElse(null),
+                "Entry request login link issued to " + email);
 
         Long userId = existingUser.map(User::getId).orElse(null);
         emailSender.send(userId, email, "/login-links/" + token, template);
@@ -129,6 +137,8 @@ public class EntryRequestService {
         }
         participation.setStatus(ParticipationStatus.EMAIL_SENT);
         participationRepository.save(participation);
+        auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participation.getId(), existingUser.orElse(null),
+                "Participation status changed to EMAIL_SENT");
     }
 
     private Competition findCompetition(Long competitionId) {

@@ -392,3 +392,42 @@ real de medição (ver convenção geral em `docs/desenvolvimento.md`):
   substitui uma execução real contra Postgres — os três problemas só apareceram numa
   execução real do GitHub Actions, nunca reproduzíveis no ambiente deste agente (sem daemon
   Docker).
+
+## Logs de auditoria
+
+`docs/diagrams/der.md` já modelava a tabela `LOG` desde a Iteração 2, mas deixava o
+catálogo de `LogType` como placeholder e a escrita real de entradas como pendência desta
+iteração — as quatro *features* passavam sem nenhum código gravando nela.
+
+- **Decisão**: manter os três valores já esboçados em `LogType` (`COMPETITION_CREATED`,
+  `PARTICIPATION_STATUS_CHANGED`, `LOGIN_LINK_ISSUED`) como o catálogo definitivo, em vez de
+  criar um tipo por ação de negócio. Os três cobrem todo evento auditável das quatro
+  *features* sem precisar crescer: qualquer mudança na lista de jogadores de uma competição
+  (criação de convite, confirmação de entrada, conclusão de registro, e também a **remoção**
+  de um jogador — não existe um `ParticipationStatus` de "removido", é uma exclusão física,
+  então a mensagem do log é que deixa isso explícito) é `PARTICIPATION_STATUS_CHANGED`; todo
+  e qualquer `LOGIN_LINK` novo (convite, pedido de entrada, reenvio, login) é
+  `LOGIN_LINK_ISSUED`.
+- **`AuditLogService`** (novo, em `service/`): um wrapper fino sobre `LogRepository.save`,
+  usado pelos quatro serviços de negócio (`CompetitionService`, `EntryRequestService`,
+  `LoginService`, `PlayerManagementService`) em cada ponto onde um desses três eventos
+  acontece. O ator (`Log.user`) é o usuário autenticado quando existe uma sessão (admin
+  criando/convidando, jogador confirmando entrada) e `null` nos fluxos anônimos (pedido de
+  entrada por e-mail antes de qualquer login).
+- **Bug real encontrado pelos testes desta seção, não coberto antes**: `removePlayer`
+  apagava a `Participation` sem apagar o `LoginLink` que a referencia — `LOGIN_LINK.
+  participation_id` é uma FK de verdade (diferente de `LOG.related_object_id`, que é
+  deliberadamente polimórfica/sem FK). O cenário "Administrator cancels a pending invite"
+  já cobria esse caminho no `.feature`, mas o *step* `Given` de fixture criava a
+  `Participation` direto no banco com status `EMAIL_SENT`, sem nunca criar o `LoginLink`
+  correspondente — então a suíte nunca exercitava a remoção com uma FK de fato presente.
+  `AuditLoggingIntegrationTest` chama o serviço real de convite (que cria o `LoginLink`) e
+  então remove o jogador, reproduzindo o `DataIntegrityViolation` que aconteceria em
+  produção. Corrigido apagando os `LoginLink`s da participação antes de apagar a
+  participação (`LoginLinkRepository.deleteByParticipation_Id`).
+- **Testes**: `AuditLogServiceTest` (`@DataJpaTest`, mesmo padrão de `StubEmailSenderTest`)
+  cobre o componente isolado — grava com e sem ator. `AuditLoggingIntegrationTest`
+  (`@SpringBootTest`, `@Transactional` para não vazar dados entre testes no H2 em memória
+  compartilhado do processo de teste) chama os quatro serviços de negócio direto e confere
+  as entradas de `LOG` resultantes — inclusive que a entrada de remoção sobrevive à exclusão
+  da `Participation` que ela referencia, a razão de `related_object_id` não ter FK.

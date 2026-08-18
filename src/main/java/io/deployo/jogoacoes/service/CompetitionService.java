@@ -5,6 +5,7 @@ import io.deployo.jogoacoes.api.model.DecideInviteEmailTimingRequest;
 import io.deployo.jogoacoes.domain.CompetitionStatus;
 import io.deployo.jogoacoes.domain.CompetitionType;
 import io.deployo.jogoacoes.domain.EmailTemplate;
+import io.deployo.jogoacoes.domain.LogType;
 import io.deployo.jogoacoes.domain.LoginLink;
 import io.deployo.jogoacoes.domain.Participation;
 import io.deployo.jogoacoes.domain.ParticipationStatus;
@@ -37,14 +38,17 @@ public class CompetitionService {
     private final LoginLinkRepository loginLinkRepository;
     private final UserRepository userRepository;
     private final EmailSender emailSender;
+    private final AuditLogService auditLogService;
 
     public CompetitionService(CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
-                               LoginLinkRepository loginLinkRepository, UserRepository userRepository, EmailSender emailSender) {
+                               LoginLinkRepository loginLinkRepository, UserRepository userRepository, EmailSender emailSender,
+                               AuditLogService auditLogService) {
         this.competitionRepository = competitionRepository;
         this.participationRepository = participationRepository;
         this.loginLinkRepository = loginLinkRepository;
         this.userRepository = userRepository;
         this.emailSender = emailSender;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -60,9 +64,12 @@ public class CompetitionService {
         competition.setRecurring(Boolean.TRUE.equals(request.getRecurring()));
         competition.setBuyFee(BigDecimal.valueOf(request.getBuyFee()));
         competition.setSellFee(BigDecimal.valueOf(request.getSellFee()));
-        competition.setCreator(currentUser());
+        User creator = currentUser();
+        competition.setCreator(creator);
         competition.setStatus(type == CompetitionType.PUBLIC ? CompetitionStatus.OPEN : CompetitionStatus.AWAITING_INVITES);
         competition = competitionRepository.save(competition);
+        auditLogService.record(LogType.COMPETITION_CREATED, competition.getId(), creator,
+                "Competition \"" + competition.getName() + "\" created");
 
         if (type == CompetitionType.PRIVATE) {
             for (String email : request.getEmails()) {
@@ -72,6 +79,8 @@ public class CompetitionService {
                 participation.setStatus(ParticipationStatus.EMAIL_NOT_SENT);
                 participation.setRequestType(RequestType.INVITE);
                 participationRepository.save(participation);
+                auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participation.getId(), creator,
+                        "Participation for " + email + " created with status EMAIL_NOT_SENT");
             }
         }
 
@@ -87,6 +96,7 @@ public class CompetitionService {
             return;
         }
 
+        User admin = currentUser();
         List<Participation> pending = participationRepository.findByCompetition_IdAndStatus(competitionId, ParticipationStatus.EMAIL_NOT_SENT);
         for (Participation participation : pending) {
             String token = UUID.randomUUID().toString();
@@ -97,6 +107,8 @@ public class CompetitionService {
             link.setEmailSentAt(LocalDateTime.now());
             link.setExpiresAt(LocalDateTime.now().plusDays(INVITE_LINK_VALIDITY_DAYS));
             loginLinkRepository.save(link);
+            auditLogService.record(LogType.LOGIN_LINK_ISSUED, link.getId(), admin,
+                    "Invite login link issued to " + participation.getEmail());
 
             Long userId = participation.getUser() != null ? participation.getUser().getId() : null;
             emailSender.send(userId, participation.getEmail(), "/login-links/" + token, EmailTemplate.INVITE);
@@ -104,6 +116,8 @@ public class CompetitionService {
             participation.setStatus(ParticipationStatus.EMAIL_SENT);
             participation.setFirstEmailSentDate(LocalDate.now());
             participationRepository.save(participation);
+            auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participation.getId(), admin,
+                    "Participation status changed to EMAIL_SENT");
         }
 
         competition.setStatus(CompetitionStatus.OPEN);
