@@ -153,3 +153,20 @@ dados **válidos** por padrão — o ponto de partida de qualquer cenário. Cen�
 uma variação **inválida** de um campo específico partem desse builder válido e sobrescrevem
 só o campo sob teste, mantendo os demais válidos. Isso espelha a estrutura de uma tabela de
 `Examples` do Gherkin, onde cada linha varia um campo por vez.
+
+## CI e cobertura de testes
+
+- **A suíte de testes roda em CI contra infraestrutura real** (perfil `docker` deste
+  projeto — Postgres de verdade, não H2), não contra o perfil de sandbox usado no dia a dia
+  — reduz a chance de "passou no CI, quebrou em produção" por uma diferença de banco.
+- **Cobertura de linha tem um piso obrigatório** (JaCoCo, `mvn verify`) que quebra o build
+  se ficar abaixo do limite — não é só um número informativo, é uma condição de build
+  passar. Código gerado (ex.: interfaces/DTOs de um gerador de OpenAPI) fica de fora da
+  contagem — não é código que a equipe escreve ou mantém, então não deveria puxar a média
+  pra baixo nem pra cima.
+- **O check de CI é obrigatório antes de mesclar** (branch protection do GitHub no branch
+  principal, exigindo esse status check) — quebrar a suíte ou cair abaixo do piso de
+  cobertura bloqueia o merge, não é um aviso.
+- **A cobertura aparece como comentário na própria PR**, atualizado a cada push, mesmo
+  quando o build falha por causa dela — assim dá pra ver o número exato sem precisar abrir
+  os logs do CI.

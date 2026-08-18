@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Real PostgreSQL, not the H2 sandbox profile -- see docs/desenvolvimento.md.
+      # docker-compose.yml already defines db with the roles/init script this profile needs.
+      - name: Start Postgres
+        run: docker compose up -d --wait db
+
+      - name: Run tests with coverage (docker profile)
+        env:
+          SPRING_PROFILES_ACTIVE: docker
+        run: mvn -B verify
+
+      # Runs even if the coverage gate above failed the build, so the PR still shows the
+      # actual percentage instead of just a red check with no explanation.
+      - name: Comment coverage on the PR
+        if: always() && github.event_name == 'pull_request'
+        uses: madrapps/jacoco-report@v1.7
+        with:
+          paths: target/site/jacoco/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 80
+          min-coverage-changed-files: 0
+          title: 'Cobertura de testes (JaCoCo)'
+          update-comment: true
+
+      - name: Stop Postgres
+        if: always()
+        run: docker compose down -v

@@ -344,3 +344,36 @@ descobertos como necessários já nesta retomada da Iteração 3:
 **As quatro `.feature` da Iteração 3 estão implementadas e passando de verdade** —
 `create_competition`, `request_competition_entry`, `login`, `manage_competition_players`.
 `mvn clean test`: 56 testes, **0 falhas, 0 erros** (nenhum `Pending` restante).
+
+## CI: cobertura de testes com JaCoCo
+
+Adicionado depois do trabalho acima, já com as quatro features prontas pra servir de base
+real de medição (ver convenção geral em `docs/desenvolvimento.md`):
+
+- `jacoco-maven-plugin` (0.8.15) no `pom.xml`: `report` na fase `test`, `check` na fase
+  `verify` com piso de **80% de cobertura de linha** (`mvn verify` quebra se ficar abaixo).
+  Excluído da contagem: `io.deployo.jogoacoes.api.**` e `org.openapitools.**` (código
+  gerado a partir do `docs/openapi.yaml`, nenhuma linha escrita à mão).
+- **Cobertura atual, medida nesta sessão**: **90,0%** de linha (`mvn clean verify` local,
+  perfil `sandbox`/H2) — bem acima do piso, então o gate de 80% já nasce satisfeito, não
+  bloqueando o primeiro merge.
+- `.github/workflows/ci.yml`: roda em `pull_request`/`push` pro `master`. Sobe o Postgres
+  via `docker compose up -d --wait db` (perfil `docker`, não `sandbox` — Postgres de
+  verdade, não H2) e roda `mvn verify`. `application-docker.yml` ganhou
+  `spring.flyway.locations` explícito (antes dependia por omissão do valor herdado do
+  `application.yml` de teste, que aponta pro H2 — mesma pegadinha de shadowing já
+  documentada antes, corrigida aqui antes que desse problema de verdade em CI).
+- Comentário de cobertura na PR via `madrapps/jacoco-report`, rodando mesmo se o `mvn
+  verify` falhar (o relatório XML já existe da fase `test`, antes do `check` da fase
+  `verify` rodar) — assim a PR mostra o número exato mesmo quando o build está vermelho por
+  causa da cobertura.
+- **Falta um passo manual, fora do alcance das ferramentas desta sessão**: marcar esse
+  check do GitHub Actions como obrigatório antes de mesclar (*branch protection* do
+  `master`) — é uma configuração de administração do repositório em
+  `Settings → Branches` no GitHub, não algo que a integração com o GitHub disponível aqui
+  consiga fazer.
+- **Não validado de ponta a ponta nesta sessão**: o ambiente onde isso foi desenvolvido não
+  tem um daemon Docker rodando, então o caminho `docker compose up -d --wait db` +
+  `SPRING_PROFILES_ACTIVE=docker` só foi validado por raciocínio (mesma configuração já
+  usada e validada em sessão anterior, mais a correção do `flyway.locations` acima) — a
+  primeira execução real do workflow no GitHub Actions é a confirmação de fato.
