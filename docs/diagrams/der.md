@@ -126,6 +126,8 @@ Campos String com conjunto fixo de valores viraram tipos `enum`, com constantes 
 e a tabela relacionada (`related_object_id` refere-se a ela). Catálogo por tabela sofreria o
 mesmo problema — adicionar um tipo novo exige alterar código de qualquer forma, já que o
 `log_type` decide como interpretar `related_object_id` — então um enum é mais simples que
-uma tabela de catálogo aqui. O conjunto de valores em `docs/iteracao-2.md`/`LogType.java` é
-um placeholder mínimo: o catálogo real de eventos auditáveis é uma decisão de negócio da
-Iteração 3.
+uma tabela de catálogo aqui. O conjunto de valores em `LogType.java` foi decidido na
+Iteração 3 (ver `docs/iteracao-3.md`): `COMPETITION_CREATED`, `PARTICIPATION_STATUS_CHANGED`
+(inclui a remoção de um jogador — não existe um `ParticipationStatus` de "removido", é uma
+exclusão física, não uma mudança de status, mas a mensagem do log deixa isso explícito) e
+`LOGIN_LINK_ISSUED`.

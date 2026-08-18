@@ -13,4 +13,6 @@ public interface LoginLinkRepository extends JpaRepository<LoginLink, Long> {
     List<LoginLink> findByUser_IdAndUsedAtIsNullAndInvalidatedAtIsNull(Long userId);
 
     Optional<LoginLink> findFirstByUser_IdAndUsedAtIsNullAndInvalidatedAtIsNullOrderByIdDesc(Long userId);
+
+    void deleteByParticipation_Id(Long participationId);
 }

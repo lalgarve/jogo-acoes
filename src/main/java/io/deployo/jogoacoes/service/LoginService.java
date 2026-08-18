@@ -3,6 +3,7 @@ package io.deployo.jogoacoes.service;
 import io.deployo.jogoacoes.api.model.LoginResult;
 import io.deployo.jogoacoes.domain.CompetitionStatus;
 import io.deployo.jogoacoes.domain.EmailTemplate;
+import io.deployo.jogoacoes.domain.LogType;
 import io.deployo.jogoacoes.domain.LoginLink;
 import io.deployo.jogoacoes.domain.LoginSession;
 import io.deployo.jogoacoes.domain.Participation;
@@ -70,12 +71,14 @@ public class LoginService {
     private final HttpServletRequest request;
     private final HttpServletResponse response;
     private final int maxDevicesPerUser;
+    private final AuditLogService auditLogService;
 
     public LoginService(LoginLinkRepository loginLinkRepository, LoginSessionRepository loginSessionRepository,
                          ParticipationRepository participationRepository, UserRepository userRepository,
                          RoleRepository roleRepository, UserRoleRepository userRoleRepository, EmailSender emailSender,
                          SecurityContextRepository securityContextRepository, HttpServletRequest request,
-                         HttpServletResponse response, @Value("${login.max-devices-per-user}") int maxDevicesPerUser) {
+                         HttpServletResponse response, @Value("${login.max-devices-per-user}") int maxDevicesPerUser,
+                         AuditLogService auditLogService) {
         this.loginLinkRepository = loginLinkRepository;
         this.loginSessionRepository = loginSessionRepository;
         this.participationRepository = participationRepository;
@@ -87,6 +90,7 @@ public class LoginService {
         this.request = request;
         this.response = response;
         this.maxDevicesPerUser = maxDevicesPerUser;
+        this.auditLogService = auditLogService;
     }
 
     /** @return null to signal "202, new player, registration still required". */
@@ -135,6 +139,8 @@ public class LoginService {
         participation.setStatus(ParticipationStatus.IN_COMPETITION);
         participation.setJoinedAt(LocalDate.now());
         participationRepository.save(participation);
+        auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participation.getId(), user,
+                "Participation status changed to IN_COMPETITION (registration completed)");
 
         markUsedAndEstablishSession(link, user);
 
@@ -164,6 +170,7 @@ public class LoginService {
         link.setEmailSentAt(now);
         link.setExpiresAt(now.plusDays(LINK_VALIDITY_DAYS));
         loginLinkRepository.save(link);
+        auditLogService.record(LogType.LOGIN_LINK_ISSUED, link.getId(), user, "Login link issued to " + email);
 
         emailSender.send(user.getId(), email, "/login-links/" + link.getToken(), EmailTemplate.LOGIN_LINK);
     }
