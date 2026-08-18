@@ -4,6 +4,8 @@ import io.cucumber.spring.ScenarioScope;
 import io.deployo.jogoacoes.api.model.CompetitionCreateRequest;
 import io.deployo.jogoacoes.domain.User;
 import io.restassured.RestAssured;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.config.SessionConfig;
 import io.restassured.filter.session.SessionFilter;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
@@ -35,6 +37,10 @@ public class ScenarioWorld {
         return RestAssured.given()
                 .port(port)
                 .basePath("/api")
+                // Spring Session's cookie is named "SESSION", not RestAssured's default
+                // expectation of "JSESSIONID" -- without this, SessionFilter never notices
+                // the Set-Cookie header and silently sends every request unauthenticated.
+                .config(RestAssuredConfig.config().sessionConfig(new SessionConfig().sessionIdName("SESSION")))
                 .filter(sessionFilter)
                 .contentType("application/json");
     }

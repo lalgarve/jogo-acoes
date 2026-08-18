@@ -239,3 +239,33 @@ descobertos como necessários já nesta retomada da Iteração 3:
   applied 4 migrations`) — inclusive dentro de `@DataJpaTest`, que troca o `DataSource` por
   um H2 embutido próprio (Spring Boot faz isso automaticamente) mas ainda assim roda o
   Flyway configurado antes do Hibernate validar o schema.
+
+## Status da implementação
+
+- **`create_competition.feature`: implementado, 7/7 cenários passando de verdade** (sem
+  `Pending`). Camada completa: `CompetitionService` (validação de negócio: nome, data
+  futura, duração > 0, taxas não-negativas, lista de e-mails para competição privada) +
+  `CompetitionsController` (implementa `CompetitionsApi` gerado) + `SecurityConfig`
+  (`SecurityFilterChain` com `permitAll`/`hasRole("ADMINISTRATOR")` por rota,
+  `AuthenticationEntryPoint`/`AccessDeniedHandler` próprios devolvendo JSON) +
+  `LoginController` (só o caminho feliz de `consumeLoginLink` — link válido de um usuário já
+  registrado; as regras de dispositivo de `login.feature` ficam pra quando essa feature for
+  implementada de verdade) + `ScenarioWorld` (contexto do Cucumber) + `UserMother`/
+  `CompetitionMother` (dados de teste).
+- **Duas pegadinhas resolvidas nesta sessão, não óbvias de antemão:**
+  1. `server.servlet.context-path: /api` só em `src/main/resources/application.yml` não
+     bastava — `src/test/resources/application.yml` **substitui** o `application.yml`
+     principal durante os testes (não mescla), então a config de contexto precisou ser
+     duplicada lá também (mesmo padrão de `datasource`/`flyway`/`session` já registrado
+     antes). Sem isso, os matchers do `SecurityFilterChain` e as rotas do
+     `@RequestMapping` gerado ficavam desalinhados sobre o que é "path" vs "context path".
+  2. O `SessionFilter` do RestAssured, por padrão, só reconhece cookie de sessão chamado
+     `JSESSIONID` — o Spring Session usa `SESSION`. Sem configurar
+     `SessionConfig.sessionIdName("SESSION")` explicitamente (feito em
+     `ScenarioWorld.request()`), cada chamada HTTP de um cenário parecia deslogada mesmo
+     logo depois de um login bem-sucedido (confirmado batendo direto no banco:
+     `spring_session_attributes` continha `SPRING_SECURITY_CONTEXT` corretamente — o
+     problema era só o cookie não ser reenviado pelo cliente de teste).
+- **Ainda não implementado**: `request_competition_entry.feature`, `login.feature` (além do
+  caminho feliz usado internamente), `manage_competition_players.feature`. Ordem sugerida
+  continua valendo — próximo é `request_competition_entry`.
