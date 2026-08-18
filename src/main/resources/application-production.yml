@@ -6,5 +6,8 @@ spring:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME:jogo_acoes_app}
     password: ${SPRING_DATASOURCE_PASSWORD}
+    # Explicit so nothing can inherit src/test/resources/application.yml's org.h2.Driver by
+    # omission if this profile is ever active during a test run.
+    driver-class-name: org.postgresql.Driver
   flyway:
     enabled: false
