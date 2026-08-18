@@ -212,3 +212,30 @@ consciente antes (ou logo no início) da implementação:
    `create_competition` → `request_competition_entry` → `login` →
    `manage_competition_players` (esta última depende de competições/participações já
    existirem, então fica por último).
+
+## Ambientes: renomeados e H2 separado do Postgres
+
+Antes de começar a implementar os cenários de verdade, dois ajustes de infraestrutura,
+descobertos como necessários já nesta retomada da Iteração 3:
+
+- **Perfis renomeados** pra deixar claro qual ambiente é qual: `dev` → `sandbox` (sem
+  Docker/Postgres disponível — cobre tanto rodar a aplicação isolada quanto o ambiente do
+  próprio agente), `integracao` → `docker` (Postgres real em containers, local via
+  `docker-compose` ou CI — mesmo conteúdo de antes, só o nome), `homologacao` → `staging`,
+  `producao` → `production` (tradução, sem mudança de conteúdo). `docker-compose.yml` agora
+  sobe com `SPRING_PROFILES_ACTIVE=docker`; o perfil padrão do sistema
+  (`spring.profiles.default`) é `sandbox`.
+- **`sandbox` passou a usar H2 de verdade, com Flyway** (antes, `dev` também apontava pro
+  Postgres — não havia nenhum perfil H2 nomeado). Como as migrations em `db/migration` têm
+  comandos específicos do Postgres (`GRANT`/`REVOKE` de papéis que não existem no H2), foi
+  criada uma segunda pasta `db/migration-h2` com o mesmo schema, sem esses comandos —
+  `application-sandbox.yml` e `src/test/resources/application.yml` apontam pra ela via
+  `spring.flyway.locations`.
+- **A suíte de testes passou a rodar o Flyway de verdade** contra o H2 (antes, era
+  `hibernate.ddl-auto: create-drop`, then Hibernate gerava o schema a partir das entidades
+  JPA, sem tocar nas migrations — ou seja, as migrations nunca eram exercitadas nos testes
+  automatizados). Validado nesta sessão: `LogRepositoryTest`, `StubEmailSenderTest` e
+  `SpringSessionSmokeTest` passam com `db/migration-h2` aplicado de verdade (`Successfully
+  applied 4 migrations`) — inclusive dentro de `@DataJpaTest`, que troca o `DataSource` por
+  um H2 embutido próprio (Spring Boot faz isso automaticamente) mas ainda assim roda o
+  Flyway configurado antes do Hibernate validar o schema.

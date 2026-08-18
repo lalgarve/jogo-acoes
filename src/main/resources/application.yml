@@ -2,7 +2,7 @@ spring:
   application:
     name: jogo-acoes
   profiles:
-    default: dev
+    default: sandbox
   jpa:
     open-in-view: false
     hibernate:

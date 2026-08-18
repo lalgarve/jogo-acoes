@@ -7,9 +7,10 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate
   flyway:
-    enabled: false
+    enabled: true
+    locations: classpath:db/migration-h2
   session:
     store-type: jdbc
     timeout: 30d
