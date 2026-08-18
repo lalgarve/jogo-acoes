@@ -30,6 +30,30 @@ o que existe hoje:
 
 Detalhes de cada etapa estão em [`docs/roadmap.md`](docs/roadmap.md).
 
+## Ambientes
+
+O perfil ativo do Spring é escolhido por `SPRING_PROFILES_ACTIVE` (ou `sandbox`, se
+nenhum for definido). Cada um tem seu arquivo `application-<nome>.yml` em
+`src/main/resources`:
+
+| Perfil | Banco | Quando usar |
+|---|---|---|
+| `sandbox` (padrão) | H2 embarcado, migrations em `db/migration-h2` | Rodar/testar sem precisar de Docker nem Postgres instalado |
+| `docker` | PostgreSQL real em containers | Localmente via `docker-compose up`, ou CI |
+| `staging` | PostgreSQL real, gerido por outra equipe | Pré-produção |
+| `production` | PostgreSQL real, gerido por outra equipe | Produção |
+
+`sandbox` e `docker` compartilham o mesmo modelo de dados, mas em pastas de migration
+separadas (`db/migration-h2` e `db/migration`) — a versão para H2 não tem os comandos
+`GRANT`/`REVOKE` de papéis de banco que só existem no Postgres real. Mais detalhes em
+[`docs/desenvolvimento.md`](docs/desenvolvimento.md#nomenclatura-de-ambientes).
+
+Para rodar localmente com Postgres real:
+
+```
+docker-compose up
+```
+
 ## Licença
 
 Este projeto está licenciado sob a GNU General Public License v3.0 (ou, a seu critério,
