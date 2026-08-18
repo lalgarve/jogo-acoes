@@ -44,19 +44,9 @@ public class CreateCompetitionSteps {
         world.setCompetitionRequest(CompetitionMother.validPrivateCompetition());
     }
 
-    @Given("define the competition name")
-    public void define_the_competition_name() {
-        // Already valid from the Mother -- this step exists for scenario readability.
-    }
-
     @Given("leave the competition name empty")
     public void leave_the_competition_name_empty() {
         world.getCompetitionRequest().name("");
-    }
-
-    @Given("enter a list of e-mails")
-    public void enter_a_list_of_e_mails() {
-        // Already valid from the Mother.
     }
 
     @Given("leave the e-mail list empty")
@@ -69,19 +59,9 @@ public class CreateCompetitionSteps {
         world.getCompetitionRequest().emails(List.of("valid@example.com", "not-an-email"));
     }
 
-    @Given("define the start date")
-    public void define_the_start_date() {
-        // Already valid from the Mother.
-    }
-
     @Given("define the start date as {}")
     public void define_the_start_date_as(String startDate) {
         world.getCompetitionRequest().startDate(parseDate(startDate));
-    }
-
-    @Given("define the duration")
-    public void define_the_duration() {
-        // Already valid from the Mother.
     }
 
     @Given("define the duration as {}")
@@ -89,24 +69,9 @@ public class CreateCompetitionSteps {
         world.getCompetitionRequest().durationDays(parseLeadingInt(duration));
     }
 
-    @Given("define whether it is recurring or not")
-    public void define_whether_it_is_recurring_or_not() {
-        // Already valid from the Mother.
-    }
-
-    @Given("define the buy brokerage fee")
-    public void define_the_buy_brokerage_fee() {
-        // Already valid from the Mother.
-    }
-
     @Given("define the buy brokerage fee as {}")
     public void define_the_buy_brokerage_fee_as(String buyFee) {
         world.getCompetitionRequest().buyFee(parsePercentage(buyFee));
-    }
-
-    @Given("define the sell brokerage fee")
-    public void define_the_sell_brokerage_fee() {
-        // Already valid from the Mother.
     }
 
     @Given("define the sell brokerage fee as {}")
