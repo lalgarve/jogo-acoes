@@ -21,11 +21,11 @@ tratamos como parte do escopo desta iteração também.
 
 ## O que já existe (herdado da Iteração 2)
 
-- Sete entidades JPA + repositórios (`br.com.jogoacoes.domain`/`repository`): `User`,
+- Sete entidades JPA + repositórios (`io.deployo.jogoacoes.domain`/`repository`): `User`,
   `Role`, `UserRole`, `Competition`, `Participation`, `LoginLink`, `LoginSession`, `Log`.
 - Migrations Flyway (schema completo, incluindo a tabela `log`).
 - Runner do Cucumber (`RunCucumberTest`) e um método Java "pending" por texto de step único
-  dos quatro `.feature` (`src/test/java/br/com/jogoacoes/steps/`).
+  dos quatro `.feature` (`src/test/java/io/deployo/jogoacoes/steps/`).
 - Dependências já no `pom.xml`: `spring-boot-starter-web`, `-validation`, RestAssured
   (testes HTTP), `spring-boot-data-jpa-test` (`@DataJpaTest`, já usado em
   `LogRepositoryTest`).
@@ -163,7 +163,7 @@ consciente antes (ou logo no início) da implementação:
    Spring Security no lugar, autorização vira `@PreAuthorize("hasRole('ADMINISTRATOR')")`
    nos métodos de *service*/*controller* (ou `SecurityFilterChain` com
    `.requestMatchers(...).hasRole(...)` pras rotas), em vez de checagem manual.
-5. ~~Stub de e-mail~~ — **resolvido.** `br.com.jogoacoes.email.EmailSender`:
+5. ~~Stub de e-mail~~ — **resolvido.** `io.deployo.jogoacoes.email.EmailSender`:
    `send(Long userId, String email, String link, EmailTemplate template)` — `userId` opcional
    (destinatário pode não ter conta ainda). `StubEmailSender` (única implementação por
    enquanto) não envia nada de verdade, só grava uma linha na nova tabela `sent_email`

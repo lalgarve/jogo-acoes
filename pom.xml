@@ -11,7 +11,7 @@
     <relativePath/>
   </parent>
 
-  <groupId>br.com.jogoacoes</groupId>
+  <groupId>io.deployo.jogoacoes</groupId>
   <artifactId>jogo-acoes</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <name>jogo-acoes</name>
@@ -191,8 +191,8 @@
               <inputSpec>${project.basedir}/docs/openapi.yaml</inputSpec>
               <generatorName>spring</generatorName>
               <library>spring-boot</library>
-              <apiPackage>br.com.jogoacoes.api</apiPackage>
-              <modelPackage>br.com.jogoacoes.api.model</modelPackage>
+              <apiPackage>io.deployo.jogoacoes.api</apiPackage>
+              <modelPackage>io.deployo.jogoacoes.api.model</modelPackage>
               <configOptions>
                 <interfaceOnly>true</interfaceOnly>
                 <useTags>true</useTags>
