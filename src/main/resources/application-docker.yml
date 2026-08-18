@@ -6,6 +6,11 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/jogo_acoes}
     username: ${SPRING_DATASOURCE_USERNAME:jogo_acoes_admin}
     password: ${SPRING_DATASOURCE_PASSWORD:jogo_acoes_admin}
+    # Explicit for the same reason as flyway.locations below: src/test/resources/application.yml
+    # hardcodes org.h2.Driver, and a profile file only overrides keys it redefines -- without
+    # this, running tests with SPRING_PROFILES_ACTIVE=docker tries to open a postgresql:// URL
+    # with the H2 driver and fails immediately.
+    driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
     # Explicit, not inherited: src/test/resources/application.yml replaces (not layers on)
