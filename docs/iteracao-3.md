@@ -266,6 +266,26 @@ descobertos como necessários já nesta retomada da Iteração 3:
      logo depois de um login bem-sucedido (confirmado batendo direto no banco:
      `spring_session_attributes` continha `SPRING_SECURITY_CONTEXT` corretamente — o
      problema era só o cookie não ser reenviado pelo cliente de teste).
-- **Ainda não implementado**: `request_competition_entry.feature`, `login.feature` (além do
-  caminho feliz usado internamente), `manage_competition_players.feature`. Ordem sugerida
-  continua valendo — próximo é `request_competition_entry`.
+- **`request_competition_entry.feature`: implementado, 7/7 cenários passando de verdade.**
+  `EntryRequestService` cobre os dois ramos do único endpoint (`POST
+  /competitions/{id}/entry-requests`): jogador autenticado confirma entrada direto da sessão
+  (200 + `Participation`, 404 pra competição privada sem convite — mesmo código que "não
+  existe", de propósito); jogador deslogado manda e-mail + captcha e recebe um link por
+  e-mail (202) — reconhece se o e-mail já pertence a um usuário registrado (template
+  `LOGIN_LINK`) ou não (`REGISTRATION_LINK`), e reaproveita a `Participation` pendente em vez
+  de duplicar se pedir de novo (reenvia o link).
+  - **`CaptchaService`**: usa o ALTCHA de verdade (mesma lib/algoritmo do `AltchaSmokeTest`),
+    não um fake. Como não existe frontend ainda pra ditar o formato exato do payload que o
+    widget ALTCHA normalmente gera, o token usado por `captchaToken` é um envelope próprio
+    (`base64(JSON com os parâmetros do desafio + assinatura HMAC + solução)`) — ainda assim
+    autocontido/stateless como o ALTCHA de verdade: o servidor não precisa ter guardado o
+    desafio, só recalcula a assinatura HMAC com o segredo (`altcha.secret`, configurável por
+    ambiente). Cenário de captcha errado usa a mesma técnica do `AltchaSmokeTest` — uma
+    `Solution` adulterada — verificação falha de verdade.
+  - **Fixtures novas**: `CompetitionFixtures` (persiste uma `Competition` direto, pulando o
+    HTTP — mesmo raciocínio de "tela" ser não-operação) e `LoginHelper` (o *round-trip* de
+    login que já existia dentro de `CommonSteps`, extraído pra ser reaproveitado também por
+    "registered and logged in" desta feature).
+- **Ainda não implementado**: `login.feature` (além do caminho feliz usado internamente),
+  `manage_competition_players.feature`. Ordem sugerida continua valendo — próximo é
+  `login.feature`.

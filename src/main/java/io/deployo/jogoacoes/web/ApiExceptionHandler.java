@@ -20,6 +20,16 @@ public class ApiExceptionHandler {
         return ResponseEntity.badRequest().body(new Error().message(ex.getMessage()));
     }
 
+    @ExceptionHandler(EntryRequestValidationException.class)
+    public ResponseEntity<Error> handleEntryRequestValidation(EntryRequestValidationException ex) {
+        return ResponseEntity.badRequest().body(new Error().message(ex.getMessage()));
+    }
+
+    @ExceptionHandler(CaptchaInvalidException.class)
+    public ResponseEntity<Error> handleCaptchaInvalid(CaptchaInvalidException ex) {
+        return ResponseEntity.badRequest().body(new Error().message(ex.getMessage()));
+    }
+
     @ExceptionHandler(CompetitionNotFoundException.class)
     public ResponseEntity<Void> handleCompetitionNotFound() {
         return ResponseEntity.notFound().build();
@@ -27,14 +37,15 @@ public class ApiExceptionHandler {
 
     /**
      * Bean Validation failures from @Valid request bodies (e.g. CompetitionCreateRequest's
-     * emails list has @Email on each item) -- the generated DTOs carry format constraints
-     * from the OpenAPI schema, so this is the layer that turns those into the Error shape
-     * the contract promises instead of Spring's default validation error body.
+     * emails list, EntryRequest's email, both have @Email) -- the generated DTOs carry
+     * format constraints from the OpenAPI schema, so this is the layer that turns those into
+     * the Error shape the contract promises instead of Spring's default validation error
+     * body.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Error> handleValidation(MethodArgumentNotValidException ex) {
         boolean emailFieldFailed = ex.getBindingResult().getFieldErrors().stream()
-                .anyMatch(fieldError -> fieldError.getField().startsWith("emails"));
+                .anyMatch(fieldError -> fieldError.getField().startsWith("email"));
         String message = emailFieldFailed ? "Invalid e-mail" : "Invalid request";
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new Error().message(message));
     }

@@ -14,3 +14,8 @@ spring:
   session:
     store-type: jdbc
     timeout: 30d
+
+# Starting point, not a locked-in secret -- override via ALTCHA_SECRET in any environment
+# where the default matters (i.e. anywhere reachable from outside sandbox/docker).
+altcha:
+  secret: ${ALTCHA_SECRET:dev-only-altcha-secret-change-me}

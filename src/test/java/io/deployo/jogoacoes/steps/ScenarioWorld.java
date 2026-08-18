@@ -2,6 +2,7 @@ package io.deployo.jogoacoes.steps;
 
 import io.cucumber.spring.ScenarioScope;
 import io.deployo.jogoacoes.api.model.CompetitionCreateRequest;
+import io.deployo.jogoacoes.domain.Competition;
 import io.deployo.jogoacoes.domain.User;
 import io.restassured.RestAssured;
 import io.restassured.config.RestAssuredConfig;
@@ -32,6 +33,8 @@ public class ScenarioWorld {
     private CompetitionCreateRequest competitionRequest;
     private Long competitionId;
     private Response lastResponse;
+    private Competition targetCompetition;
+    private String candidateEmail;
 
     public RequestSpecification request() {
         return RestAssured.given()
@@ -75,5 +78,21 @@ public class ScenarioWorld {
 
     public void setLastResponse(Response lastResponse) {
         this.lastResponse = lastResponse;
+    }
+
+    public Competition getTargetCompetition() {
+        return targetCompetition;
+    }
+
+    public void setTargetCompetition(Competition targetCompetition) {
+        this.targetCompetition = targetCompetition;
+    }
+
+    public String getCandidateEmail() {
+        return candidateEmail;
+    }
+
+    public void setCandidateEmail(String candidateEmail) {
+        this.candidateEmail = candidateEmail;
     }
 }
