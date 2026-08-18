@@ -7,6 +7,7 @@ import io.deployo.jogoacoes.repository.SentEmailRepository;
 import io.deployo.jogoacoes.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
 import java.util.List;
@@ -14,6 +15,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+// Without this, @DataJpaTest swaps in an embedded H2 database regardless of the active
+// profile, but flyway.locations still points at the Postgres-specific migrations (with
+// GRANT/REVOKE) -- those fail against H2. Keep using whatever datasource the active
+// profile configures (H2 in sandbox, real Postgres in docker/CI).
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DataJpaTest
 class StubEmailSenderTest {
 
