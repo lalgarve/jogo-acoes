@@ -367,13 +367,28 @@ real de medição (ver convenção geral em `docs/desenvolvimento.md`):
   verify` falhar (o relatório XML já existe da fase `test`, antes do `check` da fase
   `verify` rodar) — assim a PR mostra o número exato mesmo quando o build está vermelho por
   causa da cobertura.
-- **Falta um passo manual, fora do alcance das ferramentas desta sessão**: marcar esse
-  check do GitHub Actions como obrigatório antes de mesclar (*branch protection* do
-  `master`) — é uma configuração de administração do repositório em
-  `Settings → Branches` no GitHub, não algo que a integração com o GitHub disponível aqui
-  consiga fazer.
-- **Não validado de ponta a ponta nesta sessão**: o ambiente onde isso foi desenvolvido não
-  tem um daemon Docker rodando, então o caminho `docker compose up -d --wait db` +
-  `SPRING_PROFILES_ACTIVE=docker` só foi validado por raciocínio (mesma configuração já
-  usada e validada em sessão anterior, mais a correção do `flyway.locations` acima) — a
-  primeira execução real do workflow no GitHub Actions é a confirmação de fato.
+- **Branch protection do `master`, resolvido em outra sessão**: check do GitHub Actions
+  (`mvn verify` no perfil `docker`, Postgres real) marcado como obrigatório antes de
+  mesclar. Não foi só configuração — **bloqueou de fato o merge inicial**: a primeira
+  execução real do workflow (algo nunca exercitável no sandbox deste agente, que só tem H2)
+  encontrou três erros que passavam limpo em `sandbox`/H2 e quebravam contra Postgres real,
+  corrigidos em sequência (PRs #6–#8):
+  1. `application-docker.yml` (e `staging`/`production`) não sobrescrevia
+     `spring.datasource.driver-class-name` — herdava por omissão o `org.h2.Driver` fixado
+     no `application.yml` de teste, e tentava abrir uma URL `jdbc:postgresql://` com o
+     driver errado.
+  2. `@DataJpaTest` (`LogRepositoryTest`, `StubEmailSenderTest`) troca o `DataSource` por um
+     H2 embarcado por padrão, **mesmo com o perfil `docker` ativo** — rodava contra H2 em
+     vez do Postgres do container, e o `flyway.locations` desse perfil aponta pras
+     migrations com `GRANT`/`REVOKE` específicas do Postgres, que falham no H2. Corrigido com
+     `@AutoConfigureTestDatabase(replace = Replace.NONE)`.
+  3. `LogRepository.findFiltered`: o padrão de filtro opcional
+     `(:from IS NULL OR l.createdAt >= :from)` não dá ao Postgres um tipo de coluna pra
+     inferir o tipo de `:from` só pelo `IS NULL` — H2 tolera a ambiguidade, o protocolo
+     estendido do Postgres não (`"could not determine data type of parameter"`). Corrigido
+     com `CAST(:from AS timestamp)`/`CAST(:to AS timestamp)`.
+
+  Confirma na prática a lacuna que a nota anterior já previa: `sandbox`/H2 local não
+  substitui uma execução real contra Postgres — os três problemas só apareceram numa
+  execução real do GitHub Actions, nunca reproduzíveis no ambiente deste agente (sem daemon
+  Docker).
