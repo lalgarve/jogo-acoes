@@ -44,6 +44,9 @@ Amazon SES.
   vez de enviar diretamente (ou, aqui, em vez de só gravar em `sent_email`).
 - AWS Lambda consumindo a fila e disparando o envio via Amazon SES.
 - Fila de dead-letter (DLQ) para mensagens que falharem após as tentativas configuradas.
+- **SES Event Publishing** (*Configuration Set* com destino SNS) para os eventos de
+  `Bounce`/`Complaint`/`Delivery`, com uma fila SQS própria assinando esse tópico —
+  resolvido nesta sessão que isso é uma peça distinta da fila de comando (ver decisão 10).
 - Provisionamento da infraestrutura AWS (SQS, Lambda, SES) — de preferência como código
   (Terraform/CDK) para ser reproduzível.
 - IAM com privilégio mínimo: o sistema principal só pode publicar na fila; a Lambda só pode
@@ -52,7 +55,10 @@ Amazon SES.
   destinatários não verificados em produção).
 
 **Fora de escopo (fica para a Iteração 5):** métricas/alertas, observabilidade do pipeline
-(profundidade da fila, erros/retries da Lambda, taxa de bounce/complaint do SES).
+(profundidade da fila, erros/retries da Lambda, *agregação*/alerta sobre taxa de
+bounce/complaint do SES). A *captação* bruta dos eventos individuais de bounce/complaint via
+SES Event Publishing é desta iteração — ver decisão 10; o que fica para a 5 é olhar pra esses
+dados de forma agregada e alertar sobre eles.
 
 ## Decisões a tomar antes de implementar
 
@@ -89,18 +95,50 @@ Amazon SES.
    duplicada na Lambda. Precisa decidir se isso importa aqui (reenviar o mesmo e-mail
    duas vezes é um problema real de produto?) e, se sim, como deduplicar (id de correlação
    como chave de idempotência, checagem contra `sent_email` antes de enviar, etc.).
-9. **Onde a `sent_email` é gravada.** Hoje `StubEmailSender` grava e "envia" no mesmo método
-   síncrono. Com fila real, isso se divide em duas pontas (sistema principal publica /
-   Lambda consome e envia via SES) — decidir se `sent_email` é gravada no sistema principal
-   no momento de publicar (antes de saber se o envio de fato aconteceu) ou se precisa de
-   algum retorno da Lambda pro sistema principal marcar sucesso/falha, e o que isso implica
-   pro modelo de dados atual (hoje `sent_at` é preenchido de forma síncrona e otimista).
+9. ~~Onde a `sent_email` é gravada~~ — **resolvido, revisado nesta sessão.** A ideia inicial
+   (uma segunda fila onde a própria Lambda reporta sucesso/falha logo após chamar o SES) foi
+   descartada: a chamada `SES.SendEmail` retornar sucesso só significa que a AWS *aceitou*
+   a mensagem para tentativa de entrega, não que ela foi entregue — bounce (hard/soft) e
+   complaint acontecem depois, de forma assíncrona, do lado do servidor de e-mail do
+   destinatário, e a Lambda não tem como saber disso no momento do envio. "Sucesso" reportado
+   pela própria Lambda não diria nada de útil sobre entrega. A peça que resolve isso de
+   verdade é outra — ver decisão 10. `sent_email` continua sendo gravada no sistema principal
+   no momento de publicar (mesmo padrão atual, otimista) — o que muda é que ela deixa de ser
+   a fonte da verdade sobre o resultado da entrega; isso passa a viver em `EMAIL_EVENT`
+   (decisão 10).
+10. **Como saber de bounce/complaint (novo, decorre da revisão da decisão 9).** Falha real de
+    entrega não é reportada pela Lambda — é o próprio SES que a reporta, de forma assíncrona
+    e desacoplada da chamada de envio original, via **SES Event Publishing**: um
+    *Configuration Set* associado ao envio, configurado para publicar eventos (`Send`,
+    `Delivery`, `Bounce`, `Complaint`, `Reject`, `DeliveryDelay`) num tópico SNS. Uma fila SQS
+    própria (distinta da fila de comando) assina esse tópico, e algum consumidor (outra
+    Lambda, ou um listener no próprio sistema principal) processa esses eventos. Falta
+    decidir:
+    - Quem consome essa fila de eventos — uma segunda Lambda simples que só grava no banco,
+      ou o sistema principal direto (ex. `@SqsListener` via Spring Cloud AWS, mesma
+      biblioteca da decisão 2).
+    - Modelo de dados: uma tabela nova `EMAIL_EVENT` (insert-only, mesmo padrão de `LOG` e
+      `SENT_EMAIL`) com `sent_email_id` (FK), `event_type`, `occurred_at` e um campo de
+      detalhe (motivo do bounce, por exemplo) — em vez de mutar um campo de status em
+      `sent_email`, já que um mesmo envio pode ter múltiplos eventos ao longo do tempo (envio
+      aceito, depois bounce horas depois). Preserva a disciplina de tabelas imutáveis já
+      usada no projeto.
+    - Como associar o evento do SES de volta ao `sent_email`/`id de correlação` originais —
+      o SES permite anexar *message tags* personalizadas ao `SendEmail`, então o id de
+      correlação da decisão 1 provavelmente precisa ir como tag pra voltar no evento.
+    - Se a agregação/alerta sobre esses eventos é desta iteração ou só a captação bruta —
+      o roadmap já classifica "taxa de bounce/complaint" como observabilidade da Iteração 5;
+      o que esta iteração precisa decidir é só se os eventos brutos já são capturados e
+      persistidos aqui (dado que a infraestrutura SNS/SQS é criada agora), mesmo que a
+      agregação/alerta fique para depois.
 
 ## Ordem sugerida de discussão
 
 As decisões 1–2 (contrato da mensagem, SDK) são a base de tudo o resto e não dependem de
-acesso à AWS real — dá para avançar nelas dentro de uma sessão de agente. As decisões
-5–7 (infraestrutura, IAM, SES) dependem de acesso à conta AWS do projeto, fora do alcance
-das ferramentas disponíveis aqui — ver `docs/desenvolvimento.md` para o padrão já usado nas
-iterações anteriores de documentar claramente o que foi validado de verdade vs. o que ficou
-por raciocínio/pendente de uma sessão local ou de quem tem as credenciais.
+acesso à AWS real — dá para avançar nelas dentro de uma sessão de agente. O modelo de dados
+da decisão 10 (`EMAIL_EVENT`) também não depende de AWS e pode ser desenhado junto. As
+decisões 5–7 e a parte de infraestrutura da 10 (Configuration Set, tópico SNS, fila de
+eventos) dependem de acesso à conta AWS do projeto, fora do alcance das ferramentas
+disponíveis aqui — ver `docs/desenvolvimento.md` para o padrão já usado nas iterações
+anteriores de documentar claramente o que foi validado de verdade vs. o que ficou por
+raciocínio/pendente de uma sessão local ou de quem tem as credenciais.
