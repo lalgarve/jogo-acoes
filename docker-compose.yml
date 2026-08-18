@@ -16,10 +16,10 @@ services:
     depends_on:
       - db
     environment:
-      # Local/dev only: the app owns the schema here, so it connects as the admin role
-      # and runs Flyway itself. Homologacao/producao use the limited jogo_acoes_app role
-      # instead — see application-homologacao.yml / application-producao.yml.
-      SPRING_PROFILES_ACTIVE: dev
+      # docker-compose only: the app owns the schema here, so it connects as the admin role
+      # and runs Flyway itself. Staging/production use the limited jogo_acoes_app role
+      # instead — see application-staging.yml / application-production.yml.
+      SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/jogo_acoes
       SPRING_DATASOURCE_USERNAME: jogo_acoes_admin
       SPRING_DATASOURCE_PASSWORD: jogo_acoes_admin

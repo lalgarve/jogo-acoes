@@ -1,7 +1,23 @@
 package io.deployo.jogoacoes.repository;
 
 import io.deployo.jogoacoes.domain.Participation;
+import io.deployo.jogoacoes.domain.ParticipationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface ParticipationRepository extends JpaRepository<Participation, Long> {
+
+    List<Participation> findByCompetition_IdAndStatus(Long competitionId, ParticipationStatus status);
+
+    Optional<Participation> findByCompetition_IdAndUser_Id(Long competitionId, Long userId);
+
+    Optional<Participation> findByCompetition_IdAndEmailAndStatusNot(Long competitionId, String email, ParticipationStatus status);
+
+    List<Participation> findByCompetition_Id(Long competitionId);
+
+    Optional<Participation> findByIdAndCompetition_Id(Long id, Long competitionId);
+
+    boolean existsByCompetition_IdAndIdNotAndEmailIgnoreCase(Long competitionId, Long id, String email);
 }

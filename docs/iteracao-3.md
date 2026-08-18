@@ -212,3 +212,135 @@ consciente antes (ou logo no início) da implementação:
    `create_competition` → `request_competition_entry` → `login` →
    `manage_competition_players` (esta última depende de competições/participações já
    existirem, então fica por último).
+
+## Ambientes: renomeados e H2 separado do Postgres
+
+Antes de começar a implementar os cenários de verdade, dois ajustes de infraestrutura,
+descobertos como necessários já nesta retomada da Iteração 3:
+
+- **Perfis renomeados** pra deixar claro qual ambiente é qual: `dev` → `sandbox` (sem
+  Docker/Postgres disponível — cobre tanto rodar a aplicação isolada quanto o ambiente do
+  próprio agente), `integracao` → `docker` (Postgres real em containers, local via
+  `docker-compose` ou CI — mesmo conteúdo de antes, só o nome), `homologacao` → `staging`,
+  `producao` → `production` (tradução, sem mudança de conteúdo). `docker-compose.yml` agora
+  sobe com `SPRING_PROFILES_ACTIVE=docker`; o perfil padrão do sistema
+  (`spring.profiles.default`) é `sandbox`.
+- **`sandbox` passou a usar H2 de verdade, com Flyway** (antes, `dev` também apontava pro
+  Postgres — não havia nenhum perfil H2 nomeado). Como as migrations em `db/migration` têm
+  comandos específicos do Postgres (`GRANT`/`REVOKE` de papéis que não existem no H2), foi
+  criada uma segunda pasta `db/migration-h2` com o mesmo schema, sem esses comandos —
+  `application-sandbox.yml` e `src/test/resources/application.yml` apontam pra ela via
+  `spring.flyway.locations`.
+- **A suíte de testes passou a rodar o Flyway de verdade** contra o H2 (antes, era
+  `hibernate.ddl-auto: create-drop`, then Hibernate gerava o schema a partir das entidades
+  JPA, sem tocar nas migrations — ou seja, as migrations nunca eram exercitadas nos testes
+  automatizados). Validado nesta sessão: `LogRepositoryTest`, `StubEmailSenderTest` e
+  `SpringSessionSmokeTest` passam com `db/migration-h2` aplicado de verdade (`Successfully
+  applied 4 migrations`) — inclusive dentro de `@DataJpaTest`, que troca o `DataSource` por
+  um H2 embutido próprio (Spring Boot faz isso automaticamente) mas ainda assim roda o
+  Flyway configurado antes do Hibernate validar o schema.
+
+## Status da implementação
+
+- **`create_competition.feature`: implementado, 7/7 cenários passando de verdade** (sem
+  `Pending`). Camada completa: `CompetitionService` (validação de negócio: nome, data
+  futura, duração > 0, taxas não-negativas, lista de e-mails para competição privada) +
+  `CompetitionsController` (implementa `CompetitionsApi` gerado) + `SecurityConfig`
+  (`SecurityFilterChain` com `permitAll`/`hasRole("ADMINISTRATOR")` por rota,
+  `AuthenticationEntryPoint`/`AccessDeniedHandler` próprios devolvendo JSON) +
+  `LoginController` (só o caminho feliz de `consumeLoginLink` — link válido de um usuário já
+  registrado; as regras de dispositivo de `login.feature` ficam pra quando essa feature for
+  implementada de verdade) + `ScenarioWorld` (contexto do Cucumber) + `UserMother`/
+  `CompetitionMother` (dados de teste).
+- **Duas pegadinhas resolvidas nesta sessão, não óbvias de antemão:**
+  1. `server.servlet.context-path: /api` só em `src/main/resources/application.yml` não
+     bastava — `src/test/resources/application.yml` **substitui** o `application.yml`
+     principal durante os testes (não mescla), então a config de contexto precisou ser
+     duplicada lá também (mesmo padrão de `datasource`/`flyway`/`session` já registrado
+     antes). Sem isso, os matchers do `SecurityFilterChain` e as rotas do
+     `@RequestMapping` gerado ficavam desalinhados sobre o que é "path" vs "context path".
+  2. O `SessionFilter` do RestAssured, por padrão, só reconhece cookie de sessão chamado
+     `JSESSIONID` — o Spring Session usa `SESSION`. Sem configurar
+     `SessionConfig.sessionIdName("SESSION")` explicitamente (feito em
+     `ScenarioWorld.request()`), cada chamada HTTP de um cenário parecia deslogada mesmo
+     logo depois de um login bem-sucedido (confirmado batendo direto no banco:
+     `spring_session_attributes` continha `SPRING_SECURITY_CONTEXT` corretamente — o
+     problema era só o cookie não ser reenviado pelo cliente de teste).
+- **`request_competition_entry.feature`: implementado, 7/7 cenários passando de verdade.**
+  `EntryRequestService` cobre os dois ramos do único endpoint (`POST
+  /competitions/{id}/entry-requests`): jogador autenticado confirma entrada direto da sessão
+  (200 + `Participation`, 404 pra competição privada sem convite — mesmo código que "não
+  existe", de propósito); jogador deslogado manda e-mail + captcha e recebe um link por
+  e-mail (202) — reconhece se o e-mail já pertence a um usuário registrado (template
+  `LOGIN_LINK`) ou não (`REGISTRATION_LINK`), e reaproveita a `Participation` pendente em vez
+  de duplicar se pedir de novo (reenvia o link).
+  - **`CaptchaService`**: usa o ALTCHA de verdade (mesma lib/algoritmo do `AltchaSmokeTest`),
+    não um fake. Como não existe frontend ainda pra ditar o formato exato do payload que o
+    widget ALTCHA normalmente gera, o token usado por `captchaToken` é um envelope próprio
+    (`base64(JSON com os parâmetros do desafio + assinatura HMAC + solução)`) — ainda assim
+    autocontido/stateless como o ALTCHA de verdade: o servidor não precisa ter guardado o
+    desafio, só recalcula a assinatura HMAC com o segredo (`altcha.secret`, configurável por
+    ambiente). Cenário de captcha errado usa a mesma técnica do `AltchaSmokeTest` — uma
+    `Solution` adulterada — verificação falha de verdade.
+  - **Fixtures novas**: `CompetitionFixtures` (persiste uma `Competition` direto, pulando o
+    HTTP — mesmo raciocínio de "tela" ser não-operação) e `LoginHelper` (o *round-trip* de
+    login que já existia dentro de `CommonSteps`, extraído pra ser reaproveitado também por
+    "registered and logged in" desta feature).
+- **`login.feature`: implementado, todos os 12 blocos de cenário passando de verdade**
+  (incluindo os 3 `Scenario Outline`, com todas as combinações de `Examples`). `LoginService`
+  passou a existir (extraído do `LoginController`, que ficou fino) cobrindo:
+  - **Registro de novo jogador**: `completeRegistration` cria o `User`, atribui `PLAYER`,
+    finaliza a `Participation` (`IN_COMPETITION`), estabelece sessão.
+  - **Confirmação de jogador já registrado**: `consumeLoginLink` só autentica e devolve pra
+    onde ir — quem efetivamente adiciona à competição é o mesmo endpoint de
+    `request_competition_entry.feature` (`POST .../entry-requests`, autenticado), reaproveitado
+    sem mudança.
+  - **Regras de dispositivo, sem comparar "qual dispositivo" nenhuma vez**: a pergunta que o
+    código realmente faz é "este dispositivo (esta sessão HTTP) já está autenticado?" — não
+    "isso bate com o dispositivo original do link?". Um link já usado, clicado por um
+    dispositivo **sem** sessão prévia → 409; clicado por um dispositivo **já** autenticado →
+    apenas redireciona, ignorando o próprio estado do link. As duas regras de
+    `login.feature` sobre dispositivo saem dessa única distinção, sem precisar de um
+    identificador de dispositivo indo e voltando no contrato HTTP (não existe frontend ainda
+    pra definir como ele seria enviado).
+  - **Limite de dispositivos**: implementado com contabilidade própria em `LOGIN_SESSION`
+    (uma sessão ativa — `ended_at IS NULL` — por login bem-sucedido; ao exceder o limite
+    configurado, `login.max-devices-per-user`, a mais antiga é encerrada) — **não** usa o
+    controle de sessões concorrentes nativo do Spring Security (`SessionRegistry`/
+    `maximumSessions`), porque esse mecanismo só dispara automaticamente quando a
+    autenticação passa pelos filtros padrão do Spring Security, e aqui a autenticação é
+    montada manualmente (não há login por senha). Simplificação sabida: a sessão HTTP real
+    do dispositivo mais antigo não é invalidada de fato ainda (só o registro de domínio) —
+    faria isso precisar guardar o id da sessão do Spring Session dentro de `LOGIN_SESSION`,
+    o schema atual não tem essa coluna. Nenhum cenário testa o dispositivo antigo tentando
+    usar a sessão depois de expulso, então essa lacuna é honesta, não escondida.
+  - **Link novo invalida o anterior**: `requestLoginLink` invalida (`invalidated_at`) todo
+    `LOGIN_LINK` não usado do mesmo usuário antes de criar o novo.
+  - `ScenarioWorld` ganhou suporte a múltiplos "dispositivos" (uma `SessionFilter`
+    independente por nome de dispositivo) e `LoginLinkFixtures` (link/participação
+    pendente, link expirado) pra montar os cenários sem precisar recriar o fluxo de e-mail
+    inteiro em cada `Given`.
+- **`manage_competition_players.feature`: implementado, todos os cenários passando de
+  verdade** — a última das quatro. `PlayerManagementService` + `PlayersController`
+  (`PlayersApi`, todas as cinco rotas): listar/filtrar por status, convidar novos jogadores
+  numa competição privada existente, editar e-mail (rejeita formato inválido e e-mail
+  duplicado dentro da mesma competição — ambos via a mesma mensagem genérica de erro, como o
+  próprio `.feature` pede), remover jogador/cancelar convite pendente (mesma ação de
+  domínio, como já dizia a descrição desse endpoint no `openapi.yaml`), reenviar convite
+  individual ou em grupo. `ParticipationMapper` extraído (usado agora por dois controllers)
+  em vez de duplicar a conversão de entidade pra DTO.
+  - Ajuste no contrato: o corpo do `PATCH .../players/{id}` reaproveitava sem querer o
+    schema de `RequestLoginLinkRequest` (mesmo formato `{email}`, o gerador do OpenAPI
+    deduplica schemas anônimos estruturalmente iguais) — nomeado `UpdatePlayerEmailRequest`
+    em `openapi.yaml` pra não ficar um nome enganoso no código gerado.
+  - Simplificação sabida: nem todo status de `Participation` tem uma data própria no modelo
+    (`LINK_CLICKED` não tem coluna dedicada, só `LoginLink.used_at`, que a API de players não
+    expõe) — o cenário de filtro/listagem usa `firstEmailSentDate` como aproximação pra esse
+    caso, e pula a checagem de data pra `EMAIL_NOT_SENT` (não há nenhum campo de data
+    aplicável ainda).
+
+## Estado final desta sessão
+
+**As quatro `.feature` da Iteração 3 estão implementadas e passando de verdade** —
+`create_competition`, `request_competition_entry`, `login`, `manage_competition_players`.
+`mvn clean test`: 56 testes, **0 falhas, 0 erros** (nenhum `Pending` restante).

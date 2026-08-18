@@ -1,8 +1,12 @@
+server:
+  servlet:
+    context-path: /api
+
 spring:
   application:
     name: jogo-acoes
   profiles:
-    default: dev
+    default: sandbox
   jpa:
     open-in-view: false
     hibernate:
@@ -10,3 +14,13 @@ spring:
   session:
     store-type: jdbc
     timeout: 30d
+
+# Starting point, not a locked-in secret -- override via ALTCHA_SECRET in any environment
+# where the default matters (i.e. anywhere reachable from outside sandbox/docker).
+altcha:
+  secret: ${ALTCHA_SECRET:dev-only-altcha-secret-change-me}
+
+# Starting point, not a locked-in product decision -- how many devices a player can stay
+# logged into at once before the oldest session is ended.
+login:
+  max-devices-per-user: 3

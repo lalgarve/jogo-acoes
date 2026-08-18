@@ -6,7 +6,7 @@
 -- from now on (ALTER DEFAULT PRIVILEGES applies at CREATE TABLE time, so this covers
 -- tables added by later migrations too, without editing this script again).
 --
--- In homologacao/producao this same split applies, but a separate team provisions the
+-- In staging/production this same split applies, but a separate team provisions the
 -- roles and runs migrations by hand — the app there only ever holds jogo_acoes_app.
 
 CREATE ROLE jogo_acoes_app WITH LOGIN PASSWORD 'jogo_acoes_app';
