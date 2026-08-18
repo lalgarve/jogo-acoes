@@ -28,6 +28,10 @@ public class LoginHelper {
     }
 
     public void loginAs(ScenarioWorld world, User user) {
+        loginAs(world, user, ScenarioWorld.PRIMARY_DEVICE);
+    }
+
+    public void loginAs(ScenarioWorld world, User user, String device) {
         LoginLink link = new LoginLink();
         link.setToken(UUID.randomUUID().toString());
         link.setEmail(user.getEmail());
@@ -35,7 +39,7 @@ public class LoginHelper {
         link.setExpiresAt(LocalDateTime.now().plusHours(1));
         link = loginLinkRepository.save(link);
 
-        Response response = world.request()
+        Response response = world.request(device)
                 .when()
                 .get("/login-links/{token}", link.getToken());
 

@@ -35,6 +35,11 @@ public class ApiExceptionHandler {
         return ResponseEntity.notFound().build();
     }
 
+    @ExceptionHandler(LoginLinkUsedOnAnotherDeviceException.class)
+    public ResponseEntity<Void> handleLoginLinkUsedOnAnotherDevice() {
+        return ResponseEntity.status(HttpStatus.CONFLICT).build();
+    }
+
     /**
      * Bean Validation failures from @Valid request bodies (e.g. CompetitionCreateRequest's
      * emails list, EntryRequest's email, both have @Email) -- the generated DTOs carry

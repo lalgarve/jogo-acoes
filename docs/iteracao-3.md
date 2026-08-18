@@ -286,6 +286,38 @@ descobertos como necessários já nesta retomada da Iteração 3:
     HTTP — mesmo raciocínio de "tela" ser não-operação) e `LoginHelper` (o *round-trip* de
     login que já existia dentro de `CommonSteps`, extraído pra ser reaproveitado também por
     "registered and logged in" desta feature).
-- **Ainda não implementado**: `login.feature` (além do caminho feliz usado internamente),
-  `manage_competition_players.feature`. Ordem sugerida continua valendo — próximo é
-  `login.feature`.
+- **`login.feature`: implementado, todos os 12 blocos de cenário passando de verdade**
+  (incluindo os 3 `Scenario Outline`, com todas as combinações de `Examples`). `LoginService`
+  passou a existir (extraído do `LoginController`, que ficou fino) cobrindo:
+  - **Registro de novo jogador**: `completeRegistration` cria o `User`, atribui `PLAYER`,
+    finaliza a `Participation` (`IN_COMPETITION`), estabelece sessão.
+  - **Confirmação de jogador já registrado**: `consumeLoginLink` só autentica e devolve pra
+    onde ir — quem efetivamente adiciona à competição é o mesmo endpoint de
+    `request_competition_entry.feature` (`POST .../entry-requests`, autenticado), reaproveitado
+    sem mudança.
+  - **Regras de dispositivo, sem comparar "qual dispositivo" nenhuma vez**: a pergunta que o
+    código realmente faz é "este dispositivo (esta sessão HTTP) já está autenticado?" — não
+    "isso bate com o dispositivo original do link?". Um link já usado, clicado por um
+    dispositivo **sem** sessão prévia → 409; clicado por um dispositivo **já** autenticado →
+    apenas redireciona, ignorando o próprio estado do link. As duas regras de
+    `login.feature` sobre dispositivo saem dessa única distinção, sem precisar de um
+    identificador de dispositivo indo e voltando no contrato HTTP (não existe frontend ainda
+    pra definir como ele seria enviado).
+  - **Limite de dispositivos**: implementado com contabilidade própria em `LOGIN_SESSION`
+    (uma sessão ativa — `ended_at IS NULL` — por login bem-sucedido; ao exceder o limite
+    configurado, `login.max-devices-per-user`, a mais antiga é encerrada) — **não** usa o
+    controle de sessões concorrentes nativo do Spring Security (`SessionRegistry`/
+    `maximumSessions`), porque esse mecanismo só dispara automaticamente quando a
+    autenticação passa pelos filtros padrão do Spring Security, e aqui a autenticação é
+    montada manualmente (não há login por senha). Simplificação sabida: a sessão HTTP real
+    do dispositivo mais antigo não é invalidada de fato ainda (só o registro de domínio) —
+    faria isso precisar guardar o id da sessão do Spring Session dentro de `LOGIN_SESSION`,
+    o schema atual não tem essa coluna. Nenhum cenário testa o dispositivo antigo tentando
+    usar a sessão depois de expulso, então essa lacuna é honesta, não escondida.
+  - **Link novo invalida o anterior**: `requestLoginLink` invalida (`invalidated_at`) todo
+    `LOGIN_LINK` não usado do mesmo usuário antes de criar o novo.
+  - `ScenarioWorld` ganhou suporte a múltiplos "dispositivos" (uma `SessionFilter`
+    independente por nome de dispositivo) e `LoginLinkFixtures` (link/participação
+    pendente, link expirado) pra montar os cenários sem precisar recriar o fluxo de e-mail
+    inteiro em cada `Given`.
+- **Ainda não implementado**: `manage_competition_players.feature` — a última das quatro.

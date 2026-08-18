@@ -19,3 +19,8 @@ spring:
 # where the default matters (i.e. anywhere reachable from outside sandbox/docker).
 altcha:
   secret: ${ALTCHA_SECRET:dev-only-altcha-secret-change-me}
+
+# Starting point, not a locked-in product decision -- how many devices a player can stay
+# logged into at once before the oldest session is ended.
+login:
+  max-devices-per-user: 3

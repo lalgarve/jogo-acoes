@@ -21,3 +21,6 @@ spring:
 
 altcha:
   secret: test-secret
+
+login:
+  max-devices-per-user: 3

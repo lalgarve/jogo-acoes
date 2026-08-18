@@ -28,14 +28,18 @@ public class CompetitionFixtures {
     }
 
     public Competition publicCompetition() {
-        return persist(CompetitionType.PUBLIC);
+        return persist(CompetitionType.PUBLIC, CompetitionStatus.OPEN);
     }
 
     public Competition privateCompetition() {
-        return persist(CompetitionType.PRIVATE);
+        return persist(CompetitionType.PRIVATE, CompetitionStatus.AWAITING_INVITES);
     }
 
-    private Competition persist(CompetitionType type) {
+    public Competition closedCompetition() {
+        return persist(CompetitionType.PUBLIC, CompetitionStatus.CLOSED);
+    }
+
+    private Competition persist(CompetitionType type, CompetitionStatus status) {
         Competition competition = new Competition();
         competition.setName("Fixture competition " + UUID.randomUUID());
         competition.setType(type);
@@ -44,7 +48,7 @@ public class CompetitionFixtures {
         competition.setRecurring(false);
         competition.setBuyFee(new BigDecimal("0.50"));
         competition.setSellFee(new BigDecimal("0.50"));
-        competition.setStatus(type == CompetitionType.PUBLIC ? CompetitionStatus.OPEN : CompetitionStatus.AWAITING_INVITES);
+        competition.setStatus(status);
         competition.setCreator(userMother.administrator());
         return competitionRepository.save(competition);
     }
