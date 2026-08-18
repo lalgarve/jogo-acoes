@@ -8,3 +8,9 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:jogo_acoes_admin}
   flyway:
     enabled: true
+    # Explicit, not inherited: src/test/resources/application.yml replaces (not layers on)
+    # src/main/resources/application.yml when tests run, and its own flyway.locations points
+    # at db/migration-h2 -- that value would otherwise leak into this profile when tests run
+    # with SPRING_PROFILES_ACTIVE=docker (e.g. in CI), since a profile file only overrides
+    # keys it redefines.
+    locations: classpath:db/migration
