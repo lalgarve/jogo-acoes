@@ -35,6 +35,16 @@ public class ApiExceptionHandler {
         return ResponseEntity.notFound().build();
     }
 
+    @ExceptionHandler(PlayerNotFoundException.class)
+    public ResponseEntity<Void> handlePlayerNotFound() {
+        return ResponseEntity.notFound().build();
+    }
+
+    @ExceptionHandler(PlayerValidationException.class)
+    public ResponseEntity<Error> handlePlayerValidation(PlayerValidationException ex) {
+        return ResponseEntity.badRequest().body(new Error().message(ex.getMessage()));
+    }
+
     @ExceptionHandler(LoginLinkUsedOnAnotherDeviceException.class)
     public ResponseEntity<Void> handleLoginLinkUsedOnAnotherDevice() {
         return ResponseEntity.status(HttpStatus.CONFLICT).build();

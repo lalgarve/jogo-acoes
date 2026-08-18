@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -45,6 +46,10 @@ public class ScenarioWorld {
     private String candidateEmail;
     private String candidateName;
     private LoginLink currentLoginLink;
+    private Long currentParticipationId;
+    private List<Long> selectedParticipationIds;
+    private List<String> candidateEmails;
+    private String otherPlayerEmail;
 
     public RequestSpecification request() {
         return request(PRIMARY_DEVICE);
@@ -125,5 +130,37 @@ public class ScenarioWorld {
 
     public void setCurrentLoginLink(LoginLink currentLoginLink) {
         this.currentLoginLink = currentLoginLink;
+    }
+
+    public Long getCurrentParticipationId() {
+        return currentParticipationId;
+    }
+
+    public void setCurrentParticipationId(Long currentParticipationId) {
+        this.currentParticipationId = currentParticipationId;
+    }
+
+    public List<Long> getSelectedParticipationIds() {
+        return selectedParticipationIds;
+    }
+
+    public void setSelectedParticipationIds(List<Long> selectedParticipationIds) {
+        this.selectedParticipationIds = selectedParticipationIds;
+    }
+
+    public List<String> getCandidateEmails() {
+        return candidateEmails;
+    }
+
+    public void setCandidateEmails(List<String> candidateEmails) {
+        this.candidateEmails = candidateEmails;
+    }
+
+    public String getOtherPlayerEmail() {
+        return otherPlayerEmail;
+    }
+
+    public void setOtherPlayerEmail(String otherPlayerEmail) {
+        this.otherPlayerEmail = otherPlayerEmail;
     }
 }

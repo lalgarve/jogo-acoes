@@ -289,10 +289,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [email]
-              properties:
-                email: { type: string, format: email }
+              $ref: '#/components/schemas/UpdatePlayerEmailRequest'
       responses:
         '200':
           description: OK
@@ -425,6 +422,12 @@ components:
       properties:
         email: { type: string, format: email }
         captchaToken: { type: string }
+
+    UpdatePlayerEmailRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
 
     LoginResult:
       type: object

@@ -320,4 +320,27 @@ descobertos como necessários já nesta retomada da Iteração 3:
     independente por nome de dispositivo) e `LoginLinkFixtures` (link/participação
     pendente, link expirado) pra montar os cenários sem precisar recriar o fluxo de e-mail
     inteiro em cada `Given`.
-- **Ainda não implementado**: `manage_competition_players.feature` — a última das quatro.
+- **`manage_competition_players.feature`: implementado, todos os cenários passando de
+  verdade** — a última das quatro. `PlayerManagementService` + `PlayersController`
+  (`PlayersApi`, todas as cinco rotas): listar/filtrar por status, convidar novos jogadores
+  numa competição privada existente, editar e-mail (rejeita formato inválido e e-mail
+  duplicado dentro da mesma competição — ambos via a mesma mensagem genérica de erro, como o
+  próprio `.feature` pede), remover jogador/cancelar convite pendente (mesma ação de
+  domínio, como já dizia a descrição desse endpoint no `openapi.yaml`), reenviar convite
+  individual ou em grupo. `ParticipationMapper` extraído (usado agora por dois controllers)
+  em vez de duplicar a conversão de entidade pra DTO.
+  - Ajuste no contrato: o corpo do `PATCH .../players/{id}` reaproveitava sem querer o
+    schema de `RequestLoginLinkRequest` (mesmo formato `{email}`, o gerador do OpenAPI
+    deduplica schemas anônimos estruturalmente iguais) — nomeado `UpdatePlayerEmailRequest`
+    em `openapi.yaml` pra não ficar um nome enganoso no código gerado.
+  - Simplificação sabida: nem todo status de `Participation` tem uma data própria no modelo
+    (`LINK_CLICKED` não tem coluna dedicada, só `LoginLink.used_at`, que a API de players não
+    expõe) — o cenário de filtro/listagem usa `firstEmailSentDate` como aproximação pra esse
+    caso, e pula a checagem de data pra `EMAIL_NOT_SENT` (não há nenhum campo de data
+    aplicável ainda).
+
+## Estado final desta sessão
+
+**As quatro `.feature` da Iteração 3 estão implementadas e passando de verdade** —
+`create_competition`, `request_competition_entry`, `login`, `manage_competition_players`.
+`mvn clean test`: 56 testes, **0 falhas, 0 erros** (nenhum `Pending` restante).

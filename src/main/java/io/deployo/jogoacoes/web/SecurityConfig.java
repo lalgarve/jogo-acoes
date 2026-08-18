@@ -37,7 +37,8 @@ public class SecurityConfig {
                         .requestMatchers("/login-requests", "/login-links/**", "/competitions/*/entry-requests").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/competitions").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/competitions").hasRole("ADMINISTRATOR")
-                        .requestMatchers("/competitions/*/invite-emails", "/competitions/*/players/**").hasRole("ADMINISTRATOR")
+                        .requestMatchers("/competitions/*/invite-emails", "/competitions/*/players", "/competitions/*/players/**")
+                        .hasRole("ADMINISTRATOR")
                         .anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(SecurityConfig::writeNotLoggedIn)

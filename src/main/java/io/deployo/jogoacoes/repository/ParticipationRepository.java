@@ -14,4 +14,10 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     Optional<Participation> findByCompetition_IdAndUser_Id(Long competitionId, Long userId);
 
     Optional<Participation> findByCompetition_IdAndEmailAndStatusNot(Long competitionId, String email, ParticipationStatus status);
+
+    List<Participation> findByCompetition_Id(Long competitionId);
+
+    Optional<Participation> findByIdAndCompetition_Id(Long id, Long competitionId);
+
+    boolean existsByCompetition_IdAndIdNotAndEmailIgnoreCase(Long competitionId, Long id, String email);
 }
