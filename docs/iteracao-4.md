@@ -62,24 +62,51 @@ dados de forma agregada e alertar sobre eles.
 
 ## Decisões a tomar antes de implementar
 
-1. **Contrato da mensagem da fila.** Formato (JSON?), campos exatos — a lista do roadmap
-   ("tipo de e-mail, destinatário, dados de template, id de correlação") é um ponto de
-   partida, não um schema fechado. Precisa decidir: tipos de dado, obrigatoriedade de cada
-   campo, e se `EmailTemplate` (já existente) é reaproveitado como o "tipo de e-mail" da
-   mensagem. Versionamento do contrato (o que acontece se o formato mudar com a fila já em
-   produção) também é uma pergunta em aberto.
-2. **Biblioteca/SDK para falar com SQS a partir do Spring Boot.** AWS SDK v2 puro
-   (`software.amazon.awssdk:sqs`) vs. Spring Cloud AWS (`spring-cloud-aws-starter-sqs`,
-   que dá `SqsTemplate`/listener declarativo). Nenhuma verificada ainda contra o Maven
-   Central nesta sessão nem testada contra a stack atual (Spring Boot 4.1, Java 21).
-3. **Como testar sem AWS real.** O sandbox deste agente não tem acesso à AWS nem, até agora,
-   conseguiu rodar containers via `docker pull` (bloqueado, ver `iteracao-2.md`) — então
-   LocalStack (se depender de imagem Docker) provavelmente tem a mesma limitação aqui, só
-   validável numa sessão local (Docker Desktop), como já aconteceu com o Postgres real nas
-   Iterações 2 e 3. Precisa decidir se `EmailSender` ganha uma terceira implementação (fila
-   real) mantendo `StubEmailSender` ativo em `sandbox`, ou se o `sandbox` também passa a
-   apontar para uma fila (LocalStack) — impacto direto em quais cenários dos `.feature` são
-   testáveis onde.
+1. ~~Contrato da mensagem da fila.~~ — **resolvido.** O corpo/assunto do e-mail já vão
+   *renderizados* na mensagem, não os ingredientes (`EmailTemplate` + `link`) para renderizar
+   depois. Isso torna o contrato estável contra qualquer mudança futura no motor de
+   templates (texto simples agora, Thymeleaf depois — ver nota abaixo) sem nunca precisar
+   tocar na fila outra vez, e reduz a Lambda a um worker genérico ("manda este texto pra este
+   endereço"), sem nenhum conhecimento do domínio da aplicação. Como `sent_email` já é
+   gravada no sistema principal no momento da publicação (decisão 9 abaixo), `userId`
+   também não precisa cruzar a fila — só serve pro FK local.
+
+   ```json
+   {
+     "schemaVersion": "1",
+     "correlationId": "uuid",
+     "recipientEmail": "...",
+     "subject": "...",
+     "body": "..."
+   }
+   ```
+
+   `schemaVersion` resolve o versionamento: a Lambda pode ramificar por versão em vez de
+   exigir corte seco se o contrato mudar de novo. `correlationId` amarra a mensagem de volta
+   ao `sent_email` e vira *message tag* do `SES.SendEmail` pra correlacionar os eventos da
+   decisão 10.
+
+   **Nota — geração do corpo/assunto:** como a geração de texto via Thymeleaf continua fora
+   do escopo desta iteração (e da 5), quem produz `subject`/`body` antes de publicar é uma
+   renderização simples e interna ao sistema principal (ex.: um `switch` por `EmailTemplate`
+   devolvendo texto puro) — não adianta esse trabalho, só empurra o ponto onde
+   `EmailTemplate`/`link` deixam de ser visíveis pra fora do processo: cruzavam a fila antes,
+   agora só alimentam essa renderização interna. Trocar por um motor de template de verdade
+   depois não muda o contrato da fila.
+2. ~~Biblioteca/SDK para falar com SQS a partir do Spring Boot.~~ — **resolvido: Spring Cloud
+   AWS** (`spring-cloud-aws-starter-sqs`), não AWS SDK v2 puro. Verificado nesta sessão: a
+   versão 4.0.0 é compatível com Spring Boot 4.x (lançada em janeiro/2026) — o risco de
+   incompatibilidade que motivava a dúvida não se aplica mais. Dá `SqsTemplate` pra publicar
+   (bem mais simples que `SqsClient` cru) e deixa a porta aberta pra `@SqsListener` se o
+   sistema principal também acabar consumindo a fila de eventos da decisão 10.
+3. ~~Como testar sem AWS real.~~ — **resolvido, mesmo padrão do Postgres real (Iterações 2 e
+   3).** LocalStack via `docker-compose` (serviço novo, ao lado do `db`), exercitado só no
+   profile `docker`/CI — o `sandbox` deste agente continua sem depender de rede/Docker, então
+   `StubEmailSender` permanece a implementação ativa lá. A implementação real (fila) só é
+   validada de ponta a ponta em CI, onde o Docker existe — mesma lacuna já documentada e
+   aceita nas iterações anteriores (o que roda aqui é só raciocínio + `mvn verify` local
+   contra `sandbox`, a confirmação de verdade vem do primeiro workflow real no GitHub
+   Actions).
 4. **Retry e política da DLQ.** Quantas tentativas antes de cair na dead-letter queue,
    *backoff* entre elas — o roadmap menciona a DLQ mas não define esses números.
 5. **Provisionamento de infraestrutura.** Terraform vs. AWS CDK vs. criação manual só
@@ -136,15 +163,18 @@ dados de forma agregada e alertar sobre eles.
     - Quem consome essa fila de eventos — uma segunda Lambda simples que só grava no banco,
       ou o sistema principal direto (ex. `@SqsListener` via Spring Cloud AWS, mesma
       biblioteca da decisão 2).
-    - Modelo de dados: uma tabela nova `EMAIL_EVENT` (insert-only, mesmo padrão de `LOG` e
-      `SENT_EMAIL`) com `sent_email_id` (FK), `event_type`, `occurred_at` e um campo de
-      detalhe (motivo do bounce, por exemplo) — em vez de mutar um campo de status em
-      `sent_email`, já que um mesmo envio pode ter múltiplos eventos ao longo do tempo (envio
-      aceito, depois bounce horas depois). Preserva a disciplina de tabelas imutáveis já
-      usada no projeto.
+    - ~~Modelo de dados~~ — **resolvido.** Tabela nova `EMAIL_EVENT` (insert-only, mesmo
+      padrão de `LOG` e `SENT_EMAIL`, `jogo_acoes_app` só com `SELECT`/`INSERT`):
+      `id` PK, `sent_email_id` (FK pra `SENT_EMAIL`), `event_type` (enum:
+      `SEND`/`DELIVERY`/`BOUNCE`/`COMPLAINT`/`REJECT`/`DELIVERY_DELAY` — os mesmos tipos que o
+      *Configuration Set* publica), `occurred_at`, `detail` (nullable — motivo do bounce,
+      por exemplo). Uma tabela em vez de mutar um campo de status em `sent_email`, já que um
+      mesmo envio pode ter múltiplos eventos ao longo do tempo (envio aceito, depois bounce
+      horas depois) — preserva a disciplina de tabelas imutáveis já usada no projeto.
     - Como associar o evento do SES de volta ao `sent_email`/`id de correlação` originais —
-      o SES permite anexar *message tags* personalizadas ao `SendEmail`, então o id de
-      correlação da decisão 1 provavelmente precisa ir como tag pra voltar no evento.
+      o SES permite anexar *message tags* personalizadas ao `SendEmail`, então o
+      `correlationId` da decisão 1 vai como tag pra voltar no evento e resolver o
+      `sent_email_id` de `EMAIL_EVENT`.
     - Se a agregação/alerta sobre esses eventos é desta iteração ou só a captação bruta —
       o roadmap já classifica "taxa de bounce/complaint" como observabilidade da Iteração 5;
       o que esta iteração precisa decidir é só se os eventos brutos já são capturados e
