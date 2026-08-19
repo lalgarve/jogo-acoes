@@ -88,6 +88,25 @@ dados de forma agregada e alertar sobre eles.
 6. **IAM de privilégio mínimo.** Papéis/políticas exatos: o sistema principal só publica na
    fila (`sqs:SendMessage`), a Lambda só consome (`sqs:ReceiveMessage`/`DeleteMessage`) e usa
    o SES (`ses:SendEmail`) — desenhar as policies JSON de verdade, não só o princípio.
+
+   **Credenciais AWS no CI/deploy (GitHub Actions):** o workflow de CI (`.github/workflows/
+   ci.yml`, já existente desde a Iteração 3) e um futuro passo de deploy/provisionamento da
+   Lambda vão precisar de credenciais AWS. Duas opções:
+   - **GitHub Actions secrets** (`Settings → Secrets and variables → Actions`): *write-only*
+     — depois de salvo, ninguém (nem admin do repositório) consegue ler o valor de novo pela
+     UI/API, só sobrescrever ou apagar; mascarado automaticamente nos logs do workflow se
+     aparecer na saída de um step (com ressalva: a mascara não é infalível pra segredo
+     multi-linha ou reescrito em outro encoding). *Environment secrets* (em vez de
+     repository-level) permitem regras de proteção adicionais — *required reviewers*,
+     restrição por branch de deploy.
+   - **OIDC (recomendado)**: em vez de guardar uma *access key* AWS de longo prazo como
+     secret, o GitHub Actions assume uma IAM role via token de curta duração emitido pra cada
+     execução do workflow — não existe credencial fixa armazenada em lugar nenhum pra vazar.
+     Requer configurar um *identity provider* OIDC do GitHub na conta AWS e uma *trust
+     policy* na role restringindo por repositório/branch. Mais seguro que secret nesse caso
+     específico (CI/deploy), mas secrets do GitHub continuam necessários para o que não é
+     credencial AWS assumível por role (ex. segredos de aplicação, se algum surgir).
+7. **Verificação de domínio/remetente no SES e saída do sandbox mode.** Requer acesso real à
 7. **Verificação de domínio/remetente no SES e saída do sandbox mode.** Requer acesso real à
    conta AWS do projeto — não é algo verificável dentro de uma sessão de agente; precisa de
    decisão/execução de quem tem essas credenciais.
