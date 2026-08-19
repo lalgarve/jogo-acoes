@@ -1,0 +1,70 @@
+<!--
+  EmailTemplate.LOGIN_LINK -- recipient already has a registered User account. Always
+  personalized by name. Used in two contexts (see docs/iteracao-4.md):
+    (a) tied to a competition/participation (entry request or invite/resend where a User
+        already exists for that e-mail) -- competitionName is set;
+    (b) a standalone login-link request from the login screen, no competition involved --
+        competitionName is null.
+  One template covers both via the conditional block below, instead of two near-duplicate
+  files that would only differ by that one paragraph.
+
+  Variables: name (string), link (string, absolute URL), competitionName (string, nullable).
+  Convention: <title> holds the subject line (also Thymeleaf-processed); everything inside
+  <body> is the e-mail body. Both go through the same TemplateEngine pass.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title th:text="${competitionName != null} ? ('Log in to ' + ${competitionName}) : 'Your login link'">Your login link</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f5f7; font-family:Arial, Helvetica, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden;">
+          <tr>
+            <td style="padding:32px 32px 8px 32px;">
+              <p style="margin:0 0 16px 0; font-size:16px; line-height:1.5; color:#1f2933;">
+                Hello <span th:text="${name}">there</span>,
+              </p>
+              <p th:if="${competitionName != null}"
+                 style="margin:0 0 24px 0; font-size:16px; line-height:1.5; color:#1f2933;">
+                Click the button below to log in and go to
+                <strong th:text="${competitionName}">the competition</strong>.
+              </p>
+              <p th:unless="${competitionName != null}"
+                 style="margin:0 0 24px 0; font-size:16px; line-height:1.5; color:#1f2933;">
+                Click the button below to log in to your account.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 32px 32px 32px;">
+              <a th:href="${link}" href="#"
+                 style="display:inline-block; background-color:#2f6feb; color:#ffffff; text-decoration:none; font-size:16px; font-weight:bold; padding:12px 28px; border-radius:6px;">
+                Log in
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 32px 32px 32px; border-top:1px solid #e4e7eb;">
+              <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#7b8794;">
+                If the button above doesn't work, copy and paste this link into your browser:<br/>
+                <span th:text="${link}">https://jogo-acoes.example/login-links/...</span>
+              </p>
+              <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#7b8794;">
+                This link is valid for a limited time and can only be used once. If you didn't
+                request this, you can safely ignore this e-mail.
+              </p>
+              <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#9aa5b1;">
+                Equipe Jogo de Ações
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

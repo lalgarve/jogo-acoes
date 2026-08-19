@@ -191,3 +191,47 @@ eventos) dependem de acesso à conta AWS do projeto, fora do alcance das ferrame
 disponíveis aqui — ver `docs/desenvolvimento.md` para o padrão já usado nas iterações
 anteriores de documentar claramente o que foi validado de verdade vs. o que ficou por
 raciocínio/pendente de uma sessão local ou de quem tem as credenciais.
+
+## Catálogo de templates de e-mail (Thymeleaf)
+
+O número de `EmailTemplate` existente (`INVITE`, `REGISTRATION_LINK`, `LOGIN_LINK`) foi
+decidido na Iteração 3 só para viabilizar o stub — não veio de uma revisão dos quatro
+`.feature` pra ver se o conjunto realmente cobre (e não duplica) os casos de negócio. Essa
+revisão foi feita nesta sessão, ponto a ponto pelos quatro *call sites* de `emailSender.send`
+e pelos *steps* de teste que os verificam:
+
+| Template | Quando é usado | Sabe o nome? | Contexto de competição? |
+|---|---|---|---|
+| `INVITE` | Admin convida um e-mail sem `User` registrado pra uma competição privada | Não — `Participation` só guarda e-mail até o registro terminar | Sim — nome da competição |
+| `REGISTRATION_LINK` | Pedido de entrada espontâneo numa competição pública, sem `User` registrado ainda | Não | Sim — nome da competição |
+| `LOGIN_LINK` | Destinatário já tem `User` registrado | Sim | Só quando vinculado a uma `Participation` (pedido de login avulso pela tela de login não tem competição nenhuma) |
+
+**Achado real, confirmado no código**: o cenário "Registered but not logged in player
+requests entry" (`request_competition_entry.feature`) diz "sends the link to **finish
+registration**", mas o *step* que o verifica (`RequestCompetitionEntrySteps`) já afirma
+`EmailTemplate.LOGIN_LINK`, não `REGISTRATION_LINK` — a frase do Gherkin é fraseado genérico
+reaproveitado entre os três cenários de pedido de entrada, não uma descrição literal do
+e-mail. O diferencial de negócio real é "**personalized with the name**", testado
+explicitamente só nesse cenário.
+
+**Decisão**: manter os 3 valores — cobrem os quatro `.feature` sem precisar crescer.
+`LOGIN_LINK` vira **um único template** com o parágrafo de contexto de competição
+condicional (`th:if`/`th:unless`), em vez de dois arquivos quase idênticos, já que a única
+diferença entre os dois usos é esse parágrafo.
+
+**Pendência Java, não implementada nesta sessão (só os `.html`, sem código)**: a escolha
+entre `LOGIN_LINK` e `INVITE`/`REGISTRATION_LINK` precisa ser "existe um `User` registrado
+com esse e-mail?" — uma busca fresca por e-mail, o que `EntryRequestService.requestEntry` já
+faz hoje (`userRepository.findByEmail`). `CompetitionService.create` e
+`PlayerManagementService.invitePlayers`/`templateFor` **não fazem essa busca**: sempre
+tratam um convite/pedido recém-criado como "sem conta" (`participation.getUser() == null`),
+mesmo que o e-mail já tenha um `User` registrado de outra competição — nesse caso o jogador
+receberia um `INVITE`/`REGISTRATION_LINK` impessoal em vez de um `LOGIN_LINK`
+personalizado. Fica para quando a implementação Java desta iteração começar.
+
+**Arquivos**: `src/main/resources/templates/email/{invite,registration-link,login-link}.html`.
+Convenção adotada: `<title>` carrega o assunto (também processado pelo Thymeleaf, permitindo
+assunto dinâmico), o `<body>` é o corpo do e-mail — os dois passam pelo mesmo
+`TemplateEngine`. Estilo inline (não CSS externo), pela compatibilidade de clientes de
+e-mail. Nenhuma dependência do Thymeleaf foi adicionada ao `pom.xml` ainda, nem código Java
+de renderização escrito — fica para a implementação.

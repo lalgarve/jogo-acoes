@@ -1,0 +1,61 @@
+<!--
+  EmailTemplate.REGISTRATION_LINK -- player requested entry into a public competition
+  themselves and has no registered account yet. No name is available: Participation only
+  carries an e-mail address until registration is completed (see docs/iteracao-4.md).
+
+  Variables: competitionName (string), link (string, absolute URL).
+  Convention: <title> holds the subject line (also Thymeleaf-processed); everything inside
+  <body> is the e-mail body. Both go through the same TemplateEngine pass.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title th:text="'Finish signing up for ' + ${competitionName}">Finish signing up</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f5f7; font-family:Arial, Helvetica, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden;">
+          <tr>
+            <td style="padding:32px 32px 8px 32px;">
+              <p style="margin:0 0 16px 0; font-size:16px; line-height:1.5; color:#1f2933;">Hello,</p>
+              <p style="margin:0 0 16px 0; font-size:16px; line-height:1.5; color:#1f2933;">
+                Thanks for requesting to join
+                <strong th:text="${competitionName}">the competition</strong>.
+              </p>
+              <p style="margin:0 0 24px 0; font-size:16px; line-height:1.5; color:#1f2933;">
+                Click the button below to finish creating your account and enter the competition.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 32px 32px 32px;">
+              <a th:href="${link}" href="#"
+                 style="display:inline-block; background-color:#2f6feb; color:#ffffff; text-decoration:none; font-size:16px; font-weight:bold; padding:12px 28px; border-radius:6px;">
+                Finish signing up
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 32px 32px 32px; border-top:1px solid #e4e7eb;">
+              <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#7b8794;">
+                If the button above doesn't work, copy and paste this link into your browser:<br/>
+                <span th:text="${link}">https://jogo-acoes.example/login-links/...</span>
+              </p>
+              <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#7b8794;">
+                This link is valid for a limited time and can only be used once. If you didn't
+                request this, you can safely ignore this e-mail.
+              </p>
+              <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#9aa5b1;">
+                Equipe Jogo de Ações
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

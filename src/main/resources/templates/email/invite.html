@@ -1,0 +1,60 @@
+<!--
+  EmailTemplate.INVITE -- administrator invited this address to a private competition;
+  no registered User exists for it yet (see docs/iteracao-4.md for the "does a User exist
+  for this e-mail" lookup this depends on -- not implemented yet, Java-side pendency).
+
+  Variables: competitionName (string), link (string, absolute URL).
+  Convention: <title> holds the subject line (also Thymeleaf-processed); everything inside
+  <body> is the e-mail body. Both go through the same TemplateEngine pass.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title th:text="'You are invited to ' + ${competitionName}">You are invited to a competition</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f5f7; font-family:Arial, Helvetica, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden;">
+          <tr>
+            <td style="padding:32px 32px 8px 32px;">
+              <p style="margin:0 0 16px 0; font-size:16px; line-height:1.5; color:#1f2933;">Hello,</p>
+              <p style="margin:0 0 16px 0; font-size:16px; line-height:1.5; color:#1f2933;">
+                You have been invited to compete in
+                <strong th:text="${competitionName}">the competition</strong>.
+              </p>
+              <p style="margin:0 0 24px 0; font-size:16px; line-height:1.5; color:#1f2933;">
+                Click the button below to accept the invite and create your account.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 32px 32px 32px;">
+              <a th:href="${link}" href="#"
+                 style="display:inline-block; background-color:#2f6feb; color:#ffffff; text-decoration:none; font-size:16px; font-weight:bold; padding:12px 28px; border-radius:6px;">
+                Accept invite
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 32px 32px 32px; border-top:1px solid #e4e7eb;">
+              <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#7b8794;">
+                If the button above doesn't work, copy and paste this link into your browser:<br/>
+                <span th:text="${link}">https://jogo-acoes.example/login-links/...</span>
+              </p>
+              <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#7b8794;">
+                This link is valid for a limited time and can only be used once.
+              </p>
+              <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#9aa5b1;">
+                Equipe Jogo de Ações
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
