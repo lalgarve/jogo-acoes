@@ -119,16 +119,37 @@ dados de forma agregada e alertar sobre eles.
    apareciam com Docker de verdade (fila compartilhada com outros testes — PR #15; SES do
    LocalStack exigindo remetente verificado, ver seção da Lambda abaixo — PR #16), os dois
    corrigidos, e `master` está verde. Detalhes em "Produtor: `EmailSender` real".
-4. ~~Retry e política da DLQ.~~ — **resolvido: abordagem simples, sem distinguir tipo de
-   erro no handler.** O SQS/Lambda não sabe *por que* uma invocação falhou, só *se* falhou —
-   hoje `EmailSendHandler` deixa qualquer exceção subir (mensagem malformada, SES rejeitando o
-   remetente, throttling, rede), e todas viram "reentrega" igualmente via `maxReceiveCount`.
-   Existe uma abordagem mais fina (capturar `MessageRejectedException` e não relançar, já que
-   um remetente não verificado ou endereço inválido nunca vai passar por retentar) — descartada
-   por agora, mais código pra um volume que ainda não existe. `maxReceiveCount = 3` antes da
-   DLQ. Sem *backoff* exponencial nativo no SQS (exigiria o handler mudar a visibilidade
-   dinamicamente a cada tentativa); `VisibilityTimeout` fixo (~60s) no lugar. Revisar se o
-   volume real justificar diferenciação por tipo de erro depois.
+4. ~~Retry e política da DLQ.~~ — **resolvido: diferenciada por tipo de erro, com estado
+   consultável/cancelável via DynamoDB + processo agendado** (não a alternativa nativa do SQS
+   que chegou a ser considerada — descartada porque não dá pra cancelar uma mensagem já
+   publicada com atraso, nem expõe estado consultável sem reconstruir isso por fora).
+
+   **Motivação, além do retry em si**: quer um painel (no `app/`) com visibilidade e controle
+   sobre os e-mails — quantas tentativas, próximo horário, poder cancelar uma retentativa
+   pendente. Isso significa cenários BDD novos e mudança de código além desta iteração — não é
+   só a política de retry, é uma feature nova.
+
+   **Desenho**:
+   - Tabela DynamoDB (pode ser a mesma da decisão 8, ou uma separada — a decidir na
+     implementação): item por tentativa pendente, com `correlationId`, `attemptCount`,
+     `lastError`, `nextRetryAt`. Cancelar é literal: apagar (ou marcar) o item antes do
+     próximo ciclo do poller — nenhuma mensagem chega a ser publicada de novo.
+   - Política de retry (quantas tentativas, atraso por tipo de erro) num arquivo de
+     configuração empacotado com a Lambda, não *hardcoded* — o tipo de erro (`MessageRejectedException`
+     do SES vs. erro de rede/*throttling* vs. mensagem malformada) decide se tenta de novo e
+     com que atraso.
+   - Processo agendado (Lambda + regra do EventBridge, a cada 15 min) lê os itens com
+     `nextRetryAt` vencido e republica na fila de comando.
+   - **Como o painel (Postgres, `app/`) enxerga isso sem a Lambda tocar no banco** (decisão 1
+     continua travada: Lambda sem nenhum acesso a Postgres): a Lambda publica o ciclo de vida
+     da retentativa (agendada/tentada/esgotada/cancelada) como eventos numa fila que o `app/`
+     já escuta (decisão 10, `@SqsListener`) — o listener grava como linhas novas em
+     `EMAIL_EVENT`. Ver decisão 10 pro `event_type` novo que isso implica. `sent_email`
+     continua imutável (decisão 9) — número de tentativas não é campo dela, vive no estado de
+     retry (DynamoDB) e é espelhado em `EMAIL_EVENT` pro painel.
+   - Nada disso implementado nesta sessão — desenho fica registrado aqui; a implementação (e
+     as novas features de painel/cancelamento) é trabalho de uma sessão futura, possivelmente
+     fora do escopo original desta iteração no `roadmap.md` (a rever).
 5. ~~Provisionamento de infraestrutura.~~ — **resolvido: Terraform, em um repositório
    separado** deste (o do código da aplicação). Execução em si (`terraform apply` contra a
    conta AWS real) continua bloqueada por acesso a essa conta — só a ferramenta e onde o
@@ -182,20 +203,27 @@ dados de forma agregada e alertar sobre eles.
     `Delivery`, `Bounce`, `Complaint`, `Reject`, `DeliveryDelay`) num tópico SNS. Uma fila SQS
     própria (distinta da fila de comando) assina esse tópico, e algum consumidor (outra
     Lambda, ou um listener no próprio sistema principal) processa esses eventos.
+
+    **Ampliado pela decisão 4**: essa mesma fila de eventos (ou uma equivalente) também
+    carrega o ciclo de vida das retentativas — a Lambda vira produtora além de consumidora da
+    fila de comando, publicando quando agenda/tenta/esgota/cancela uma retentativa, pro
+    `app/` gravar como `EMAIL_EVENT` sem precisar de acesso a Postgres do lado da Lambda.
     - ~~Quem consome essa fila de eventos~~ — **resolvido: o sistema principal**, direto
       (`@SqsListener` via Spring Cloud AWS, mesma biblioteca da decisão 2), não uma segunda
       Lambda. Já tem acesso ao Postgres onde `EMAIL_EVENT` mora — uma Lambda extra só pra
       gravar essas linhas adicionaria um componente sem necessidade. Não implementado nesta
       sessão: precisa da fila/tópico SNS existirem primeiro (infraestrutura, decisão 5,
       bloqueada pela conta AWS real).
-    - ~~Modelo de dados~~ — **resolvido.** Tabela nova `EMAIL_EVENT` (insert-only, mesmo
-      padrão de `LOG` e `SENT_EMAIL`, `jogo_acoes_app` só com `SELECT`/`INSERT`):
-      `id` PK, `sent_email_id` (FK pra `SENT_EMAIL`), `event_type` (enum:
-      `SEND`/`DELIVERY`/`BOUNCE`/`COMPLAINT`/`REJECT`/`DELIVERY_DELAY` — os mesmos tipos que o
-      *Configuration Set* publica), `occurred_at`, `detail` (nullable — motivo do bounce,
-      por exemplo). Uma tabela em vez de mutar um campo de status em `sent_email`, já que um
-      mesmo envio pode ter múltiplos eventos ao longo do tempo (envio aceito, depois bounce
-      horas depois) — preserva a disciplina de tabelas imutáveis já usada no projeto.
+    - ~~Modelo de dados~~ — **resolvido, revisado pela decisão 4.** Tabela nova `EMAIL_EVENT`
+      (insert-only, mesmo padrão de `LOG` e `SENT_EMAIL`, `jogo_acoes_app` só com
+      `SELECT`/`INSERT`): `id` PK, `sent_email_id` (FK pra `SENT_EMAIL`), `event_type` (enum:
+      `SEND`/`DELIVERY`/`BOUNCE`/`COMPLAINT`/`REJECT`/`DELIVERY_DELAY` — os tipos que o
+      *Configuration Set* do SES publica — **mais** `RETRY_SCHEDULED`/`RETRY_ATTEMPTED`/
+      `RETRY_EXHAUSTED`/`RETRY_CANCELLED`, que vêm da Lambda, não do SES, ver decisão 4),
+      `occurred_at`, `detail` (nullable — motivo do bounce, ou nº da tentativa/erro, conforme
+      o tipo). Uma tabela em vez de mutar um campo de status em `sent_email`, já que um mesmo
+      envio pode ter múltiplos eventos ao longo do tempo — preserva a disciplina de tabelas
+      imutáveis já usada no projeto.
     - Como associar o evento do SES de volta ao `sent_email`/`id de correlação` originais —
       o SES permite anexar *message tags* personalizadas ao `SendEmail`, então o
       `correlationId` da decisão 1 vai como tag pra voltar no evento e resolver o
