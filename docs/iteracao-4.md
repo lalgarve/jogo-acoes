@@ -259,17 +259,19 @@ só e-mail.
 GUI (`docs/desenvolvimento.md`) — identificadores/comentários continuam em inglês, só o
 conteúdo voltado ao usuário final muda de idioma.
 
-**Pendência Java, não implementada nesta sessão (só os `.html`, sem código)**: a escolha
-entre os 5 arquivos precisa de "existe um `User` registrado com esse e-mail?" — uma busca
-fresca por e-mail, o que `EntryRequestService.requestEntry` já faz hoje
-(`userRepository.findByEmail`). `CompetitionService.create` e
-`PlayerManagementService.invitePlayers`/`templateFor` **não fazem essa busca**: sempre
-tratam um convite/pedido recém-criado como "sem conta" (`participation.getUser() == null`),
-mesmo que o e-mail já tenha um `User` registrado de outra competição — nesse caso o jogador
-receberia um `INVITE`/`REGISTRATION_LINK` impessoal em vez do `login-link-invite.html`/
-`login-link-request.html` personalizado. Essa lacuna já tem cenários de `.feature`
-registrando o comportamento esperado (`manage_competition_players.feature`,
-`create_competition.feature` — commits e167937/2467286).
+**Pendência Java resolvida em parte (commit c415c89)**: `CompetitionService.create` e
+`PlayerManagementService.invitePlayers` agora fazem a mesma busca por e-mail que
+`EntryRequestService.requestEntry` já fazia (`userRepository.findByEmail(email).filter(
+User::isRegistered)`) e vinculam o `User` encontrado à `Participation` — isso já faz
+`decideInviteEmailTiming`/`templateFor` escolherem `EmailTemplate.LOGIN_LINK` em vez de
+`INVITE`/`REGISTRATION_LINK`, cobrindo os cenários registrados em
+`manage_competition_players.feature`/`create_competition.feature` (commits e167937/2467286,
+implementados em c415c89). **Ainda falta**: essa correção só decide o *valor do enum*
+`EmailTemplate` — não existe ainda nenhum código escolhendo entre os 5 arquivos `.html`
+físicos (`login-link-invite.html` vs. `login-link-request.html`, por exemplo), porque a
+máquina de renderização (Thymeleaf + `TemplateEngine`) e o novo `EmailSender` da fila SQS
+ainda não foram implementados — isso é o restante do escopo desta iteração (contrato da
+mensagem, SDK, etc., já decididos mais acima neste documento).
 
 **Arquivos**:
 ```
