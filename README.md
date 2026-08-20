@@ -6,15 +6,26 @@ ações com dados de mercado reais, competindo pela melhor evolução de portfó
 
 ## Estado atual do projeto
 
-O projeto está na fase de especificação/planejamento. Ainda não há código de aplicação —
-o que existe hoje:
+Iterações 1–4 do [roadmap](docs/roadmap.md) implementadas: especificação de domínio,
+esqueleto da aplicação, os quatro fluxos principais (login, criação de competição, convite/
+entrada de jogadores) rodando de ponta a ponta, e a infraestrutura assíncrona de e-mail
+(SQS → Lambda → SES, com LocalStack substituindo a AWS real em CI). O que existe hoje:
 
-- **Especificação de domínio (BDD)** em `src/test/resources/features`: cenários Gherkin de
-  login, criação de competição, gerência de jogadores e pedido de entrada em competição.
+- **Sistema principal** (`app/`, Spring Boot): API REST (gerada a partir de
+  [`docs/openapi.yaml`](docs/openapi.yaml)), persistência JPA/PostgreSQL, autenticação por
+  link de login, ALTCHA como captcha, log de auditoria.
+- **`email-lambda/`** (Quarkus): AWS Lambda que consome a fila de e-mail e envia via SES —
+  ver [`docs/iteracao-4.md`](docs/iteracao-4.md) pra decisões e pendências (a maioria
+  bloqueada por acesso a uma conta AWS real, não por código faltando).
+- **Especificação de domínio (BDD)** em `app/src/test/resources/features`: cenários Gherkin
+  de login, criação de competição, gerência de jogadores e pedido de entrada em competição —
+  todos implementados e passando.
 - **Modelo de dados** em [`docs/diagrams/der.md`](docs/diagrams/der.md): diagrama
   entidade-relacionamento do domínio.
-- **Plano de iterações** em [`docs/roadmap.md`](docs/roadmap.md): o que será feito em cada
-  iteração, da especificação atual até negociação de ações, gráficos e acessibilidade.
+- **CI** (`.github/workflows/ci.yml`): testes com cobertura (JaCoCo, piso de 80%) contra
+  Postgres/LocalStack reais a cada PR.
+- **Plano de iterações** em [`docs/roadmap.md`](docs/roadmap.md): o que falta, da negociação
+  de ações em diante até gráficos e acessibilidade.
 
 ## Arquitetura planejada
 
