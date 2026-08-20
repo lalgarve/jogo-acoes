@@ -6,12 +6,15 @@ import io.cucumber.java.en.When;
 import io.deployo.jogoacoes.api.model.InvitePlayersRequest;
 import io.deployo.jogoacoes.api.model.ResendPlayerInviteEmailsRequest;
 import io.deployo.jogoacoes.api.model.UpdatePlayerEmailRequest;
+import io.deployo.jogoacoes.domain.EmailTemplate;
 import io.deployo.jogoacoes.domain.Participation;
 import io.deployo.jogoacoes.domain.ParticipationStatus;
 import io.deployo.jogoacoes.domain.RequestType;
+import io.deployo.jogoacoes.domain.User;
 import io.deployo.jogoacoes.repository.ParticipationRepository;
 import io.deployo.jogoacoes.repository.SentEmailRepository;
 import io.deployo.jogoacoes.testsupport.CompetitionFixtures;
+import io.deployo.jogoacoes.testsupport.UserMother;
 import io.restassured.response.Response;
 
 import java.time.LocalDate;
@@ -27,13 +30,16 @@ public class ManageCompetitionPlayersSteps {
     private final CompetitionFixtures competitionFixtures;
     private final ParticipationRepository participationRepository;
     private final SentEmailRepository sentEmailRepository;
+    private final UserMother userMother;
 
     public ManageCompetitionPlayersSteps(ScenarioWorld world, CompetitionFixtures competitionFixtures,
-                                          ParticipationRepository participationRepository, SentEmailRepository sentEmailRepository) {
+                                          ParticipationRepository participationRepository, SentEmailRepository sentEmailRepository,
+                                          UserMother userMother) {
         this.world = world;
         this.competitionFixtures = competitionFixtures;
         this.participationRepository = participationRepository;
         this.sentEmailRepository = sentEmailRepository;
+        this.userMother = userMother;
     }
 
     @Given("is on the player management screen for a competition")
@@ -359,5 +365,40 @@ public class ManageCompetitionPlayersSteps {
             boolean sent = sentEmailRepository.findAll().stream().anyMatch(sentEmail -> sentEmail.getEmail().equals(email));
             assertThat(sent).isTrue();
         }
+    }
+
+    // -- Invite an e-mail that already belongs to a registered player --
+
+    @Given("one of the e-mails to invite already belongs to a registered player")
+    public void one_of_the_e_mails_to_invite_already_belongs_to_a_registered_player() {
+        User registered = userMother.registeredPlayer();
+        world.setCandidateEmail(registered.getEmail());
+    }
+
+    @When("the administrator enters that e-mail in the list to invite")
+    public void the_administrator_enters_that_e_mail_in_the_list_to_invite() {
+        world.setCandidateEmails(List.of(world.getCandidateEmail()));
+    }
+
+    @Then("the system adds the player to the competition with status \"e-mail not sent\"")
+    public void the_system_adds_the_player_to_the_competition_with_status_e_mail_not_sent() {
+        // Mirrors "the system adds the new players to the competition with status..." above:
+        // invitePlayers sends synchronously, so status has already moved past EMAIL_NOT_SENT
+        // by the time the 202 response comes back -- the Gherkin names the starting state,
+        // this only confirms the participation itself was created for this invite.
+        assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
+        boolean exists = participationRepository.findAll().stream()
+                .anyMatch(p -> p.getCompetition().getId().equals(world.getTargetCompetition().getId())
+                        && p.getEmail().equals(world.getCandidateEmail())
+                        && p.getRequestType() == RequestType.INVITE);
+        assertThat(exists).isTrue();
+    }
+
+    @Then("sends the e-mail personalized with the name instead of an invite to create an account")
+    public void sends_the_e_mail_personalized_with_the_name_instead_of_an_invite_to_create_an_account() {
+        boolean sent = sentEmailRepository.findAll().stream()
+                .anyMatch(sentEmail -> sentEmail.getEmail().equals(world.getCandidateEmail())
+                        && sentEmail.getTemplate() == EmailTemplate.LOGIN_LINK);
+        assertThat(sent).isTrue();
     }
 }

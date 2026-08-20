@@ -7,12 +7,15 @@ import io.deployo.jogoacoes.api.model.DecideInviteEmailTimingRequest;
 import io.deployo.jogoacoes.domain.Competition;
 import io.deployo.jogoacoes.domain.CompetitionStatus;
 import io.deployo.jogoacoes.domain.EmailTemplate;
+import io.deployo.jogoacoes.domain.User;
 import io.deployo.jogoacoes.repository.CompetitionRepository;
 import io.deployo.jogoacoes.repository.SentEmailRepository;
 import io.deployo.jogoacoes.testsupport.CompetitionMother;
+import io.deployo.jogoacoes.testsupport.UserMother;
 import io.restassured.response.Response;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,11 +25,14 @@ public class CreateCompetitionSteps {
     private final ScenarioWorld world;
     private final CompetitionRepository competitionRepository;
     private final SentEmailRepository sentEmailRepository;
+    private final UserMother userMother;
 
-    public CreateCompetitionSteps(ScenarioWorld world, CompetitionRepository competitionRepository, SentEmailRepository sentEmailRepository) {
+    public CreateCompetitionSteps(ScenarioWorld world, CompetitionRepository competitionRepository, SentEmailRepository sentEmailRepository,
+                                   UserMother userMother) {
         this.world = world;
         this.competitionRepository = competitionRepository;
         this.sentEmailRepository = sentEmailRepository;
+        this.userMother = userMother;
     }
 
     @Given("is on the competition creation screen")
@@ -192,5 +198,24 @@ public class CreateCompetitionSteps {
 
     private static double parsePercentage(String phrase) {
         return Double.parseDouble(phrase.replace("%", ""));
+    }
+
+    // -- Invite an e-mail that already belongs to a registered player --
+
+    @Given("one of the e-mails in the invite list already belongs to a registered player")
+    public void one_of_the_e_mails_in_the_invite_list_already_belongs_to_a_registered_player() {
+        User registered = userMother.registeredPlayer();
+        world.setCandidateEmail(registered.getEmail());
+        List<String> emails = new ArrayList<>(world.getCompetitionRequest().getEmails());
+        emails.set(0, registered.getEmail());
+        world.getCompetitionRequest().emails(emails);
+    }
+
+    @Then("the system sends the e-mail personalized with the name to that player instead of an invite to create an account")
+    public void the_system_sends_the_e_mail_personalized_with_the_name_to_that_player() {
+        boolean sent = sentEmailRepository.findAll().stream()
+                .anyMatch(sentEmail -> sentEmail.getEmail().equals(world.getCandidateEmail())
+                        && sentEmail.getTemplate() == EmailTemplate.LOGIN_LINK);
+        assertThat(sent).isTrue();
     }
 }

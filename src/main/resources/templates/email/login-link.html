@@ -1,0 +1,52 @@
+<!--
+  EmailTemplate.LOGIN_LINK -- pedido de login avulso pela tela de login, sem nenhuma
+  competição envolvida. Destinatário já tem User registrado, então o nome é conhecido e
+  usado na saudação. Ver login-link-invite.html/login-link-request.html para os casos
+  vinculados a uma Participation (convite do admin / pedido espontâneo, respectivamente) --
+  arquivos separados, não um com lógica condicional escolhendo entre eles, propositalmente:
+  cada um é texto fixo, editável sem entender nenhuma ramificação.
+
+  Variáveis: name (string), link (string, URL absoluta). Sem lógica: só substituição direta
+  de variável e os fragmentos de header/footer compartilhados.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Seu link de acesso</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f5f7; font-family:Arial, Helvetica, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden;">
+          <tr>
+            <td th:insert="~{email/fragments/header :: header}"></td>
+          </tr>
+          <tr>
+            <td style="padding:8px 32px 8px 32px;">
+              <p style="margin:0 0 16px 0; font-size:16px; line-height:1.5; color:#1f2933;">
+                Olá, <span th:text="${name}">jogador</span>,
+              </p>
+              <p style="margin:0 0 24px 0; font-size:16px; line-height:1.5; color:#1f2933;">
+                Clique no botão abaixo para entrar na sua conta.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 32px 32px 32px;">
+              <a th:href="${link}" href="#"
+                 style="display:inline-block; background-color:#2f6feb; color:#ffffff; text-decoration:none; font-size:16px; font-weight:bold; padding:12px 28px; border-radius:6px;">
+                Entrar
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td th:insert="~{email/fragments/footer :: footer(${link})}"></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<!--
+  Shared banner reused by every e-mail template (email/fragments/header :: header). Purely
+  static branding -- no variables, no logic -- so any template can th:insert it without
+  passing anything in.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+  <table th:fragment="header" role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="padding:24px 32px 8px 32px;">
+        <span style="font-size:14px; font-weight:bold; letter-spacing:0.5px; color:#2f6feb; text-transform:uppercase;">
+          Jogo de Ações
+        </span>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
