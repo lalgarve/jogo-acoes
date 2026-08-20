@@ -73,3 +73,11 @@ Feature: Manage competition players
     And confirms the invitation
     Then the system adds the new players to the competition with status "e-mail not sent"
     And sends the invite e-mail to each of them
+
+  Scenario: Administrator invites an e-mail that already belongs to a registered player
+    Given the competition is private
+    And one of the e-mails to invite already belongs to a registered player
+    When the administrator enters that e-mail in the list to invite
+    And confirms the invitation
+    Then the system adds the player to the competition with status "e-mail not sent"
+    And sends the e-mail personalized with the name instead of an invite to create an account
