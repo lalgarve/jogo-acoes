@@ -32,3 +32,11 @@ altcha:
 
 login:
   max-devices-per-user: 3
+
+# See src/main/resources/application.yml -- same replaces-not-layers reason as spring.cloud.aws
+# above. Only actually needed when SPRING_PROFILES_ACTIVE=docker (application-docker.yml, which
+# does layer on top of this file, is what flips email.sender to sqs and makes SqsEmailSender's
+# @Value("${email.queue-name}") constructor param get resolved at all) -- defined here
+# unconditionally anyway, so it's not missing the one time it matters.
+email:
+  queue-name: jogo-acoes-email-commands

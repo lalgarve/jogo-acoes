@@ -360,27 +360,56 @@ Pacote `io.deployo.jogoacoes.email`:
   razão do achado anterior (substituição, não empilhamento). Uma região estática não abre
   conexão nenhuma na construção do bean; só importa se `SqsEmailSender.send` for chamado de
   verdade, o que não acontece em `sandbox`/testes.
-- **`docker`/CI continuam em `stub` por enquanto, deliberadamente**: ativar `SqsEmailSender`
-  lá exigiria uma fila (real ou LocalStack) pro `SqsTemplate` publicar de verdade — LocalStack
-  ainda não foi adicionado ao `docker-compose.yml` (resto da decisão 3, não fechado nesta
-  sessão). Ativar a propriedade sem isso quebraria o `docker compose up`/CI atual sem
-  necessidade. `staging`/`production` já apontam pra `sqs`, mas seguem bloqueados por acesso
-  real à AWS (decisões 5–7).
+- **`docker`/CI agora usam `SqsEmailSender` de verdade, contra LocalStack** (fechado o resto
+  da decisão 3, pendência deixada acima). `docker-compose.yml` ganhou um serviço `localstack`
+  (`localstack/localstack:4`, só `SERVICES: sqs`) com um script de init
+  (`docker/localstack/init/01-create-queue.sh`, mesmo padrão de
+  `docker/postgres/init/01-roles.sql`) que cria a fila que `email.queue-name` espera.
+  `application-docker.yml` ganhou `email.sender: sqs`, credenciais estáticas fixas
+  (`test`/`test` — deliberadamente não cai no *provider chain* padrão, que tentaria e falharia
+  lento contra *instance profile*/EC2 metadata a cada execução aqui), `spring.cloud.aws.sqs.
+  endpoint` (`localhost:4566` por padrão — certo pro `mvn verify` da CI, que roda direto no
+  runner; o serviço `app` do `docker-compose.yml` sobrescreve pra `localstack:4566` via
+  `SPRING_CLOUD_AWS_SQS_ENDPOINT`, já que de dentro do container "localhost" é o próprio
+  container) e `convert-message-id-to-uuid: false` (a documentação da própria propriedade cita
+  esse cenário — provedor compatível com SQS cujo id de mensagem não é UUID — não confirmado
+  de forma independente contra esta versão do LocalStack, mas barato de já deixar configurado).
+  `staging`/`production` já apontavam pra `sqs` desde antes; continuam bloqueados por acesso
+  real à AWS (decisões 5–7), não por isso.
+- **Novo teste, `SqsEmailSenderDockerIntegrationTest`**: publica com o `SqsEmailSender` de
+  verdade e lê de volta da fila real via `SqsTemplate.receive`, não um mock — a única forma de
+  validar que o contrato da decisão 1 sobrevive a uma volta completa por SQS de verdade (mesmo
+  que fake). `@ActiveProfiles("docker")` força o profile independente do resto da execução do
+  Maven, então roda contra Postgres real também (a mesma exigência de qualquer teste
+  `docker`). Sem Docker aqui (como em toda esta sessão), a verificação de alcançabilidade roda
+  num `@BeforeAll` estático, *antes* de o Spring tentar montar o contexto — `Assumptions.
+  assumeTrue` aí aborta a classe inteira sem tentar conectar em nada, mesmo espírito do
+  `EmailSendHandlerTest` do `email-lambda`, só que a checagem precisa vir antes do boot do
+  contexto (não dentro do `@Test`) porque a falha de conexão do Postgres derrubaria a criação
+  do contexto primeiro, fora do alcance de qualquer `try`/`catch` no método de teste.
 
 **Testes novos**: `EmailContentRendererTest` (as 5 combinações do catálogo, `TemplateEngine`
 real montado à mão com `SpringTemplateEngine` — **achado real**: um `TemplateEngine` puro usa
 o dialeto padrão do Thymeleaf, que precisa de OGNL, não uma dependência deste projeto;
 `SpringTemplateEngine` usa `SpringStandardDialect`/SpEL, o mesmo que o Spring Boot
 autoconfigura em produção); `SqsEmailSenderTest` (Mockito, sem contexto Spring, confirma o
-`correlationId`/payload publicados); `StubEmailSenderTest` atualizado pra `EmailRequest` e
-`SentEmailRecorder`.
+`correlationId`/payload publicados, sem precisar de fila real); `SqsEmailSenderDockerIntegrationTest`
+(fila real via LocalStack, descrito acima); `StubEmailSenderTest` atualizado pra `EmailRequest`
+e `SentEmailRecorder`.
 
 **Validado nesta sessão** (sandbox, sem Docker): `mvn -pl app -am verify` — todos os testes
-passam (`EmailContentRendererTest`/`SqsEmailSenderTest` novos incluídos), cobertura de linha
-92,8% (gate é 80%). `mvn verify` na raiz (os dois módulos) também sai limpo. **Não validado**:
-`SqsEmailSender` publicando numa fila de verdade (nenhum teste sobe SQS real/LocalStack —
-só `SqsTemplate` mockado) e o caminho `docker`/CI com `email.sender: sqs` (deliberadamente não
-ligado ainda, ver achado acima).
+passam, incluindo `SqsEmailSenderDockerIntegrationTest` corretamente abortado (não falhado) no
+`@BeforeAll`, `Tests run: 0` no relatório do Surefire em vez do `Skipped: 1` que
+`Assumptions.assumeTrue` dentro de um `@Test` produziria — a diferença é o JUnit5 tratando isso
+como container abortado, não teste individual pulado, já que a checagem acontece antes de
+qualquer `@Test` ser sequer descoberto/executado. Cobertura de linha 92,8% (gate é 80%). `mvn
+verify` na raiz (os dois módulos) também sai limpo. `docker compose config` confirma que o
+`docker-compose.yml` novo é sintaticamente válido. **Não validado**: o caminho `docker`/CI de
+ponta a ponta de verdade — LocalStack subindo, o script de init criando a fila,
+`SqsEmailSenderDockerIntegrationTest` publicando e lendo de volta — só roda com Docker
+disponível; confirmação real vem do primeiro workflow no GitHub Actions depois deste commit,
+mesmo padrão já usado pro Postgres real e pro `email-lambda` nas seções anteriores deste
+documento.
 
 ## A Lambda: módulo Quarkus separado
 
