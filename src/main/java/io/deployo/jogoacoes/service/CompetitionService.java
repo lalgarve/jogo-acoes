@@ -76,6 +76,10 @@ public class CompetitionService {
                 Participation participation = new Participation();
                 participation.setCompetition(competition);
                 participation.setEmail(email);
+                // The invited e-mail may already have a registered User from a previous,
+                // unrelated competition -- link it now so decideInviteEmailTiming knows to
+                // send a login link instead of an invite asking them to create an account.
+                participation.setUser(userRepository.findByEmail(email).filter(User::isRegistered).orElse(null));
                 participation.setStatus(ParticipationStatus.EMAIL_NOT_SENT);
                 participation.setRequestType(RequestType.INVITE);
                 participationRepository.save(participation);
@@ -111,7 +115,8 @@ public class CompetitionService {
                     "Invite login link issued to " + participation.getEmail());
 
             Long userId = participation.getUser() != null ? participation.getUser().getId() : null;
-            emailSender.send(userId, participation.getEmail(), "/login-links/" + token, EmailTemplate.INVITE);
+            EmailTemplate template = participation.getUser() != null ? EmailTemplate.LOGIN_LINK : EmailTemplate.INVITE;
+            emailSender.send(userId, participation.getEmail(), "/login-links/" + token, template);
 
             participation.setStatus(ParticipationStatus.EMAIL_SENT);
             participation.setFirstEmailSentDate(LocalDate.now());

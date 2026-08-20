@@ -64,6 +64,10 @@ public class PlayerManagementService {
             Participation participation = new Participation();
             participation.setCompetition(competition);
             participation.setEmail(email);
+            // The invited e-mail may already have a registered User from a previous,
+            // unrelated competition -- link it now so sendInviteEmail/templateFor knows to
+            // send a login link instead of an invite asking them to create an account.
+            participation.setUser(userRepository.findByEmail(email).filter(User::isRegistered).orElse(null));
             participation.setStatus(ParticipationStatus.EMAIL_NOT_SENT);
             participation.setRequestType(RequestType.INVITE);
             participation = participationRepository.save(participation);
