@@ -404,12 +404,18 @@ passam, incluindo `SqsEmailSenderDockerIntegrationTest` corretamente abortado (n
 como container abortado, não teste individual pulado, já que a checagem acontece antes de
 qualquer `@Test` ser sequer descoberto/executado. Cobertura de linha 92,8% (gate é 80%). `mvn
 verify` na raiz (os dois módulos) também sai limpo. `docker compose config` confirma que o
-`docker-compose.yml` novo é sintaticamente válido. **Não validado**: o caminho `docker`/CI de
-ponta a ponta de verdade — LocalStack subindo, o script de init criando a fila,
-`SqsEmailSenderDockerIntegrationTest` publicando e lendo de volta — só roda com Docker
-disponível; confirmação real vem do primeiro workflow no GitHub Actions depois deste commit,
-mesmo padrão já usado pro Postgres real e pro `email-lambda` nas seções anteriores deste
-documento.
+`docker-compose.yml` novo é sintaticamente válido.
+
+**Confirmado no primeiro workflow real do GitHub Actions** (depois do commit que adicionou o
+LocalStack ao CI): o caminho `docker`/CI de ponta a ponta funciona — `SqsEmailSenderDockerIntegrationTest`
+publica e lê de volta da fila real. **Achado real nessa mesma execução**: a primeira versão do
+teste assumia que a mensagem publicada seria a próxima a chegar na fila — errado, porque com
+`email.sender: sqs` ativo pro profile `docker` inteiro, os cenários Cucumber (que também mandam
+e-mail) publicam na mesma fila de verdade através do mesmo contexto Spring cacheado. O teste
+pegou uma mensagem de outro cenário (`invitee-...@example.com`) em vez da sua própria
+(`player@example.com`). Corrigido marcando a requisição com um destinatário único por execução
+e varrendo (`receiveMany`, laço com limite de tempo) as mensagens recebidas até achar a que
+bate, em vez de assumir posse exclusiva/ordem FIFO da fila.
 
 ## A Lambda: módulo Quarkus separado
 
@@ -452,6 +458,18 @@ nesta sessão: `3.38.3`/`3.21.2`, as mais recentes estáveis — não candidatas
   HTTP explícito. `NoClassDefFoundError` na inicialização até eu adicionar a dependência;
   não documentado em lugar nenhum que consegui checar (`quarkus.io`/`docs.quarkiverse.io`
   bloqueados pelo proxy de rede deste sandbox).
+- **Segundo bug real, encontrado na primeira vez que este teste rodou de verdade contra
+  Docker (GitHub Actions, não este sandbox — aqui ele sempre foi só `Skipped`)**: LocalStack
+  aplica a mesma regra do SES real de exigir remetente verificado —
+  `MessageRejectedException: Email address not verified no-reply@jogo-acoes.example`. O
+  comentário original em `application.properties` presumia (sem nunca ter validado) que essa
+  verificação "não se aplica" contra LocalStack; era só raciocínio, e o raciocínio estava
+  errado. Corrigido chamando `SesClient.verifyEmailIdentity` pro remetente configurado antes
+  de exercitar o handler em `EmailSendHandlerTest` — LocalStack marca a identidade como
+  verificada na hora, sem o ciclo de confirmação por e-mail que o SES real exige (raciocínio
+  a partir do comportamento documentado do LocalStack pra esse endpoint, não confirmado de
+  ponta a ponta neste sandbox pela mesma razão de sempre: sem Docker aqui, esse teste nunca
+  passa da fase `Skipped`).
 - **Build nativo (`mvn package -Pnative -Dquarkus.native.container-build=true`) é manual,
   não entra no CI**: decisão explícita pra não gastar minutos do plano gratuito do GitHub
   Actions com compilação nativa (vários minutos) — e não há pra onde fazer deploy do
