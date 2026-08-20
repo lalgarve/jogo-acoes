@@ -1,19 +1,19 @@
 <!--
-  EmailTemplate.LOGIN_LINK -- pedido de login avulso pela tela de login, sem nenhuma
-  competição envolvida. Destinatário já tem User registrado, então o nome é conhecido e
-  usado na saudação. Ver login-link-invite.html/login-link-request.html para os casos
-  vinculados a uma Participation (convite do admin / pedido espontâneo, respectivamente) --
-  arquivos separados, não um com lógica condicional escolhendo entre eles, propositalmente:
-  cada um é texto fixo, editável sem entender nenhuma ramificação.
+  EmailTemplate.LOGIN_LINK -- jogador pediu entrada numa competição pública por conta
+  própria, mas já existe um User registrado pra esse e-mail (de outra competição, por
+  exemplo). Mesma origem de registration-link.html (pedido espontâneo), mas sem pedir
+  cadastro -- a pessoa já tem conta, só precisa entrar. Ver registration-link.html (mesma
+  origem, sem conta) e login-link-invite.html (origem de convite do admin, já com conta).
 
-  Variáveis: name (string), link (string, URL absoluta). Sem lógica: só substituição direta
-  de variável e os fragmentos de header/footer compartilhados.
+  Variáveis: name (string), competitionName (string), link (string, URL absoluta). Sem
+  lógica: só substituição direta de variável e os fragmentos de header/footer
+  compartilhados.
 -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8"/>
-  <title>Seu link de acesso</title>
+  <title th:text="'Acesse ' + ${competitionName}">Acesse a competição</title>
 </head>
 <body style="margin:0; padding:0; background-color:#f4f5f7; font-family:Arial, Helvetica, sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7; padding:24px 0;">
@@ -28,8 +28,12 @@
               <p style="margin:0 0 16px 0; font-size:16px; line-height:1.5; color:#1f2933;">
                 Olá, <span th:text="${name}">jogador</span>,
               </p>
+              <p style="margin:0 0 16px 0; font-size:16px; line-height:1.5; color:#1f2933;">
+                Recebemos seu pedido para participar de
+                <strong th:text="${competitionName}">a competição</strong>.
+              </p>
               <p style="margin:0 0 24px 0; font-size:16px; line-height:1.5; color:#1f2933;">
-                Clique no botão abaixo para entrar na sua conta.
+                Como você já tem uma conta, é só clicar no botão abaixo pra entrar.
               </p>
             </td>
           </tr>

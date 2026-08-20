@@ -204,7 +204,7 @@ e pelos *steps* de teste que os verificam:
 |---|---|---|---|
 | `INVITE` | Admin convida um e-mail sem `User` registrado pra uma competição privada | Não — `Participation` só guarda e-mail até o registro terminar | Sim — nome da competição |
 | `REGISTRATION_LINK` | Pedido de entrada espontâneo numa competição pública, sem `User` registrado ainda | Não | Sim — nome da competição |
-| `LOGIN_LINK` | Destinatário já tem `User` registrado | Sim | Só quando vinculado a uma `Participation` (pedido de login avulso pela tela de login não tem competição nenhuma) |
+| `LOGIN_LINK` | Destinatário já tem `User` registrado | Sim | Depende do caso — ver abaixo |
 
 **Achado real, confirmado no código**: o cenário "Registered but not logged in player
 requests entry" (`request_competition_entry.feature`) diz "sends the link to **finish
@@ -215,24 +215,42 @@ e-mail. O diferencial de negócio real é "**personalized with the name**", test
 explicitamente só nesse cenário.
 
 **Decisão**: manter os 3 valores de `EmailTemplate` — cobrem os quatro `.feature` sem
-precisar crescer — mas **4 arquivos físicos de template**, não 3. Revisado depois da
-primeira versão desta seção: **nenhum template pode ter lógica** (`th:if`/`th:unless`/
-ternário) — só substituição direta de variável. Cada texto precisa ser editável por
-qualquer pessoa sem entender ramificação nenhuma, e um único arquivo tem que dar conta de
-qualquer pedido de edição sobre aquele e-mail específico. Isso significa que o parágrafo de
-contexto de competição do `LOGIN_LINK` (com competição vs. sem competição) não pode ser um
-`th:if` dentro de um template só — vira **dois arquivos separados**,
-`login-link.html`/`login-link-competition.html`, cada um com texto fixo. Qual dos dois usar
-continua sendo a mesma condição de negócio de antes (a `Participation` está vinculada ou é
-um pedido de login avulso pela tela de login) — só que a decisão de **qual arquivo
-carregar** fica em código Java (fora do escopo desta sessão), não dentro do template.
+precisar crescer — mas **5 arquivos físicos de template**, não 3. Revisado duas vezes depois
+da primeira versão desta seção:
 
-Header e rodapé **são** reutilizados entre os 4 arquivos via fragmento do Thymeleaf
+1. **Nenhum template pode ter lógica** (`th:if`/`th:unless`/ternário) — só substituição
+   direta de variável. Cada texto precisa ser editável por qualquer pessoa sem entender
+   ramificação nenhuma, e um único arquivo tem que dar conta de qualquer pedido de edição
+   sobre aquele e-mail específico.
+2. **A origem do e-mail (convite do admin vs. pedido espontâneo do jogador) é uma
+   distinção de conteúdo que precisa sobreviver mesmo quando o destinatário já tem conta**
+   — não é só "sabe o nome ou não". A primeira versão desta seção colapsava os dois casos
+   num único `login-link-competition.html` genérico ("clique para entrar e acessar..."), o
+   que apaga exatamente a mesma distinção que já existia entre `INVITE`/`REGISTRATION_LINK`
+   pro caso sem conta. Corrigido: a matriz completa é origem × conhece-o-nome, não só
+   conhece-o-nome:
+
+   | Origem | Sem conta (`Participation` sem `User`) | Já tem conta |
+   |---|---|---|
+   | Admin convida | `invite.html` | `login-link-invite.html` |
+   | Jogador pede entrada | `registration-link.html` | `login-link-request.html` |
+   | Login avulso (sem competição, sempre tem conta) | — | `login-link.html` |
+
+   `login-link-invite.html`/`login-link-request.html` têm a mesma abertura de
+   `invite.html`/`registration-link.html` respectivamente ("Você foi convidado(a)..."/
+   "Recebemos seu pedido..."), só trocando o pedido de cadastro por "como você já tem uma
+   conta, é só entrar".
+
+Qual dos 5 arquivos carregar continua sendo a mesma condição de negócio de sempre (origem +
+existe `User` registrado pra esse e-mail) — a decisão de **qual arquivo carregar** fica em
+código Java (fora do escopo desta sessão), não dentro de nenhum template.
+
+Header e rodapé **são** reutilizados entre os 5 arquivos via fragmento do Thymeleaf
 (`th:insert`) — isso é composição/inclusão, não ramificação condicional, então não conflita
-com a regra acima. `email/fragments/header.html` (estático, sem variável) e
+com a regra 1. `email/fragments/header.html` (estático, sem variável) e
 `email/fragments/footer.html` (parametrizado só por `link`, substituição direta).
 
-**Nomes de jogadores registrados são usados** nos dois templates de `LOGIN_LINK`
+**Nomes de jogadores registrados são usados** nos três templates de `LOGIN_LINK`
 (`th:text="${name}"`) — texto mais amigável pra quem já tem conta. Não é possível nos outros
 dois (`INVITE`/`REGISTRATION_LINK`): `Participation` sem `User` vinculado não guarda nome,
 só e-mail.
@@ -242,23 +260,25 @@ GUI (`docs/desenvolvimento.md`) — identificadores/comentários continuam em in
 conteúdo voltado ao usuário final muda de idioma.
 
 **Pendência Java, não implementada nesta sessão (só os `.html`, sem código)**: a escolha
-entre `LOGIN_LINK` e `INVITE`/`REGISTRATION_LINK` precisa ser "existe um `User` registrado
-com esse e-mail?" — uma busca fresca por e-mail, o que `EntryRequestService.requestEntry` já
-faz hoje (`userRepository.findByEmail`). `CompetitionService.create` e
+entre os 5 arquivos precisa de "existe um `User` registrado com esse e-mail?" — uma busca
+fresca por e-mail, o que `EntryRequestService.requestEntry` já faz hoje
+(`userRepository.findByEmail`). `CompetitionService.create` e
 `PlayerManagementService.invitePlayers`/`templateFor` **não fazem essa busca**: sempre
 tratam um convite/pedido recém-criado como "sem conta" (`participation.getUser() == null`),
 mesmo que o e-mail já tenha um `User` registrado de outra competição — nesse caso o jogador
-receberia um `INVITE`/`REGISTRATION_LINK` impessoal em vez de um `LOGIN_LINK`
-personalizado. Também fica pra essa mesma etapa a escolha entre `login-link.html` e
-`login-link-competition.html` (com base em existir ou não uma `Participation` associada).
+receberia um `INVITE`/`REGISTRATION_LINK` impessoal em vez do `login-link-invite.html`/
+`login-link-request.html` personalizado. Essa lacuna já tem cenários de `.feature`
+registrando o comportamento esperado (`manage_competition_players.feature`,
+`create_competition.feature` — commits e167937/2467286).
 
 **Arquivos**:
 ```
 src/main/resources/templates/email/
-  invite.html
-  registration-link.html
-  login-link.html               (pedido de login avulso, sem competição)
-  login-link-competition.html   (vinculado a uma Participation)
+  invite.html                 (admin convida, sem conta)
+  registration-link.html      (pedido espontâneo, sem conta)
+  login-link.html             (login avulso, sem competição, sempre com conta)
+  login-link-invite.html      (admin convida, já tem conta)
+  login-link-request.html     (pedido espontâneo, já tem conta)
   fragments/
     header.html
     footer.html
