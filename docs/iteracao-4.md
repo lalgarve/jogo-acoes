@@ -119,40 +119,51 @@ dados de forma agregada e alertar sobre eles.
    apareciam com Docker de verdade (fila compartilhada com outros testes — PR #15; SES do
    LocalStack exigindo remetente verificado, ver seção da Lambda abaixo — PR #16), os dois
    corrigidos, e `master` está verde. Detalhes em "Produtor: `EmailSender` real".
-4. **Retry e política da DLQ.** Quantas tentativas antes de cair na dead-letter queue,
-   *backoff* entre elas — o roadmap menciona a DLQ mas não define esses números.
-5. **Provisionamento de infraestrutura.** Terraform vs. AWS CDK vs. criação manual só
-   documentada — o roadmap prefere "de preferência como código", sem fechar qual ferramenta.
-   Também decide onde esse código de infra mora (este repositório, um repositório separado).
+4. ~~Retry e política da DLQ.~~ — **resolvido: abordagem simples, sem distinguir tipo de
+   erro no handler.** O SQS/Lambda não sabe *por que* uma invocação falhou, só *se* falhou —
+   hoje `EmailSendHandler` deixa qualquer exceção subir (mensagem malformada, SES rejeitando o
+   remetente, throttling, rede), e todas viram "reentrega" igualmente via `maxReceiveCount`.
+   Existe uma abordagem mais fina (capturar `MessageRejectedException` e não relançar, já que
+   um remetente não verificado ou endereço inválido nunca vai passar por retentar) — descartada
+   por agora, mais código pra um volume que ainda não existe. `maxReceiveCount = 3` antes da
+   DLQ. Sem *backoff* exponencial nativo no SQS (exigiria o handler mudar a visibilidade
+   dinamicamente a cada tentativa); `VisibilityTimeout` fixo (~60s) no lugar. Revisar se o
+   volume real justificar diferenciação por tipo de erro depois.
+5. ~~Provisionamento de infraestrutura.~~ — **resolvido: Terraform, em um repositório
+   separado** deste (o do código da aplicação). Execução em si (`terraform apply` contra a
+   conta AWS real) continua bloqueada por acesso a essa conta — só a ferramenta e onde o
+   código mora foram decididos aqui.
 6. **IAM de privilégio mínimo.** Papéis/políticas exatos: o sistema principal só publica na
    fila (`sqs:SendMessage`), a Lambda só consome (`sqs:ReceiveMessage`/`DeleteMessage`) e usa
-   o SES (`ses:SendEmail`) — desenhar as policies JSON de verdade, não só o princípio.
+   o SES (`ses:SendEmail`) — desenhar as policies JSON de verdade, não só o princípio. **Ainda
+   não escrito** (pode ser feito sem acesso à conta AWS real, mas não foi nesta sessão);
+   aplicar as policies continua bloqueado por essa conta de qualquer forma.
 
-   **Credenciais AWS no CI/deploy (GitHub Actions):** o workflow de CI (`.github/workflows/
-   ci.yml`, já existente desde a Iteração 3) e um futuro passo de deploy/provisionamento da
-   Lambda vão precisar de credenciais AWS. Duas opções:
-   - **GitHub Actions secrets** (`Settings → Secrets and variables → Actions`): *write-only*
-     — depois de salvo, ninguém (nem admin do repositório) consegue ler o valor de novo pela
-     UI/API, só sobrescrever ou apagar; mascarado automaticamente nos logs do workflow se
-     aparecer na saída de um step (com ressalva: a mascara não é infalível pra segredo
-     multi-linha ou reescrito em outro encoding). *Environment secrets* (em vez de
-     repository-level) permitem regras de proteção adicionais — *required reviewers*,
-     restrição por branch de deploy.
-   - **OIDC (recomendado)**: em vez de guardar uma *access key* AWS de longo prazo como
-     secret, o GitHub Actions assume uma IAM role via token de curta duração emitido pra cada
-     execução do workflow — não existe credencial fixa armazenada em lugar nenhum pra vazar.
-     Requer configurar um *identity provider* OIDC do GitHub na conta AWS e uma *trust
-     policy* na role restringindo por repositório/branch. Mais seguro que secret nesse caso
-     específico (CI/deploy), mas secrets do GitHub continuam necessários para o que não é
-     credencial AWS assumível por role (ex. segredos de aplicação, se algum surgir).
-7. **Verificação de domínio/remetente no SES e saída do sandbox mode.** Requer acesso real à
+   ~~Credenciais AWS no CI/deploy (GitHub Actions).~~ — **resolvido: OIDC.** Em vez de guardar
+   uma *access key* AWS de longo prazo como secret, o GitHub Actions assume uma IAM role via
+   token de curta duração emitido pra cada execução do workflow (`AssumeRoleWithWebIdentity`
+   via STS) — não existe credencial fixa armazenada em lugar nenhum pra vazar; cada execução
+   recebe sua própria sessão temporária (validade tipicamente ~1h) e nada é reaproveitado na
+   próxima. Requer configurar um *identity provider* OIDC do GitHub na conta AWS e uma *trust
+   policy* na role restringindo por repositório/branch — parte do provisionamento Terraform da
+   decisão 5, ainda bloqueado pela mesma conta AWS real. Secrets do GitHub continuam
+   necessários pro que não é credencial AWS assumível por role (ex. segredos de aplicação, se
+   algum surgir).
 7. **Verificação de domínio/remetente no SES e saída do sandbox mode.** Requer acesso real à
    conta AWS do projeto — não é algo verificável dentro de uma sessão de agente; precisa de
    decisão/execução de quem tem essas credenciais.
-8. **Idempotência do consumidor.** SQS entrega "at-least-once" — a mesma mensagem pode chegar
-   duplicada na Lambda. Precisa decidir se isso importa aqui (reenviar o mesmo e-mail
-   duas vezes é um problema real de produto?) e, se sim, como deduplicar (id de correlação
-   como chave de idempotência, checagem contra `sent_email` antes de enviar, etc.).
+8. ~~Idempotência do consumidor.~~ — **resolvido: sim, importa (e-mail deve ser processado
+   só 1 vez), via DynamoDB.** SQS aqui é fila padrão, não FIFO — sem *dedup* nativo de 5
+   minutos — então a checagem é responsabilidade do handler. Checar contra `sent_email`
+   (Postgres do app principal) foi descartado: violaria o ponto central da decisão 1 (a Lambda
+   é deliberadamente burra, zero conhecimento de domínio/acesso ao banco do app). Padrão:
+   tabela DynamoDB nova (ex. `email-idempotency`), chave = `correlationId` (o mesmo id que já
+   cruza a fila); `PutItem` condicional (`attribute_not_exists(correlationId)`) antes de
+   chamar o SES — sucesso do *write* = primeira vez, processa; falha = duplicata, ignora. TTL
+   curto (ex. 7 dias) pra não crescer sem limite, já que só precisa cobrir a janela em que a
+   fila ainda pode reentregar. Precisa de `dynamodb:PutItem` na policy IAM da Lambda (decisão
+   6) e da tabela em si (decisão 5, Terraform) — não implementado nesta sessão, ambos
+   bloqueados pela mesma conta AWS real.
 9. ~~Onde a `sent_email` é gravada~~ — **resolvido, revisado nesta sessão.** A ideia inicial
    (uma segunda fila onde a própria Lambda reporta sucesso/falha logo após chamar o SES) foi
    descartada: a chamada `SES.SendEmail` retornar sucesso só significa que a AWS *aceitou*
@@ -170,11 +181,13 @@ dados de forma agregada e alertar sobre eles.
     *Configuration Set* associado ao envio, configurado para publicar eventos (`Send`,
     `Delivery`, `Bounce`, `Complaint`, `Reject`, `DeliveryDelay`) num tópico SNS. Uma fila SQS
     própria (distinta da fila de comando) assina esse tópico, e algum consumidor (outra
-    Lambda, ou um listener no próprio sistema principal) processa esses eventos. Falta
-    decidir:
-    - Quem consome essa fila de eventos — uma segunda Lambda simples que só grava no banco,
-      ou o sistema principal direto (ex. `@SqsListener` via Spring Cloud AWS, mesma
-      biblioteca da decisão 2).
+    Lambda, ou um listener no próprio sistema principal) processa esses eventos.
+    - ~~Quem consome essa fila de eventos~~ — **resolvido: o sistema principal**, direto
+      (`@SqsListener` via Spring Cloud AWS, mesma biblioteca da decisão 2), não uma segunda
+      Lambda. Já tem acesso ao Postgres onde `EMAIL_EVENT` mora — uma Lambda extra só pra
+      gravar essas linhas adicionaria um componente sem necessidade. Não implementado nesta
+      sessão: precisa da fila/tópico SNS existirem primeiro (infraestrutura, decisão 5,
+      bloqueada pela conta AWS real).
     - ~~Modelo de dados~~ — **resolvido.** Tabela nova `EMAIL_EVENT` (insert-only, mesmo
       padrão de `LOG` e `SENT_EMAIL`, `jogo_acoes_app` só com `SELECT`/`INSERT`):
       `id` PK, `sent_email_id` (FK pra `SENT_EMAIL`), `event_type` (enum:
@@ -203,6 +216,13 @@ eventos) dependem de acesso à conta AWS do projeto, fora do alcance das ferrame
 disponíveis aqui — ver `docs/desenvolvimento.md` para o padrão já usado nas iterações
 anteriores de documentar claramente o que foi validado de verdade vs. o que ficou por
 raciocínio/pendente de uma sessão local ou de quem tem as credenciais.
+
+**Atualização — todas as decisões desenháveis sem AWS real foram fechadas** (1, 2, 3, 4, 5,
+8, 9, 10-quem-consome, e a metade de 6 que é só o mecanismo de credencial do CI). O que
+sobra em aberto — 7 inteira, a metade de 6 que é escrever as policies JSON de verdade, a
+execução do Terraform da 5, a tabela DynamoDB da 8, e a infraestrutura SNS/Configuration Set
+da 10 — depende mesmo da conta AWS do projeto, não é mais uma questão de "dá pra avançar numa
+sessão de agente".
 
 ## Catálogo de templates de e-mail (Thymeleaf)
 
