@@ -21,7 +21,10 @@ entrada de jogadores) rodando de ponta a ponta, e a infraestrutura assíncrona d
   de login, criação de competição, gerência de jogadores e pedido de entrada em competição —
   todos implementados e passando.
 - **Modelo de dados** em [`docs/diagrams/der.md`](docs/diagrams/der.md): diagrama
-  entidade-relacionamento do domínio.
+  entidade-relacionamento do domínio. [`docs/diagrams/classes.md`](docs/diagrams/classes.md)
+  e [`docs/diagrams/sequencia.md`](docs/diagrams/sequencia.md) complementam com diagrama de
+  classes e de sequência dos fluxos implementados (e, marcado à parte, do que já foi decidido
+  mas ainda não tem código).
 - **CI** (`.github/workflows/ci.yml`): testes com cobertura (JaCoCo, piso de 80%) contra
   Postgres/LocalStack reais a cada PR.
 - **Plano de iterações** em [`docs/roadmap.md`](docs/roadmap.md): o que falta, da negociação
