@@ -485,3 +485,35 @@ vez de derrubar o build. **Não validado**: build nativo, e o caminho completo c
 de verdade (só roda com Docker — confirmação real vem do primeiro workflow no GitHub Actions,
 mesmo padrão
 já usado pro Postgres real nas iterações anteriores).
+
+## Validação local com Docker real (fora do sandbox)
+
+Rodando numa sessão local (Windows, Docker Desktop) em 2026-08-20, as duas lacunas acima
+("não validado") foram fechadas de verdade — mesmo padrão já usado nas Iterações 2 e 3 pra
+confirmar o que o sandbox deste agente não consegue exercitar sozinho.
+
+- **Suíte completa do reator, sem `docker-compose` ainda de pé**: `mvn test` na raiz —
+  `app`: 72 testes, 0 falhas/erros (`RunCucumberTest` 47, `AuditLoggingIntegrationTest` 6,
+  `LogRepositoryTest` 5, `EmailContentRendererTest` 5, `StubEmailSenderTest` 3,
+  `AltchaSmokeTest` 2, `AuditLogServiceTest` 2, `SpringSessionSmokeTest` 1,
+  `SqsEmailSenderTest` 1 — `SqsEmailSenderDockerIntegrationTest` corretamente `Skipped`
+  nesse momento, portas 5432/4566 do `docker-compose` ainda não abertas). `email-lambda`:
+  2 testes, 0 falhas — `EmailSendHandlerTest` rodou de verdade contra LocalStack sozinho,
+  via Dev Services do Quarkus (sobe um container Testcontainers automaticamente quando
+  detecta Docker disponível, sem precisar do `docker-compose.yml` deste repo).
+- **`SqsEmailSenderDockerIntegrationTest`, de verdade (não `Skipped`)**: subindo
+  `docker compose up -d db localstack` e rodando só essa classe em seguida —
+  1/1 passando, publicando e recebendo uma mensagem real na fila do LocalStack via
+  `SqsTemplate`, confirmando o *round-trip* completo do `SqsEmailSender` (produtor) contra
+  uma fila de verdade, não mockada.
+- **Build nativo** (`mvn package -Pnative -Dquarkus.native.container-build=true`, dentro do
+  módulo `email-lambda`): **sucesso**, `BUILD SUCCESS` em 5min59s — a etapa de geração da
+  imagem GraalVM em si (dentro do container
+  `quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25`, sem precisar de GraalVM
+  instalado localmente) levou 3min15s. `EmailSendHandlerTest` rodou de novo como parte dessa
+  fase `package` (2/2 passando) antes da compilação nativa em si. Artefato gerado:
+  `email-lambda/target/email-lambda-0.0.1-SNAPSHOT-runner`, executável nativo de 57,35MB
+  (54,06MB em disco). Confirma a estimativa de "vários minutos" que já embasava a decisão de
+  manter esse build fora do CI (ver seção anterior) — com números reais em vez de só
+  suposição.
+- `docker compose down` ao final, sem deixar containers presos.
