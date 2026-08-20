@@ -290,3 +290,53 @@ assunto dinâmico via substituição de variável — não ramificação), o `<b
 e-mail — os dois passam pelo mesmo `TemplateEngine`. Estilo inline (não CSS externo), pela
 compatibilidade de clientes de e-mail. Nenhuma dependência do Thymeleaf foi adicionada ao
 `pom.xml` ainda, nem código Java de renderização escrito — fica para a implementação.
+
+## A Lambda: módulo Quarkus separado
+
+Decidido nesta sessão: a Lambda que consome a fila e chama o SES precisa de um artefato de
+deploy próprio, separado do app principal — rodar o Spring Boot inteiro numa Lambda paga um
+*cold start* alto (contexto inteiro, JPA, Security, Session, tudo irrelevante pra uma função
+que só faz "pegar mensagem da fila, chamar o SES"). Escolhido **Quarkus** em vez de um
+*handler* Java sem framework nenhum: dá suporte de primeira classe a `RequestHandler`/
+`SQSEvent` e compilação nativa via GraalVM — a versão nativa usa ~128MB de RAM contra
+~512MB da JVM, com *cold start* bem menor, o que resolve o problema que motivou não usar
+Spring Boot.
+
+**Estrutura**: `pom.xml` da raiz virou um agregador Maven multi-módulo — **não** é *parent*
+de nenhum dos dois filhos (Maven não suporta herdar de dois *parents* ao mesmo tempo, e
+`app` já precisa do `spring-boot-starter-parent`). `app/` é o sistema principal (movido pra
+lá sem mudança de conteúdo), `email-lambda/` é o módulo novo, com seu próprio BOM
+(`quarkus-bom` + `quarkus-amazon-services-bom`, versões verificadas contra o Maven Central
+nesta sessão: `3.38.3`/`3.21.2`, as mais recentes estáveis — não candidatas a release).
+
+- `EmailSendHandler` — implementa `RequestHandler<SQSEvent, Void>`, desserializa o contrato
+  da mensagem (decisão 1) e chama `SesClient.sendEmail(...)` com `correlationId` como
+  *message tag* (decisão 10). Deliberadamente sem lógica de retry: a política de *redrive*
+  da própria fila SQS (decisão 4) é quem reentrega em caso de exceção.
+- **Testes usam Dev Services do Quarkus** (`quarkus-amazon-ses`): sobe um LocalStack via
+  Testcontainers automaticamente quando os testes rodam, sem precisar mexer no
+  `docker-compose.yml` — mesmo espírito da decisão 3, só que o Quarkus já resolve isso
+  sozinho. Exige Docker, então só funciona de verdade no `docker`/CI; neste sandbox, sem
+  Docker, o teste que só valida rejeição de mensagem malformada passa (não toca o SES), e o
+  que precisa enviar de verdade falha por falta de região/Docker — comportamento esperado,
+  confirmado rodando de verdade nesta sessão (não só por raciocínio).
+- **Bug real encontrado rodando o build de verdade**: faltava `software.amazon.awssdk:
+  url-connection-client` no classpath — o cliente SES da extensão precisa de um transporte
+  HTTP explícito. `NoClassDefFoundError` na inicialização até eu adicionar a dependência;
+  não documentado em lugar nenhum que consegui checar (`quarkus.io`/`docs.quarkiverse.io`
+  bloqueados pelo proxy de rede deste sandbox).
+- **Build nativo (`mvn package -Pnative -Dquarkus.native.container-build=true`) é manual,
+  não entra no CI**: decisão explícita pra não gastar minutos do plano gratuito do GitHub
+  Actions com compilação nativa (vários minutos) — e não há pra onde fazer deploy do
+  resultado ainda (bloqueado por acesso à AWS real). CI só builda/testa em modo JVM.
+- `Dockerfile`/`docker-compose.yml` ajustados: a imagem do `app` builda só o módulo `app`
+  (`mvn -B -pl app -am package`), com contexto na raiz do repo pra o reator conseguir ler o
+  `pom.xml` do `email-lambda` também (mesmo só não buildando-o).
+
+**Validado nesta sessão** (sandbox, sem Docker): `mvn -pl app -am verify` — 66/66 testes,
+igual antes da reestruturação. `mvn -pl email-lambda -am compile`/`test-compile` — compila
+limpo contra dependências reais do Maven Central. `mvn -pl email-lambda -am test` — roda de
+verdade, 1/2 passa (o que não depende de AWS), o outro falha exatamente como esperado sem
+Docker. **Não validado**: build nativo, e o caminho completo com LocalStack de verdade (só
+roda com Docker — confirmação real vem do primeiro workflow no GitHub Actions, mesmo padrão
+já usado pro Postgres real nas iterações anteriores).

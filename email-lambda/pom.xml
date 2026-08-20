@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.deployo.jogoacoes</groupId>
+  <artifactId>email-lambda</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>email-lambda</name>
+  <description>
+    AWS Lambda that consumes the e-mail command queue (docs/iteracao-4.md, decision 1) and
+    sends via Amazon SES. Deliberately not Spring Boot: this needs to cold-start fast and
+    cheap, which Quarkus (JVM mode here, GraalVM native image for real deploys) is built for
+    and Spring Boot is not. Knows nothing about the main app's domain -- the queue message
+    already carries the rendered subject/body, so this is a generic "send this text to this
+    address" worker.
+  </description>
+
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Verified against Maven Central in this session (latest stable, non-CR, as of
+         2026-08-19); not yet actually built/run anywhere Docker is available. -->
+    <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+    <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
+    <quarkus.platform.version>3.38.3</quarkus.platform.version>
+    <quarkus-amazon-services.version>3.21.2</quarkus-amazon-services.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>${quarkus.platform.group-id}</groupId>
+        <artifactId>${quarkus.platform.artifact-id}</artifactId>
+        <version>${quarkus.platform.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- Quarkiverse Amazon Services isn't part of the core Quarkus BOM; its own BOM
+           keeps quarkus-amazon-ses and its Dev Services support on matching versions. -->
+      <dependency>
+        <groupId>io.quarkiverse.amazonservices</groupId>
+        <artifactId>quarkus-amazon-services-bom</artifactId>
+        <version>${quarkus-amazon-services.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-amazon-lambda</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jackson</artifactId>
+    </dependency>
+    <!-- CDI-managed SesClient + config (quarkus.ses.aws.*) + Dev Services: auto-starts
+         LocalStack via Testcontainers for tests when no endpoint-override is configured,
+         same mechanism already used for Postgres/SQS elsewhere in this project (see
+         docs/iteracao-4.md, decision 3); requires Docker, so only exercised in the
+         `docker` CI profile, not this agent's sandbox. -->
+    <dependency>
+      <groupId>io.quarkiverse.amazonservices</groupId>
+      <artifactId>quarkus-amazon-ses</artifactId>
+    </dependency>
+    <!-- The SES client needs an HTTP transport on the classpath; the extension defaults to
+         this one (sync URL Connection client) rather than Apache/Netty. Found by actually
+         running the build in this session: boot failed with NoClassDefFoundError without
+         it, not documented anywhere I could check (quarkus.io/docs.quarkiverse.io blocked
+         from this sandbox). -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>url-connection-client</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Same assertion library the rest of the project uses (app/pom.xml, via
+         spring-boot-starter-test); consistency, not a Quarkus default. -->
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.27.7</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-maven-plugin</artifactId>
+        <version>${quarkus.platform.version}</version>
+        <extensions>true</extensions>
+        <executions>
+          <execution>
+            <goals>
+              <goal>build</goal>
+              <goal>generate-code</goal>
+              <goal>generate-code-tests</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- `mvn package -Pnative -Dquarkus.native.container-build=true`: the real deployable
+         artifact (GraalVM native image, fast cold start), built inside Quarkus's own builder
+         container so no local GraalVM install is needed. Deliberately NOT wired into CI
+         (docs/iteracao-4.md): native builds take several minutes and there's nowhere to
+         deploy the result yet (blocked on real AWS access); runs manually, locally, only
+         when actually needed. -->
+    <profile>
+      <id>native</id>
+      <activation>
+        <property>
+          <name>native</name>
+        </property>
+      </activation>
+      <properties>
+        <skipITs>false</skipITs>
+        <quarkus.native.enabled>true</quarkus.native.enabled>
+      </properties>
+    </profile>
+  </profiles>
+</project>
