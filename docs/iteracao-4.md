@@ -1,10 +1,12 @@
 # Iteração 4 — Planejamento técnico
 
 Este documento registra as decisões técnicas da Iteração 4 (ver objetivo geral e o diagrama
-de arquitetura de referência em [`roadmap.md`](roadmap.md)) antes da implementação, no mesmo
-espírito de [`iteracao-2.md`](iteracao-2.md)/[`iteracao-3.md`](iteracao-3.md): um resumo pra
-servir de base caso a conversa precise mudar de contexto. **Nada aqui foi implementado
-ainda — é o plano em discussão.**
+de arquitetura de referência em [`roadmap.md`](roadmap.md)), no mesmo espírito de
+[`iteracao-2.md`](iteracao-2.md)/[`iteracao-3.md`](iteracao-3.md): um resumo pra servir de
+base caso a conversa precise mudar de contexto. **Estado: implementado e mergeado em
+`master`** (PRs #13–#16) — o núcleo funciona de ponta a ponta, confirmado em CI real contra
+Postgres/LocalStack. O que resta (decisões 4–8, 10 em parte) está bloqueado por acesso a uma
+conta AWS real, não por trabalho de código pendente — ver cada decisão abaixo.
 
 **Aviso herdado do `roadmap.md`:** as iterações 4 e 5 foram inferidas a partir de um diagrama
 de arquitetura resumido, sem o restante da conversa que o originou. Os detalhes de contrato
@@ -107,19 +109,16 @@ dados de forma agregada e alertar sobre eles.
    uma versão minor atrás do `4.1.0` deste projeto, mesmo tipo de defasagem dentro da major
    4.x já aceito para a `4.0.0`. `mvn -pl app -am verify` confirma que compila e todos os
    testes passam com essa combinação.
-3. ~~Como testar sem AWS real.~~ — **resolvido, mesmo padrão do Postgres real (Iterações 2 e
-   3).** LocalStack via `docker-compose` (serviço novo, ao lado do `db`), exercitado só no
-   profile `docker`/CI — o `sandbox` deste agente continua sem depender de rede/Docker, então
-   `StubEmailSender` permanece a implementação ativa lá. A implementação real (fila) só é
-   validada de ponta a ponta em CI, onde o Docker existe — mesma lacuna já documentada e
-   aceita nas iterações anteriores (o que roda aqui é só raciocínio + `mvn verify` local
-   contra `sandbox`, a confirmação de verdade vem do primeiro workflow real no GitHub
-   Actions). **Atualizado ao implementar:** `SqsEmailSender` existe e compila/testa
-   (`SqsEmailSenderTest`, com `SqsTemplate` mockado — sem contexto Spring, sem rede) desde
-   "ligar os fios", mas ainda não está ativo em `docker`/CI (só em `staging`/`production`,
-   ainda bloqueados por AWS real) — o `docker-compose.yml`/LocalStack desta decisão continuam
-   pendentes; ver "Produtor: `EmailSender` real" para o porquê de ter ficado assim
-   deliberadamente por agora.
+3. ~~Como testar sem AWS real.~~ — **resolvido e confirmado de ponta a ponta**, mesmo padrão
+   do Postgres real (Iterações 2 e 3). LocalStack via `docker-compose` (serviço `localstack`,
+   ao lado do `db`), exercitado no profile `docker`/CI — o `sandbox` deste agente continua sem
+   depender de rede/Docker, então `StubEmailSender` permanece a implementação ativa lá.
+   `SqsEmailSender` publica numa fila LocalStack real e `SqsEmailSenderDockerIntegrationTest`
+   lê de volta pra confirmar — não é mais só raciocínio + `mvn verify` local contra `sandbox`:
+   **o primeiro workflow real no GitHub Actions rodou** (PR #14), pegou dois bugs reais que só
+   apareciam com Docker de verdade (fila compartilhada com outros testes — PR #15; SES do
+   LocalStack exigindo remetente verificado, ver seção da Lambda abaixo — PR #16), os dois
+   corrigidos, e `master` está verde. Detalhes em "Produtor: `EmailSender` real".
 4. **Retry e política da DLQ.** Quantas tentativas antes de cair na dead-letter queue,
    *backoff* entre elas — o roadmap menciona a DLQ mas não define esses números.
 5. **Provisionamento de infraestrutura.** Terraform vs. AWS CDK vs. criação manual só
@@ -466,10 +465,10 @@ nesta sessão: `3.38.3`/`3.21.2`, as mais recentes estáveis — não candidatas
   verificação "não se aplica" contra LocalStack; era só raciocínio, e o raciocínio estava
   errado. Corrigido chamando `SesClient.verifyEmailIdentity` pro remetente configurado antes
   de exercitar o handler em `EmailSendHandlerTest` — LocalStack marca a identidade como
-  verificada na hora, sem o ciclo de confirmação por e-mail que o SES real exige (raciocínio
-  a partir do comportamento documentado do LocalStack pra esse endpoint, não confirmado de
-  ponta a ponta neste sandbox pela mesma razão de sempre: sem Docker aqui, esse teste nunca
-  passa da fase `Skipped`).
+  verificada na hora, sem o ciclo de confirmação por e-mail que o SES real exige. **Confirmado
+  no GitHub Actions** (PR #16): com a correção, `mvn -pl email-lambda -am test` passa de
+  verdade contra o LocalStack real do CI, não só raciocínio — neste sandbox continua só
+  `Skipped` pela mesma razão de sempre (sem Docker aqui).
 - **Build nativo (`mvn package -Pnative -Dquarkus.native.container-build=true`) é manual,
   não entra no CI**: decisão explícita pra não gastar minutos do plano gratuito do GitHub
   Actions com compilação nativa (vários minutos) — e não há pra onde fazer deploy do
@@ -478,10 +477,12 @@ nesta sessão: `3.38.3`/`3.21.2`, as mais recentes estáveis — não candidatas
   (`mvn -B -pl app -am package`), com contexto na raiz do repo pra o reator conseguir ler o
   `pom.xml` do `email-lambda` também (mesmo só não buildando-o).
 
-**Validado nesta sessão** (sandbox, sem Docker): `mvn -pl app -am verify` — 66/66 testes,
-igual antes da reestruturação. `mvn -pl email-lambda -am verify` — sai limpo, 1 teste passa
-(o que não depende de AWS) e 1 fica `Skipped` (o que precisaria de LocalStack via Docker) em
-vez de derrubar o build. **Não validado**: build nativo, e o caminho completo com LocalStack
-de verdade (só roda com Docker — confirmação real vem do primeiro workflow no GitHub Actions,
-mesmo padrão
-já usado pro Postgres real nas iterações anteriores).
+**Validado neste sandbox** (sem Docker): `mvn -pl app -am verify`/`mvn -pl email-lambda -am
+verify` continuam saindo limpos aqui, com o teste dependente de SES sempre `Skipped` (nunca
+`Failed`) na ausência de Docker.
+
+**Validado de verdade no GitHub Actions** (primeiro workflow real, PRs #14/#15/#16 — a
+confirmação que faltava, já obtida): `mvn -pl email-lambda -am test` roda contra o LocalStack
+que o próprio Quarkus Dev Services sobe, `EmailSendHandlerTest.sendsAWellFormedMessageWithoutError`
+passa (não fica `Skipped`, como aqui), e `master` está verde. **Ainda não validado**: build
+nativo — continua manual/local, fora do CI por decisão explícita (custo de minutos).
