@@ -316,10 +316,17 @@ nesta sessão: `3.38.3`/`3.21.2`, as mais recentes estáveis — não candidatas
 - **Testes usam Dev Services do Quarkus** (`quarkus-amazon-ses`): sobe um LocalStack via
   Testcontainers automaticamente quando os testes rodam, sem precisar mexer no
   `docker-compose.yml` — mesmo espírito da decisão 3, só que o Quarkus já resolve isso
-  sozinho. Exige Docker, então só funciona de verdade no `docker`/CI; neste sandbox, sem
-  Docker, o teste que só valida rejeição de mensagem malformada passa (não toca o SES), e o
-  que precisa enviar de verdade falha por falta de região/Docker — comportamento esperado,
-  confirmado rodando de verdade nesta sessão (não só por raciocínio).
+  sozinho. Exige Docker, então só valida de ponta a ponta no `docker`/CI. Diferente do
+  `app`, que passa 100% tanto em `sandbox` (H2) quanto em `docker` (Postgres real) porque H2
+  cobre tudo que o Postgres cobre — não existe um "H2 do SES", então esse módulo não tem
+  como ter os dois lados passando de verdade sem Docker. A primeira versão do teste
+  simplesmente **falhava o build inteiro** sem Docker (achado real, sem querer, rodando o
+  `mvn test` nesta sessão); corrigido pra virar `Skipped`, não `Failure` — o teste que só
+  valida rejeição de mensagem malformada passa igual (não toca o SES), e o que precisa
+  enviar de verdade agora captura a exceção de região/Docker ausente na cadeia de causas e
+  chama `Assumptions.assumeTrue(false, ...)`, marcando SKIPPED em vez de derrubar o build.
+  `mvn -pl email-lambda -am verify` sai limpo (`exit 0`) neste sandbox sem Docker, confirmado
+  rodando de verdade.
 - **Bug real encontrado rodando o build de verdade**: faltava `software.amazon.awssdk:
   url-connection-client` no classpath — o cliente SES da extensão precisa de um transporte
   HTTP explícito. `NoClassDefFoundError` na inicialização até eu adicionar a dependência;
@@ -334,9 +341,9 @@ nesta sessão: `3.38.3`/`3.21.2`, as mais recentes estáveis — não candidatas
   `pom.xml` do `email-lambda` também (mesmo só não buildando-o).
 
 **Validado nesta sessão** (sandbox, sem Docker): `mvn -pl app -am verify` — 66/66 testes,
-igual antes da reestruturação. `mvn -pl email-lambda -am compile`/`test-compile` — compila
-limpo contra dependências reais do Maven Central. `mvn -pl email-lambda -am test` — roda de
-verdade, 1/2 passa (o que não depende de AWS), o outro falha exatamente como esperado sem
-Docker. **Não validado**: build nativo, e o caminho completo com LocalStack de verdade (só
-roda com Docker — confirmação real vem do primeiro workflow no GitHub Actions, mesmo padrão
+igual antes da reestruturação. `mvn -pl email-lambda -am verify` — sai limpo, 1 teste passa
+(o que não depende de AWS) e 1 fica `Skipped` (o que precisaria de LocalStack via Docker) em
+vez de derrubar o build. **Não validado**: build nativo, e o caminho completo com LocalStack
+de verdade (só roda com Docker — confirmação real vem do primeiro workflow no GitHub Actions,
+mesmo padrão
 já usado pro Postgres real nas iterações anteriores).
