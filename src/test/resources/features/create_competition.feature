@@ -27,6 +27,14 @@ Feature: Create Competition
         | now    | the system sends the invite e-mails to the provided list                              |
         | later  | the system does not send the invite e-mails and keeps the competition awaiting sending |
 
+    Scenario: Administrator creates a private competition inviting an e-mail that already belongs to a registered player
+      Given they choose the private competition option
+      And one of the e-mails in the invite list already belongs to a registered player
+      And click the "create" button
+      And the system creates the new private competition and shows the success screen asking whether to send the invite e-mails now or not
+      When the administrator decides to send the invite e-mails now
+      Then the system sends the e-mail personalized with the name to that player instead of an invite to create an account
+
     Scenario Outline: Administrator tries to create a competition with an invalid start date
       Given they choose the public competition option
       And define the start date as <start_date>
