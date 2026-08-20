@@ -147,6 +147,15 @@ dados de forma agregada e alertar sobre eles.
      `EMAIL_EVENT`. Ver decisão 10 pro `event_type` novo que isso implica. `sent_email`
      continua imutável (decisão 9) — número de tentativas não é campo dela, vive no estado de
      retry (DynamoDB) e é espelhado em `EMAIL_EVENT` pro painel.
+   - **Cancelamento — resolvido: fila nova, só nesse sentido** (`app/` → Lambda). O painel não
+     tem (nem ganha) acesso direto ao DynamoDB — continua só publicando em fila, mesmo
+     princípio de IAM de privilégio mínimo da decisão 6. Fila nova (ex.
+     `jogo-acoes-email-retry-cancel`): `app/` publica `{correlationId}` quando o administrador
+     cancela uma retentativa pendente; a Lambda (mesmo `EmailSendHandler`, ramificando por tipo
+     de mensagem, ou um *handler* dedicado) consome, apaga/marca o item no DynamoDB, e publica
+     `RETRY_CANCELLED` na fila de eventos — fechando o ciclo pelo mesmo caminho já decidido
+     acima. `app/` termina com duas filas de saída (comando + cancelamento) e uma de entrada
+     (eventos); só a Lambda toca DynamoDB/SES.
    - Nada disso implementado nesta sessão — desenho fica registrado aqui; a implementação (e
      as novas features de painel/cancelamento) é trabalho de uma sessão futura, possivelmente
      fora do escopo original desta iteração no `roadmap.md` (a rever).

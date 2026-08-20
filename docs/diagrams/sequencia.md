@@ -206,9 +206,8 @@ sequenceDiagram
 ## 6. Retentativa com política por erro + painel (decidido, não implementado)
 
 Desenho da decisão 4 (`docs/iteracao-4.md`) — nenhuma classe/endpoint deste diagrama existe
-no código ainda. Um ponto fica deliberadamente em aberto: como um pedido de cancelamento
-feito no painel (`app/`, Postgres) chega até o item no DynamoDB, já que `app/` não tem acesso
-direto à AWS por decisão (só a Lambda tem) — não foi desenhado em detalhe ainda.
+no código ainda. `app/` só publica em fila (comando + cancelamento) e só lê a fila de eventos
+— nunca acessa DynamoDB/SES diretamente; isso continua exclusivo da Lambda.
 
 ```mermaid
 sequenceDiagram
@@ -216,6 +215,7 @@ sequenceDiagram
     participant Lambda as EmailSendHandler
     participant DDB as DynamoDB (estado de retentativa)
     participant SQS as Fila SQS (comando)
+    participant Cnl as Fila de cancelamento
     participant Evt as Fila de eventos
     participant App as app/ (@SqsListener)
     participant PG as Postgres (EMAIL_EVENT)
@@ -235,11 +235,16 @@ sequenceDiagram
     App-->>Adm: status, tentativas, próximo horário
 
     Adm->>App: cancelar retentativa pendente
-    Note over App,DDB: mecanismo exato (app -> DynamoDB)<br/>ainda NÃO decidido -- app/ hoje não tem<br/>acesso direto à AWS, só a Lambda
+    App->>Cnl: publish {correlationId}
+    Cnl-->>Lambda: consome
+    Lambda->>DDB: apaga/marca o item (correlationId)
+    Lambda->>Evt: publish RETRY_CANCELLED
+    Evt-->>App: consome evento
+    App->>PG: insert EMAIL_EVENT{event_type=RETRY_CANCELLED}
 
     loop a cada 15 min
         Poller->>DDB: query nextRetryAt <= agora
-        DDB-->>Poller: itens vencidos
+        DDB-->>Poller: itens vencidos (já sem os cancelados)
         Poller->>SQS: republica na fila de comando
         Poller->>Evt: publish RETRY_ATTEMPTED
     end
