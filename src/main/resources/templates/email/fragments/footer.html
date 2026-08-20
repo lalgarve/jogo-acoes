@@ -1,0 +1,27 @@
+<!--
+  Shared closing block reused by every e-mail template
+  (email/fragments/footer :: footer(${link})). Fixed text plus one substituted variable
+  (link) -- no conditionals, no branching.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+  <table th:fragment="footer(link)" role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="padding:0 32px 32px 32px; border-top:1px solid #e4e7eb;">
+        <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#7b8794;">
+          Se o botão acima não funcionar, copie e cole este link no seu navegador:<br/>
+          <span th:text="${link}">https://jogo-acoes.example/login-links/...</span>
+        </p>
+        <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#7b8794;">
+          Este link é válido por tempo limitado e só pode ser usado uma vez. Se você não
+          esperava este e-mail, pode ignorá-lo com segurança.
+        </p>
+        <p style="margin:16px 0 0 0; font-size:12px; line-height:1.5; color:#9aa5b1;">
+          Equipe Jogo de Ações
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
