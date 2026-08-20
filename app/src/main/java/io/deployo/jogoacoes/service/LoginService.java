@@ -13,6 +13,7 @@ import io.deployo.jogoacoes.domain.RoleName;
 import io.deployo.jogoacoes.domain.User;
 import io.deployo.jogoacoes.domain.UserRole;
 import io.deployo.jogoacoes.domain.UserRoleId;
+import io.deployo.jogoacoes.email.EmailRequest;
 import io.deployo.jogoacoes.email.EmailSender;
 import io.deployo.jogoacoes.repository.LoginLinkRepository;
 import io.deployo.jogoacoes.repository.LoginSessionRepository;
@@ -172,7 +173,8 @@ public class LoginService {
         loginLinkRepository.save(link);
         auditLogService.record(LogType.LOGIN_LINK_ISSUED, link.getId(), user, "Login link issued to " + email);
 
-        emailSender.send(user.getId(), email, "/login-links/" + link.getToken(), EmailTemplate.LOGIN_LINK);
+        emailSender.send(new EmailRequest(user.getId(), email, user.getName(), null, null,
+                "/login-links/" + link.getToken(), EmailTemplate.LOGIN_LINK));
     }
 
     private LoginLink findValidLink(String token) {

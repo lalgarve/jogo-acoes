@@ -11,6 +11,7 @@ import io.deployo.jogoacoes.domain.Participation;
 import io.deployo.jogoacoes.domain.ParticipationStatus;
 import io.deployo.jogoacoes.domain.RequestType;
 import io.deployo.jogoacoes.domain.User;
+import io.deployo.jogoacoes.email.EmailRequest;
 import io.deployo.jogoacoes.email.EmailSender;
 import io.deployo.jogoacoes.repository.CompetitionRepository;
 import io.deployo.jogoacoes.repository.LoginLinkRepository;
@@ -130,7 +131,9 @@ public class EntryRequestService {
                 "Entry request login link issued to " + email);
 
         Long userId = existingUser.map(User::getId).orElse(null);
-        emailSender.send(userId, email, "/login-links/" + token, template);
+        String name = existingUser.map(User::getName).orElse(null);
+        emailSender.send(new EmailRequest(userId, email, name, competition.getName(), RequestType.REQUEST,
+                "/login-links/" + token, template));
 
         if (participation.getFirstEmailSentDate() == null) {
             participation.setFirstEmailSentDate(LocalDate.now());

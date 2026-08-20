@@ -65,11 +65,10 @@ dados de forma agregada e alertar sobre eles.
 1. ~~Contrato da mensagem da fila.~~ — **resolvido.** O corpo/assunto do e-mail já vão
    *renderizados* na mensagem, não os ingredientes (`EmailTemplate` + `link`) para renderizar
    depois. Isso torna o contrato estável contra qualquer mudança futura no motor de
-   templates (texto simples agora, Thymeleaf depois — ver nota abaixo) sem nunca precisar
-   tocar na fila outra vez, e reduz a Lambda a um worker genérico ("manda este texto pra este
-   endereço"), sem nenhum conhecimento do domínio da aplicação. Como `sent_email` já é
-   gravada no sistema principal no momento da publicação (decisão 9 abaixo), `userId`
-   também não precisa cruzar a fila — só serve pro FK local.
+   templates sem nunca precisar tocar na fila outra vez, e reduz a Lambda a um worker
+   genérico ("manda este texto pra este endereço"), sem nenhum conhecimento do domínio da
+   aplicação. Como `sent_email` já é gravada no sistema principal no momento da publicação
+   (decisão 9 abaixo), `userId` também não precisa cruzar a fila — só serve pro FK local.
 
    ```json
    {
@@ -86,19 +85,28 @@ dados de forma agregada e alertar sobre eles.
    ao `sent_email` e vira *message tag* do `SES.SendEmail` pra correlacionar os eventos da
    decisão 10.
 
-   **Nota — geração do corpo/assunto:** como a geração de texto via Thymeleaf continua fora
-   do escopo desta iteração (e da 5), quem produz `subject`/`body` antes de publicar é uma
-   renderização simples e interna ao sistema principal (ex.: um `switch` por `EmailTemplate`
-   devolvendo texto puro) — não adianta esse trabalho, só empurra o ponto onde
-   `EmailTemplate`/`link` deixam de ser visíveis pra fora do processo: cruzavam a fila antes,
-   agora só alimentam essa renderização interna. Trocar por um motor de template de verdade
-   depois não muda o contrato da fila.
+   **Nota — geração do corpo/assunto (atualizada, ver "Produtor: `EmailSender` real" abaixo):**
+   a nota original desta decisão previa adiar a renderização Thymeleaf pra depois da
+   Iteração 5, com um `switch` simples devolvendo texto puro no meio tempo. Não foi isso que
+   aconteceu: os 5 templates Thymeleaf já existiam prontos (catálogo abaixo) quando "ligar os
+   fios" foi pedido nesta mesma sessão, então a renderização de verdade
+   (`EmailContentRenderer`) foi implementada direto, sem a etapa intermediária de texto puro.
+   O ponto central da decisão continua valendo de qualquer forma: `EmailTemplate`/`link`
+   deixam de cruzar a fila — agora alimentam só a renderização interna, que produz
+   `subject`/`body` já prontos antes de publicar. Trocar o motor de template no futuro (se
+   algum dia deixar de ser Thymeleaf) não muda o contrato da fila.
 2. ~~Biblioteca/SDK para falar com SQS a partir do Spring Boot.~~ — **resolvido: Spring Cloud
    AWS** (`spring-cloud-aws-starter-sqs`), não AWS SDK v2 puro. Verificado nesta sessão: a
    versão 4.0.0 é compatível com Spring Boot 4.x (lançada em janeiro/2026) — o risco de
    incompatibilidade que motivava a dúvida não se aplica mais. Dá `SqsTemplate` pra publicar
    (bem mais simples que `SqsClient` cru) e deixa a porta aberta pra `@SqsListener` se o
    sistema principal também acabar consumindo a fila de eventos da decisão 10.
+   **Atualizado ao implementar ("ligar os fios"):** a versão efetivamente usada no `pom.xml`
+   é `4.1.0` (mais nova ainda no Maven Central quando o código foi escrito), não `4.0.0` —
+   reverificado: seu `spring-cloud-build` pai (`5.0.2`) declara `spring-boot.version` `4.0.7`,
+   uma versão minor atrás do `4.1.0` deste projeto, mesmo tipo de defasagem dentro da major
+   4.x já aceito para a `4.0.0`. `mvn -pl app -am verify` confirma que compila e todos os
+   testes passam com essa combinação.
 3. ~~Como testar sem AWS real.~~ — **resolvido, mesmo padrão do Postgres real (Iterações 2 e
    3).** LocalStack via `docker-compose` (serviço novo, ao lado do `db`), exercitado só no
    profile `docker`/CI — o `sandbox` deste agente continua sem depender de rede/Docker, então
@@ -106,7 +114,12 @@ dados de forma agregada e alertar sobre eles.
    validada de ponta a ponta em CI, onde o Docker existe — mesma lacuna já documentada e
    aceita nas iterações anteriores (o que roda aqui é só raciocínio + `mvn verify` local
    contra `sandbox`, a confirmação de verdade vem do primeiro workflow real no GitHub
-   Actions).
+   Actions). **Atualizado ao implementar:** `SqsEmailSender` existe e compila/testa
+   (`SqsEmailSenderTest`, com `SqsTemplate` mockado — sem contexto Spring, sem rede) desde
+   "ligar os fios", mas ainda não está ativo em `docker`/CI (só em `staging`/`production`,
+   ainda bloqueados por AWS real) — o `docker-compose.yml`/LocalStack desta decisão continuam
+   pendentes; ver "Produtor: `EmailSender` real" para o porquê de ter ficado assim
+   deliberadamente por agora.
 4. **Retry e política da DLQ.** Quantas tentativas antes de cair na dead-letter queue,
    *backoff* entre elas — o roadmap menciona a DLQ mas não define esses números.
 5. **Provisionamento de infraestrutura.** Terraform vs. AWS CDK vs. criação manual só
@@ -259,19 +272,17 @@ só e-mail.
 GUI (`docs/desenvolvimento.md`) — identificadores/comentários continuam em inglês, só o
 conteúdo voltado ao usuário final muda de idioma.
 
-**Pendência Java resolvida em parte (commit c415c89)**: `CompetitionService.create` e
-`PlayerManagementService.invitePlayers` agora fazem a mesma busca por e-mail que
+**Pendência Java resolvida (commit c415c89, e a escolha do arquivo físico ligada na seção
+"Produtor: `EmailSender` real" abaixo)**: `CompetitionService.create` e
+`PlayerManagementService.invitePlayers` fazem a mesma busca por e-mail que
 `EntryRequestService.requestEntry` já fazia (`userRepository.findByEmail(email).filter(
 User::isRegistered)`) e vinculam o `User` encontrado à `Participation` — isso já faz
 `decideInviteEmailTiming`/`templateFor` escolherem `EmailTemplate.LOGIN_LINK` em vez de
 `INVITE`/`REGISTRATION_LINK`, cobrindo os cenários registrados em
 `manage_competition_players.feature`/`create_competition.feature` (commits e167937/2467286,
-implementados em c415c89). **Ainda falta**: essa correção só decide o *valor do enum*
-`EmailTemplate` — não existe ainda nenhum código escolhendo entre os 5 arquivos `.html`
-físicos (`login-link-invite.html` vs. `login-link-request.html`, por exemplo), porque a
-máquina de renderização (Thymeleaf + `TemplateEngine`) e o novo `EmailSender` da fila SQS
-ainda não foram implementados — isso é o restante do escopo desta iteração (contrato da
-mensagem, SDK, etc., já decididos mais acima neste documento).
+implementados em c415c89). A escolha entre os 5 arquivos `.html` físicos (não só o valor do
+enum) ficou pendente até "ligar os fios" — `EmailContentRenderer.templateFileFor` (seção
+abaixo) é esse código.
 
 **Arquivos**:
 ```
@@ -288,8 +299,88 @@ src/main/resources/templates/email/
 Convenção adotada: `<title>` carrega o assunto (também processado pelo Thymeleaf, permitindo
 assunto dinâmico via substituição de variável — não ramificação), o `<body>` é o corpo do
 e-mail — os dois passam pelo mesmo `TemplateEngine`. Estilo inline (não CSS externo), pela
-compatibilidade de clientes de e-mail. Nenhuma dependência do Thymeleaf foi adicionada ao
-`pom.xml` ainda, nem código Java de renderização escrito — fica para a implementação.
+compatibilidade de clientes de e-mail. `spring-boot-starter-thymeleaf` foi adicionado ao
+`app/pom.xml` e o código de renderização implementado — ver "Produtor: `EmailSender` real"
+abaixo.
+
+## Produtor: `EmailSender` real (SQS + Thymeleaf)
+
+"Ligar os fios" — pedido nesta sessão depois de o catálogo de templates e o módulo
+`email-lambda` já existirem, mas ainda sem nada os conectando do lado do sistema principal.
+Pacote `io.deployo.jogoacoes.email`:
+
+- **`EmailRequest`** (record) — o que um `EmailSender` precisa: `userId`/`name`/`email`
+  (nullable os dois primeiros), `competitionName` (nullable — ausente só no login avulso),
+  `origin` (`RequestType`, nullable), `link`, `template`. Substituiu a assinatura posicional
+  antiga (`send(Long userId, String email, String link, EmailTemplate template)`) — 7
+  parâmetros com vários `String`/`Long` nullable adjacentes era risco real de troca de
+  argumento por posição, não abstração prematura.
+- **Enum `EmailTemplate` continua com 3 valores** (decisão já tomada na seção do catálogo,
+  não revista aqui) — a escolha do arquivo físico usa `EmailRequest` inteiro, não só o enum:
+  `EmailContentRenderer.templateFileFor` decide `login-link` vs. `login-link-invite` vs.
+  `login-link-request` a partir de `competitionName` (presente ou não) e `origin`
+  (`INVITE`/`REQUEST`), exatamente a mesma condição de negócio (origem + existe `User`) já
+  descrita no catálogo — só que agora em código, não mais uma pendência.
+- **`EmailContentRenderer`** — injeta o `TemplateEngine` autoconfigurado pelo Spring Boot
+  (`spring-boot-starter-thymeleaf`, adicionado ao `app/pom.xml`), processa o arquivo escolhido
+  com `name`/`competitionName`/`link` como variáveis de contexto e devolve `RenderedEmail
+  (subject, body)`: `subject` é o `<title>` renderizado (extraído por regex e desescapado com
+  `HtmlUtils.htmlUnescape`, já que o Thymeleaf escapa `th:text`), `body` é o documento inteiro
+  renderizado.
+- **`SentEmailRecorder`** — extraído de `StubEmailSender` (que antes gravava em `sent_email`
+  sozinho): agora as duas implementações de `EmailSender` compartilham essa gravação, já que
+  ela independe de como (ou se) o e-mail é de fato despachado.
+- **`EmailMessage`** (record, pacote `io.deployo.jogoacoes.email`) — cópia do lado produtor do
+  contrato da fila (decisão 1); `email-lambda` mantém sua própria cópia idêntica no consumidor
+  — dois records, não um módulo compartilhado, deliberadamente (mesma razão já registrada na
+  decisão 1: nenhum dos dois lados força release do outro).
+- **`SqsEmailSender`** — a implementação real de `EmailSender`: renderiza, grava em
+  `sent_email` (via `SentEmailRecorder`) e publica um `EmailMessage` na fila com
+  `sqsTemplate.send(queueName, message)`. `correlationId` é o `id` gerado do `SentEmail` —
+  já resolve decisão 9/10 sem precisar de coluna nova nem UUID à parte, já que esse `id` é
+  único e permanente por definição.
+- **Troca de implementação por propriedade, não por perfil Spring**: `email.sender` (`stub`,
+  padrão, ou `sqs`) escolhido via `@ConditionalOnProperty`
+  (`matchIfMissing = true` no lado `stub`). **Achado real, descoberto rodando os testes**: a
+  primeira tentativa usou `@Profile("sandbox")`/`@Profile("!sandbox")`, o que quebrou
+  silenciosamente todo teste que sobe o contexto Spring — `src/test/resources/application.yml`
+  *substitui* (não empilha sobre) o `application.yml` principal, então nenhum perfil fica
+  ativo durante os testes (nem mesmo "sandbox"), e `!sandbox` bateria certo mesmo sem querer.
+  Uma propriedade explícita, ausente por padrão em ambos os `application.yml` (principal e de
+  teste), não depende dessa mecânica de perfil pra decidir o *default* — `stub` é o que roda
+  em `sandbox` e em todo teste; `application-staging.yml`/`application-production.yml` são os
+  únicos que setam `email.sender: sqs` por enquanto.
+- **Segundo achado real, mesma rodada de testes**: com `spring-cloud-aws-starter-sqs` no
+  classpath, o Spring Boot autoconfigura um bean `SqsAsyncClient`/`SqsTemplate`
+  *incondicionalmente* — não é *lazy*, e não respeita o `@ConditionalOnProperty` de
+  `SqsEmailSender` (são beans de autoconfiguração diferentes). Sem uma região AWS resolvível,
+  essa construção falha e derruba *todo* teste que sobe o contexto Spring, mesmo com
+  `StubEmailSender` ativo. Corrigido com `spring.cloud.aws.region.static:
+  ${AWS_REGION:us-east-1}` no `application.yml` principal — e repetido no de teste pela mesma
+  razão do achado anterior (substituição, não empilhamento). Uma região estática não abre
+  conexão nenhuma na construção do bean; só importa se `SqsEmailSender.send` for chamado de
+  verdade, o que não acontece em `sandbox`/testes.
+- **`docker`/CI continuam em `stub` por enquanto, deliberadamente**: ativar `SqsEmailSender`
+  lá exigiria uma fila (real ou LocalStack) pro `SqsTemplate` publicar de verdade — LocalStack
+  ainda não foi adicionado ao `docker-compose.yml` (resto da decisão 3, não fechado nesta
+  sessão). Ativar a propriedade sem isso quebraria o `docker compose up`/CI atual sem
+  necessidade. `staging`/`production` já apontam pra `sqs`, mas seguem bloqueados por acesso
+  real à AWS (decisões 5–7).
+
+**Testes novos**: `EmailContentRendererTest` (as 5 combinações do catálogo, `TemplateEngine`
+real montado à mão com `SpringTemplateEngine` — **achado real**: um `TemplateEngine` puro usa
+o dialeto padrão do Thymeleaf, que precisa de OGNL, não uma dependência deste projeto;
+`SpringTemplateEngine` usa `SpringStandardDialect`/SpEL, o mesmo que o Spring Boot
+autoconfigura em produção); `SqsEmailSenderTest` (Mockito, sem contexto Spring, confirma o
+`correlationId`/payload publicados); `StubEmailSenderTest` atualizado pra `EmailRequest` e
+`SentEmailRecorder`.
+
+**Validado nesta sessão** (sandbox, sem Docker): `mvn -pl app -am verify` — todos os testes
+passam (`EmailContentRendererTest`/`SqsEmailSenderTest` novos incluídos), cobertura de linha
+92,8% (gate é 80%). `mvn verify` na raiz (os dois módulos) também sai limpo. **Não validado**:
+`SqsEmailSender` publicando numa fila de verdade (nenhum teste sobe SQS real/LocalStack —
+só `SqsTemplate` mockado) e o caminho `docker`/CI com `email.sender: sqs` (deliberadamente não
+ligado ainda, ver achado acima).
 
 ## A Lambda: módulo Quarkus separado
 

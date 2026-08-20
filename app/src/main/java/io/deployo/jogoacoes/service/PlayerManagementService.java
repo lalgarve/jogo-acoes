@@ -8,6 +8,7 @@ import io.deployo.jogoacoes.domain.Participation;
 import io.deployo.jogoacoes.domain.ParticipationStatus;
 import io.deployo.jogoacoes.domain.RequestType;
 import io.deployo.jogoacoes.domain.User;
+import io.deployo.jogoacoes.email.EmailRequest;
 import io.deployo.jogoacoes.email.EmailSender;
 import io.deployo.jogoacoes.repository.CompetitionRepository;
 import io.deployo.jogoacoes.repository.LoginLinkRepository;
@@ -123,8 +124,10 @@ public class PlayerManagementService {
         auditLogService.record(LogType.LOGIN_LINK_ISSUED, link.getId(), currentUser(),
                 "Invite login link issued to " + participation.getEmail());
 
-        Long userId = participation.getUser() != null ? participation.getUser().getId() : null;
-        emailSender.send(userId, participation.getEmail(), "/login-links/" + token, templateFor(participation));
+        User user = participation.getUser();
+        emailSender.send(new EmailRequest(user != null ? user.getId() : null, participation.getEmail(),
+                user != null ? user.getName() : null, participation.getCompetition().getName(), participation.getRequestType(),
+                "/login-links/" + token, templateFor(participation)));
 
         if (participation.getFirstEmailSentDate() == null) {
             participation.setFirstEmailSentDate(LocalDate.now());

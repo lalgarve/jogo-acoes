@@ -18,6 +18,14 @@ spring:
   session:
     store-type: jdbc
     timeout: 30d
+  cloud:
+    aws:
+      # See src/main/resources/application.yml -- this file replaces (not layers on top of)
+      # that one during tests, so the same static-region workaround needs repeating here or
+      # every @SpringBootTest/Cucumber context fails to boot (SqsAsyncClient autoconfiguration
+      # is unconditional, unlike SqsEmailSender itself).
+      region:
+        static: us-east-1
 
 altcha:
   secret: test-secret

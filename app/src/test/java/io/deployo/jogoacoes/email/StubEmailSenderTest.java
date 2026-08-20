@@ -33,10 +33,11 @@ class StubEmailSenderTest {
 
     @Test
     void recordsTheSendWithTheAssociatedUser() {
-        emailSender = new StubEmailSender(sentEmailRepository, userRepository);
+        emailSender = newStubEmailSender();
         User user = userRepository.save(newUser("alice@example.com"));
 
-        emailSender.send(user.getId(), "alice@example.com", "https://jogo-acoes.example/login/abc123", EmailTemplate.LOGIN_LINK);
+        emailSender.send(new EmailRequest(user.getId(), "alice@example.com", user.getName(), null, null,
+                "https://jogo-acoes.example/login/abc123", EmailTemplate.LOGIN_LINK));
 
         List<SentEmail> sent = sentEmailRepository.findAll();
         assertThat(sent).hasSize(1);
@@ -49,9 +50,10 @@ class StubEmailSenderTest {
 
     @Test
     void recordsTheSendWithoutAUserWhenRecipientHasNoAccountYet() {
-        emailSender = new StubEmailSender(sentEmailRepository, userRepository);
+        emailSender = newStubEmailSender();
 
-        emailSender.send(null, "bob@example.com", "https://jogo-acoes.example/entry/xyz789", EmailTemplate.REGISTRATION_LINK);
+        emailSender.send(new EmailRequest(null, "bob@example.com", null, "Copa Jogo de Ações", null,
+                "https://jogo-acoes.example/entry/xyz789", EmailTemplate.REGISTRATION_LINK));
 
         List<SentEmail> sent = sentEmailRepository.findAll();
         assertThat(sent).hasSize(1);
@@ -61,11 +63,15 @@ class StubEmailSenderTest {
 
     @Test
     void rejectsAnUnknownUserId() {
-        emailSender = new StubEmailSender(sentEmailRepository, userRepository);
+        emailSender = newStubEmailSender();
 
-        assertThatThrownBy(() ->
-                emailSender.send(999L, "carol@example.com", "https://jogo-acoes.example/invite/qqq", EmailTemplate.INVITE))
+        assertThatThrownBy(() -> emailSender.send(new EmailRequest(999L, "carol@example.com", null,
+                "Copa Jogo de Ações", null, "https://jogo-acoes.example/invite/qqq", EmailTemplate.INVITE)))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private EmailSender newStubEmailSender() {
+        return new StubEmailSender(new SentEmailRecorder(sentEmailRepository, userRepository));
     }
 
     private static User newUser(String email) {
