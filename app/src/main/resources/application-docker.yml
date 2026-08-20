@@ -1,0 +1,41 @@
+# Real PostgreSQL in containers — local via docker-compose, or CI — to catch incompatibilities
+# the H2 sandbox profile would hide. The app owns the schema and runs Flyway itself (admin
+# role). See docker/postgres/init/01-roles.sql. Disposable, not a long-lived shared database.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/jogo_acoes}
+    username: ${SPRING_DATASOURCE_USERNAME:jogo_acoes_admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:jogo_acoes_admin}
+    # Explicit for the same reason as flyway.locations below: src/test/resources/application.yml
+    # hardcodes org.h2.Driver, and a profile file only overrides keys it redefines -- without
+    # this, running tests with SPRING_PROFILES_ACTIVE=docker tries to open a postgresql:// URL
+    # with the H2 driver and fails immediately.
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    # Explicit, not inherited: src/test/resources/application.yml replaces (not layers on)
+    # src/main/resources/application.yml when tests run, and its own flyway.locations points
+    # at db/migration-h2 -- that value would otherwise leak into this profile when tests run
+    # with SPRING_PROFILES_ACTIVE=docker (e.g. in CI), since a profile file only overrides
+    # keys it redefines.
+    locations: classpath:db/migration
+  cloud:
+    aws:
+      # LocalStack (docker-compose.yml service, docker/localstack/init creates the queue),
+      # not real AWS -- fake credentials are fine and deliberately don't fall back to the
+      # default provider chain, which would otherwise try (and fail slowly) instance-profile/
+      # EC2-metadata lookups on every run here. staging/production don't set these, so they
+      # keep using that default chain (real IAM) -- see application-staging.yml/
+      # application-production.yml.
+      credentials:
+        access-key: test
+        secret-key: test
+      sqs:
+        endpoint: ${SPRING_CLOUD_AWS_SQS_ENDPOINT:http://localhost:4566}
+        # Spring Cloud AWS's own property description calls this out for exactly this case
+        # ("SQS-compatible providers that return non-UUID message IDs") -- not independently
+        # confirmed against this LocalStack version, but cheap to set defensively either way.
+        convert-message-id-to-uuid: false
+
+email:
+  sender: sqs

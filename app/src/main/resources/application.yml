@@ -1,0 +1,42 @@
+server:
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: jogo-acoes
+  profiles:
+    default: sandbox
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  session:
+    store-type: jdbc
+    timeout: 30d
+  cloud:
+    aws:
+      # spring-cloud-aws-starter-sqs autoconfigures an SqsAsyncClient/SqsTemplate bean
+      # unconditionally (not gated by email.sender below) -- without a resolvable region that
+      # bean fails to construct at all, breaking every test that boots the Spring context, even
+      # though SqsEmailSender itself stays inactive (ConditionalOnProperty) here. A static
+      # region is enough: nothing calls the client unless SqsEmailSender does.
+      region:
+        static: ${AWS_REGION:us-east-1}
+
+# Starting point, not a locked-in secret -- override via ALTCHA_SECRET in any environment
+# where the default matters (i.e. anywhere reachable from outside sandbox/docker).
+altcha:
+  secret: ${ALTCHA_SECRET:dev-only-altcha-secret-change-me}
+
+# Starting point, not a locked-in product decision -- how many devices a player can stay
+# logged into at once before the oldest session is ended.
+login:
+  max-devices-per-user: 3
+
+# email.sender picks the EmailSender bean (io.deployo.jogoacoes.email): "stub" (default, no
+# value needed) just records to sent_email; "sqs" publishes to the command queue for
+# email-lambda to pick up (docs/iteracao-4.md). Only set to "sqs" in profiles that actually have
+# a queue to publish to -- see application-staging.yml/application-production.yml.
+email:
+  queue-name: ${EMAIL_QUEUE_NAME:jogo-acoes-email-commands}

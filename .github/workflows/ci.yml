@@ -24,14 +24,16 @@ jobs:
           cache: maven
 
       # Real PostgreSQL, not the H2 sandbox profile -- see docs/desenvolvimento.md.
-      # docker-compose.yml already defines db with the roles/init script this profile needs.
-      - name: Start Postgres
-        run: docker compose up -d --wait db
+      # LocalStack stands in for SQS, so SqsEmailSender publishes to a real queue instead of
+      # just compiling (docs/iteracao-4.md, "Produtor: EmailSender real"). docker-compose.yml
+      # already defines both services with the init scripts this profile needs.
+      - name: Start Postgres and LocalStack
+        run: docker compose up -d --wait db localstack
 
-      - name: Run tests with coverage (docker profile)
+      - name: Run app tests with coverage (docker profile)
         env:
           SPRING_PROFILES_ACTIVE: docker
-        run: mvn -B verify
+        run: mvn -B -pl app -am verify
 
       # Runs even if the coverage gate above failed the build, so the PR still shows the
       # actual percentage instead of just a red check with no explanation.
@@ -39,13 +41,21 @@ jobs:
         if: always() && github.event_name == 'pull_request'
         uses: madrapps/jacoco-report@v1.7
         with:
-          paths: target/site/jacoco/jacoco.xml
+          paths: app/target/site/jacoco/jacoco.xml
           token: ${{ secrets.GITHUB_TOKEN }}
           min-coverage-overall: 80
           min-coverage-changed-files: 0
           title: 'Cobertura de testes (JaCoCo)'
           update-comment: true
 
-      - name: Stop Postgres
+      - name: Stop Postgres and LocalStack
         if: always()
         run: docker compose down -v
+
+      # JVM mode only -- the real deployable artifact is a GraalVM native image
+      # (docs/iteracao-4.md), built manually/locally, never in CI: native compilation takes
+      # several minutes and there's nowhere to deploy the result yet (blocked on AWS access).
+      # This step's LocalStack SES container comes from Quarkus Dev Services (Testcontainers),
+      # using the runner's own Docker daemon -- no docker-compose service needed for it.
+      - name: Build and test email-lambda (JVM mode)
+        run: mvn -B -pl email-lambda -am test

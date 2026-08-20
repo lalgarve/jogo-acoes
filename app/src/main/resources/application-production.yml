@@ -1,0 +1,18 @@
+# Same rule as staging: a separate team owns the schema and runs migrations by hand.
+# The app only ever holds the limited jogo_acoes_app role and never runs Flyway itself. No
+# default url/password: both must be provided by that team, never hardcoded in the repo.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME:jogo_acoes_app}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    # Explicit so nothing can inherit src/test/resources/application.yml's org.h2.Driver by
+    # omission if this profile is ever active during a test run.
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: false
+
+# Real queue exists (or will) here, unlike sandbox -- see application.yml for what this
+# switches and docs/iteracao-4.md for the queue-name property.
+email:
+  sender: sqs

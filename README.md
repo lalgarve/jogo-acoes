@@ -30,11 +30,24 @@ o que existe hoje:
 
 Detalhes de cada etapa estão em [`docs/roadmap.md`](docs/roadmap.md).
 
+## Módulos
+
+Reator Maven multi-módulo (`pom.xml` na raiz é só um agregador, não é *parent* de nenhum
+dos dois — cada módulo mantém seu próprio *parent*/BOM):
+
+| Módulo | Framework | O quê |
+|---|---|---|
+| `app/` | Spring Boot | O sistema principal (API, persistência, regras de negócio) |
+| `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES (ver [`docs/iteracao-4.md`](docs/iteracao-4.md)) |
+
+`mvn verify` na raiz builda os dois. Pra rodar só um: `mvn -pl app -am verify` ou
+`mvn -pl email-lambda -am verify`.
+
 ## Ambientes
 
 O perfil ativo do Spring é escolhido por `SPRING_PROFILES_ACTIVE` (ou `sandbox`, se
 nenhum for definido). Cada um tem seu arquivo `application-<nome>.yml` em
-`src/main/resources`:
+`app/src/main/resources`:
 
 | Perfil | Banco | Quando usar |
 |---|---|---|
