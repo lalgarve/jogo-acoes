@@ -56,7 +56,7 @@ Amazon SES.
 - Verificação de domínio/remetente no SES e saída do modo sandbox (necessário para enviar a
   destinatários não verificados em produção).
 
-**Fora de escopo (fica para a Iteração 5):** métricas/alertas, observabilidade do pipeline
+**Fora de escopo (fica para a Iteração 6):** métricas/alertas, observabilidade do pipeline
 (profundidade da fila, erros/retries da Lambda, *agregação*/alerta sobre taxa de
 bounce/complaint do SES). A *captação* bruta dos eventos individuais de bounce/complaint via
 SES Event Publishing é desta iteração — ver decisão 10; o que fica para a 5 é olhar pra esses
@@ -89,7 +89,8 @@ dados de forma agregada e alertar sobre eles.
 
    **Nota — geração do corpo/assunto (atualizada, ver "Produtor: `EmailSender` real" abaixo):**
    a nota original desta decisão previa adiar a renderização Thymeleaf pra depois da
-   Iteração 5, com um `switch` simples devolvendo texto puro no meio tempo. Não foi isso que
+   Iteração 6 (renumerada — era a 5 quando esta nota foi escrita), com um `switch` simples
+   devolvendo texto puro no meio tempo. Não foi isso que
    aconteceu: os 5 templates Thymeleaf já existiam prontos (catálogo abaixo) quando "ligar os
    fios" foi pedido nesta mesma sessão, então a renderização de verdade
    (`EmailContentRenderer`) foi implementada direto, sem a etapa intermediária de texto puro.
@@ -238,7 +239,7 @@ dados de forma agregada e alertar sobre eles.
       `correlationId` da decisão 1 vai como tag pra voltar no evento e resolver o
       `sent_email_id` de `EMAIL_EVENT`.
     - Se a agregação/alerta sobre esses eventos é desta iteração ou só a captação bruta —
-      o roadmap já classifica "taxa de bounce/complaint" como observabilidade da Iteração 5;
+      o roadmap já classifica "taxa de bounce/complaint" como observabilidade da Iteração 6;
       o que esta iteração precisa decidir é só se os eventos brutos já são capturados e
       persistidos aqui (dado que a infraestrutura SNS/SQS é criada agora), mesmo que a
       agregação/alerta fique para depois.
