@@ -61,7 +61,7 @@ Uma mensagem de commit completa, para uma mudança não trivial, normalmente tem
    aplicadas de verdade contra H2, N/N testes passando").
 5. **Referência cruzada** (linha final, opcional): se a mudança resolve uma decisão em
    aberto registrada em outro documento, apontar para ele (ex.: "Resolves the X open
-   decision in docs/iteracao-3.md").
+   decision in docs/context/iteracao-3.md").
 
 Exemplo real deste projeto:
 
@@ -76,7 +76,7 @@ correctly to pass, submit a tampered solution to fail.
 AltchaSmokeTest proves the create/solve/verify round-trip actually works
 against this project's dependency versions (2/2 passing).
 
-Resolves the captcha-stub open decision in docs/iteracao-3.md.
+Resolves the captcha-stub open decision in docs/context/iteracao-3.md.
 ```
 
 Commits pequenos e focados em uma mudança revisável de cada vez — evitar juntar mudanças

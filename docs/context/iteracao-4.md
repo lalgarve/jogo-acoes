@@ -251,7 +251,7 @@ acesso à AWS real — dá para avançar nelas dentro de uma sessão de agente. 
 da decisão 10 (`EMAIL_EVENT`) também não depende de AWS e pode ser desenhado junto. As
 decisões 5–7 e a parte de infraestrutura da 10 (Configuration Set, tópico SNS, fila de
 eventos) dependem de acesso à conta AWS do projeto, fora do alcance das ferramentas
-disponíveis aqui — ver `docs/desenvolvimento.md` para o padrão já usado nas iterações
+disponíveis aqui — ver `docs/context/desenvolvimento.md` para o padrão já usado nas iterações
 anteriores de documentar claramente o que foi validado de verdade vs. o que ficou por
 raciocínio/pendente de uma sessão local ou de quem tem as credenciais.
 
@@ -326,7 +326,7 @@ dois (`INVITE`/`REGISTRATION_LINK`): `Participation` sem `User` vinculado não g
 só e-mail.
 
 **Todo o texto visível do e-mail está em português**, seguindo a mesma convenção do resto da
-GUI (`docs/desenvolvimento.md`) — identificadores/comentários continuam em inglês, só o
+GUI (`docs/context/desenvolvimento.md`) — identificadores/comentários continuam em inglês, só o
 conteúdo voltado ao usuário final muda de idioma.
 
 **Pendência Java resolvida (commit c415c89, e a escolha do arquivo físico ligada na seção

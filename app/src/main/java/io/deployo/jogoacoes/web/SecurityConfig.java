@@ -11,11 +11,11 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import java.io.IOException;
 
 /**
- * URL-based authorization (decision 4 in docs/iteracao-3.md): no UserDetailsService/password
- * login exists, so there's nothing for Spring Boot's default security auto-configuration to
- * work with -- this SecurityFilterChain replaces it entirely. Authentication itself is
- * established by LoginController after validating a login link, not by anything in this
- * filter chain.
+ * URL-based authorization (decision 4 in docs/context/iteracao-3.md): no UserDetailsService/
+ * password login exists, so there's nothing for Spring Boot's default security
+ * auto-configuration to work with -- this SecurityFilterChain replaces it entirely.
+ * Authentication itself is established by LoginController after validating a login link, not
+ * by anything in this filter chain.
  */
 @Configuration
 @EnableWebSecurity

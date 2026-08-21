@@ -8,16 +8,14 @@ import org.springframework.stereotype.Service;
 
 /**
  * Publishes the fully-rendered e-mail to the SQS command queue instead of sending anything
- * itself (docs/iteracao-4.md, decisão 1) -- the email-lambda module consumes the queue and
+ * itself (docs/context/iteracao-4.md, decisão 1) -- the email-lambda module consumes the queue and
  * calls SES. {@code sent_email} is still recorded here, synchronously, at publish time
  * (decisão 9): its generated id doubles as the message's {@code correlationId}, so no separate
  * column/UUID is needed to tie a queue message back to its row.
  *
- * <p>Active wherever {@code email.sender: sqs} is set (currently {@code staging}/
- * {@code production} -- see the respective {@code application-*.yml}). Not yet wired into
- * {@code docker}/CI: that needs a real or LocalStack queue for {@link SqsTemplate} to resolve
- * against, which docker-compose.yml doesn't provide yet (docs/iteracao-4.md tracks this as a
- * remaining piece of decisão 3, not implemented in this pass).
+ * <p>Active wherever {@code email.sender: sqs} is set -- {@code staging}/{@code production}
+ * (real AWS, see the respective {@code application-*.yml}) and {@code docker}/CI, where
+ * {@link SqsTemplate} resolves against the LocalStack service docker-compose.yml provides.
  */
 @Service
 @ConditionalOnProperty(name = "email.sender", havingValue = "sqs")

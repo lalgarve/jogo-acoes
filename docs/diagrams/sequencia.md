@@ -3,7 +3,8 @@
 Um diagrama por fluxo, na mesma divisão dos arquivos `.feature` em
 `app/src/test/resources/features` (Iterações 2–3) mais o pipeline assíncrono de e-mail
 (Iteração 4). Os cinco primeiros descrevem código que existe e passa nos testes; o último é
-desenho de decisão, não implementado — ver [`docs/iteracao-4.md`](../iteracao-4.md).
+desenho de decisão, não implementado — ver
+[`docs/context/iteracao-4.md`](../context/iteracao-4.md).
 
 ## 1. Login (`login.feature`)
 
@@ -205,9 +206,9 @@ sequenceDiagram
 
 ## 6. Retentativa com política por erro + painel (decidido, não implementado)
 
-Desenho da decisão 4 (`docs/iteracao-4.md`) — nenhuma classe/endpoint deste diagrama existe
-no código ainda. `app/` só publica em fila (comando + cancelamento) e só lê a fila de eventos
-— nunca acessa DynamoDB/SES diretamente; isso continua exclusivo da Lambda.
+Desenho da decisão 4 (`docs/context/iteracao-4.md`) — nenhuma classe/endpoint deste diagrama
+existe no código ainda. `app/` só publica em fila (comando + cancelamento) e só lê a fila de
+eventos — nunca acessa DynamoDB/SES diretamente; isso continua exclusivo da Lambda.
 
 ```mermaid
 sequenceDiagram

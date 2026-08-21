@@ -3,7 +3,7 @@
 Duas partes: o domínio principal (`app/`, Iterações 2–3) e o pacote de e-mail assíncrono
 (`app/` + `email-lambda/`, Iteração 4). Reflete o código como está — getters/setters omitidos
 por brevidade, e só os campos/relacionamentos que aparecem no [DER](der.md) ou no
-[`docs/iteracao-4.md`](../iteracao-4.md) estão desenhados.
+[`docs/context/iteracao-4.md`](../context/iteracao-4.md) estão desenhados.
 
 ## Domínio principal (implementado)
 
@@ -139,8 +139,9 @@ sem alterar código (comentário original em `RoleName.java`).
 ## E-mail assíncrono (implementado nesta iteração)
 
 Lado produtor (`app/`, pacote `io.deployo.jogoacoes.email`) e consumidor (`email-lambda/`,
-pacote `io.deployo.jogoacoes.email.lambda`) — ver [`docs/iteracao-4.md`](../iteracao-4.md),
-seção "Produtor: `EmailSender` real", pro raciocínio por trás de cada peça.
+pacote `io.deployo.jogoacoes.email.lambda`) — ver
+[`docs/context/iteracao-4.md`](../context/iteracao-4.md), seção "Produtor: `EmailSender` real",
+pro raciocínio por trás de cada peça.
 
 ```mermaid
 classDiagram
@@ -220,16 +221,17 @@ classDiagram
 ```
 
 `EmailMessage` existe **duas vezes** — uma cópia em cada lado (`app/`/`email-lambda/`), de
-propósito: é o contrato da fila (decisão 1, `docs/iteracao-4.md`), não um tipo compartilhado
-num módulo comum, pra nenhum dos dois lados forçar release do outro se mudar. `StubEmailSender`
-é a implementação ativa em `sandbox`/testes (`email.sender` ausente); `SqsEmailSender` em
-`staging`/`production` (`email.sender: sqs`) — `docker`/CI publica de verdade contra LocalStack
-desde a Iteração 4, mas ainda não está habilitado por padrão (`docs/iteracao-4.md`).
+propósito: é o contrato da fila (decisão 1, `docs/context/iteracao-4.md`), não um tipo
+compartilhado num módulo comum, pra nenhum dos dois lados forçar release do outro se mudar.
+`StubEmailSender` é a implementação ativa em `sandbox`/testes (`email.sender` ausente);
+`SqsEmailSender` em `docker`/`staging`/`production` (`email.sender: sqs`) — `docker`/CI publica
+de verdade contra LocalStack desde a Iteração 4 (`docs/context/iteracao-4.md`).
 
 ## Decidido, ainda não implementado
 
 `EMAIL_EVENT` (decisão 10) e o item de retentativa no DynamoDB (decisão 4) não têm classe
-Java ainda — desenho registrado em [`docs/iteracao-4.md`](../iteracao-4.md), não no código.
+Java ainda — desenho registrado em [`docs/context/iteracao-4.md`](../context/iteracao-4.md),
+não no código.
 
 ```mermaid
 classDiagram

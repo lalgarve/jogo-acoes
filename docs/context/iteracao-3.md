@@ -348,7 +348,7 @@ descobertos como necessários já nesta retomada da Iteração 3:
 ## CI: cobertura de testes com JaCoCo
 
 Adicionado depois do trabalho acima, já com as quatro features prontas pra servir de base
-real de medição (ver convenção geral em `docs/desenvolvimento.md`):
+real de medição (ver convenção geral em `docs/context/desenvolvimento.md`):
 
 - `jacoco-maven-plugin` (0.8.15) no `pom.xml`: `report` na fase `test`, `check` na fase
   `verify` com piso de **80% de cobertura de linha** (`mvn verify` quebra se ficar abaixo).

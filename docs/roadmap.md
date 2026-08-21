@@ -112,7 +112,7 @@ diagrama acima.
 **Objetivo:** detectar endereços de e-mail que não existem, ou que nunca vão receber nada,
 *antes* de aceitar o cadastro — reduz a taxa de bounce reportada ao SES (proteção da
 reputação do remetente) e é pré-requisito prático para sair do modo sandbox (Iteração 4,
-decisão pendente em `docs/iteracao-4.md`).
+decisão pendente em `docs/context/iteracao-4.md`).
 
 - Duas checagens síncronas no momento em que o e-mail é coletado (convite de administrador,
   pedido de entrada, pedido de login) — mesmo ponto onde o captcha já é validado hoje;

@@ -15,8 +15,8 @@ entrada de jogadores) rodando de ponta a ponta, e a infraestrutura assíncrona d
   [`docs/openapi.yaml`](docs/openapi.yaml)), persistência JPA/PostgreSQL, autenticação por
   link de login, ALTCHA como captcha, log de auditoria.
 - **`email-lambda/`** (Quarkus): AWS Lambda que consome a fila de e-mail e envia via SES —
-  ver [`docs/iteracao-4.md`](docs/iteracao-4.md) pra decisões e pendências (a maioria
-  bloqueada por acesso a uma conta AWS real, não por código faltando).
+  ver [`docs/context/iteracao-4.md`](docs/context/iteracao-4.md) pra decisões e pendências (a
+  maioria bloqueada por acesso a uma conta AWS real, não por código faltando).
 - **Especificação de domínio (BDD)** em `app/src/test/resources/features`: cenários Gherkin
   de login, criação de competição, gerência de jogadores e pedido de entrada em competição —
   todos implementados e passando.
@@ -52,7 +52,7 @@ dos dois — cada módulo mantém seu próprio *parent*/BOM):
 | Módulo | Framework | O quê |
 |---|---|---|
 | `app/` | Spring Boot | O sistema principal (API, persistência, regras de negócio) |
-| `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES (ver [`docs/iteracao-4.md`](docs/iteracao-4.md)) |
+| `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES (ver [`docs/context/iteracao-4.md`](docs/context/iteracao-4.md)) |
 
 `mvn verify` na raiz builda os dois. Pra rodar só um: `mvn -pl app -am verify` ou
 `mvn -pl email-lambda -am verify`.
@@ -73,7 +73,7 @@ nenhum for definido). Cada um tem seu arquivo `application-<nome>.yml` em
 `sandbox` e `docker` compartilham o mesmo modelo de dados, mas em pastas de migration
 separadas (`db/migration-h2` e `db/migration`) — a versão para H2 não tem os comandos
 `GRANT`/`REVOKE` de papéis de banco que só existem no Postgres real. Mais detalhes em
-[`docs/desenvolvimento.md`](docs/desenvolvimento.md#nomenclatura-de-ambientes).
+[`docs/context/desenvolvimento.md`](docs/context/desenvolvimento.md#nomenclatura-de-ambientes).
 
 Para rodar localmente com Postgres real:
 
