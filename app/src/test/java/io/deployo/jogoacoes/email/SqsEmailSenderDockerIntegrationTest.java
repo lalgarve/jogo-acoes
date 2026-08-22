@@ -25,13 +25,13 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Exercises SqsEmailSender against the real LocalStack queue docker-compose.yml starts, not a
- * mock (docs/iteracao-4.md, "Produtor: EmailSender real"). @ActiveProfiles("docker") forces the
- * profile that wires SqsEmailSender + the real Postgres datasource regardless of what profile
- * the rest of the Maven run uses -- so, same spirit as email-lambda's EmailSendHandlerTest,
- * this needs both Postgres and LocalStack reachable and is skipped (not failed) otherwise: a
- * plain @SpringBootTest here would fail during context startup (Postgres connection) before any
- * try/catch in a @Test method could run, so the reachability check happens in @BeforeAll,
- * before Spring ever tries to build the context.
+ * mock (docs/context/iteracao-4.md, "Produtor: EmailSender real"). @ActiveProfiles("docker")
+ * forces the profile that wires SqsEmailSender + the real Postgres datasource regardless of
+ * what profile the rest of the Maven run uses -- so, same spirit as email-lambda's
+ * EmailSendHandlerTest, this needs both Postgres and LocalStack reachable and is skipped (not
+ * failed) otherwise: a plain @SpringBootTest here would fail during context startup (Postgres
+ * connection) before any try/catch in a @Test method could run, so the reachability check
+ * happens in @BeforeAll, before Spring ever tries to build the context.
  *
  * <p>The queue isn't exclusive to this test: with email.sender: sqs active for the whole docker
  * profile, every Cucumber scenario that sends an e-mail (invites, entry requests, ...) also

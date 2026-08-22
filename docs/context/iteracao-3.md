@@ -1,7 +1,7 @@
 # Iteração 3 — Planejamento técnico
 
 Este documento registra as decisões técnicas da Iteração 3 (ver objetivo geral em
-[`roadmap.md`](roadmap.md)) antes da implementação, no mesmo espírito do
+[`roadmap.md`](../roadmap.md)) antes da implementação, no mesmo espírito do
 [`iteracao-2.md`](iteracao-2.md): um resumo pra servir de base caso a conversa precise
 mudar de contexto. Nada aqui foi implementado ainda — é o plano em discussão.
 
@@ -78,7 +78,7 @@ consciente antes (ou logo no início) da implementação:
 
 1. ~~Camada HTTP~~ — **resolvido: API-first com OpenAPI.** Mesmo espírito do projeto até
    aqui (Gherkin antes do código, DER antes das entidades): as rotas estão desenhadas em
-   [`docs/openapi.yaml`](openapi.yaml) antes de qualquer `@RestController` existir,
+   [`docs/openapi.yaml`](../openapi.yaml) antes de qualquer `@RestController` existir,
    cobrindo as ações dos quatro `.feature` (`POST /competitions`,
    `POST /competitions/{id}/entry-requests`, `GET /login-links/{token}`, endpoints de
    `players`, etc.) — os *steps* do Cucumber (RestAssured,
@@ -348,7 +348,7 @@ descobertos como necessários já nesta retomada da Iteração 3:
 ## CI: cobertura de testes com JaCoCo
 
 Adicionado depois do trabalho acima, já com as quatro features prontas pra servir de base
-real de medição (ver convenção geral em `docs/desenvolvimento.md`):
+real de medição (ver convenção geral em `docs/context/desenvolvimento.md`):
 
 - `jacoco-maven-plugin` (0.8.15) no `pom.xml`: `report` na fase `test`, `check` na fase
   `verify` com piso de **80% de cobertura de linha** (`mvn verify` quebra se ficar abaixo).

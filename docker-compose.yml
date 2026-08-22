@@ -16,7 +16,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # Fake SQS for the docker profile (docs/iteracao-4.md, decisão 3 / "Produtor: EmailSender
+  # Fake SQS for the docker profile (docs/context/iteracao-4.md, decisão 3 / "Produtor: EmailSender
   # real"): lets SqsEmailSender publish to a real queue in docker-compose/CI without needing
   # an actual AWS account. The init script creates the queue application-docker.yml expects.
   localstack:

@@ -1,7 +1,8 @@
 <!--
   EmailTemplate.INVITE -- administrador convidou este e-mail para uma competição privada;
-  não existe User registrado para ele ainda (ver docs/iteracao-4.md sobre a busca "existe um
-  User com esse e-mail" -- pendência do lado Java, não implementada ainda).
+  não existe User registrado para ele ainda (a busca "existe um User com esse e-mail" já é
+  feita em CompetitionService.create/PlayerManagementService.invitePlayers -- se existisse,
+  o template escolhido seria login-link-invite.html, não este).
 
   Variáveis: competitionName (string), link (string, URL absoluta). Sem lógica: só
   substituição direta de variável e os fragmentos de header/footer compartilhados.

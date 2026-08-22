@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 /**
- * Self-hosted proof-of-work captcha (decision 6 in docs/iteracao-3.md) -- no third-party
+ * Self-hosted proof-of-work captcha (decision 6 in docs/context/iteracao-3.md) -- no third-party
  * service, no fake/stub: {@link #verify(String)} runs the real ALTCHA HMAC verification
  * (same library and algorithm proven in AltchaSmokeTest).
  *

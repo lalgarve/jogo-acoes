@@ -10,7 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Picks which of the 5 physical templates (docs/iteracao-4.md, "Catálogo de templates de
+ * Picks which of the 5 physical templates (docs/context/iteracao-4.md, "Catálogo de templates de
  * e-mail") an {@link EmailRequest} maps to and renders it. This selection is deliberately Java
  * code, not template logic (`th:if`) — the templates themselves stay free of any branching, per
  * that same decision.

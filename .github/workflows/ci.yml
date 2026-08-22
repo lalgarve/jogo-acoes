@@ -23,10 +23,10 @@ jobs:
           java-version: '21'
           cache: maven
 
-      # Real PostgreSQL, not the H2 sandbox profile -- see docs/desenvolvimento.md.
+      # Real PostgreSQL, not the H2 sandbox profile -- see docs/context/desenvolvimento.md.
       # LocalStack stands in for SQS, so SqsEmailSender publishes to a real queue instead of
-      # just compiling (docs/iteracao-4.md, "Produtor: EmailSender real"). docker-compose.yml
-      # already defines both services with the init scripts this profile needs.
+      # just compiling (docs/context/iteracao-4.md, "Produtor: EmailSender real").
+      # docker-compose.yml already defines both services with the init scripts this profile needs.
       - name: Start Postgres and LocalStack
         run: docker compose up -d --wait db localstack
 
@@ -53,7 +53,7 @@ jobs:
         run: docker compose down -v
 
       # JVM mode only -- the real deployable artifact is a GraalVM native image
-      # (docs/iteracao-4.md), built manually/locally, never in CI: native compilation takes
+      # (docs/context/iteracao-4.md), built manually/locally, never in CI: native compilation takes
       # several minutes and there's nowhere to deploy the result yet (blocked on AWS access).
       # This step's LocalStack SES container comes from Quarkus Dev Services (Testcontainers),
       # using the runner's own Docker daemon -- no docker-compose service needed for it.

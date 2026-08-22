@@ -9,7 +9,7 @@
   <version>0.0.1-SNAPSHOT</version>
   <name>email-lambda</name>
   <description>
-    AWS Lambda that consumes the e-mail command queue (docs/iteracao-4.md, decision 1) and
+    AWS Lambda that consumes the e-mail command queue (docs/context/iteracao-4.md, decision 1) and
     sends via Amazon SES. Deliberately not Spring Boot: this needs to cold-start fast and
     cheap, which Quarkus (JVM mode here, GraalVM native image for real deploys) is built for
     and Spring Boot is not. Knows nothing about the main app's domain -- the queue message
@@ -61,7 +61,7 @@
     <!-- CDI-managed SesClient + config (quarkus.ses.aws.*) + Dev Services: auto-starts
          LocalStack via Testcontainers for tests when no endpoint-override is configured,
          same mechanism already used for Postgres/SQS elsewhere in this project (see
-         docs/iteracao-4.md, decision 3); requires Docker, so only exercised in the
+         docs/context/iteracao-4.md, decision 3); requires Docker, so only exercised in the
          `docker` CI profile, not this agent's sandbox. -->
     <dependency>
       <groupId>io.quarkiverse.amazonservices</groupId>
@@ -116,7 +116,7 @@
     <!-- `mvn package -Pnative -Dquarkus.native.container-build=true`: the real deployable
          artifact (GraalVM native image, fast cold start), built inside Quarkus's own builder
          container so no local GraalVM install is needed. Deliberately NOT wired into CI
-         (docs/iteracao-4.md): native builds take several minutes and there's nowhere to
+         (docs/context/iteracao-4.md): native builds take several minutes and there's nowhere to
          deploy the result yet (blocked on real AWS access); runs manually, locally, only
          when actually needed. -->
     <profile>

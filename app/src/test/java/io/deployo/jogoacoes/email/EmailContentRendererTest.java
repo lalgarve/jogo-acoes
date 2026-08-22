@@ -12,7 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Renders the real 5 templates under src/main/resources/templates/email -- exercises the
- * origem+conta selection matrix from docs/iteracao-4.md, "Catálogo de templates de e-mail".
+ * origem+conta selection matrix from docs/context/iteracao-4.md, "Catálogo de templates de
+ * e-mail".
  */
 class EmailContentRendererTest {
 
