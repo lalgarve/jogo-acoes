@@ -13,6 +13,6 @@ spring:
     enabled: false
 
 # Real queue exists (or will) here, unlike sandbox -- see application.yml for what this
-# switches and docs/iteracao-4.md for the queue-name property.
+# switches and docs/context/iteracao-4.md for the queue-name property.
 email:
   sender: sqs

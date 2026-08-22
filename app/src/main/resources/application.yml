@@ -36,7 +36,8 @@ login:
 
 # email.sender picks the EmailSender bean (io.deployo.jogoacoes.email): "stub" (default, no
 # value needed) just records to sent_email; "sqs" publishes to the command queue for
-# email-lambda to pick up (docs/iteracao-4.md). Only set to "sqs" in profiles that actually have
-# a queue to publish to -- see application-staging.yml/application-production.yml.
+# email-lambda to pick up (docs/context/iteracao-4.md). Only set to "sqs" in profiles that
+# actually have a queue to publish to -- see application-docker.yml/application-staging.yml/
+# application-production.yml.
 email:
   queue-name: ${EMAIL_QUEUE_NAME:jogo-acoes-email-commands}

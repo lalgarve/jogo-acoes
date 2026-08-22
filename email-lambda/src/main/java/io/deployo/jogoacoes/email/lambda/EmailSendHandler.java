@@ -17,10 +17,10 @@ import software.amazon.awssdk.services.ses.model.SendEmailRequest;
 
 /**
  * Consumes the SQS command queue and sends each message via SES. Deliberately dumb: the
- * message already carries the rendered subject/body (docs/iteracao-4.md, decision 1), so this
- * handler has zero knowledge of EmailTemplate, competitions, or any other application-domain
- * concept -- exactly so the queue contract never needs to change when the main app's template
- * catalog does.
+ * message already carries the rendered subject/body (docs/context/iteracao-4.md, decision 1),
+ * so this handler has zero knowledge of EmailTemplate, competitions, or any other
+ * application-domain concept -- exactly so the queue contract never needs to change when the
+ * main app's template catalog does.
  *
  * SQS's own redrive policy (maxReceiveCount + DLQ, infrastructure config -- decision 4) is
  * what implements retry: a thrown exception here just fails this invocation and lets SQS

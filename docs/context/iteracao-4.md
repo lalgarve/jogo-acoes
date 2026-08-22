@@ -1,10 +1,12 @@
 # Iteração 4 — Planejamento técnico
 
 Este documento registra as decisões técnicas da Iteração 4 (ver objetivo geral e o diagrama
-de arquitetura de referência em [`roadmap.md`](roadmap.md)) antes da implementação, no mesmo
-espírito de [`iteracao-2.md`](iteracao-2.md)/[`iteracao-3.md`](iteracao-3.md): um resumo pra
-servir de base caso a conversa precise mudar de contexto. **Nada aqui foi implementado
-ainda — é o plano em discussão.**
+de arquitetura de referência em [`roadmap.md`](../roadmap.md)), no mesmo espírito de
+[`iteracao-2.md`](iteracao-2.md)/[`iteracao-3.md`](iteracao-3.md): um resumo pra servir de
+base caso a conversa precise mudar de contexto. **Estado: implementado e mergeado em
+`master`** (PRs #13–#16) — o núcleo funciona de ponta a ponta, confirmado em CI real contra
+Postgres/LocalStack. O que resta (decisões 4–8, 10 em parte) está bloqueado por acesso a uma
+conta AWS real, não por trabalho de código pendente — ver cada decisão abaixo.
 
 **Aviso herdado do `roadmap.md`:** as iterações 4 e 5 foram inferidas a partir de um diagrama
 de arquitetura resumido, sem o restante da conversa que o originou. Os detalhes de contrato
@@ -54,7 +56,7 @@ Amazon SES.
 - Verificação de domínio/remetente no SES e saída do modo sandbox (necessário para enviar a
   destinatários não verificados em produção).
 
-**Fora de escopo (fica para a Iteração 5):** métricas/alertas, observabilidade do pipeline
+**Fora de escopo (fica para a Iteração 6):** métricas/alertas, observabilidade do pipeline
 (profundidade da fila, erros/retries da Lambda, *agregação*/alerta sobre taxa de
 bounce/complaint do SES). A *captação* bruta dos eventos individuais de bounce/complaint via
 SES Event Publishing é desta iteração — ver decisão 10; o que fica para a 5 é olhar pra esses
@@ -87,7 +89,8 @@ dados de forma agregada e alertar sobre eles.
 
    **Nota — geração do corpo/assunto (atualizada, ver "Produtor: `EmailSender` real" abaixo):**
    a nota original desta decisão previa adiar a renderização Thymeleaf pra depois da
-   Iteração 5, com um `switch` simples devolvendo texto puro no meio tempo. Não foi isso que
+   Iteração 6 (renumerada — era a 5 quando esta nota foi escrita), com um `switch` simples
+   devolvendo texto puro no meio tempo. Não foi isso que
    aconteceu: os 5 templates Thymeleaf já existiam prontos (catálogo abaixo) quando "ligar os
    fios" foi pedido nesta mesma sessão, então a renderização de verdade
    (`EmailContentRenderer`) foi implementada direto, sem a etapa intermediária de texto puro.
@@ -107,53 +110,91 @@ dados de forma agregada e alertar sobre eles.
    uma versão minor atrás do `4.1.0` deste projeto, mesmo tipo de defasagem dentro da major
    4.x já aceito para a `4.0.0`. `mvn -pl app -am verify` confirma que compila e todos os
    testes passam com essa combinação.
-3. ~~Como testar sem AWS real.~~ — **resolvido, mesmo padrão do Postgres real (Iterações 2 e
-   3).** LocalStack via `docker-compose` (serviço novo, ao lado do `db`), exercitado só no
-   profile `docker`/CI — o `sandbox` deste agente continua sem depender de rede/Docker, então
-   `StubEmailSender` permanece a implementação ativa lá. A implementação real (fila) só é
-   validada de ponta a ponta em CI, onde o Docker existe — mesma lacuna já documentada e
-   aceita nas iterações anteriores (o que roda aqui é só raciocínio + `mvn verify` local
-   contra `sandbox`, a confirmação de verdade vem do primeiro workflow real no GitHub
-   Actions). **Atualizado ao implementar:** `SqsEmailSender` existe e compila/testa
-   (`SqsEmailSenderTest`, com `SqsTemplate` mockado — sem contexto Spring, sem rede) desde
-   "ligar os fios", mas ainda não está ativo em `docker`/CI (só em `staging`/`production`,
-   ainda bloqueados por AWS real) — o `docker-compose.yml`/LocalStack desta decisão continuam
-   pendentes; ver "Produtor: `EmailSender` real" para o porquê de ter ficado assim
-   deliberadamente por agora.
-4. **Retry e política da DLQ.** Quantas tentativas antes de cair na dead-letter queue,
-   *backoff* entre elas — o roadmap menciona a DLQ mas não define esses números.
-5. **Provisionamento de infraestrutura.** Terraform vs. AWS CDK vs. criação manual só
-   documentada — o roadmap prefere "de preferência como código", sem fechar qual ferramenta.
-   Também decide onde esse código de infra mora (este repositório, um repositório separado).
+3. ~~Como testar sem AWS real.~~ — **resolvido e confirmado de ponta a ponta**, mesmo padrão
+   do Postgres real (Iterações 2 e 3). LocalStack via `docker-compose` (serviço `localstack`,
+   ao lado do `db`), exercitado no profile `docker`/CI — o `sandbox` deste agente continua sem
+   depender de rede/Docker, então `StubEmailSender` permanece a implementação ativa lá.
+   `SqsEmailSender` publica numa fila LocalStack real e `SqsEmailSenderDockerIntegrationTest`
+   lê de volta pra confirmar — não é mais só raciocínio + `mvn verify` local contra `sandbox`:
+   **o primeiro workflow real no GitHub Actions rodou** (PR #14), pegou dois bugs reais que só
+   apareciam com Docker de verdade (fila compartilhada com outros testes — PR #15; SES do
+   LocalStack exigindo remetente verificado, ver seção da Lambda abaixo — PR #16), os dois
+   corrigidos, e `master` está verde. Detalhes em "Produtor: `EmailSender` real".
+4. ~~Retry e política da DLQ.~~ — **resolvido: diferenciada por tipo de erro, com estado
+   consultável/cancelável via DynamoDB + processo agendado** (não a alternativa nativa do SQS
+   que chegou a ser considerada — descartada porque não dá pra cancelar uma mensagem já
+   publicada com atraso, nem expõe estado consultável sem reconstruir isso por fora).
+
+   **Motivação, além do retry em si**: quer um painel (no `app/`) com visibilidade e controle
+   sobre os e-mails — quantas tentativas, próximo horário, poder cancelar uma retentativa
+   pendente. Isso significa cenários BDD novos e mudança de código além desta iteração — não é
+   só a política de retry, é uma feature nova.
+
+   **Desenho**:
+   - Tabela DynamoDB (pode ser a mesma da decisão 8, ou uma separada — a decidir na
+     implementação): item por tentativa pendente, com `correlationId`, `attemptCount`,
+     `lastError`, `nextRetryAt`. Cancelar é literal: apagar (ou marcar) o item antes do
+     próximo ciclo do poller — nenhuma mensagem chega a ser publicada de novo.
+   - Política de retry (quantas tentativas, atraso por tipo de erro) num arquivo de
+     configuração empacotado com a Lambda, não *hardcoded* — o tipo de erro (`MessageRejectedException`
+     do SES vs. erro de rede/*throttling* vs. mensagem malformada) decide se tenta de novo e
+     com que atraso.
+   - Processo agendado (Lambda + regra do EventBridge, a cada 15 min) lê os itens com
+     `nextRetryAt` vencido e republica na fila de comando.
+   - **Como o painel (Postgres, `app/`) enxerga isso sem a Lambda tocar no banco** (decisão 1
+     continua travada: Lambda sem nenhum acesso a Postgres): a Lambda publica o ciclo de vida
+     da retentativa (agendada/tentada/esgotada/cancelada) como eventos numa fila que o `app/`
+     já escuta (decisão 10, `@SqsListener`) — o listener grava como linhas novas em
+     `EMAIL_EVENT`. Ver decisão 10 pro `event_type` novo que isso implica. `sent_email`
+     continua imutável (decisão 9) — número de tentativas não é campo dela, vive no estado de
+     retry (DynamoDB) e é espelhado em `EMAIL_EVENT` pro painel.
+   - **Cancelamento — resolvido: fila nova, só nesse sentido** (`app/` → Lambda). O painel não
+     tem (nem ganha) acesso direto ao DynamoDB — continua só publicando em fila, mesmo
+     princípio de IAM de privilégio mínimo da decisão 6. Fila nova (ex.
+     `jogo-acoes-email-retry-cancel`): `app/` publica `{correlationId}` quando o administrador
+     cancela uma retentativa pendente; a Lambda (mesmo `EmailSendHandler`, ramificando por tipo
+     de mensagem, ou um *handler* dedicado) consome, apaga/marca o item no DynamoDB, e publica
+     `RETRY_CANCELLED` na fila de eventos — fechando o ciclo pelo mesmo caminho já decidido
+     acima. `app/` termina com duas filas de saída (comando + cancelamento) e uma de entrada
+     (eventos); só a Lambda toca DynamoDB/SES.
+   - Nada disso implementado nesta sessão — desenho fica registrado aqui; a implementação (e
+     as novas features de painel/cancelamento) é trabalho de uma sessão futura, possivelmente
+     fora do escopo original desta iteração no `roadmap.md` (a rever).
+5. ~~Provisionamento de infraestrutura.~~ — **resolvido: Terraform, em um repositório
+   separado** deste (o do código da aplicação). Execução em si (`terraform apply` contra a
+   conta AWS real) continua bloqueada por acesso a essa conta — só a ferramenta e onde o
+   código mora foram decididos aqui.
 6. **IAM de privilégio mínimo.** Papéis/políticas exatos: o sistema principal só publica na
    fila (`sqs:SendMessage`), a Lambda só consome (`sqs:ReceiveMessage`/`DeleteMessage`) e usa
-   o SES (`ses:SendEmail`) — desenhar as policies JSON de verdade, não só o princípio.
+   o SES (`ses:SendEmail`) — desenhar as policies JSON de verdade, não só o princípio. **Ainda
+   não escrito** (pode ser feito sem acesso à conta AWS real, mas não foi nesta sessão);
+   aplicar as policies continua bloqueado por essa conta de qualquer forma.
 
-   **Credenciais AWS no CI/deploy (GitHub Actions):** o workflow de CI (`.github/workflows/
-   ci.yml`, já existente desde a Iteração 3) e um futuro passo de deploy/provisionamento da
-   Lambda vão precisar de credenciais AWS. Duas opções:
-   - **GitHub Actions secrets** (`Settings → Secrets and variables → Actions`): *write-only*
-     — depois de salvo, ninguém (nem admin do repositório) consegue ler o valor de novo pela
-     UI/API, só sobrescrever ou apagar; mascarado automaticamente nos logs do workflow se
-     aparecer na saída de um step (com ressalva: a mascara não é infalível pra segredo
-     multi-linha ou reescrito em outro encoding). *Environment secrets* (em vez de
-     repository-level) permitem regras de proteção adicionais — *required reviewers*,
-     restrição por branch de deploy.
-   - **OIDC (recomendado)**: em vez de guardar uma *access key* AWS de longo prazo como
-     secret, o GitHub Actions assume uma IAM role via token de curta duração emitido pra cada
-     execução do workflow — não existe credencial fixa armazenada em lugar nenhum pra vazar.
-     Requer configurar um *identity provider* OIDC do GitHub na conta AWS e uma *trust
-     policy* na role restringindo por repositório/branch. Mais seguro que secret nesse caso
-     específico (CI/deploy), mas secrets do GitHub continuam necessários para o que não é
-     credencial AWS assumível por role (ex. segredos de aplicação, se algum surgir).
-7. **Verificação de domínio/remetente no SES e saída do sandbox mode.** Requer acesso real à
+   ~~Credenciais AWS no CI/deploy (GitHub Actions).~~ — **resolvido: OIDC.** Em vez de guardar
+   uma *access key* AWS de longo prazo como secret, o GitHub Actions assume uma IAM role via
+   token de curta duração emitido pra cada execução do workflow (`AssumeRoleWithWebIdentity`
+   via STS) — não existe credencial fixa armazenada em lugar nenhum pra vazar; cada execução
+   recebe sua própria sessão temporária (validade tipicamente ~1h) e nada é reaproveitado na
+   próxima. Requer configurar um *identity provider* OIDC do GitHub na conta AWS e uma *trust
+   policy* na role restringindo por repositório/branch — parte do provisionamento Terraform da
+   decisão 5, ainda bloqueado pela mesma conta AWS real. Secrets do GitHub continuam
+   necessários pro que não é credencial AWS assumível por role (ex. segredos de aplicação, se
+   algum surgir).
 7. **Verificação de domínio/remetente no SES e saída do sandbox mode.** Requer acesso real à
    conta AWS do projeto — não é algo verificável dentro de uma sessão de agente; precisa de
    decisão/execução de quem tem essas credenciais.
-8. **Idempotência do consumidor.** SQS entrega "at-least-once" — a mesma mensagem pode chegar
-   duplicada na Lambda. Precisa decidir se isso importa aqui (reenviar o mesmo e-mail
-   duas vezes é um problema real de produto?) e, se sim, como deduplicar (id de correlação
-   como chave de idempotência, checagem contra `sent_email` antes de enviar, etc.).
+8. ~~Idempotência do consumidor.~~ — **resolvido: sim, importa (e-mail deve ser processado
+   só 1 vez), via DynamoDB.** SQS aqui é fila padrão, não FIFO — sem *dedup* nativo de 5
+   minutos — então a checagem é responsabilidade do handler. Checar contra `sent_email`
+   (Postgres do app principal) foi descartado: violaria o ponto central da decisão 1 (a Lambda
+   é deliberadamente burra, zero conhecimento de domínio/acesso ao banco do app). Padrão:
+   tabela DynamoDB nova (ex. `email-idempotency`), chave = `correlationId` (o mesmo id que já
+   cruza a fila); `PutItem` condicional (`attribute_not_exists(correlationId)`) antes de
+   chamar o SES — sucesso do *write* = primeira vez, processa; falha = duplicata, ignora. TTL
+   curto (ex. 7 dias) pra não crescer sem limite, já que só precisa cobrir a janela em que a
+   fila ainda pode reentregar. Precisa de `dynamodb:PutItem` na policy IAM da Lambda (decisão
+   6) e da tabela em si (decisão 5, Terraform) — não implementado nesta sessão, ambos
+   bloqueados pela mesma conta AWS real.
 9. ~~Onde a `sent_email` é gravada~~ — **resolvido, revisado nesta sessão.** A ideia inicial
    (uma segunda fila onde a própria Lambda reporta sucesso/falha logo após chamar o SES) foi
    descartada: a chamada `SES.SendEmail` retornar sucesso só significa que a AWS *aceitou*
@@ -171,25 +212,34 @@ dados de forma agregada e alertar sobre eles.
     *Configuration Set* associado ao envio, configurado para publicar eventos (`Send`,
     `Delivery`, `Bounce`, `Complaint`, `Reject`, `DeliveryDelay`) num tópico SNS. Uma fila SQS
     própria (distinta da fila de comando) assina esse tópico, e algum consumidor (outra
-    Lambda, ou um listener no próprio sistema principal) processa esses eventos. Falta
-    decidir:
-    - Quem consome essa fila de eventos — uma segunda Lambda simples que só grava no banco,
-      ou o sistema principal direto (ex. `@SqsListener` via Spring Cloud AWS, mesma
-      biblioteca da decisão 2).
-    - ~~Modelo de dados~~ — **resolvido.** Tabela nova `EMAIL_EVENT` (insert-only, mesmo
-      padrão de `LOG` e `SENT_EMAIL`, `jogo_acoes_app` só com `SELECT`/`INSERT`):
-      `id` PK, `sent_email_id` (FK pra `SENT_EMAIL`), `event_type` (enum:
-      `SEND`/`DELIVERY`/`BOUNCE`/`COMPLAINT`/`REJECT`/`DELIVERY_DELAY` — os mesmos tipos que o
-      *Configuration Set* publica), `occurred_at`, `detail` (nullable — motivo do bounce,
-      por exemplo). Uma tabela em vez de mutar um campo de status em `sent_email`, já que um
-      mesmo envio pode ter múltiplos eventos ao longo do tempo (envio aceito, depois bounce
-      horas depois) — preserva a disciplina de tabelas imutáveis já usada no projeto.
+    Lambda, ou um listener no próprio sistema principal) processa esses eventos.
+
+    **Ampliado pela decisão 4**: essa mesma fila de eventos (ou uma equivalente) também
+    carrega o ciclo de vida das retentativas — a Lambda vira produtora além de consumidora da
+    fila de comando, publicando quando agenda/tenta/esgota/cancela uma retentativa, pro
+    `app/` gravar como `EMAIL_EVENT` sem precisar de acesso a Postgres do lado da Lambda.
+    - ~~Quem consome essa fila de eventos~~ — **resolvido: o sistema principal**, direto
+      (`@SqsListener` via Spring Cloud AWS, mesma biblioteca da decisão 2), não uma segunda
+      Lambda. Já tem acesso ao Postgres onde `EMAIL_EVENT` mora — uma Lambda extra só pra
+      gravar essas linhas adicionaria um componente sem necessidade. Não implementado nesta
+      sessão: precisa da fila/tópico SNS existirem primeiro (infraestrutura, decisão 5,
+      bloqueada pela conta AWS real).
+    - ~~Modelo de dados~~ — **resolvido, revisado pela decisão 4.** Tabela nova `EMAIL_EVENT`
+      (insert-only, mesmo padrão de `LOG` e `SENT_EMAIL`, `jogo_acoes_app` só com
+      `SELECT`/`INSERT`): `id` PK, `sent_email_id` (FK pra `SENT_EMAIL`), `event_type` (enum:
+      `SEND`/`DELIVERY`/`BOUNCE`/`COMPLAINT`/`REJECT`/`DELIVERY_DELAY` — os tipos que o
+      *Configuration Set* do SES publica — **mais** `RETRY_SCHEDULED`/`RETRY_ATTEMPTED`/
+      `RETRY_EXHAUSTED`/`RETRY_CANCELLED`, que vêm da Lambda, não do SES, ver decisão 4),
+      `occurred_at`, `detail` (nullable — motivo do bounce, ou nº da tentativa/erro, conforme
+      o tipo). Uma tabela em vez de mutar um campo de status em `sent_email`, já que um mesmo
+      envio pode ter múltiplos eventos ao longo do tempo — preserva a disciplina de tabelas
+      imutáveis já usada no projeto.
     - Como associar o evento do SES de volta ao `sent_email`/`id de correlação` originais —
       o SES permite anexar *message tags* personalizadas ao `SendEmail`, então o
       `correlationId` da decisão 1 vai como tag pra voltar no evento e resolver o
       `sent_email_id` de `EMAIL_EVENT`.
     - Se a agregação/alerta sobre esses eventos é desta iteração ou só a captação bruta —
-      o roadmap já classifica "taxa de bounce/complaint" como observabilidade da Iteração 5;
+      o roadmap já classifica "taxa de bounce/complaint" como observabilidade da Iteração 6;
       o que esta iteração precisa decidir é só se os eventos brutos já são capturados e
       persistidos aqui (dado que a infraestrutura SNS/SQS é criada agora), mesmo que a
       agregação/alerta fique para depois.
@@ -201,9 +251,16 @@ acesso à AWS real — dá para avançar nelas dentro de uma sessão de agente. 
 da decisão 10 (`EMAIL_EVENT`) também não depende de AWS e pode ser desenhado junto. As
 decisões 5–7 e a parte de infraestrutura da 10 (Configuration Set, tópico SNS, fila de
 eventos) dependem de acesso à conta AWS do projeto, fora do alcance das ferramentas
-disponíveis aqui — ver `docs/desenvolvimento.md` para o padrão já usado nas iterações
+disponíveis aqui — ver `docs/context/desenvolvimento.md` para o padrão já usado nas iterações
 anteriores de documentar claramente o que foi validado de verdade vs. o que ficou por
 raciocínio/pendente de uma sessão local ou de quem tem as credenciais.
+
+**Atualização — todas as decisões desenháveis sem AWS real foram fechadas** (1, 2, 3, 4, 5,
+8, 9, 10-quem-consome, e a metade de 6 que é só o mecanismo de credencial do CI). O que
+sobra em aberto — 7 inteira, a metade de 6 que é escrever as policies JSON de verdade, a
+execução do Terraform da 5, a tabela DynamoDB da 8, e a infraestrutura SNS/Configuration Set
+da 10 — depende mesmo da conta AWS do projeto, não é mais uma questão de "dá pra avançar numa
+sessão de agente".
 
 ## Catálogo de templates de e-mail (Thymeleaf)
 
@@ -269,7 +326,7 @@ dois (`INVITE`/`REGISTRATION_LINK`): `Participation` sem `User` vinculado não g
 só e-mail.
 
 **Todo o texto visível do e-mail está em português**, seguindo a mesma convenção do resto da
-GUI (`docs/desenvolvimento.md`) — identificadores/comentários continuam em inglês, só o
+GUI (`docs/context/desenvolvimento.md`) — identificadores/comentários continuam em inglês, só o
 conteúdo voltado ao usuário final muda de idioma.
 
 **Pendência Java resolvida (commit c415c89, e a escolha do arquivo físico ligada na seção
@@ -466,10 +523,10 @@ nesta sessão: `3.38.3`/`3.21.2`, as mais recentes estáveis — não candidatas
   verificação "não se aplica" contra LocalStack; era só raciocínio, e o raciocínio estava
   errado. Corrigido chamando `SesClient.verifyEmailIdentity` pro remetente configurado antes
   de exercitar o handler em `EmailSendHandlerTest` — LocalStack marca a identidade como
-  verificada na hora, sem o ciclo de confirmação por e-mail que o SES real exige (raciocínio
-  a partir do comportamento documentado do LocalStack pra esse endpoint, não confirmado de
-  ponta a ponta neste sandbox pela mesma razão de sempre: sem Docker aqui, esse teste nunca
-  passa da fase `Skipped`).
+  verificada na hora, sem o ciclo de confirmação por e-mail que o SES real exige. **Confirmado
+  no GitHub Actions** (PR #16): com a correção, `mvn -pl email-lambda -am test` passa de
+  verdade contra o LocalStack real do CI, não só raciocínio — neste sandbox continua só
+  `Skipped` pela mesma razão de sempre (sem Docker aqui).
 - **Build nativo (`mvn package -Pnative -Dquarkus.native.container-build=true`) é manual,
   não entra no CI**: decisão explícita pra não gastar minutos do plano gratuito do GitHub
   Actions com compilação nativa (vários minutos) — e não há pra onde fazer deploy do
@@ -478,10 +535,46 @@ nesta sessão: `3.38.3`/`3.21.2`, as mais recentes estáveis — não candidatas
   (`mvn -B -pl app -am package`), com contexto na raiz do repo pra o reator conseguir ler o
   `pom.xml` do `email-lambda` também (mesmo só não buildando-o).
 
-**Validado nesta sessão** (sandbox, sem Docker): `mvn -pl app -am verify` — 66/66 testes,
-igual antes da reestruturação. `mvn -pl email-lambda -am verify` — sai limpo, 1 teste passa
-(o que não depende de AWS) e 1 fica `Skipped` (o que precisaria de LocalStack via Docker) em
-vez de derrubar o build. **Não validado**: build nativo, e o caminho completo com LocalStack
-de verdade (só roda com Docker — confirmação real vem do primeiro workflow no GitHub Actions,
-mesmo padrão
-já usado pro Postgres real nas iterações anteriores).
+**Validado neste sandbox** (sem Docker): `mvn -pl app -am verify`/`mvn -pl email-lambda -am
+verify` continuam saindo limpos aqui, com o teste dependente de SES sempre `Skipped` (nunca
+`Failed`) na ausência de Docker.
+
+**Validado de verdade no GitHub Actions** (primeiro workflow real, PRs #14/#15/#16 — a
+confirmação que faltava, já obtida): `mvn -pl email-lambda -am test` roda contra o LocalStack
+que o próprio Quarkus Dev Services sobe, `EmailSendHandlerTest.sendsAWellFormedMessageWithoutError`
+passa (não fica `Skipped`, como aqui), e `master` está verde.
+
+## Validação local com Docker real (fora do sandbox)
+
+Rodando numa sessão local (Windows, Docker Desktop) em 2026-08-20, a última lacuna acima
+("build nativo — continua manual/local, fora do CI") foi fechada de verdade — mesmo padrão
+já usado nas Iterações 2 e 3 pra confirmar o que nem o sandbox deste agente nem o CI (que
+deliberadamente não builda nativo) conseguem exercitar sozinhos.
+
+- **Suíte completa do reator, sem `docker-compose` ainda de pé**: `mvn test` na raiz —
+  `app`: 72 testes, 0 falhas/erros (`RunCucumberTest` 47, `AuditLoggingIntegrationTest` 6,
+  `LogRepositoryTest` 5, `EmailContentRendererTest` 5, `StubEmailSenderTest` 3,
+  `AltchaSmokeTest` 2, `AuditLogServiceTest` 2, `SpringSessionSmokeTest` 1,
+  `SqsEmailSenderTest` 1 — `SqsEmailSenderDockerIntegrationTest` corretamente `Skipped`
+  nesse momento, portas 5432/4566 do `docker-compose` ainda não abertas). `email-lambda`:
+  2 testes, 0 falhas — `EmailSendHandlerTest` rodou de verdade contra LocalStack sozinho,
+  via Dev Services do Quarkus (sobe um container Testcontainers automaticamente quando
+  detecta Docker disponível, sem precisar do `docker-compose.yml` deste repo) — mesmo
+  resultado do GitHub Actions acima, agora confirmado também localmente.
+- **`SqsEmailSenderDockerIntegrationTest`, de verdade (não `Skipped`)**: subindo
+  `docker compose up -d db localstack` e rodando só essa classe em seguida —
+  1/1 passando, publicando e recebendo uma mensagem real na fila do LocalStack via
+  `SqsTemplate`, confirmando o *round-trip* completo do `SqsEmailSender` (produtor) contra
+  uma fila de verdade, não mockada.
+- **Build nativo** (`mvn package -Pnative -Dquarkus.native.container-build=true`, dentro do
+  módulo `email-lambda`): **sucesso, primeira confirmação real que existe** —
+  `BUILD SUCCESS` em 5min59s, etapa de geração da imagem GraalVM em si (dentro do container
+  `quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25`, sem precisar de GraalVM
+  instalado localmente) levando 3min15s. `EmailSendHandlerTest` rodou de novo como parte
+  dessa fase `package` (2/2 passando) antes da compilação nativa em si. Artefato gerado:
+  `email-lambda/target/email-lambda-0.0.1-SNAPSHOT-runner`, executável nativo de 57,35MB
+  (54,06MB em disco). Confirma com números reais a estimativa de "vários minutos" que já
+  embasava a decisão de manter esse build fora do CI, em vez de só suposição — continua
+  manual/local por decisão explícita (custo de minutos do plano gratuito do GitHub Actions),
+  agora com a certeza de que o build de fato funciona quando alguém precisar rodá-lo.
+- `docker compose down` ao final, sem deixar containers presos.

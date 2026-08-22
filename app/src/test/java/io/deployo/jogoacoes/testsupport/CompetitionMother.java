@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Object Mother + Test Data Builder combo (see docs/desenvolvimento.md): each factory
+ * Object Mother + Test Data Builder combo (see docs/context/desenvolvimento.md): each factory
  * returns a request body already filled with valid data. Scenarios that test one invalid
  * field at a time (create_competition.feature's "Administrator tries to create a
  * competition with invalid data") start from here and overwrite just that field, keeping

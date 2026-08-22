@@ -1,7 +1,7 @@
 # Iteração 2 — Planejamento técnico
 
 Este documento registra as decisões técnicas da Iteração 2 (ver objetivo geral em
-[`roadmap.md`](roadmap.md)), para servir de resumo caso a conversa precise mudar de
+[`roadmap.md`](../roadmap.md)), para servir de resumo caso a conversa precise mudar de
 contexto.
 
 **Status: implementado.** O esqueleto (`pom.xml`, entidades JPA, migration Flyway, perfis

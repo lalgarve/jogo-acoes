@@ -1,7 +1,7 @@
 package io.deployo.jogoacoes.domain;
 
 /**
- * The catalog of auditable events, decided in Iteração 3 (see docs/iteracao-3.md). Each
+ * The catalog of auditable events, decided in Iteração 3 (see docs/context/iteracao-3.md). Each
  * constant carries its own description and the table {@code related_object_id} refers to,
  * since {@code log_type} is what tells a reader which table that polymorphic reference
  * points to. PARTICIPATION_STATUS_CHANGED also covers a participation's removal: there is

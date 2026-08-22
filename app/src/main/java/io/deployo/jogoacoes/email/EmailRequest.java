@@ -5,9 +5,9 @@ import io.deployo.jogoacoes.domain.RequestType;
 
 /**
  * Everything an {@link EmailSender} needs to record the send and pick/render the right one of
- * the 5 physical templates (docs/iteracao-4.md, "Catálogo de templates de e-mail"). The enum
- * alone is not enough for that last part: {@code LOGIN_LINK} covers 3 different physical files
- * (login-link.html / login-link-invite.html / login-link-request.html), disambiguated by
+ * the 5 physical templates (docs/context/iteracao-4.md, "Catálogo de templates de e-mail"). The
+ * enum alone is not enough for that last part: {@code LOGIN_LINK} covers 3 different physical
+ * files (login-link.html / login-link-invite.html / login-link-request.html), disambiguated by
  * {@code competitionName} (absent only for the standalone login case) and {@code origin}.
  *
  * @param userId           nullable — the recipient may not have an account yet.
