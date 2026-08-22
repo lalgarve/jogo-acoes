@@ -230,7 +230,7 @@ sequenceDiagram
     PS->>LLR: save(LoginLink)
     PS->>AL: record(LOGIN_LINK_ISSUED)
     PS->>ES: send(EmailRequest)
-    Note over ES: templateFor(participation):<br/>já tem conta → LOGIN_LINK;<br/>senão, INVITE ou REGISTRATION_LINK<br/>conforme requestType
+    Note over ES: templateFor(participation):<br/>já tem conta → LOGIN_LINK,<br/>senão, INVITE ou REGISTRATION_LINK<br/>conforme requestType
     PS->>PR: save(status=EMAIL_SENT)
     PS->>AL: record(PARTICIPATION_STATUS_CHANGED)
     PS-->>PC: void
