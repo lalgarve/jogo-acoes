@@ -4,38 +4,38 @@ Um jogo de simulação de investimentos em bolsa: administradores criam competi�
 (públicas ou privadas), jogadores entram via link de login enviado por e-mail e negociam
 ações com dados de mercado reais, competindo pela melhor evolução de portfólio.
 
-## Estado atual do projeto
+## O que o sistema faz
 
-Iterações 1–4 do [roadmap](docs/roadmap.md) implementadas: especificação de domínio,
-esqueleto da aplicação, os quatro fluxos principais (login, criação de competição, convite/
-entrada de jogadores) rodando de ponta a ponta, e a infraestrutura assíncrona de e-mail
-(SQS → Lambda → SES, com LocalStack substituindo a AWS real em CI). O que existe hoje:
+Um administrador cria uma competição — pública (qualquer jogador pode pedir entrada) ou
+privada (só quem é convidado por e-mail). Em ambos os casos o jogador entra via um link de
+login enviado por e-mail, sem senha: pede o link, recebe, clica, está dentro. Antes de aceitar
+qualquer e-mail (convite, pedido de entrada ou pedido de login), o sistema verifica se o
+domínio tem registro MX válido e não está numa lista de domínios descartáveis/temporários —
+reduz o volume de e-mails que nunca chegariam a lugar nenhum. Administradores também têm
+visão e controle sobre os jogadores de cada competição: reenviar um convite, remover um
+jogador.
 
 - **Sistema principal** (`app/`, Spring Boot): API REST (gerada a partir de
   [`docs/openapi.yaml`](docs/openapi.yaml)), persistência JPA/PostgreSQL, autenticação por
-  link de login, ALTCHA como captcha, log de auditoria.
-- **`email-lambda/`** (Quarkus): AWS Lambda que consome a fila de e-mail e envia via SES —
-  ver [`docs/context/iteracao-4.md`](docs/context/iteracao-4.md) pra decisões e pendências (a
-  maioria bloqueada por acesso a uma conta AWS real, não por código faltando).
-- **Especificação de domínio (BDD)** em `app/src/test/resources/features`: cenários Gherkin
-  de login, criação de competição, gerência de jogadores e pedido de entrada em competição —
-  todos implementados e passando.
-- **Modelo de dados** em [`docs/diagrams/der.md`](docs/diagrams/der.md): diagrama
-  entidade-relacionamento do domínio. [`docs/diagrams/classes.md`](docs/diagrams/classes.md)
-  e [`docs/diagrams/sequencia.md`](docs/diagrams/sequencia.md) complementam com diagrama de
-  classes e de sequência dos fluxos implementados (e, marcado à parte, do que já foi decidido
-  mas ainda não tem código).
-- **CI** (`.github/workflows/ci.yml`): testes com cobertura (JaCoCo, piso de 80%) contra
-  Postgres/LocalStack reais a cada PR.
-- **Plano de iterações** em [`docs/roadmap.md`](docs/roadmap.md): o que falta, da negociação
-  de ações em diante até gráficos e acessibilidade.
+  link de login, ALTCHA como captcha (prova de trabalho auto-hospedada, sem serviço
+  terceirizado), log de auditoria.
+- **`email-lambda/`**: AWS Lambda (Quarkus, com suporte a imagem nativa GraalVM) que consome
+  uma fila Amazon SQS e envia o e-mail via Amazon SES — desacoplada do sistema principal, que
+  só publica na fila e nunca fala com o SES diretamente.
+- **Especificação de domínio (BDD)**: cada fluxo (login, criação de competição, gerência de
+  jogadores, pedido de entrada) tem cenários Gherkin cobrindo caminho feliz e casos de erro,
+  executados a cada mudança.
+- **Modelo de dados** em [`docs/diagrams/der.md`](docs/diagrams/der.md), com diagrama de
+  classes e de sequência complementares em
+  [`docs/diagrams/classes.md`](docs/diagrams/classes.md) e
+  [`docs/diagrams/sequencia.md`](docs/diagrams/sequencia.md).
+- **Integração contínua** (`.github/workflows/ci.yml`): suíte de testes com piso de cobertura
+  de linha (JaCoCo, 80%) rodando a cada *pull request* contra infraestrutura real (Postgres,
+  fila SQS) via Docker, não contra simulação em memória.
 
 ## Arquitetura planejada
 
-- Backend em Spring Boot, persistência em PostgreSQL.
-- Cotações de ações via [Brapi](https://brapi.dev).
-- Envio assíncrono de e-mail: VPS (Spring Boot) publica mensagens numa fila Amazon SQS,
-  consumida por uma AWS Lambda que envia via Amazon SES.
+- Negociação de ações com cotações de mercado reais via [Brapi](https://brapi.dev).
 - Contabilidade da competição modelada como partida dobrada (lançamentos insert-only,
   débito/crédito em contas separadas), no estilo de sistemas financeiros reais.
 - Acessibilidade de gráficos com dois modos: descrição textual por pontos relevantes da
@@ -52,7 +52,7 @@ dos dois — cada módulo mantém seu próprio *parent*/BOM):
 | Módulo | Framework | O quê |
 |---|---|---|
 | `app/` | Spring Boot | O sistema principal (API, persistência, regras de negócio) |
-| `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES (ver [`docs/context/iteracao-4.md`](docs/context/iteracao-4.md)) |
+| `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES |
 
 `mvn verify` na raiz builda os dois. Pra rodar só um: `mvn -pl app -am verify` ou
 `mvn -pl email-lambda -am verify`.
@@ -72,8 +72,7 @@ nenhum for definido). Cada um tem seu arquivo `application-<nome>.yml` em
 
 `sandbox` e `docker` compartilham o mesmo modelo de dados, mas em pastas de migration
 separadas (`db/migration-h2` e `db/migration`) — a versão para H2 não tem os comandos
-`GRANT`/`REVOKE` de papéis de banco que só existem no Postgres real. Mais detalhes em
-[`docs/context/desenvolvimento.md`](docs/context/desenvolvimento.md#nomenclatura-de-ambientes).
+`GRANT`/`REVOKE` de papéis de banco que só existem no Postgres real.
 
 Para rodar localmente com Postgres real:
 

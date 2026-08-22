@@ -1,12 +1,10 @@
 # Diagramas de sequência — Jogo de Ações
 
-Um diagrama por fluxo, na mesma divisão dos arquivos `.feature` em
-`app/src/test/resources/features` (Iterações 2–3) mais o pipeline assíncrono de e-mail
-(Iteração 4). Os cinco primeiros descrevem código que existe e passa nos testes; o último é
-desenho de decisão, não implementado — ver
-[`docs/context/iteracao-4.md`](../context/iteracao-4.md).
+Um diagrama por fluxo, cobrindo os pontos de entrada do sistema: login, criação de
+competição e convite, verificação de e-mail, pedido de entrada em competição pública,
+gerência de jogadores e o pipeline assíncrono de envio de e-mail.
 
-## 1. Login (`login.feature`)
+## 1. Login
 
 Pedido de link e consumo em um dispositivo novo — as regras de dispositivo (reuso de link,
 limite por usuário) ficam resumidas numa nota; `LoginService.consumeLoginLink` trata todas no
@@ -17,6 +15,7 @@ sequenceDiagram
     actor J as Jogador
     participant LC as LoginController
     participant LS as LoginService
+    participant EV as EmailValidationService
     participant UR as UserRepository
     participant LLR as LoginLinkRepository
     participant AL as AuditLogService
@@ -24,18 +23,26 @@ sequenceDiagram
 
     J->>LC: POST /login-links {email}
     LC->>LS: requestLoginLink(email)
-    LS->>UR: findByEmail(email)
-    UR-->>LS: User (ou vazio)
-    alt e-mail conhecido
-        LS->>LLR: invalida links anteriores do usuário
-        LS->>LLR: save(novo LoginLink)
-        LS->>AL: record(LOGIN_LINK_ISSUED)
-        LS->>ES: send(EmailRequest{template=LOGIN_LINK})
-    else e-mail desconhecido
-        Note over LS: não revela se o e-mail existe -- retorna igual
+    LS->>EV: validate(email)
+    alt domínio sem MX ou descartável
+        EV--xLS: EmailRejectedException
+        LS-->>LC: erro
+        LC-->>J: 422 Unprocessable Entity
+    else domínio ok
+        EV-->>LS: ok
+        LS->>UR: findByEmail(email)
+        UR-->>LS: User (ou vazio)
+        alt e-mail conhecido
+            LS->>LLR: invalida links anteriores do usuário
+            LS->>LLR: save(novo LoginLink)
+            LS->>AL: record(LOGIN_LINK_ISSUED)
+            LS->>ES: send(EmailRequest{template=LOGIN_LINK})
+        else e-mail desconhecido
+            Note over LS: não revela se o e-mail existe -- retorna igual
+        end
+        LS-->>LC: void
+        LC-->>J: 202 Accepted
     end
-    LS-->>LC: void
-    LC-->>J: 202 Accepted
 
     J->>LC: GET /login-links/{token}
     LC->>LS: consumeLoginLink(token)
@@ -49,7 +56,64 @@ sequenceDiagram
     LC-->>J: 200 + redirecionamento
 ```
 
-## 2. Criação de competição privada + convite (`create_competition.feature`)
+## 2. Verificação de e-mail antes do cadastro
+
+Checagem síncrona feita no momento em que qualquer e-mail é coletado (convite de
+administrador, pedido de entrada, pedido de login) — mesmo ponto onde o captcha já é
+validado, quando há um. Falha rejeita o cadastro imediatamente, sem criar `Participation`/
+`LoginLink` para um endereço que não vai receber nada. Duas checagens, nessa ordem: registro
+MX do domínio (pega domínio inexistente ou digitado errado) e domínio descartável/temporário
+contra uma lista de bloqueio local. Não cobre a existência real da caixa postal — isso fica
+fora de escopo (não confiável, mal-visto por provedores de e-mail).
+
+```mermaid
+sequenceDiagram
+    actor U as Usuário (jogador ou administrador)
+    participant Svc as Serviço de negócio<br/>(Login/Competition/EntryRequest)
+    participant EV as EmailValidationService
+    participant DNS as Resolvedor DNS
+    participant DDB as Domínios descartáveis (Postgres)
+
+    U->>Svc: informa e-mail
+    Svc->>EV: validate(email)
+    EV->>DNS: consulta registro MX do domínio
+    alt sem registro MX (domínio inexistente ou mal digitado)
+        DNS-->>EV: nenhum registro
+        EV--xSvc: EmailRejectedException("domínio sem MX")
+    else registro MX encontrado
+        DNS-->>EV: registro(s) MX
+        EV->>DDB: domínio está na lista de descartáveis?
+        alt domínio descartável/temporário
+            DDB-->>EV: sim
+            EV--xSvc: EmailRejectedException("domínio descartável")
+        else domínio aceito
+            DDB-->>EV: não
+            EV-->>Svc: ok
+            Note over Svc: segue o fluxo normal de cadastro/convite
+        end
+    end
+```
+
+A lista de domínios descartáveis é mantida localmente (não é uma consulta externa a cada
+e-mail) e atualizada uma vez por dia a partir de uma fonte pública mantida em ordem
+alfabética — o que torna barato calcular só o que mudou desde a última atualização, em vez de
+reprocessar a lista inteira.
+
+```mermaid
+sequenceDiagram
+    participant Sch as Processo agendado<br/>(1x/dia)
+    participant Fonte as Lista pública de domínios descartáveis
+    participant DDB as Domínios descartáveis (Postgres)
+
+    Sch->>Fonte: busca o arquivo atual
+    Fonte-->>Sch: conteúdo (ordem alfabética)
+    Sch->>DDB: lê a versão local anterior
+    DDB-->>Sch: lista local
+    Sch->>Sch: calcula diff (adições/remoções)
+    Sch->>DDB: aplica só as entradas adicionadas/removidas
+```
+
+## 3. Criação de competição privada + convite
 
 Duas chamadas: criar a competição (gera `Participation` por e-mail convidado, sem enviar
 nada ainda) e decidir o momento do envio.
@@ -59,6 +123,7 @@ sequenceDiagram
     actor A as Administrador
     participant CC as CompetitionsController
     participant CS as CompetitionService
+    participant EV as EmailValidationService
     participant UR as UserRepository
     participant PR as ParticipationRepository
     participant LLR as LoginLinkRepository
@@ -71,10 +136,17 @@ sequenceDiagram
     CS->>CS: save(Competition, status=AWAITING_INVITES)
     CS->>AL: record(COMPETITION_CREATED)
     loop cada e-mail convidado
-        CS->>UR: findByEmail(email).filter(isRegistered)
-        UR-->>CS: User (ou vazio) -- já tem conta?
-        CS->>PR: save(Participation, status=EMAIL_NOT_SENT, requestType=INVITE)
-        CS->>AL: record(PARTICIPATION_STATUS_CHANGED)
+        CS->>EV: validate(email)
+        alt domínio sem MX ou descartável
+            EV--xCS: EmailRejectedException
+            Note over CS: e-mail rejeitado não entra na<br/>competição -- não cria Participation
+        else domínio ok
+            EV-->>CS: ok
+            CS->>UR: findByEmail(email).filter(isRegistered)
+            UR-->>CS: User (ou vazio) -- já tem conta?
+            CS->>PR: save(Participation, status=EMAIL_NOT_SENT, requestType=INVITE)
+            CS->>AL: record(PARTICIPATION_STATUS_CHANGED)
+        end
     end
     CS-->>CC: Competition
     CC-->>A: 201 Created
@@ -94,7 +166,7 @@ sequenceDiagram
     CC-->>A: 200 OK
 ```
 
-## 3. Pedido de entrada em competição pública (`request_competition_entry.feature`)
+## 4. Pedido de entrada em competição pública
 
 Jogador sem sessão, com captcha — cobre tanto quem nunca teve conta quanto quem já tem conta
 de outra competição (o `EmailTemplate` muda, mas o fluxo é o mesmo).
@@ -105,6 +177,7 @@ sequenceDiagram
     participant ERC as EntryRequestsController
     participant ERS as EntryRequestService
     participant Cap as CaptchaService
+    participant EV as EmailValidationService
     participant UR as UserRepository
     participant PR as ParticipationRepository
     participant LLR as LoginLinkRepository
@@ -115,23 +188,31 @@ sequenceDiagram
     ERC->>ERS: requestEntry(id, request)
     ERS->>Cap: verify(captchaToken)
     Cap-->>ERS: ok (ou CaptchaInvalidException)
-    ERS->>UR: findByEmail(email)
-    UR-->>ERS: User (ou vazio)
-    Note over ERS: template = REGISTRATION_LINK (sem conta)<br/>ou LOGIN_LINK (já registrado)
-    ERS->>PR: find ou cria Participation (requestType=REQUEST)
-    ERS->>LLR: save(LoginLink)
-    ERS->>AL: record(LOGIN_LINK_ISSUED)
-    ERS->>ES: send(EmailRequest)
-    ERS->>PR: save(status=EMAIL_SENT)
-    ERS->>AL: record(PARTICIPATION_STATUS_CHANGED)
-    ERS-->>ERC: void
-    ERC-->>J: 202 Accepted
+    ERS->>EV: validate(email)
+    alt domínio sem MX ou descartável
+        EV--xERS: EmailRejectedException
+        ERS-->>ERC: erro
+        ERC-->>J: 422 Unprocessable Entity
+    else domínio ok
+        EV-->>ERS: ok
+        ERS->>UR: findByEmail(email)
+        UR-->>ERS: User (ou vazio)
+        Note over ERS: template = REGISTRATION_LINK (sem conta)<br/>ou LOGIN_LINK (já registrado)
+        ERS->>PR: find ou cria Participation (requestType=REQUEST)
+        ERS->>LLR: save(LoginLink)
+        ERS->>AL: record(LOGIN_LINK_ISSUED)
+        ERS->>ES: send(EmailRequest)
+        ERS->>PR: save(status=EMAIL_SENT)
+        ERS->>AL: record(PARTICIPATION_STATUS_CHANGED)
+        ERS-->>ERC: void
+        ERC-->>J: 202 Accepted
+    end
 ```
 
-## 4. Gerência de jogadores — reenvio e remoção (`manage_competition_players.feature`)
+## 5. Gerência de jogadores — reenvio e remoção
 
 `resendInviteEmail(s)` reaproveita o mesmo `sendInviteEmail` privado usado na criação (fluxo
-2); a remoção precisa apagar o `LoginLink` antes da `Participation` por causa da FK real.
+3); a remoção precisa apagar o `LoginLink` antes da `Participation` por causa da FK real.
 
 ```mermaid
 sequenceDiagram
@@ -149,7 +230,7 @@ sequenceDiagram
     PS->>LLR: save(LoginLink)
     PS->>AL: record(LOGIN_LINK_ISSUED)
     PS->>ES: send(EmailRequest)
-    Note over ES: templateFor(participation):<br/>já tem conta -> LOGIN_LINK;<br/>senão, INVITE ou REGISTRATION_LINK<br/>conforme requestType
+    Note over ES: templateFor(participation):<br/>já tem conta → LOGIN_LINK;<br/>senão, INVITE ou REGISTRATION_LINK<br/>conforme requestType
     PS->>PR: save(status=EMAIL_SENT)
     PS->>AL: record(PARTICIPATION_STATUS_CHANGED)
     PS-->>PC: void
@@ -165,12 +246,10 @@ sequenceDiagram
     PC-->>A: 204 No Content
 ```
 
-## 5. Envio assíncrono de e-mail — produtor → SQS → Lambda → SES (Iteração 4)
+## 6. Envio assíncrono de e-mail — produtor → SQS → Lambda → SES
 
-O que todo `EmailSender.send(...)` acima dispara quando a implementação ativa é
-`SqsEmailSender` (perfis `staging`/`production`; `docker`/CI publica de verdade contra
-LocalStack desde a Iteração 4, mas não é o padrão ainda — `sandbox`/testes usam
-`StubEmailSender`, que pula direto para "grava `SentEmail`").
+O que todo `EmailSender.send(...)` acima dispara: o sistema principal publica numa fila
+Amazon SQS, e uma AWS Lambda consome e envia via Amazon SES.
 
 ```mermaid
 sequenceDiagram
@@ -190,7 +269,6 @@ sequenceDiagram
     Rec->>Rec: grava SentEmail (Postgres)
     Rec-->>Sender: SentEmail{id}
     Sender->>SQS: send(EmailMessage{correlationId=SentEmail.id, subject, body})
-    Note over SQS: LocalStack em docker/CI;<br/>fila real em staging/production (bloqueado por acesso AWS)
 
     SQS-->>Lambda: entrega a mensagem
     Lambda->>Lambda: parse EmailMessage (JSON)
@@ -201,52 +279,5 @@ sequenceDiagram
     else erro (rejeitado, throttling, rede)
         SES--xLambda: exceção
         Lambda-->>SQS: não confirma -- redrive (maxReceiveCount) ou DLQ
-    end
-```
-
-## 6. Retentativa com política por erro + painel (decidido, não implementado)
-
-Desenho da decisão 4 (`docs/context/iteracao-4.md`) — nenhuma classe/endpoint deste diagrama
-existe no código ainda. `app/` só publica em fila (comando + cancelamento) e só lê a fila de
-eventos — nunca acessa DynamoDB/SES diretamente; isso continua exclusivo da Lambda.
-
-```mermaid
-sequenceDiagram
-    participant SES as Amazon SES
-    participant Lambda as EmailSendHandler
-    participant DDB as DynamoDB (estado de retentativa)
-    participant SQS as Fila SQS (comando)
-    participant Cnl as Fila de cancelamento
-    participant Evt as Fila de eventos
-    participant App as app/ (@SqsListener)
-    participant PG as Postgres (EMAIL_EVENT)
-    participant Poller as Processo agendado<br/>(EventBridge, 15 min)
-    actor Adm as Administrador (painel)
-
-    Lambda->>SES: sendEmail(...)
-    SES--xLambda: erro retentável (ex. throttling)
-    Lambda->>DDB: PutItem {correlationId, attemptCount+1,<br/>nextRetryAt, lastError}
-    Lambda->>Evt: publish RETRY_SCHEDULED
-    Evt-->>App: consome evento
-    App->>PG: insert EMAIL_EVENT{event_type=RETRY_SCHEDULED}
-
-    Adm->>App: GET /admin/emails (painel)
-    App->>PG: select EMAIL_EVENT
-    PG-->>App: histórico de tentativas
-    App-->>Adm: status, tentativas, próximo horário
-
-    Adm->>App: cancelar retentativa pendente
-    App->>Cnl: publish {correlationId}
-    Cnl-->>Lambda: consome
-    Lambda->>DDB: apaga/marca o item (correlationId)
-    Lambda->>Evt: publish RETRY_CANCELLED
-    Evt-->>App: consome evento
-    App->>PG: insert EMAIL_EVENT{event_type=RETRY_CANCELLED}
-
-    loop a cada 15 min
-        Poller->>DDB: query nextRetryAt <= agora
-        DDB-->>Poller: itens vencidos (já sem os cancelados)
-        Poller->>SQS: republica na fila de comando
-        Poller->>Evt: publish RETRY_ATTEMPTED
     end
 ```

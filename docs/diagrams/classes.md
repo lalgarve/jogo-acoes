@@ -1,11 +1,11 @@
 # Diagrama de classes — Jogo de Ações
 
-Duas partes: o domínio principal (`app/`, Iterações 2–3) e o pacote de e-mail assíncrono
-(`app/` + `email-lambda/`, Iteração 4). Reflete o código como está — getters/setters omitidos
-por brevidade, e só os campos/relacionamentos que aparecem no [DER](der.md) ou no
-[`docs/context/iteracao-4.md`](../context/iteracao-4.md) estão desenhados.
+Três partes: o domínio principal, o pacote de verificação de e-mail e o pacote de e-mail
+assíncrono (produtor no sistema principal, consumidor numa AWS Lambda separada).
+Getters/setters omitidos por brevidade; só os campos/relacionamentos que aparecem no
+[DER](der.md) estão desenhados.
 
-## Domínio principal (implementado)
+## Domínio principal
 
 ```mermaid
 classDiagram
@@ -136,12 +136,51 @@ string `ADMINISTRATOR`/`PLAYER`, evitando *magic strings* onde o código compara
 `Role.name`; a tabela `role` continua sendo dados, não um enum Java, pra permitir novos papéis
 sem alterar código (comentário original em `RoleName.java`).
 
-## E-mail assíncrono (implementado nesta iteração)
+## Verificação de e-mail
+
+Checagem de MX/domínio descartável feita antes de aceitar um e-mail em qualquer ponto de
+coleta (convite, pedido de entrada, pedido de login) — ver diagrama de sequência
+correspondente em [`sequencia.md`](sequencia.md).
+
+```mermaid
+classDiagram
+    class EmailValidationService {
+        -MxRecordResolver mxResolver
+        -DisposableDomainRepository disposableDomainRepository
+        +validate(String email)
+    }
+    class MxRecordResolver {
+        <<interface>>
+        +hasMxRecord(String domain) boolean
+    }
+    class DisposableDomainRepository {
+        +existsByDomain(String domain) boolean
+    }
+    class DisposableDomain {
+        +Long id
+        +String domain
+        +LocalDate addedAt
+    }
+    class EmailRejectedException {
+        <<exception>>
+        +String reason
+    }
+    class DisposableDomainRefreshJob {
+        -DisposableDomainRepository repository
+        +refresh()
+    }
+
+    EmailValidationService ..> MxRecordResolver : usa
+    EmailValidationService ..> DisposableDomainRepository : usa
+    EmailValidationService ..> EmailRejectedException : lança se inválido
+    DisposableDomainRepository ..> DisposableDomain : consulta
+    DisposableDomainRefreshJob ..> DisposableDomainRepository : atualiza 1x/dia
+```
+
+## E-mail assíncrono
 
 Lado produtor (`app/`, pacote `io.deployo.jogoacoes.email`) e consumidor (`email-lambda/`,
-pacote `io.deployo.jogoacoes.email.lambda`) — ver
-[`docs/context/iteracao-4.md`](../context/iteracao-4.md), seção "Produtor: `EmailSender` real",
-pro raciocínio por trás de cada peça.
+pacote `io.deployo.jogoacoes.email.lambda`).
 
 ```mermaid
 classDiagram
@@ -221,49 +260,6 @@ classDiagram
 ```
 
 `EmailMessage` existe **duas vezes** — uma cópia em cada lado (`app/`/`email-lambda/`), de
-propósito: é o contrato da fila (decisão 1, `docs/context/iteracao-4.md`), não um tipo
-compartilhado num módulo comum, pra nenhum dos dois lados forçar release do outro se mudar.
-`StubEmailSender` é a implementação ativa em `sandbox`/testes (`email.sender` ausente);
-`SqsEmailSender` em `docker`/`staging`/`production` (`email.sender: sqs`) — `docker`/CI publica
-de verdade contra LocalStack desde a Iteração 4 (`docs/context/iteracao-4.md`).
-
-## Decidido, ainda não implementado
-
-`EMAIL_EVENT` (decisão 10) e o item de retentativa no DynamoDB (decisão 4) não têm classe
-Java ainda — desenho registrado em [`docs/context/iteracao-4.md`](../context/iteracao-4.md),
-não no código.
-
-```mermaid
-classDiagram
-    class EmailEvent["EmailEvent (planejado)"] {
-        <<not implemented>>
-        +Long id
-        +Long sentEmailId
-        +EmailEventType eventType
-        +LocalDateTime occurredAt
-        +String detail
-    }
-    class EmailEventType["EmailEventType (planejado)"] {
-        <<enumeration>>
-        <<not implemented>>
-        SEND
-        DELIVERY
-        BOUNCE
-        COMPLAINT
-        REJECT
-        DELIVERY_DELAY
-        RETRY_SCHEDULED
-        RETRY_ATTEMPTED
-        RETRY_EXHAUSTED
-        RETRY_CANCELLED
-    }
-    class RetryItem["Item DynamoDB de retentativa (planejado)"] {
-        <<not implemented>>
-        +String correlationId
-        +int attemptCount
-        +String lastError
-        +Instant nextRetryAt
-    }
-    EmailEvent --> EmailEventType
-    EmailEvent --> SentEmail : sentEmailId (FK)
-```
+propósito: é o contrato da fila, não um tipo compartilhado num módulo comum, pra nenhum dos
+dois lados forçar release do outro se mudar. `StubEmailSender` é a implementação ativa em
+`sandbox`/testes; `SqsEmailSender` em `docker`/`staging`/`production`.

@@ -160,6 +160,86 @@ dados de forma agregada e alertar sobre eles.
    - Nada disso implementado nesta sessão — desenho fica registrado aqui; a implementação (e
      as novas features de painel/cancelamento) é trabalho de uma sessão futura, possivelmente
      fora do escopo original desta iteração no `roadmap.md` (a rever).
+
+   **Diagramas de apoio** (desenho da decisão, não código — movidos de `docs/diagrams/`
+   porque essa feature ainda não tem iteração/sessão atribuída no roadmap, então não faz
+   parte da documentação de produto publicada):
+
+   ```mermaid
+   classDiagram
+       class EmailEvent["EmailEvent (planejado)"] {
+           <<not implemented>>
+           +Long id
+           +Long sentEmailId
+           +EmailEventType eventType
+           +LocalDateTime occurredAt
+           +String detail
+       }
+       class EmailEventType["EmailEventType (planejado)"] {
+           <<enumeration>>
+           <<not implemented>>
+           SEND
+           DELIVERY
+           BOUNCE
+           COMPLAINT
+           REJECT
+           DELIVERY_DELAY
+           RETRY_SCHEDULED
+           RETRY_ATTEMPTED
+           RETRY_EXHAUSTED
+           RETRY_CANCELLED
+       }
+       class RetryItem["Item DynamoDB de retentativa (planejado)"] {
+           <<not implemented>>
+           +String correlationId
+           +int attemptCount
+           +String lastError
+           +Instant nextRetryAt
+       }
+       EmailEvent --> EmailEventType
+       EmailEvent --> SentEmail : sentEmailId (FK)
+   ```
+
+   ```mermaid
+   sequenceDiagram
+       participant SES as Amazon SES
+       participant Lambda as EmailSendHandler
+       participant DDB as DynamoDB (estado de retentativa)
+       participant SQS as Fila SQS (comando)
+       participant Cnl as Fila de cancelamento
+       participant Evt as Fila de eventos
+       participant App as app/ (@SqsListener)
+       participant PG as Postgres (EMAIL_EVENT)
+       participant Poller as Processo agendado<br/>(EventBridge, 15 min)
+       actor Adm as Administrador (painel)
+
+       Lambda->>SES: sendEmail(...)
+       SES--xLambda: erro retentável (ex. throttling)
+       Lambda->>DDB: PutItem {correlationId, attemptCount+1,<br/>nextRetryAt, lastError}
+       Lambda->>Evt: publish RETRY_SCHEDULED
+       Evt-->>App: consome evento
+       App->>PG: insert EMAIL_EVENT{event_type=RETRY_SCHEDULED}
+
+       Adm->>App: GET /admin/emails (painel)
+       App->>PG: select EMAIL_EVENT
+       PG-->>App: histórico de tentativas
+       App-->>Adm: status, tentativas, próximo horário
+
+       Adm->>App: cancelar retentativa pendente
+       App->>Cnl: publish {correlationId}
+       Cnl-->>Lambda: consome
+       Lambda->>DDB: apaga/marca o item (correlationId)
+       Lambda->>Evt: publish RETRY_CANCELLED
+       Evt-->>App: consome evento
+       App->>PG: insert EMAIL_EVENT{event_type=RETRY_CANCELLED}
+
+       loop a cada 15 min
+           Poller->>DDB: query nextRetryAt <= agora
+           DDB-->>Poller: itens vencidos (já sem os cancelados)
+           Poller->>SQS: republica na fila de comando
+           Poller->>Evt: publish RETRY_ATTEMPTED
+       end
+   ```
 5. ~~Provisionamento de infraestrutura.~~ — **resolvido: Terraform, em um repositório
    separado** deste (o do código da aplicação). Execução em si (`terraform apply` contra a
    conta AWS real) continua bloqueada por acesso a essa conta — só a ferramenta e onde o
