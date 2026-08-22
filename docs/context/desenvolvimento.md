@@ -89,6 +89,12 @@ sem relação numa mesma mensagem.
 - Nunca commitar direto no branch principal (`main`/`master`); toda mudança entra por PR.
 - Uma PR corresponde a um branch — não empilhar trabalhos sem relação na mesma PR só porque
   foram feitos na mesma sessão.
+- Título e descrição de PR seguem a mesma convenção de idioma das mensagens de commit —
+  inglês (ver tabela "Idioma" acima) — porque o GitHub usa o título da PR como corpo do
+  merge commit em `main`/`master` quando a PR é mesclada; uma PR escrita em português vaza
+  pro histórico de commits nesse ponto exatamente como um `git commit -m` em português
+  vazaria. (Erro cometido nas primeiras PRs da Iteração 4/5 — título/descrição em
+  português — corrigido a partir da PR #17.)
 - Quando o trabalho de uma PR já mesclada precisa continuar, reaproveitar o mesmo branch
   (recriado a partir do estado atual da branch principal) em vez de acumular branches novos
   a cada retomada — mantém o histórico de PRs correspondendo 1:1 a unidades de trabalho
