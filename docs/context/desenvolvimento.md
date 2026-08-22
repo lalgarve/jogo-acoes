@@ -2,7 +2,7 @@
 
 Este documento descreve o **fluxo de trabalho e as convenções de nomenclatura** usados
 neste projeto — não as decisões técnicas específicas dele (essas ficam em
-[`roadmap.md`](roadmap.md) e nos documentos de cada iteração). A ideia é que este arquivo
+[`roadmap.md`](../roadmap.md) e nos documentos de cada iteração). A ideia é que este arquivo
 seja **agnóstico de projeto**: pode ser copiado como ponto de partida para outro repositório
 sem precisar reexplicar o processo do zero.
 
@@ -104,9 +104,9 @@ sem relação numa mesma mensagem.
 ## Documentação viva por fase/iteração
 
 - Antes de implementar uma fase de trabalho não trivial, registrar as decisões técnicas em
-  aberto num documento de planejamento dessa fase (ex.: `docs/iteracao-N.md`). Funciona como
-  uma ata que sobrevive a troca de contexto (nova sessão, outra pessoa assumindo o
-  trabalho).
+  aberto num documento de planejamento dessa fase (ex.: `docs/context/iteracao-N.md` — ver
+  "Onde a documentação de contexto mora" abaixo). Funciona como uma ata que sobrevive a troca
+  de contexto (nova sessão, outra pessoa assumindo o trabalho).
 - Decisões são marcadas como resolvidas no próprio texto conforme são tomadas, preservando
   o raciocínio e as alternativas consideradas — não só a conclusão final. Isso evita ter que
   re-explicar o "por quê" de uma escolha mais tarde.
@@ -118,6 +118,40 @@ sem relação numa mesma mensagem.
   sincronia (geração de código a partir do contrato, quando possível).
 - Modelo de dados (diagrama entidade-relacionamento) é desenhado antes das entidades de
   código.
+
+## Onde a documentação de contexto mora
+
+Documentação de projeto tem duas plateias diferentes, e cada uma mora num lugar diferente
+dentro de `docs/`:
+
+- **Documentação de produto/arquitetura** — destinada a quem avalia ou usa o projeto de
+  fora (README, roadmap, modelo de dados, diagramas de arquitetura/sequência/classes). Fica
+  na raiz de `docs/` (ou em subpastas temáticas, ex. `docs/diagrams/`), pronta pra ser
+  publicada como está.
+- **Documentação de contexto de sessão** — a ata de decisões técnicas e o estado de "onde
+  paramos" que permite retomar o trabalho entre sessões de chat (este arquivo e os
+  documentos de iteração, ex. `docs/context/iteracao-N.md`). Serve quem está desenvolvendo,
+  não quem consome o produto publicado. Fica em `docs/context/`, separada da anterior.
+
+A separação existe porque as duas têm ciclo de vida e tom diferentes: documentação de
+produto é escrita pra durar e ser lida por terceiros; documentação de contexto é escrita
+rápido, durante o próprio trabalho, pra sobreviver a uma troca de sessão — cheia de "ainda
+não decidido"/"validado nesta sessão", raciocínio capturado no calor da decisão, não prosa
+revisada. Publicar as duas juntas confundiria as duas audiências.
+
+**Exemplo usado neste projeto**: o site institucional que importa este repositório como
+projeto de portfólio (Hugo + Docsy) varre `docs/` e publica todo `.md` que encontra, mas
+pula por convenção qualquer diretório chamado `uml`, `backlog` ou `context` — a regra
+existia para as duas primeiras, e foi estendida para cobrir `context` especificamente por
+causa deste projeto, valendo automaticamente para os próximos também. Por isso:
+
+| Arquivo | Categoria | Publicado? |
+|---|---|---|
+| `docs/roadmap.md`, `docs/diagrams/der.md` | Produto | Sim |
+| `docs/context/desenvolvimento.md` (este arquivo), `docs/context/iteracao-N.md` | Contexto de sessão | Não |
+
+Um novo documento de retomada de contexto (ex. a próxima iteração) já nasce em
+`docs/context/` — não é escrito na raiz de `docs/` pra ser movido depois.
 
 ## Nomenclatura de ambientes
 

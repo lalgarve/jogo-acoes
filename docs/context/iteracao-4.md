@@ -1,7 +1,7 @@
 # Iteração 4 — Planejamento técnico
 
 Este documento registra as decisões técnicas da Iteração 4 (ver objetivo geral e o diagrama
-de arquitetura de referência em [`roadmap.md`](roadmap.md)), no mesmo espírito de
+de arquitetura de referência em [`roadmap.md`](../roadmap.md)), no mesmo espírito de
 [`iteracao-2.md`](iteracao-2.md)/[`iteracao-3.md`](iteracao-3.md): um resumo pra servir de
 base caso a conversa precise mudar de contexto. **Estado: implementado e mergeado em
 `master`** (PRs #13–#16) — o núcleo funciona de ponta a ponta, confirmado em CI real contra
