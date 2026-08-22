@@ -159,6 +159,27 @@ causa deste projeto, valendo automaticamente para os próximos também. Por isso
 Um novo documento de retomada de contexto (ex. a próxima iteração) já nasce em
 `docs/context/` — não é escrito na raiz de `docs/` pra ser movido depois.
 
+## Diagramas Mermaid: validar a renderização de verdade
+
+Um diagrama Mermaid com sintaxe que "parece certa" pode ainda assim falhar ao renderizar —
+a gramática tem armadilhas que só aparecem no parser de verdade (ex.: um `;` dentro do texto
+de uma `Note` termina a instrução ali, mesmo no meio da frase, e quebra o resto da linha).
+Escrever o `.md` e assumir que vai renderizar no GitHub/Docsy sem checar é o mesmo erro que
+"passou no teste, quebrou em produção" (ver seção "Testes" acima) — só que pra documentação.
+Antes de considerar um diagrama pronto, renderizar de verdade contra um motor Mermaid real,
+não só validar visualmente/mentalmente a sintaxe.
+
+**Exemplo usado neste projeto**: `npx @mermaid-js/mermaid-cli` (mesmo motor que o GitHub
+embute pra renderizar blocos ```` ```mermaid ```` em Markdown) rodando localmente reproduziu,
+com a mensagem de erro idêntica, um erro de renderização visto no GitHub — e foi bisseccionando
+contra esse motor real, não adivinhando pela mensagem de erro, que a causa foi isolada (era o
+`;` citado acima, não a seta `->` que parecia mais óbvia à primeira vista). Em ambiente
+rodando como root, precisa do Puppeteer com sandbox desabilitado
+(`-p puppeteer.json` com `{"args": ["--no-sandbox", "--disable-setuid-sandbox"]}`), senão o
+Chromium headless não sobe. Depois de qualquer mudança num `.md` com blocos Mermaid, vale
+extrair e renderizar todos os blocos do arquivo (não só o que mudou) — nada garante que os
+outros continuem válidos, e o teste é barato.
+
 ## Nomenclatura de ambientes
 
 Nomear ambientes pela **característica real da infraestrutura**, não por um rótulo genérico
