@@ -176,9 +176,9 @@ contra esse motor real, não adivinhando pela mensagem de erro, que a causa foi 
 `;` citado acima, não a seta `->` que parecia mais óbvia à primeira vista). Em ambiente
 rodando como root, precisa do Puppeteer com sandbox desabilitado
 (`-p puppeteer.json` com `{"args": ["--no-sandbox", "--disable-setuid-sandbox"]}`), senão o
-Chromium headless não sobe. Depois de qualquer mudança num `.md` com blocos Mermaid, vale
-extrair e renderizar todos os blocos do arquivo (não só o que mudou) — nada garante que os
-outros continuem válidos, e o teste é barato.
+Chromium headless não sobe. Depois de escrever ou alterar um diagrama, vale extrair e
+renderizar os blocos novos ou modificados antes de considerar a mudança pronta — o teste é
+barato e pega esse tipo de erro antes de virar surpresa só visível depois de publicado.
 
 ## Nomenclatura de ambientes
 
