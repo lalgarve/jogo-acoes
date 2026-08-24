@@ -106,8 +106,9 @@ sem relação numa mesma mensagem.
   continuidade é da linha de trabalho, não da sessão nem da ferramenta que a executa.
   Antes de criar um branch, checar se já existe um branch/PR abordando a mesma iteração e
   reaproveitar esse em vez de abrir outro.
+- Projetos envolvendo páginas estáticas e deploy devem ter um branch novo após cada deploy com sucesso em produção.
 
-## Documentação viva por fase/iteração
+## Documentação viva por fase/iteração - Projetos de Software
 
 - Antes de implementar uma fase de trabalho não trivial, registrar as decisões técnicas em
   aberto num documento de planejamento dessa fase (ex.: `docs/context/iteracao-N.md` — ver
@@ -125,7 +126,8 @@ sem relação numa mesma mensagem.
 - Modelo de dados (diagrama entidade-relacionamento) é desenhado antes das entidades de
   código.
 
-## Onde a documentação de contexto mora
+
+## Onde a documentação de contexto mora - Projetos de Software
 
 Documentação de projeto tem duas plateias diferentes, e cada uma mora num lugar diferente
 dentro de `docs/`:
@@ -214,6 +216,8 @@ Usar stub/fake só quando a alternativa real não existe ou não é viável no a
 verdade (ex.: grava numa tabela o que seria enviado) para que o teste possa checar por
 asserção, em vez de só confiar que o método foi chamado.
 
+Não executar testes no merge que gerem cobrança por uso de API de inteligência artifical (Gemini).
+
 ## Dados de teste: Object Mother + Test Data Builder
 
 Fábricas de dados de teste ("Mother") retornam um objeto/builder já pré-preenchido com
@@ -222,7 +226,9 @@ uma variação **inválida** de um campo específico partem desse builder válid
 só o campo sob teste, mantendo os demais válidos. Isso espelha a estrutura de uma tabela de
 `Examples` do Gherkin, onde cada linha varia um campo por vez.
 
-## CI e cobertura de testes
+## CI e cobertura de testes 
+
+### Java
 
 - **A suíte de testes roda em CI contra infraestrutura real** (perfil `docker` deste
   projeto — Postgres de verdade, não H2), não contra o perfil de sandbox usado no dia a dia
@@ -238,3 +244,6 @@ só o campo sob teste, mantendo os demais válidos. Isso espelha a estrutura de 
 - **A cobertura aparece como comentário na própria PR**, atualizado a cada push, mesmo
   quando o build falha por causa dela — assim dá pra ver o número exato sem precisar abrir
   os logs do CI.
+  
+### Python
+- Os testes do script Python devem rodar com sucesso antes do merge. Testes dependentes da API do Gemini não são executados para diminuir custos. Não há cobertura de testes definida.
