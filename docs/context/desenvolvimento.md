@@ -82,6 +82,20 @@ Resolves the captcha-stub open decision in docs/context/iteracao-3.md.
 Commits pequenos e focados em uma mudança revisável de cada vez — evitar juntar mudanças
 sem relação numa mesma mensagem.
 
+### Enforcement
+
+Um hook `commit-msg` versionado em `.githooks/commit-msg` pode validar o formato da
+primeira linha automaticamente (o `<tipo>: ` do título — idioma não é validado por hook).
+Ativar uma vez por clone/sessão:
+
+```
+git config core.hooksPath .githooks
+```
+
+**Exemplo usado nos repositórios que adotaram este padrão** (`deployo-website`,
+`deployo-infra`): hook em `.githooks/commit-msg` que rejeita qualquer commit cuja primeira
+linha não bata com `^(feat|fix|refactor|test|docs|chore|decision): .+`.
+
 ## Branches e Pull Requests
 
 - Um branch por linha de trabalho revisável — nome descritivo do que está sendo feito, não
@@ -218,7 +232,7 @@ asserção, em vez de só confiar que o método foi chamado.
 
 Não executar testes no merge que gerem cobrança por uso de API de inteligência artifical (Gemini).
 
-## Dados de teste: Object Mother + Test Data Builder
+## Dados de teste: Object Mother + Test Data Builder - Projetos de Software
 
 Fábricas de dados de teste ("Mother") retornam um objeto/builder já pré-preenchido com
 dados **válidos** por padrão — o ponto de partida de qualquer cenário. Cenários que testam
@@ -226,24 +240,37 @@ uma variação **inválida** de um campo específico partem desse builder válid
 só o campo sob teste, mantendo os demais válidos. Isso espelha a estrutura de uma tabela de
 `Examples` do Gherkin, onde cada linha varia um campo por vez.
 
-## CI e cobertura de testes 
+## CI e cobertura de testes
 
-### Java
-
-- **A suíte de testes roda em CI contra infraestrutura real** (perfil `docker` deste
-  projeto — Postgres de verdade, não H2), não contra o perfil de sandbox usado no dia a dia
-  — reduz a chance de "passou no CI, quebrou em produção" por uma diferença de banco.
-- **Cobertura de linha tem um piso obrigatório** (JaCoCo, `mvn verify`) que quebra o build
-  se ficar abaixo do limite — não é só um número informativo, é uma condição de build
-  passar. Código gerado (ex.: interfaces/DTOs de um gerador de OpenAPI) fica de fora da
-  contagem — não é código que a equipe escreve ou mantém, então não deveria puxar a média
-  pra baixo nem pra cima.
+- **A suíte de testes roda em CI contra infraestrutura o mais real possível** (a mesma
+  lógica da seção "Testes: preferir real a fake" acima, aplicada ao pipeline), não contra
+  atalhos usados só no dia a dia local — reduz a chance de "passou no CI, quebrou em
+  produção" por uma diferença de ambiente.
+- **Cobertura de linha tem um piso obrigatório**, quando a stack tiver ferramenta de
+  cobertura — não é só um número informativo, é uma condição de build passar. Código
+  gerado (ex.: interfaces/DTOs de um gerador de contrato) fica de fora da contagem — não é
+  código que a equipe escreve ou mantém, então não deveria puxar a média pra baixo nem pra
+  cima.
 - **O check de CI é obrigatório antes de mesclar** (branch protection do GitHub no branch
   principal, exigindo esse status check) — quebrar a suíte ou cair abaixo do piso de
   cobertura bloqueia o merge, não é um aviso.
-- **A cobertura aparece como comentário na própria PR**, atualizado a cada push, mesmo
-  quando o build falha por causa dela — assim dá pra ver o número exato sem precisar abrir
-  os logs do CI.
-  
+- **A cobertura aparece como comentário na própria PR**, quando a ferramenta suportar,
+  atualizado a cada push, mesmo quando o build falha por causa dela — assim dá pra ver o
+  número exato sem precisar abrir os logs do CI.
+- Cada stack usada no projeto documenta sua própria subseção aqui, com as ferramentas
+  concretas (executor de teste, cobertura, gate de merge) — ver exemplo abaixo.
+
+**Exemplo usado neste projeto:**
+
+### Java
+
+- A suíte roda contra o perfil `docker` (Postgres de verdade, não H2), não contra o perfil
+  de sandbox usado no dia a dia.
+- Piso de cobertura via JaCoCo (`mvn verify`).
+- Cobertura comentada na PR a cada push via `madrapps/jacoco-report`.
+
 ### Python
-- Os testes do script Python devem rodar com sucesso antes do merge. Testes dependentes da API do Gemini não são executados para diminuir custos. Não há cobertura de testes definida.
+
+- Os testes do script Python devem rodar com sucesso antes do merge. Testes dependentes da
+  API do Gemini não são executados para diminuir custos. Não há cobertura de testes
+  definida.
