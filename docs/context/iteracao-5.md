@@ -162,27 +162,33 @@ completo; resumo do que importa para esta iteração:
   `created_at`, `expires_at`) — sem uma entidade `application` separada; `service_name` aceita
   qualquer string não vazia por enquanto (decisão em aberto naquele repositório se isso precisa
   validar contra uma lista fixa mais adiante).
-- **Leitura (validação da chave) é uma biblioteca futura, separada** — o próprio
-  `deployo-api-key` só emite (`INSERT`); quem consome (Serviço de E-mail, e qualquer API
-  interna futura) vai depender de uma biblioteca de leitura ainda não construída, que faz
-  `SELECT` na mesma tabela `api_keys` para validar uma chave recebida.
+- **Leitura (validação da chave) é uma biblioteca, no mesmo repositório `deployo-api-key`** —
+  módulo/pacote Maven separado da emissão (mesmo repositório, duas frentes de código, ver
+  `plan.md` daquele projeto), não um novo repositório à parte.
 
-**Tensão em aberto com a Etapa 3**: o requisito da disciplina (e o princípio já registrado
-neste documento) é cada serviço ter persistência própria, sem acesso direto ao banco de outro
-serviço. O desenho do `deployo-api-key` tem o Serviço de E-mail (e qualquer consumidor futuro)
-lendo diretamente a tabela `api_keys` de um banco que pertence a outro projeto/deploy — via uma
-biblioteca compartilhada, não via chamada de API. Isso precisa ser resolvido conscientemente
-antes de implementar, não assumido por conveniência: ou (a) aceitar que autenticação
-entre serviços é uma exceção legítima ao princípio de isolamento de dados (justificável no
-documento de alinhamento com a disciplina), ou (b) expor a validação via uma API HTTP própria
-do `deployo-api-key` em vez de acesso direto ao banco, o que reintroduziria uma chamada
-síncrona extra na frente de toda chamada ao Serviço de E-mail.
+**Modelo de implantação — corrige o desenho anterior deste documento**: `deployo-api-key` não
+é um serviço central compartilhado, chamado ou lido remotamente por múltiplos consumidores.
+**Cada serviço que usa o gerador tem sua própria tabela `api_keys`, no seu próprio banco** — o
+aplicativo `deployo-api-key` é instalado junto com o serviço consumidor no mesmo
+`docker-compose` (container próprio, ao lado do container do serviço e do banco dele), gerando
+chaves só para esse serviço específico. Isso **resolve** a tensão que este documento registrava
+antes com o princípio da Etapa 3 (persistência própria por serviço, sem acesso direto ao banco
+de outro serviço): não há banco compartilhado nem acesso cross-serviço — cada instância do
+Serviço de E-mail (ou qualquer outro consumidor futuro) tem sua própria cópia da tabela e sua
+própria instância do gerador.
+
+**Versionamento da verificação**: a biblioteca de leitura pode ganhar novas formas de verificar
+uma API key em versões futuras (ex.: trocar o algoritmo de hash, ou o formato da chave) sem
+quebrar o que já está gravado — mesmo cuidado de compatibilidade já aplicado ao contrato de
+mensagem da fila de e-mail (`schemaVersion`, Iteração 4). Ainda não desenhado como isso
+funciona na prática (campo de versão do algoritmo na própria tabela? múltiplos verificadores
+registrados na biblioteca?) — decisão em aberto.
 
 **Fluxo de autenticação:** ainda falta desenhar o diagrama de sequência completo (chamada do
-cliente → Serviço de E-mail → validação via a biblioteca de leitura contra `api_keys`) — o
-brainstorm original mencionava um trecho que não veio junto no resumo, e o desenho mudou desde
-então com a extração do `deployo-api-key`. Candidato a diagrama de sequência, mesmo padrão de
-`docs/diagrams/sequencia.md`.
+cliente → Serviço de E-mail → validação via a biblioteca de leitura contra a tabela `api_keys`
+própria daquele serviço) — o brainstorm original mencionava um trecho que não veio junto no
+resumo, e o desenho mudou desde então com a extração do `deployo-api-key`. Candidato a
+diagrama de sequência, mesmo padrão de `docs/diagrams/sequencia.md`.
 
 **Relação com a infraestrutura da Iteração 4** (decisão em aberto, não resolvida no
 brainstorm): o `app/` hoje tem seu próprio `SqsEmailSender`/`EmailContentRenderer`/templates, e
@@ -261,8 +267,5 @@ resposta.
   `deployo-api-key` (não é mais o mesmo fluxo do brainstorm original).
 - **Sistema de Admin ainda faz sentido** como peça desta iteração, dado que a emissão de API
   key deixou de precisar de uma UI/API admin (ver seção 4)?
-- **Tensão Etapa 3 × acesso à tabela `api_keys`**: aceitar acesso direto de múltiplos serviços
-  ao banco do `deployo-api-key` via biblioteca de leitura compartilhada, ou expor validação via
-  API HTTP própria (ver seção 3.1)?
-- Onde/como a futura "biblioteca de leitura" de validação de API key é publicada e versionada
-  (artefato Maven de qual repositório), para o Serviço de E-mail depender dela.
+- Como a biblioteca de leitura do `deployo-api-key` vai suportar novas formas de verificação de
+  API key em versões futuras, sem quebrar chaves já emitidas (ver seção 3.1).
