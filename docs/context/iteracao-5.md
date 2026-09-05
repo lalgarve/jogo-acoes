@@ -177,12 +177,18 @@ de outro serviço): não há banco compartilhado nem acesso cross-serviço — c
 Serviço de E-mail (ou qualquer outro consumidor futuro) tem sua própria cópia da tabela e sua
 própria instância do gerador.
 
-**Versionamento da verificação**: a biblioteca de leitura pode ganhar novas formas de verificar
-uma API key em versões futuras (ex.: trocar o algoritmo de hash, ou o formato da chave) sem
-quebrar o que já está gravado — mesmo cuidado de compatibilidade já aplicado ao contrato de
-mensagem da fila de e-mail (`schemaVersion`, Iteração 4). Ainda não desenhado como isso
-funciona na prática (campo de versão do algoritmo na própria tabela? múltiplos verificadores
-registrados na biblioteca?) — decisão em aberto.
+**Por que a biblioteca é uma interface — corrige a leitura anterior deste documento**: o motivo
+principal não é permitir trocar o algoritmo de geração da chave (esse deve continuar estável).
+É abstrair **onde e como a chave fica armazenada** — a interface isola o consumidor (Serviço de
+E-mail) de detalhes de local/mecanismo de persistência da tabela `api_keys`, que podem mudar
+sem exigir mudança no código de quem só verifica uma chave recebida.
+
+Se um dia a geração em si mudar (algoritmo de hash, formato da chave), a mitigação é simples e
+não exige múltiplos verificadores na biblioteca: acrescentar uma coluna de versão na própria
+tabela `api_keys` (ex. `key_version`), registrando com qual algoritmo cada chave foi gerada —
+linhas antigas e novas convivem na mesma tabela, e a biblioteca lê essa coluna para saber como
+verificar cada uma. Mesmo espírito do `schemaVersion` já usado no contrato de mensagem da fila
+de e-mail (Iteração 4), só que como coluna em vez de campo de mensagem.
 
 **Fluxo de autenticação:** ainda falta desenhar o diagrama de sequência completo (chamada do
 cliente → Serviço de E-mail → validação via a biblioteca de leitura contra a tabela `api_keys`
@@ -267,5 +273,6 @@ resposta.
   `deployo-api-key` (não é mais o mesmo fluxo do brainstorm original).
 - **Sistema de Admin ainda faz sentido** como peça desta iteração, dado que a emissão de API
   key deixou de precisar de uma UI/API admin (ver seção 4)?
-- Como a biblioteca de leitura do `deployo-api-key` vai suportar novas formas de verificação de
-  API key em versões futuras, sem quebrar chaves já emitidas (ver seção 3.1).
+- Desenho exato da interface de leitura do `deployo-api-key` (assinatura, o que ela abstrai de
+  local/mecanismo de armazenamento) — o princípio (interface + coluna de versão se a geração
+  mudar) já está definido, falta o desenho concreto (ver seção 3.1).
