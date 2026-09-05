@@ -130,14 +130,14 @@ do que ao da Etapa 2, que pede explicitamente comunicação síncrona.*
 7. Criar as tags `etapa-1` a `etapa-4` no repositório, conforme cada etapa for efetivamente
    fechada.
 
-## 6. Metodologia de 
+## 6. Metodologia de desenvolvimento com IA
 
 A metodologia de desenvolvimento usada foi baseada na experiência que tive durante minhas tentativas de desenvolvimento usando IA. Percebi que possuir uma documentação clara da estrutura do projeto antes do desenvolvimento do código permitia a IA entender melhor o projeto. Ou seja, o tempo usado para definição da arquitetura e confecção de diagramas ajudava a IA no entendimento do código que precisava ser gerado. Para os diagramas eu uso Code As Diagram. Em outros projetos usei o PlantUML mas ao descobrir o suporte nativo do Github ao Mermaid.js decidi usá-lo no projeto do Jogo de Ações.
 
-Nesta semana descobri o SDD - Specification Driven Design. Meu método de desenvolvimento estava no caminho certo: primeiro específica, depois implementa. No entanto, como a estrutura e organização do SSD são superiores, gostaria passar a usá-la no projeto do Jogo de Ações.
+Nesta semana descobri o SDD - Specification Driven Design. Meu método de desenvolvimento estava no caminho certo: primeiro específica, depois implementa. No entanto, como a estrutura e organização do SDD são superiores, gostaria passar a usá-la no projeto do Jogo de Ações.
 
 Repositório do Jogo Ações: https://github.com/lalgarve/jogo-acoes
-Repositório usando SSD: https://github.com/lalgarve/deployo-api-key
+Repositório usando SDD: https://github.com/lalgarve/deployo-api-key
 
 
 ## 7. Projeto Jogo de Ações
