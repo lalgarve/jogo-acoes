@@ -1,14 +1,23 @@
 # Jogo de Ações — Abordagem de Desenvolvimento e Alinhamento com o Projeto da Disciplina
 
 *Arquiteturas Avançadas de Software com Microsserviços e Spring Framework — Projeto da
-Disciplina, Entrega Final.*
+Disciplina.*
 
 *Leila Algarve — setembro de 2026.*
 
-## 1. Contexto
+{CLAUDE: colocar índice}
+
+## 1. Introdução
 
 O projeto **Jogo de Ações** foi iniciado antes do começo desta disciplina, como projeto para
-portfólio pessoal. Por esse motivo, seu desenvolvimento não seguiu, desde o início, a
+portfólio pessoal e como preparação para cursar esta disciplina pela segunda vez. Na primeira vez, 
+eu falhei na entrega do projeto final por ter tido dificuldades executivas - dificuldade em iniciar 
+o projeto. Então comecei a desenvolver um projeto com o objetivo de estudar como usar IA de forma 
+efetiva. Escolhi o projeto de um jogo de ações pois poderia ter uma implementação próxima a realidade
+de empresas do mercado financeiro. Trabalhei por anos em um projeto onde fui responsável por todos os
+cálculos financeiros.
+
+ Por esse motivo, seu desenvolvimento não seguiu, desde o início, a
 sequência de quatro Etapas descrita no enunciado do Projeto da Disciplina — a organização
 adotada foi outra, descrita abaixo. Este documento existe para deixar essa diferença explícita
 antes da entrega, e para servir de ponto de partida para uma conversa com o professor sobre
@@ -121,16 +130,18 @@ do que ao da Etapa 2, que pede explicitamente comunicação síncrona.*
 7. Criar as tags `etapa-1` a `etapa-4` no repositório, conforme cada etapa for efetivamente
    fechada.
 
-## 6. Pontos para conversar com o professor
+## 6. Metodologia de 
 
-- O desenvolvimento por iteração de capacidade de negócio (em vez da sequência literal das
-  quatro Etapas) é aceitável, desde que os requisitos técnicos de cada Etapa acabem cobertos
-  no resultado final? Ou é necessário reestruturar o histórico/repositório para refletir
-  explicitamente a ordem do enunciado?
-- Amazon SQS + AWS Lambda é aceito como "tecnologia equivalente" ao RabbitMQ citado no
-  enunciado da Etapa 4, dado que já está implementado e em uso real no projeto?
-- As tags de marco (`etapa-1` a `etapa-4`) precisam refletir a ordem cronológica real de
-  desenvolvimento, ou podem ser criadas agora, no estado atual e nos próximos incrementos,
-  mesmo que parte do trabalho anterior já cubra requisitos de mais de uma etapa ao mesmo
-  tempo? Ou posso seguir apenas com as tags indicando as iterações conforme definido no
-  roadmap?
+A metodologia de desenvolvimento usada foi baseada na experiência que tive durante minhas tentativas de desenvolvimento usando IA. Percebi que possuir uma documentação clara da estrutura do projeto antes do desenvolvimento do código permitia a IA entender melhor o projeto. Ou seja, o tempo usado para definição da arquitetura e confecção de diagramas ajudava a IA no entendimento do código que precisava ser gerado. Para os diagramas eu uso Code As Diagram. Em outros projetos usei o PlantUML mas ao descobrir o suporte nativo do Github ao Mermaid.js decidi usá-lo no projeto do Jogo de Ações.
+
+Nesta semana descobri o SDD - Specification Driven Design. Meu método de desenvolvimento estava no caminho certo: primeiro específica, depois implementa. No entanto, como a estrutura e organização do SSD são superiores, gostaria passar a usá-la no projeto do Jogo de Ações.
+
+Repositório do Jogo Ações: https://github.com/lalgarve/jogo-acoes
+Repositório usando SSD: https://github.com/lalgarve/deployo-api-key
+
+
+## 7. Projeto Jogo de Ações
+
+{CLAUDE: se basear na documentação do projeto, incluindo os diagramas gerados}
+
+
