@@ -5,7 +5,15 @@ Disciplina.*
 
 *Leila Algarve — setembro de 2026.*
 
-{CLAUDE: colocar índice}
+## Índice
+
+1. Introdução
+2. Metodologia de desenvolvimento adotada
+3. Uso de ferramentas de IA
+4. Mapeamento: estado atual do projeto × Etapas da disciplina
+5. O que faltaria para alinhamento completo
+6. Metodologia de desenvolvimento com IA
+7. Projeto Jogo de Ações
 
 ## 1. Introdução
 
@@ -36,7 +44,7 @@ comportamento antes da implementação:
   contrato de aceite, não como documentação escrita depois do fato.
 - **Modelo de dados desenhado antes da entidade de código**: o DER
   (`docs/diagrams/der.md`) precede o mapeamento JPA de cada iteração.
-- **Roadmap por iteração** (`docs/roadmap.md`): 16 iterações planejadas, cada uma entregando
+- **Roadmap por iteração** (`docs/roadmap.md`): 17 iterações planejadas, cada uma entregando
   uma capacidade de negócio completa (ex.: login por link mágico, criação de competição,
   infraestrutura assíncrona de e-mail, negociação de ações, acessibilidade de gráficos) — não
   uma camada técnica isolada.
@@ -91,6 +99,13 @@ principal), não uma estimativa.
 *Observação: o que existe hoje (mensageria assíncrona) atende melhor ao espírito da Etapa 4
 do que ao da Etapa 2, que pede explicitamente comunicação síncrona.*
 
+*Atualização (planejamento posterior a este mapeamento): a extração deixou de ser um
+microsserviço isolado só para a checagem de MX/domínio descartável — vira um **Serviço de
+E-mail** reutilizável (ver `docs/context/iteracao-5.md`), com essa checagem como uma de suas
+responsabilidades entre outras (registro de templates, envio para aplicações clientes via API
+key). `jogo-acoes` consome esse serviço via OpenFeign, fechando o requisito de comunicação
+síncrona desta Etapa.*
+
 ### Etapa 3 — Configuração e Execução dos Serviços
 
 | Requisito | Situação |
@@ -110,10 +125,13 @@ do que ao da Etapa 2, que pede explicitamente comunicação síncrona.*
 |---|---|
 | Mensageria assíncrona real (produtor/fila/consumidor) | Atendido — `SqsEmailSender` publica em fila SQS real (LocalStack em dev/CI), consumida pela Lambda que dispara o SES |
 | Tecnologia de mensageria = a definida pelo professor em aula | A confirmar — o enunciado cita RabbitMQ como exemplo; o projeto usa Amazon SQS. Precisa de confirmação se conta como "tecnologia equivalente" |
-| Processamento em lote com Spring Batch (Job/Step/ItemReader/ItemProcessor/ItemWriter) | **Não atendido** — pode ser usado para a importação da lista de domínios temporários especificada na Iteração 5, hospedada no GitHub |
+| Processamento em lote com Spring Batch (Job/Step/ItemReader/ItemProcessor/ItemWriter) | **Não atendido** — planejado como job dentro do novo Serviço de E-mail (ver `docs/context/iteracao-5.md`), para a importação da lista de domínios temporários hospedada no GitHub |
 | Tag `etapa-4` | **Não atendido** |
 
 ## 5. O que faltaria para alinhamento completo
+
+Lista original deste levantamento; o planejamento técnico completo (com as decisões em
+aberto) está em `docs/context/iteracao-5.md`.
 
 1. Reorganizar os pacotes da aplicação principal por domínio (ex.: `competition/`, `user/`,
    `login/`) em vez de por camada técnica.
@@ -121,12 +139,13 @@ do que ao da Etapa 2, que pede explicitamente comunicação síncrona.*
    entre eles e a justificativa do candidato a serviço independente.
 3. Adicionar Swagger UI interativo (`springdoc-openapi-starter-webmvc-ui`) além do contrato
    estático já existente.
-4. Criar um novo microsserviço com comunicação **síncrona** via REST + OpenFeign — candidato
-   natural: a checagem de MX/domínio descartável já planejada na Iteração 5 do roadmap do
-   projeto, ainda não implementada.
-5. Implementar um Spring Cloud Config Server e incluir todos os componentes (app, novo
-   serviço, Config Server) no `docker-compose.yml`.
-6. Implementar um job Spring Batch com a importação dos domínios de e-mails temporários.
+4. Extrair um **Serviço de E-mail** reutilizável, com comunicação **síncrona** via REST +
+   OpenFeign, incorporando a checagem de MX/domínio descartável já planejada (detalhado em
+   `docs/context/iteracao-5.md`).
+5. Implementar um Spring Cloud Config Server e incluir todos os componentes (app, Serviço de
+   E-mail, Config Server) no `docker-compose.yml`.
+6. Implementar um job Spring Batch com a importação dos domínios de e-mails temporários,
+   dentro do Serviço de E-mail.
 7. Criar as tags `etapa-1` a `etapa-4` no repositório, conforme cada etapa for efetivamente
    fechada.
 
@@ -142,6 +161,70 @@ Repositório usando SDD: https://github.com/lalgarve/deployo-api-key
 
 ## 7. Projeto Jogo de Ações
 
-{CLAUDE: se basear na documentação do projeto, incluindo os diagramas gerados}
+### O que o sistema faz
 
+Um jogo de simulação de investimentos em bolsa: administradores criam competições — públicas
+(qualquer jogador pode pedir entrada) ou privadas (só quem é convidado por e-mail). Em ambos
+os casos o jogador entra via um link de login enviado por e-mail, sem senha: pede o link,
+recebe, clica, está dentro. Antes de aceitar qualquer e-mail (convite, pedido de entrada ou
+pedido de login), o sistema verifica se o domínio tem registro MX válido e não está numa
+lista de domínios descartáveis/temporários. Administradores têm visão e controle sobre os
+jogadores de cada competição: reenviar um convite, remover um jogador.
+
+### Arquitetura atual
+
+- **Sistema principal** (`app/`, Spring Boot): API REST gerada a partir de um contrato
+  OpenAPI (`docs/openapi.yaml`, contract-first), persistência JPA/PostgreSQL, autenticação
+  por link de login, ALTCHA como captcha (prova de trabalho auto-hospedada, sem serviço
+  terceirizado), log de auditoria imutável.
+- **`email-lambda/`**: AWS Lambda (Quarkus, com suporte a imagem nativa GraalVM) que consome
+  uma fila Amazon SQS e envia o e-mail via Amazon SES — desacoplada do sistema principal, que
+  só publica na fila e nunca fala com o SES diretamente.
+- **Especificação de domínio (BDD)**: quatro fluxos (login, criação de competição, gerência
+  de jogadores, pedido de entrada) com cenários Gherkin cobrindo caminho feliz e casos de
+  erro, executados a cada mudança (`app/src/test/resources/features`).
+- **Integração contínua**: suíte de testes com piso de cobertura de linha (JaCoCo, 80%)
+  rodando a cada *pull request* contra infraestrutura real (Postgres, fila SQS via
+  LocalStack), não contra simulação em memória.
+
+### Modelo de dados e diagramas
+
+O modelo de dados (`docs/diagrams/der.md`) tem `USER`/`ROLE`/`USER_ROLE` (papéis
+administrador/jogador, extensível sem migração de schema), `COMPETITION`, `PARTICIPATION`
+(entidade associativa entre usuário e competição, carregando e-mail e status do convite),
+`LOGIN_LINK`/`LOGIN_SESSION` (link mágico e controle de dispositivos), `LOG`/`SENT_EMAIL`
+(auditoria e histórico de envio, ambas imutáveis por permissão de banco) e
+`DISPOSABLE_DOMAIN` (lista de bloqueio de domínios descartáveis, planejada e já modelada,
+ainda não implementada em código).
+
+O diagrama de classes (`docs/diagrams/classes.md`) espelha esse modelo em três partes: o
+domínio principal, a verificação de e-mail (MX + domínio descartável — desenhada, ainda não
+implementada) e o pipeline de e-mail assíncrono (produtor no `app/`, consumidor na Lambda,
+com o contrato da mensagem duplicado deliberadamente nos dois lados para não acoplar os
+releases). Os diagramas de sequência (`docs/diagrams/sequencia.md`) cobrem os seis fluxos de
+entrada do sistema — login, verificação de e-mail, criação de competição com convite, pedido
+de entrada pública, gerência de jogadores, e o envio assíncrono produtor → SQS → Lambda →
+SES — servindo tanto de documentação de arquitetura quanto de contrato entre os componentes.
+
+### Estado atual e próximos passos
+
+O roadmap completo está em `docs/roadmap.md`, organizado por iteração de capacidade de
+negócio (ver Seção 2). Resumo do que já está concluído e do que vem a seguir:
+
+- **Iterações 1–4 concluídas**: especificação BDD do domínio, esqueleto da aplicação com
+  persistência real, os quatro fluxos principais implementados (com e-mail via stub na
+  Iteração 3), e a infraestrutura assíncrona de e-mail real (SQS + Lambda + SES) na
+  Iteração 4 — núcleo implementado e testado contra infraestrutura real, com a parte que
+  depende de acesso a uma conta AWS real (policies IAM definitivas, execução do Terraform,
+  saída do modo sandbox do SES) adiada para a Iteração 6.
+- **Iteração 5 (em andamento)**: o assunto deste documento — adequação aos critérios da
+  disciplina, adoção da convenção de arquivos do spec-kit (SDD) e extração do Serviço de
+  E-mail reutilizável, detalhada em `docs/context/iteracao-5.md`.
+- **Iteração 6 (planejada)**: execução da infraestrutura AWS real, rede necessária para
+  `staging.deployo.io`, observabilidade do pipeline de e-mail e testes de integração de
+  ponta a ponta.
+- **Iterações 8–17 (planejadas)**: negociação de ações com cotações de mercado reais
+  (Brapi), contabilidade da competição em partida dobrada, telas dos fluxos já
+  especificados, gráficos de portfólio e dois modos de acessibilidade para eles (descrição
+  textual por pontos relevantes e sonorização), com a parte mais pesada em Rust/WebAssembly.
 
