@@ -136,13 +136,15 @@ de E-mail. Decisões técnicas completas em `docs/context/iteracao-5.md`.
   justificativa do candidato a serviço independente.
 - Adicionar Swagger UI interativo (`springdoc-openapi-starter-webmvc-ui`) ao `app/`.
 - Extrair um **Serviço de E-mail** novo (Spring Boot + Thymeleaf, templates vindos do
-  banco): registro de aplicações clientes e API keys (`X-API-Key`, hash SHA-256), registro/
-  validação de templates, endpoint de envio (JSON → renderiza → valida MX/domínio
-  descartável → enfileira). `jogo-acoes` vira o primeiro cliente, consumindo via
-  OpenFeign — fecha o requisito de comunicação síncrona entre serviços da disciplina.
-- **Sistema de Admin** novo, fino: login por link mágico (reaproveita o padrão já
-  implementado em `jogo-acoes`), sem estado de negócio próprio — só orquestra login e chama
-  a API do Serviço de E-mail com sua própria API key.
+  banco): valida API keys (`X-API-Key`) emitidas por um projeto separado
+  ([`deployo-api-key`](https://github.com/lalgarve/deployo-api-key), CLI, HMAC-SHA256 +
+  pepper) — ver `docs/context/iteracao-5.md` para o detalhe —, registro/validação de
+  templates, endpoint de envio (JSON → renderiza → valida MX/domínio descartável →
+  enfileira). `jogo-acoes` vira o primeiro cliente, consumindo via OpenFeign — fecha o
+  requisito de comunicação síncrona entre serviços da disciplina.
+- **Sistema de Admin** — a definir se ainda cabe nesta iteração (ver
+  `docs/context/iteracao-5.md`, seção 4): a emissão de API key deixou de precisar de uma
+  UI/API admin, que era a justificativa original deste componente.
 - Spring Cloud Config Server para os componentes novos, e inclusão de tudo (`app`, Serviço
   de E-mail, Admin, Config Server, bancos) no `docker-compose.yml`.
 - Job Spring Batch para a importação da lista de domínios descartáveis (mesma fonte já

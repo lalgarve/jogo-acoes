@@ -111,28 +111,78 @@ de arquivo — diferença importante em relação ao `EmailContentRenderer` atua
 - Enviar e-mail: recebe JSON → renderiza o template → valida anti-bounce (a checagem de MX/
   domínio descartável, movida da antiga Iteração 5) → enfileira.
 
-**Endpoints admin** (`/admin/applications`, `/admin/applications/{id}/keys`):
-- Registrar aplicação cliente, gerar/rotacionar API key.
+**Autenticação — atualizada, substitui o desenho original do brainstorm** (ver
+"Emissão de API-KEY: `deployo-api-key`" abaixo): API Key só, via header `X-API-Key`. Não é
+mais o Serviço de E-mail quem emite/gerencia as chaves através de um endpoint admin — a
+emissão virou uma CLI própria, num repositório separado
+([`lalgarve/deployo-api-key`](https://github.com/lalgarve/deployo-api-key)), pensada como
+padrão reutilizável por qualquer API interna futura, não só o Serviço de E-mail. O Serviço de
+E-mail só **valida** a chave recebida (leitura), não a gera.
 
-**Autenticação:** só API Key (header `X-API-Key`). Hash SHA-256 armazenado; a chave bruta
-(prefixo `emk_...`, gerada com `SecureRandom`) é exibida uma única vez, na criação — mesmo
-princípio de segredo que não pode ser recuperado depois, só rotacionado.
-
-**Dados que o serviço possui** (fonte da verdade sobre quem pode chamá-lo):
-- `application` / `api_key` — quem pode chamar o serviço.
+**Dados que o serviço possui** (fonte da verdade só do que é dele — API keys não são mais
+emitidas nem "donas" aqui, ver abaixo):
 - `email_template` (`app_id`, `template_key`, `content`, `variables_schema`).
 - Fila de envio (estrutura ainda não detalhada — ver pendências abaixo; pode reaproveitar o
   contrato de mensagem já validado na Iteração 4, `schemaVersion`/`correlationId`/
   `recipientEmail`/`subject`/`body`, em vez de desenhar um novo).
 - Log de erros de envio (estrutura ainda não detalhada).
 
-**Banco de dados:** próprio, separado do banco do `app/` — cada serviço com persistência
-própria é requisito explícito da Etapa 3, e mantém o princípio já usado no projeto de nunca um
-serviço acessar direto o schema de outro (`docs/context/alinhamento-projeto-disciplina.md`).
+**Banco de dados:** próprio, separado do banco do `app/`, para os dados que são realmente dele
+(`email_template`, fila, log de erros) — cada serviço com persistência própria é requisito
+explícito da Etapa 3. A tabela `api_keys` é uma exceção deliberada a essa regra — ver
+"Emissão de API-KEY" abaixo, que registra a tensão com esse mesmo princípio.
 
-**Fluxo de autenticação:** o brainstorm original tinha um diagrama/trecho de código ilustrando
-o fluxo que não veio junto neste resumo — falta desenhar antes de implementar (candidato a
-diagrama de sequência, mesmo padrão de `docs/diagrams/sequencia.md`).
+### 3.1 Emissão de API-KEY: `deployo-api-key`
+
+Substitui o desenho original do brainstorm (endpoints `/admin/applications`/
+`/admin/applications/{id}/keys` dentro do próprio Serviço de E-mail). Em vez disso, a emissão
+virou um projeto próprio — [`lalgarve/deployo-api-key`](https://github.com/lalgarve/deployo-api-key),
+já com sua primeira feature especificada em SDD (`specs/001-generate-api-key/`) — pensado como
+padrão de autenticação reutilizável por qualquer API interna futura, não amarrado ao Serviço de
+E-mail. Vale a leitura de `specs/001-generate-api-key/spec.md`/`plan.md` lá para o detalhe
+completo; resumo do que importa para esta iteração:
+
+- **CLI, não endpoint HTTP**: comando `generate --service <nome> [--validity-days <dias>]`
+  gera a chave, grava o hash e imprime a chave em texto puro uma única vez, no terminal — não
+  existe interface de administração (decisão consciente registrada no README daquele
+  repositório, dado que hoje só existe um consumidor).
+- **Algoritmo**: HMAC-SHA256 com *pepper* (chave secreta fora do banco e do código-fonte, via
+  variável de ambiente) — não SHA-256 simples como o brainstorm original tinha registrado. A
+  chave já nasce com 256 bits de entropia aleatória, então não precisa de um hash
+  memory-hard (Argon2/bcrypt) como senha de usuário precisaria.
+- **Prefixo da chave**: `dak_` ("Deployo API Key") — não `emk_` como o brainstorm original
+  tinha; nome genérico do projeto, não amarrado ao primeiro consumidor.
+- **Validade opcional**: `--validity-days <N>` define expiração (`expires_at`); omitido, a
+  chave não expira. Conceito novo, ausente do brainstorm original.
+- **Rotação: fora de escopo por enquanto** — revogar ou rotacionar automaticamente uma chave
+  não está implementado nem planejado na feature atual daquele repositório. Isso
+  **substitui** o item "endpoint completo de rotação de key" que estava registrado como
+  pendência abaixo — não é mais algo que o Serviço de E-mail (ou qualquer consumidor) expõe.
+- **Modelo de dados**: uma tabela só, `api_keys` (`id`, `service_name`, `key_hash`,
+  `created_at`, `expires_at`) — sem uma entidade `application` separada; `service_name` aceita
+  qualquer string não vazia por enquanto (decisão em aberto naquele repositório se isso precisa
+  validar contra uma lista fixa mais adiante).
+- **Leitura (validação da chave) é uma biblioteca futura, separada** — o próprio
+  `deployo-api-key` só emite (`INSERT`); quem consome (Serviço de E-mail, e qualquer API
+  interna futura) vai depender de uma biblioteca de leitura ainda não construída, que faz
+  `SELECT` na mesma tabela `api_keys` para validar uma chave recebida.
+
+**Tensão em aberto com a Etapa 3**: o requisito da disciplina (e o princípio já registrado
+neste documento) é cada serviço ter persistência própria, sem acesso direto ao banco de outro
+serviço. O desenho do `deployo-api-key` tem o Serviço de E-mail (e qualquer consumidor futuro)
+lendo diretamente a tabela `api_keys` de um banco que pertence a outro projeto/deploy — via uma
+biblioteca compartilhada, não via chamada de API. Isso precisa ser resolvido conscientemente
+antes de implementar, não assumido por conveniência: ou (a) aceitar que autenticação
+entre serviços é uma exceção legítima ao princípio de isolamento de dados (justificável no
+documento de alinhamento com a disciplina), ou (b) expor a validação via uma API HTTP própria
+do `deployo-api-key` em vez de acesso direto ao banco, o que reintroduziria uma chamada
+síncrona extra na frente de toda chamada ao Serviço de E-mail.
+
+**Fluxo de autenticação:** ainda falta desenhar o diagrama de sequência completo (chamada do
+cliente → Serviço de E-mail → validação via a biblioteca de leitura contra `api_keys`) — o
+brainstorm original mencionava um trecho que não veio junto no resumo, e o desenho mudou desde
+então com a extração do `deployo-api-key`. Candidato a diagrama de sequência, mesmo padrão de
+`docs/diagrams/sequencia.md`.
 
 **Relação com a infraestrutura da Iteração 4** (decisão em aberto, não resolvida no
 brainstorm): o `app/` hoje tem seu próprio `SqsEmailSender`/`EmailContentRenderer`/templates, e
@@ -147,30 +197,41 @@ implementar, não assumido por omissão.
 `deployo-infra`/`deployo-website`, já que o objetivo é ser reutilizável por *outras*
 aplicações, não só um módulo interno do `jogo-acoes`), ou módulo dentro do reator Maven atual
 (`app`/`email-lambda`)? Um repositório próprio parece mais alinhado ao objetivo de portfólio/
-reuso declarado nesta conversa, mas afeta convenção de branch/PR e precisa de nome definido.
+reuso declarado nesta conversa, mas afeta convenção de branch/PR e precisa de nome definido. O
+`deployo-api-key` (seção 3.1) já foi por esse caminho — repositório próprio, pequeno e
+autocontido — o que é um precedente a favor da mesma escolha aqui, mas ainda não foi decidido
+explicitamente para o Serviço de E-mail em si.
 
-**Próximos passos técnicos ainda não detalhados** (do brainstorm original, registrados aqui
-como pendências, não resolvidos):
-- Endpoint completo de rotação de key — desativar a antiga sem quebrar chamadas em andamento
-  (janela de sobreposição? invalidação imediata?).
-- Validação de `variables_schema` (JSON Schema) contra o JSON recebido, antes de renderizar.
-- Estrutura da fila de envio e do log de erros de envio.
+**Próximos passos técnicos ainda não detalhados** (do brainstorm original, revisados à luz do
+`deployo-api-key`):
+- ~~Endpoint completo de rotação de key~~ — não é mais um item deste serviço, ver seção 3.1
+  ("Rotação: fora de escopo por enquanto").
+- Validação de `variables_schema` (JSON Schema) contra o JSON recebido, antes de renderizar —
+  continua pendente, não relacionado à mudança de API-KEY.
+- Estrutura da fila de envio e do log de erros de envio — continua pendente.
 
-## 4. Sistema de Admin — detalhamento
+## 4. Sistema de Admin — decisão em aberto (revisada)
 
-Interface fina, sem estado de negócio próprio:
-- Login de admin por e-mail + link, sem senha — reaproveita o padrão de `LoginLink` já
-  implementado no `jogo-acoes` (Iteração 3), não uma reimplementação.
-- Só orquestra login e chama a API do Serviço de E-mail com sua própria API key — não duplica
-  a tabela `application` nem nenhum outro estado que já mora no Serviço de E-mail.
+O brainstorm original desenhava este sistema especificamente para orquestrar login e chamar os
+endpoints `/admin/applications`/`.../keys` do Serviço de E-mail — gerar/rotacionar API keys por
+uma UI fina. Com a emissão de API-KEY virando uma CLI operada manualmente
+(`deployo-api-key generate`, sem interface HTTP nenhuma — ver seção 3.1), a justificativa
+original deste sistema não se aplica mais como estava.
 
-**Onde este sistema mora:** mesma pendência do Serviço de E-mail acima (repositório próprio vs.
-módulo) — provavelmente segue a mesma decisão.
+**Decisão em aberto**: o Sistema de Admin ainda faz sentido — para outra finalidade (ex.:
+visualizar templates cadastrados, histórico de envio, erros da fila do Serviço de E-mail) — ou
+deixa de existir como peça desta iteração, já que a única razão de ser dele no brainstorm
+original (gerência de API keys) foi resolvida de outra forma? Se continuar a existir, o login
+por e-mail + link (reaproveitando o padrão de `LoginLink` já implementado no `jogo-acoes`,
+Iteração 3) continua válido como mecanismo de autenticação do próprio admin, independente da
+resposta.
 
 ## 5. `jogo-acoes` como primeiro cliente
 
-- Recebe a API key manualmente do admin (variável de ambiente/secret manager) — não há
-  auto-provisionamento do lado do cliente nesta fase.
+- Recebe a API key gerada manualmente por quem operar `deployo-api-key generate --service
+  jogo-acoes` (variável de ambiente/secret manager) — não há auto-provisionamento do lado do
+  cliente nesta fase, e não existe mais um "admin" que gera a chave por trás de uma API (ver
+  seção 3.1).
 - Chama o Serviço de E-mail com essa key via OpenFeign para enviar e-mail.
 - Decisão em aberto (ligada à pendência da seção 3): se o `EmailSender`/`SqsEmailSender` atuais
   do `app/` são removidos e substituídos pelo cliente Feign, ou se convivem durante uma
@@ -192,9 +253,16 @@ módulo) — provavelmente segue a mesma decisão.
 - `app/` também migra para o Config Server, ou mantém profiles locais?
 - O `SqsEmailSender`/templates do `app/` migram para dentro do Serviço de E-mail, ou
   convivem temporariamente com ele?
-- Serviço de E-mail e Sistema de Admin: repositório próprio ou módulo no reator atual?
+- Serviço de E-mail: repositório próprio (precedente do `deployo-api-key`) ou módulo no reator
+  atual?
 - Estrutura da fila de envio e do log de erros do Serviço de E-mail.
-- Endpoint de rotação de API key — janela de sobreposição ou invalidação imediata.
 - Validação de `variables_schema` via JSON Schema — biblioteca e ponto de validação exatos.
-- Diagrama do fluxo de autenticação do Serviço de E-mail (perdido no resumo do brainstorm
-  original).
+- Diagrama do fluxo de autenticação do Serviço de E-mail — precisa ser refeito considerando o
+  `deployo-api-key` (não é mais o mesmo fluxo do brainstorm original).
+- **Sistema de Admin ainda faz sentido** como peça desta iteração, dado que a emissão de API
+  key deixou de precisar de uma UI/API admin (ver seção 4)?
+- **Tensão Etapa 3 × acesso à tabela `api_keys`**: aceitar acesso direto de múltiplos serviços
+  ao banco do `deployo-api-key` via biblioteca de leitura compartilhada, ou expor validação via
+  API HTTP própria (ver seção 3.1)?
+- Onde/como a futura "biblioteca de leitura" de validação de API key é publicada e versionada
+  (artefato Maven de qual repositório), para o Serviço de E-mail depender dela.
