@@ -323,6 +323,20 @@ dados de forma agregada e alertar sobre eles.
       o que esta iteração precisa decidir é só se os eventos brutos já são capturados e
       persistidos aqui (dado que a infraestrutura SNS/SQS é criada agora), mesmo que a
       agregação/alerta fique para depois.
+    - **Plano de teste para quando a conta AWS real existir**: o SES tem um *mailbox
+      simulator* com endereços fixos que geram cada tipo de evento de propósito
+      (`bounce@simulator.amazonses.com`, `complaint@simulator.amazonses.com`,
+      `ooto@simulator.amazonses.com`, `success@simulator.amazonses.com`,
+      `suppressionlist@simulator.amazonses.com`) — [documentação oficial](https://docs.aws.amazon.com/ses/latest/dg/send-an-email-from-console.html).
+      Ele **funciona mesmo com a conta ainda no SES sandbox** e não conta pra cota de envio
+      nem afeta as métricas de reputação — dá pra validar o caminho completo
+      *Configuration Set → SNS → fila SQS de eventos → `EMAIL_EVENT`* mandando e-mail pra
+      esses endereços, sem precisar sair do sandbox (Decisão 7 continua bloqueada por AWS
+      real só para envio a destinatários de verdade) e sem depender de um destinatário real
+      devolver ou reclamar de propósito. Mesmo princípio de "preferir real a fake" já usado
+      no resto do projeto (`docs/context/desenvolvimento.md`) — só que aqui o "real" é a AWS
+      de verdade, não o LocalStack: não ajuda o perfil `docker`/CI local, é o roteiro pra
+      quando a conta AWS real (Decisão 5) estiver disponível.
 
 ## Ordem sugerida de discussão
 
