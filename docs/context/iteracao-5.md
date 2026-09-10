@@ -36,31 +36,32 @@ O processo já seguido no projeto (specs em `.feature` antes do código, decisõ
 registradas em `docs/context/iteracao-N.md` antes de implementar, DER antes das entidades —
 ver `memory/constitution.md`) já é, na essência, SDD. O que muda é só nomenclatura e
 estrutura de arquivo, para a convenção do [spec-kit](https://github.com/github/spec-kit)
-(`specs/NNN-slug/spec.md` + `plan.md` + `tasks.md` por funcionalidade).
+(`specs/NN-NNN-slug/spec.md` + `plan.md` + `tasks.md` por funcionalidade).
 
 **Executado (sessão 2026-09-10, ver seção 7):** a estrutura de arquivo em si já existe —
 `memory/constitution.md` (movido de `docs/context/desenvolvimento.md`, expandido com a seção
-comparando `docs/context/iteracao-N.md` e `specs/NNN-slug/`), `templates/` (os 5 templates,
-adaptados dos usados em `deployo-template-java`) e `specs/README.md` (convenção documentada,
-sem nenhuma pasta `NNN-*` ainda). O que resta pendente não é mais "criar a estrutura", é só a
-decisão de granularidade abaixo — a estrutura já está pronta pra receber a primeira feature
-assim que ela for decidida.
+comparando `docs/context/iteracao-N.md` e `specs/NN-NNN-slug/`), `templates/` (os 5
+templates, adaptados dos usados em `deployo-template-java`) e `specs/README.md` (convenção
+documentada, sem nenhuma pasta `NN-NNN-*` ainda). Com a granularidade resolvida logo abaixo,
+não sobra mais nenhuma decisão bloqueando o uso de `specs/` — só falta a primeira feature ser
+especificada nesse formato.
 
 **Decisões a tomar antes de aplicar:**
 
 - **Resolvido (sessão 2026-09-09/10, ver seção 7):** os documentos de iteração
   (`iteracao-N.md`, este incluído) continuam sendo escritos e **atualizados incrementalmente,
   sessão a sessão**, não só até a adoção do spec-kit nem só no início do planejamento de cada
-  iteração. `specs/NNN-*`, quando/se adotado, registra decisão técnica de escopo fechado de
+  iteração. `specs/NN-NNN-*`, quando/se adotado, registra decisão técnica de escopo fechado de
   uma funcionalidade — não substitui nem interrompe este diário. Boa parte do que se discute
   numa sessão (organização de issues, convenção de label, a própria granularidade de
-  `specs/NNN-*` abaixo) não vira spec nenhuma, e só fica registrada aqui.
-- Granularidade do slug `NNN-*`: uma pasta `specs/` por iteração (equivalente a
-  `iteracao-N.md`), ou uma por funcionalidade dentro da iteração (mais granular, mais próximo
-  do uso comum do spec-kit)? Afeta diretamente como esta própria iteração seria estruturada se
-  já nascesse no formato novo. **Ainda sem critério operacional** — falta definir o que conta
-  como funcionalidade grande o suficiente para justificar uma pasta própria (ver seção 7). É a
-  única peça que falta pra `specs/` sair do zero.
+  `specs/NN-NNN-*` abaixo) não vira spec nenhuma, e só fica registrada aqui.
+- **Resolvido (sessão 2026-09-10, ver seção 7): granularidade por funcionalidade, agrupada
+  por iteração — `specs/NN-NNN-slug/`.** `NN` é o número da iteração (2 dígitos, mesmo número
+  do label `iteration-N` da Issue); `NNN` é o número sequencial da funcionalidade **dentro
+  dessa iteração** (3 dígitos, reinicia a cada iteração). Preserva o agrupamento por iteração
+  que o projeto já tinha (`iteracao-N.md`) sem abrir mão da granularidade fina por
+  funcionalidade, mais próxima do uso comum do spec-kit. Ver `specs/README.md` para a
+  estrutura completa e um exemplo.
 - Os `.feature` Gherkin continuam vivendo em `app/src/test/resources/features` (contrato de
   aceite, executável) — o spec-kit não substitui isso, `spec.md`/`plan.md`/`tasks.md` registram
   decisão e planejamento, papel equivalente ao que `iteracao-N.md` já cumpre hoje.
@@ -276,9 +277,9 @@ Esta seção existe para o objetivo original de todo `docs/context/iteracao-N.md
 `memory/constitution.md`: permitir retomar o trabalho depois de uma troca de chat, ou
 depois de uma sessão que travou no meio (ficou repetindo pergunta/resposta sem sair) — não só
 descrever o plano inicial da iteração uma única vez. Boa parte do que é decidido/discutido numa
-sessão de trabalho não cabe em spec nenhuma (`specs/NNN-*`, quando/se adotado, cobre só decisão
-técnica de escopo fechado de uma funcionalidade específica) — é aqui que esse contexto de
-processo fica registrado, sessão a sessão, incrementalmente, e não apagado/reescrito a cada
+sessão de trabalho não cabe em spec nenhuma (`specs/NN-NNN-*`, quando/se adotado, cobre só
+decisão técnica de escopo fechado de uma funcionalidade específica) — é aqui que esse contexto
+de processo fica registrado, sessão a sessão, incrementalmente, e não apagado/reescrito a cada
 retomada.
 
 ### Sessão 2026-09-09/10
@@ -303,24 +304,27 @@ retomada.
 - **Estrutura de arquivo do spec-kit criada** (ver seção 1): `memory/constitution.md` (movido
   de `docs/context/desenvolvimento.md`, arquivo antigo removido — conteúdo preservado só no
   caminho novo — e expandido com a seção "Adoção do spec-kit" e a tabela comparando
-  `docs/context/iteracao-N.md` × `specs/NNN-slug/`), `templates/` (os 5 templates do
+  `docs/context/iteracao-N.md` × `specs/NN-NNN-slug/`), `templates/` (os 5 templates do
   spec-kit, adaptados de `deployo-template-java` para as convenções já existentes aqui —
   `.feature` em vez de Gherkin inline, `docs/openapi.yaml`/`docs/diagrams/der.md` como
   contrato/DER já existentes em vez de um segundo lugar para redesenhar), `specs/README.md`
-  (convenção documentada, nenhuma pasta `NNN-*` criada ainda). Referências a
+  (convenção documentada, nenhuma pasta `NN-NNN-*` criada ainda). Referências a
   `docs/context/desenvolvimento.md` corrigidas em `iteracao-3.md`, `iteracao-4.md`, no
   próprio `ci.yml` e em `CompetitionMother.java` (só correção mecânica de caminho, sem
   reescrever o conteúdo histórico desses documentos).
+- **Granularidade de `specs/` resolvida**: por funcionalidade, agrupada por iteração —
+  `specs/NN-NNN-slug/` (`NN` = iteração, 2 dígitos, mesmo número do label `iteration-N`;
+  `NNN` = sequência da funcionalidade dentro dessa iteração, 3 dígitos, reinicia a cada
+  iteração). `memory/constitution.md`, `specs/README.md` (com exemplo,
+  `specs/05-001-servico-email-templates/`) e `templates/` atualizados para refletir a
+  convenção. Não sobra mais nenhuma decisão bloqueando o primeiro uso de `specs/` — só falta
+  a primeira feature ser especificada.
 
 **Decisões em aberto levantadas nesta sessão** (novas, além das já listadas no resumo no fim
 deste documento):
 - Como popular o campo "Iteration" (numérico) do GitHub Project a partir do label da issue —
   decidido que a fonte da verdade é o label (`iteration-N`), sincronizado por script ao
   adicionar a issue ao Project; o script em si ainda não existe.
-- Granularidade de divisão em `specs/NNN-*` continua sem critério operacional definido (ver
-  seção 1) — falta decidir o que conta como funcionalidade grande o suficiente para ter pasta
-  própria, distinto da pergunta de nível mais alto "por iteração ou por funcionalidade". É a
-  única peça que falta para `specs/` deixar de estar vazio.
 
 **Confirmado nesta sessão:** este arquivo (e os das iterações seguintes) são atualizados
 incrementalmente a cada sessão relevante de trabalho — não são escritos uma vez no início do
@@ -330,9 +334,6 @@ em spec nenhuma.
 
 ## Decisões em aberto (resumo)
 
-- Granularidade das pastas `specs/NNN-*` — por iteração ou por funcionalidade? E, uma vez
-  escolhido o nível, o que conta como unidade grande o suficiente para ter pasta própria (ver
-  seção 7)?
 - `app/` também migra para o Config Server, ou mantém profiles locais?
 - O `SqsEmailSender`/templates do `app/` migram para dentro do Serviço de E-mail, ou
   convivem temporariamente com ele?
