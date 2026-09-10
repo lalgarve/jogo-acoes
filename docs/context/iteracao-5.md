@@ -34,9 +34,17 @@ mudança que aproveita mais do código já escrito (templates Thymeleaf, `EmailS
 
 O processo já seguido no projeto (specs em `.feature` antes do código, decisões técnicas
 registradas em `docs/context/iteracao-N.md` antes de implementar, DER antes das entidades —
-ver `docs/context/desenvolvimento.md`) já é, na essência, SDD. O que muda é só nomenclatura e
+ver `memory/constitution.md`) já é, na essência, SDD. O que muda é só nomenclatura e
 estrutura de arquivo, para a convenção do [spec-kit](https://github.com/github/spec-kit)
 (`specs/NNN-slug/spec.md` + `plan.md` + `tasks.md` por funcionalidade).
+
+**Executado (sessão 2026-09-10, ver seção 7):** a estrutura de arquivo em si já existe —
+`memory/constitution.md` (movido de `docs/context/desenvolvimento.md`, expandido com a seção
+comparando `docs/context/iteracao-N.md` e `specs/NNN-slug/`), `templates/` (os 5 templates,
+adaptados dos usados em `deployo-template-java`) e `specs/README.md` (convenção documentada,
+sem nenhuma pasta `NNN-*` ainda). O que resta pendente não é mais "criar a estrutura", é só a
+decisão de granularidade abaixo — a estrutura já está pronta pra receber a primeira feature
+assim que ela for decidida.
 
 **Decisões a tomar antes de aplicar:**
 
@@ -51,7 +59,8 @@ estrutura de arquivo, para a convenção do [spec-kit](https://github.com/github
   `iteracao-N.md`), ou uma por funcionalidade dentro da iteração (mais granular, mais próximo
   do uso comum do spec-kit)? Afeta diretamente como esta própria iteração seria estruturada se
   já nascesse no formato novo. **Ainda sem critério operacional** — falta definir o que conta
-  como funcionalidade grande o suficiente para justificar uma pasta própria (ver seção 7).
+  como funcionalidade grande o suficiente para justificar uma pasta própria (ver seção 7). É a
+  única peça que falta pra `specs/` sair do zero.
 - Os `.feature` Gherkin continuam vivendo em `app/src/test/resources/features` (contrato de
   aceite, executável) — o spec-kit não substitui isso, `spec.md`/`plan.md`/`tasks.md` registram
   decisão e planejamento, papel equivalente ao que `iteracao-N.md` já cumpre hoje.
@@ -264,7 +273,7 @@ resposta.
 ## 7. Diário desta iteração — continuidade entre sessões
 
 Esta seção existe para o objetivo original de todo `docs/context/iteracao-N.md`, descrito em
-`docs/context/desenvolvimento.md`: permitir retomar o trabalho depois de uma troca de chat, ou
+`memory/constitution.md`: permitir retomar o trabalho depois de uma troca de chat, ou
 depois de uma sessão que travou no meio (ficou repetindo pergunta/resposta sem sair) — não só
 descrever o plano inicial da iteração uma única vez. Boa parte do que é decidido/discutido numa
 sessão de trabalho não cabe em spec nenhuma (`specs/NNN-*`, quando/se adotado, cobre só decisão
@@ -291,6 +300,17 @@ retomada.
   duas, só o escopo), com uma nota inserida no corpo de cada uma indicando que o escopo antigo
   ("Redução de bounce no SES", "Deploy, observabilidade e hardening") foi substituído/absorvido
   pelo escopo novo dessas iterações, descrito neste documento e em `docs/roadmap.md`.
+- **Estrutura de arquivo do spec-kit criada** (ver seção 1): `memory/constitution.md` (movido
+  de `docs/context/desenvolvimento.md`, arquivo antigo removido — conteúdo preservado só no
+  caminho novo — e expandido com a seção "Adoção do spec-kit" e a tabela comparando
+  `docs/context/iteracao-N.md` × `specs/NNN-slug/`), `templates/` (os 5 templates do
+  spec-kit, adaptados de `deployo-template-java` para as convenções já existentes aqui —
+  `.feature` em vez de Gherkin inline, `docs/openapi.yaml`/`docs/diagrams/der.md` como
+  contrato/DER já existentes em vez de um segundo lugar para redesenhar), `specs/README.md`
+  (convenção documentada, nenhuma pasta `NNN-*` criada ainda). Referências a
+  `docs/context/desenvolvimento.md` corrigidas em `iteracao-3.md`, `iteracao-4.md`, no
+  próprio `ci.yml` e em `CompetitionMother.java` (só correção mecânica de caminho, sem
+  reescrever o conteúdo histórico desses documentos).
 
 **Decisões em aberto levantadas nesta sessão** (novas, além das já listadas no resumo no fim
 deste documento):
@@ -299,7 +319,8 @@ deste documento):
   adicionar a issue ao Project; o script em si ainda não existe.
 - Granularidade de divisão em `specs/NNN-*` continua sem critério operacional definido (ver
   seção 1) — falta decidir o que conta como funcionalidade grande o suficiente para ter pasta
-  própria, distinto da pergunta de nível mais alto "por iteração ou por funcionalidade".
+  própria, distinto da pergunta de nível mais alto "por iteração ou por funcionalidade". É a
+  única peça que falta para `specs/` deixar de estar vazio.
 
 **Confirmado nesta sessão:** este arquivo (e os das iterações seguintes) são atualizados
 incrementalmente a cada sessão relevante de trabalho — não são escritos uma vez no início do
