@@ -15,9 +15,9 @@ respeitar.
 
 **Nota histórica:** até a Iteração 5, este arquivo vivia em `docs/context/desenvolvimento.md`.
 O conteúdo não mudou por causa da mudança de local — só a partir daqui passa a incluir as
-seções novas descritas abaixo. Links antigos para `docs/context/desenvolvimento.md` em
-documentos de iteração anteriores foram atualizados para apontar pra cá; ver
-`docs/context/iteracao-5.md` para o registro dessa decisão.
+seções novas descritas abaixo. O arquivo antigo foi removido (não deixado como redirecionamento)
+e os links que apontavam pra ele em documentos de iteração anteriores foram atualizados para
+apontar pra cá; ver `docs/context/iteracao-5.md` para o registro dessa decisão.
 
 ## Idioma
 
@@ -240,9 +240,10 @@ Documentação de projeto tem plateias diferentes, e cada uma mora num lugar dif
   `docs/openapi.yaml`) — destinada a quem avalia ou usa o projeto de fora. Pronta pra ser
   publicada como está.
 - **`docs/context/`** — diário de desenvolvimento por iteração
-  (`docs/context/iteracao-N.md`) e este próprio arquivo até a Iteração 5
-  (`docs/context/desenvolvimento.md`, agora só histórico de commits antigos, não mais
-  atualizado nesse caminho). Não é documentação de produto — não deve ser publicada.
+  (`docs/context/iteracao-N.md`). Não é documentação de produto — não deve ser publicada.
+  Até a Iteração 5, este próprio arquivo (`memory/constitution.md`) também vivia aqui, em
+  `docs/context/desenvolvimento.md` — removido nessa migração, conteúdo preservado só no
+  caminho novo (ver "Nota histórica" no topo deste arquivo).
 
 A separação existe porque as três primeiras categorias têm ciclo de vida e tom diferentes de
 `docs/context/`: documentação de produto e de feature são escritas pra durar e ser lidas por
