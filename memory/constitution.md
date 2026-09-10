@@ -3,7 +3,7 @@
 Este documento descreve o **fluxo de trabalho e as convenções de nomenclatura** usados
 neste projeto — não as decisões técnicas específicas dele (essas ficam em
 [`docs/roadmap.md`](../docs/roadmap.md), nos documentos de cada iteração e, a partir da
-Iteração 5, em `specs/NNN-slug/plan.md`). A ideia é que este arquivo seja **agnóstico de
+Iteração 5, em `specs/NN-NNN-slug/plan.md`). A ideia é que este arquivo seja **agnóstico de
 projeto**: pode ser copiado como ponto de partida para outro repositório sem precisar
 reexplicar o processo do zero — foi, aliás, o que aconteceu no sentido inverso:
 [`deployo-template-java`](https://github.com/lalgarve/deployo-template-java) consolidou a
@@ -39,7 +39,7 @@ lê.
 O processo já seguido no projeto desde a Iteração 1 (specs em `.feature` antes do código,
 decisões técnicas registradas em `docs/context/iteracao-N.md` antes de implementar, DER antes
 das entidades) já era, na essência, SDD — só não usava a nomenclatura/estrutura de arquivo do
-[spec-kit](https://github.com/github/spec-kit). A partir da Iteração 5, `specs/NNN-slug/`
+[spec-kit](https://github.com/github/spec-kit). A partir da Iteração 5, `specs/NN-NNN-slug/`
 (`spec.md` + `plan.md` + `tasks.md`, com `templates/` fornecendo o ponto de partida de cada
 arquivo — ver `templates/` e `specs/README.md`) passa a existir **ao lado** do mecanismo já
 usado, não no lugar dele.
@@ -51,18 +51,20 @@ inverso — tem quatro iterações inteiras (`iteracao-2.md` a `iteracao-4.md`) 
 anterior ao spec-kit — por isso os dois mecanismos coexistem aqui, o que não existe no
 template:
 
-| | `docs/context/iteracao-N.md` | `specs/NNN-slug/` |
+| | `docs/context/iteracao-N.md` | `specs/NN-NNN-slug/` |
 |---|---|---|
 | Escopo | Uma iteração inteira (várias features/decisões de processo) | Uma feature/funcionalidade específica |
 | Ciclo de vida | Diário: atualizado incrementalmente, sessão a sessão, enquanto a iteração está em andamento | Escrito antes da implementação da feature; "fechado" quando ela é entregue — não é diário |
 | Papel principal | Continuidade de contexto entre sessões de chat, ou quando uma sessão trava no meio (ver `iteracao-5.md`, seção "Diário desta iteração") | Contrato de requisito (`spec.md`) e decisão técnica (`plan.md`) de uma funcionalidade específica |
 | Convertido retroativamente para o formato novo? | Não — `iteracao-2.md` a `iteracao-4.md` ficam como histórico, não reescritos | Não aplicável — só existe a partir daqui |
 
-**Ainda em aberto** (ver "Decisões em aberto" em `docs/context/iteracao-5.md`, que é a fonte
-de verdade corrente, não este arquivo): a granularidade de `specs/NNN-*` — uma pasta por
-iteração inteira, ou uma por funcionalidade dentro da iteração? Por isso `specs/` ainda não
-tem nenhuma pasta `NNN-slug/` criada — `specs/README.md` documenta a convenção, pronta para
-uso assim que essa decisão for tomada.
+**Granularidade — resolvida (sessão 2026-09-10)**: por funcionalidade, mas agrupada por
+iteração. `NN` é o número da iteração (2 dígitos, ex. `05`, `08`, `17` — mesmo número do
+label `iteration-N` da Issue, ver "Rastreamento de trabalho via Issues" abaixo); `NNN` é o
+número sequencial da funcionalidade **dentro dessa iteração** (3 dígitos, reinicia a cada
+iteração, ex. `001`, `002`). Uma feature da Iteração 5 sobre o Serviço de E-mail vira, por
+exemplo, `specs/05-001-servico-email-templates/`. Ver `specs/README.md` para a estrutura
+completa de cada pasta.
 
 Os `.feature` Gherkin continuam vivendo em `app/src/test/resources/features` (contrato de
 aceite, executável) — o spec-kit não substitui isso. O `spec.md` de uma feature referencia o(s)
@@ -179,10 +181,10 @@ O board de Issues do GitHub é o lugar para visualizar o andamento do projeto:
 
 | Nível SDD | GitHub |
 |---|---|
-| Uma feature (`specs/NNN-slug/`, quando existir) | 1 Issue "guarda-chuva" (épico), corpo linkando `spec.md`/`plan.md` |
+| Uma feature (`specs/NN-NNN-slug/`, quando existir) | 1 Issue "guarda-chuva" (épico), corpo linkando `spec.md`/`plan.md` |
 | Cada tarefa de `tasks.md` | Item de checklist da Issue-épico, ou Issue própria quando grande o suficiente para PR isolada |
 | Tipo do commit (`feat`/`fix`/`refactor`/...) | Label da Issue — mesma taxonomia da tabela de commits acima |
-| Iteração (`docs/context/iteracao-N.md`) | Label `iteration-N` da Issue |
+| Iteração (`docs/context/iteracao-N.md`) | Label `iteration-N` da Issue — mesmo `NN` do prefixo de `specs/NN-NNN-slug/` |
 
 O label `iteration-N` (não o número no título — retirado de lá na Iteração 5, ver
 `docs/context/iteracao-5.md`) é a fonte da verdade para popular o campo numérico "Iteration"
@@ -215,13 +217,14 @@ para a Issue.
 
 - Cada feature nasce a partir de `templates/` (`spec-template.md`, `plan-template.md`,
   `tasks-template.md`, `data-model-template.md`, `contracts-template.md`) — copiar o
-  template para `specs/NNN-slug/`, não escrever do zero.
+  template para `specs/NN-NNN-slug/` (`NN` = iteração, `NNN` = sequência dentro dela, ver
+  "Adoção do spec-kit" acima), não escrever do zero.
 - `spec.md` (requisitos, critérios de aceite — o QUÊ e POR QUÊ) referencia os `.feature`
   Gherkin correspondentes em vez de duplicar cenários em prosa.
 - `plan.md` traduz `spec.md` em decisões técnicas e é validado contra este arquivo
   (`memory/constitution.md`).
 - Contratos REST deste projeto continuam contract-first via `docs/openapi.yaml` (já
-  estabelecido desde a Iteração 1) — `contracts/` dentro de `specs/NNN-slug/` é para
+  estabelecido desde a Iteração 1) — `contracts/` dentro de `specs/NN-NNN-slug/` é para
   interfaces não-REST (ex.: CLI, contrato de mensagem de fila) ou para documentar o consumo
   de um serviço externo via cliente Feign, não para reproduzir o que já está no OpenAPI.
 - `tasks.md` quebra `plan.md` em tarefas pequenas, espelhadas como Issues (ver
@@ -233,7 +236,7 @@ Documentação de projeto tem plateias diferentes, e cada uma mora num lugar dif
 
 - **`memory/constitution.md`** (este arquivo) — princípios e convenções, agnósticos de
   feature específica.
-- **`specs/NNN-slug/`** — a especificação viva de cada feature, a partir da Iteração 5
+- **`specs/NN-NNN-slug/`** — a especificação viva de cada feature, a partir da Iteração 5
   (`spec.md`, `plan.md`, `data-model.md`, `contracts/`, `tasks.md`). Serve quem está
   desenvolvendo essa feature. Ver `specs/README.md`.
 - **Documentação de produto/arquitetura** (`docs/roadmap.md`, `docs/diagrams/`,
@@ -261,7 +264,7 @@ regra de exclusão própria.
 | Caminho | Categoria | Publicado? |
 |---|---|---|
 | `docs/roadmap.md`, `docs/diagrams/der.md`, `docs/openapi.yaml` | Produto | Sim |
-| `specs/NNN-slug/*.md` | Especificação de feature | Não |
+| `specs/NN-NNN-slug/*.md` | Especificação de feature | Não |
 | `memory/constitution.md` (este arquivo) | Convenção/processo | Não |
 | `docs/context/iteracao-N.md` | Diário de sessão | Não |
 
