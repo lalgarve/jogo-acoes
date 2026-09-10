@@ -2,9 +2,22 @@
 
 Este documento descreve o **fluxo de trabalho e as convenções de nomenclatura** usados
 neste projeto — não as decisões técnicas específicas dele (essas ficam em
-[`roadmap.md`](../roadmap.md) e nos documentos de cada iteração). A ideia é que este arquivo
-seja **agnóstico de projeto**: pode ser copiado como ponto de partida para outro repositório
-sem precisar reexplicar o processo do zero.
+[`docs/roadmap.md`](../docs/roadmap.md), nos documentos de cada iteração e, a partir da
+Iteração 5, em `specs/NN-NNN-slug/plan.md`). A ideia é que este arquivo seja **agnóstico de
+projeto**: pode ser copiado como ponto de partida para outro repositório sem precisar
+reexplicar o processo do zero — foi, aliás, o que aconteceu no sentido inverso:
+[`deployo-template-java`](https://github.com/lalgarve/deployo-template-java) consolidou a
+versão anterior deste arquivo (antes em `docs/context/desenvolvimento.md`) com a de
+`deployo-api-key` num template reutilizável, e esta versão migra `jogo-acoes` para a
+localização e nomenclatura que esse template já usa — `memory/constitution.md`, vocabulário
+do Spec-Driven Development (SDD): o conjunto de princípios que toda `spec.md`/`plan.md` deve
+respeitar.
+
+**Nota histórica:** até a Iteração 5, este arquivo vivia em `docs/context/desenvolvimento.md`.
+O conteúdo não mudou por causa da mudança de local — só a partir daqui passa a incluir as
+seções novas descritas abaixo. O arquivo antigo foi removido (não deixado como redirecionamento)
+e os links que apontavam pra ele em documentos de iteração anteriores foram atualizados para
+apontar pra cá; ver `docs/context/iteracao-5.md` para o registro dessa decisão.
 
 ## Idioma
 
@@ -13,12 +26,49 @@ sem precisar reexplicar o processo do zero.
 | Código: identificadores, comentários, nomes de arquivo de código | Inglês |
 | Mensagens de commit | Inglês |
 | Especificações de comportamento (Gherkin, `.feature`) | Inglês |
-| Documentação de projeto (`README.md`, `docs/*.md`) | Português |
+| Issues e Pull Requests (título e descrição) | Inglês |
+| Documentação de projeto (`README.md`, `docs/*.md`, `specs/**/*.md`) | Português |
 
 Código em inglês porque é o padrão do ecossistema (bibliotecas, mensagens de erro,
 convenções da linguagem). Documentação em português porque é o idioma da equipe — não faz
 sentido traduzir decisões e raciocínio para um idioma que não é o nativo de quem escreve e
 lê.
+
+## Adoção do spec-kit (Spec-Driven Development) — a partir da Iteração 5
+
+O processo já seguido no projeto desde a Iteração 1 (specs em `.feature` antes do código,
+decisões técnicas registradas em `docs/context/iteracao-N.md` antes de implementar, DER antes
+das entidades) já era, na essência, SDD — só não usava a nomenclatura/estrutura de arquivo do
+[spec-kit](https://github.com/github/spec-kit). A partir da Iteração 5, `specs/NN-NNN-slug/`
+(`spec.md` + `plan.md` + `tasks.md`, com `templates/` fornecendo o ponto de partida de cada
+arquivo — ver `templates/` e `specs/README.md`) passa a existir **ao lado** do mecanismo já
+usado, não no lugar dele.
+
+**Isso é diferente do `deployo-template-java`**: aquele repositório nasceu já usando só
+`specs/`, sem um equivalente a `docs/context/iteracao-N.md`, porque nasceu depois da adoção do
+spec-kit, sem iteração nenhuma de história anterior para herdar. `jogo-acoes` é o caso
+inverso — tem quatro iterações inteiras (`iteracao-2.md` a `iteracao-4.md`) de história
+anterior ao spec-kit — por isso os dois mecanismos coexistem aqui, o que não existe no
+template:
+
+| | `docs/context/iteracao-N.md` | `specs/NN-NNN-slug/` |
+|---|---|---|
+| Escopo | Uma iteração inteira (várias features/decisões de processo) | Uma feature/funcionalidade específica |
+| Ciclo de vida | Diário: atualizado incrementalmente, sessão a sessão, enquanto a iteração está em andamento | Escrito antes da implementação da feature; "fechado" quando ela é entregue — não é diário |
+| Papel principal | Continuidade de contexto entre sessões de chat, ou quando uma sessão trava no meio (ver `iteracao-5.md`, seção "Diário desta iteração") | Contrato de requisito (`spec.md`) e decisão técnica (`plan.md`) de uma funcionalidade específica |
+| Convertido retroativamente para o formato novo? | Não — `iteracao-2.md` a `iteracao-4.md` ficam como histórico, não reescritos | Não aplicável — só existe a partir daqui |
+
+**Granularidade — resolvida (sessão 2026-09-10)**: por funcionalidade, mas agrupada por
+iteração. `NN` é o número da iteração (2 dígitos, ex. `05`, `08`, `17` — mesmo número do
+label `iteration-N` da Issue, ver "Rastreamento de trabalho via Issues" abaixo); `NNN` é o
+número sequencial da funcionalidade **dentro dessa iteração** (3 dígitos, reinicia a cada
+iteração, ex. `001`, `002`). Uma feature da Iteração 5 sobre o Serviço de E-mail vira, por
+exemplo, `specs/05-001-servico-email-templates/`. Ver `specs/README.md` para a estrutura
+completa de cada pasta.
+
+Os `.feature` Gherkin continuam vivendo em `app/src/test/resources/features` (contrato de
+aceite, executável) — o spec-kit não substitui isso. O `spec.md` de uma feature referencia o(s)
+arquivo(s) `.feature` correspondentes em vez de duplicar os cenários em prosa.
 
 ## Commits semânticos
 
@@ -45,6 +95,9 @@ aberto (documentada previamente como pendente) é resolvida, isso vira um commit
 separado da implementação — mesmo que a decisão não mude nenhuma linha de código sozinha
 (ex.: "decision: session/auth via Spring Security"). Isso deixa o histórico do git navegável
 como uma trilha de decisões, não só de mudanças de código.
+
+Esses mesmos tipos são usados como **labels de Issue** — ver "Rastreamento de trabalho via
+Issues" abaixo — para que commit, Issue e PR falem o mesmo vocabulário.
 
 ### Corpo da mensagem
 
@@ -122,12 +175,32 @@ linha não bata com `^(feat|fix|refactor|test|docs|chore|decision): .+`.
   reaproveitar esse em vez de abrir outro.
 - Projetos envolvendo páginas estáticas e deploy devem ter um branch novo após cada deploy com sucesso em produção.
 
+## Rastreamento de trabalho via Issues
+
+O board de Issues do GitHub é o lugar para visualizar o andamento do projeto:
+
+| Nível SDD | GitHub |
+|---|---|
+| Uma feature (`specs/NN-NNN-slug/`, quando existir) | 1 Issue "guarda-chuva" (épico), corpo linkando `spec.md`/`plan.md` |
+| Cada tarefa de `tasks.md` | Item de checklist da Issue-épico, ou Issue própria quando grande o suficiente para PR isolada |
+| Tipo do commit (`feat`/`fix`/`refactor`/...) | Label da Issue — mesma taxonomia da tabela de commits acima |
+| Iteração (`docs/context/iteracao-N.md`) | Label `iteration-N` da Issue — mesmo `NN` do prefixo de `specs/NN-NNN-slug/` |
+
+O label `iteration-N` (não o número no título — retirado de lá na Iteração 5, ver
+`docs/context/iteracao-5.md`) é a fonte da verdade para popular o campo numérico "Iteration"
+de um GitHub Project, via script, ao adicionar a issue ao Project — sincronização ainda não
+automatizada (decisão em aberto registrada em `docs/context/iteracao-5.md`).
+
+Commits e PRs fecham a Issue correspondente com `Closes #N` na mensagem — mesma convenção
+usada para referenciar uma decisão resolvida em `iteracao-N.md`/`plan.md`, só que apontando
+para a Issue.
+
 ## Documentação viva por fase/iteração - Projetos de Software
 
 - Antes de implementar uma fase de trabalho não trivial, registrar as decisões técnicas em
   aberto num documento de planejamento dessa fase (ex.: `docs/context/iteracao-N.md` — ver
-  "Onde a documentação de contexto mora" abaixo). Funciona como uma ata que sobrevive a troca
-  de contexto (nova sessão, outra pessoa assumindo o trabalho).
+  "Onde a documentação mora" abaixo). Funciona como uma ata que sobrevive a troca de
+  contexto (nova sessão, outra pessoa assumindo o trabalho).
 - Decisões são marcadas como resolvidas no próprio texto conforme são tomadas, preservando
   o raciocínio e as alternativas consideradas — não só a conclusão final. Isso evita ter que
   re-explicar o "por quê" de uma escolha mais tarde.
@@ -140,37 +213,60 @@ linha não bata com `^(feat|fix|refactor|test|docs|chore|decision): .+`.
 - Modelo de dados (diagrama entidade-relacionamento) é desenhado antes das entidades de
   código.
 
+## Documentação viva por feature (spec-kit) — a partir da Iteração 5
 
-## Onde a documentação de contexto mora - Projetos de Software
+- Cada feature nasce a partir de `templates/` (`spec-template.md`, `plan-template.md`,
+  `tasks-template.md`, `data-model-template.md`, `contracts-template.md`) — copiar o
+  template para `specs/NN-NNN-slug/` (`NN` = iteração, `NNN` = sequência dentro dela, ver
+  "Adoção do spec-kit" acima), não escrever do zero.
+- `spec.md` (requisitos, critérios de aceite — o QUÊ e POR QUÊ) referencia os `.feature`
+  Gherkin correspondentes em vez de duplicar cenários em prosa.
+- `plan.md` traduz `spec.md` em decisões técnicas e é validado contra este arquivo
+  (`memory/constitution.md`).
+- Contratos REST deste projeto continuam contract-first via `docs/openapi.yaml` (já
+  estabelecido desde a Iteração 1) — `contracts/` dentro de `specs/NN-NNN-slug/` é para
+  interfaces não-REST (ex.: CLI, contrato de mensagem de fila) ou para documentar o consumo
+  de um serviço externo via cliente Feign, não para reproduzir o que já está no OpenAPI.
+- `tasks.md` quebra `plan.md` em tarefas pequenas, espelhadas como Issues (ver
+  "Rastreamento de trabalho via Issues" acima).
 
-Documentação de projeto tem duas plateias diferentes, e cada uma mora num lugar diferente
-dentro de `docs/`:
+## Onde a documentação mora
 
-- **Documentação de produto/arquitetura** — destinada a quem avalia ou usa o projeto de
-  fora (README, roadmap, modelo de dados, diagramas de arquitetura/sequência/classes). Fica
-  na raiz de `docs/` (ou em subpastas temáticas, ex. `docs/diagrams/`), pronta pra ser
+Documentação de projeto tem plateias diferentes, e cada uma mora num lugar diferente:
+
+- **`memory/constitution.md`** (este arquivo) — princípios e convenções, agnósticos de
+  feature específica.
+- **`specs/NN-NNN-slug/`** — a especificação viva de cada feature, a partir da Iteração 5
+  (`spec.md`, `plan.md`, `data-model.md`, `contracts/`, `tasks.md`). Serve quem está
+  desenvolvendo essa feature. Ver `specs/README.md`.
+- **Documentação de produto/arquitetura** (`docs/roadmap.md`, `docs/diagrams/`,
+  `docs/openapi.yaml`) — destinada a quem avalia ou usa o projeto de fora. Pronta pra ser
   publicada como está.
-- **Documentação de contexto de sessão** — a ata de decisões técnicas e o estado de "onde
-  paramos" que permite retomar o trabalho entre sessões de chat (este arquivo e os
-  documentos de iteração, ex. `docs/context/iteracao-N.md`). Serve quem está desenvolvendo,
-  não quem consome o produto publicado. Fica em `docs/context/`, separada da anterior.
+- **`docs/context/`** — diário de desenvolvimento por iteração
+  (`docs/context/iteracao-N.md`). Não é documentação de produto — não deve ser publicada.
+  Até a Iteração 5, este próprio arquivo (`memory/constitution.md`) também vivia aqui, em
+  `docs/context/desenvolvimento.md` — removido nessa migração, conteúdo preservado só no
+  caminho novo (ver "Nota histórica" no topo deste arquivo).
 
-A separação existe porque as duas têm ciclo de vida e tom diferentes: documentação de
-produto é escrita pra durar e ser lida por terceiros; documentação de contexto é escrita
-rápido, durante o próprio trabalho, pra sobreviver a uma troca de sessão — cheia de "ainda
-não decidido"/"validado nesta sessão", raciocínio capturado no calor da decisão, não prosa
-revisada. Publicar as duas juntas confundiria as duas audiências.
+A separação existe porque as três primeiras categorias têm ciclo de vida e tom diferentes de
+`docs/context/`: documentação de produto e de feature são escritas pra durar e ser lidas por
+terceiros (ou por quem revisa a feature); `docs/context/iteracao-N.md` é escrito rápido,
+durante o próprio trabalho, pra sobreviver a uma troca de sessão — cheio de "ainda não
+decidido"/"validado nesta sessão", raciocínio capturado no calor da decisão, não prosa
+revisada. Publicar as duas juntas confundiria as audiências.
 
 **Exemplo usado neste projeto**: o site institucional que importa este repositório como
 projeto de portfólio (Hugo + Docsy) varre `docs/` e publica todo `.md` que encontra, mas
-pula por convenção qualquer diretório chamado `uml`, `backlog` ou `context` — a regra
-existia para as duas primeiras, e foi estendida para cobrir `context` especificamente por
-causa deste projeto, valendo automaticamente para os próximos também. Por isso:
+pula por convenção qualquer diretório chamado `uml`, `backlog` ou `context`. `memory/` e
+`specs/` ficam fora de `docs/` inteiramente, então nem entram na varredura — não precisam de
+regra de exclusão própria.
 
-| Arquivo | Categoria | Publicado? |
+| Caminho | Categoria | Publicado? |
 |---|---|---|
-| `docs/roadmap.md`, `docs/diagrams/der.md` | Produto | Sim |
-| `docs/context/desenvolvimento.md` (este arquivo), `docs/context/iteracao-N.md` | Contexto de sessão | Não |
+| `docs/roadmap.md`, `docs/diagrams/der.md`, `docs/openapi.yaml` | Produto | Sim |
+| `specs/NN-NNN-slug/*.md` | Especificação de feature | Não |
+| `memory/constitution.md` (este arquivo) | Convenção/processo | Não |
+| `docs/context/iteracao-N.md` | Diário de sessão | Não |
 
 Um novo documento de retomada de contexto (ex. a próxima iteração) já nasce em
 `docs/context/` — não é escrito na raiz de `docs/` pra ser movido depois.
@@ -181,7 +277,7 @@ Um diagrama Mermaid com sintaxe que "parece certa" pode ainda assim falhar ao re
 a gramática tem armadilhas que só aparecem no parser de verdade (ex.: um `;` dentro do texto
 de uma `Note` termina a instrução ali, mesmo no meio da frase, e quebra o resto da linha).
 Escrever o `.md` e assumir que vai renderizar no GitHub/Docsy sem checar é o mesmo erro que
-"passou no teste, quebrou em produção" (ver seção "Testes" acima) — só que pra documentação.
+"passou no teste, quebrou em produção" (ver seção "Testes" abaixo) — só que pra documentação.
 Antes de considerar um diagrama pronto, renderizar de verdade contra um motor Mermaid real,
 não só validar visualmente/mentalmente a sintaxe.
 

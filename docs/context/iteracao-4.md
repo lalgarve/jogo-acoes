@@ -334,7 +334,7 @@ dados de forma agregada e alertar sobre eles.
       esses endereços, sem precisar sair do sandbox (Decisão 7 continua bloqueada por AWS
       real só para envio a destinatários de verdade) e sem depender de um destinatário real
       devolver ou reclamar de propósito. Mesmo princípio de "preferir real a fake" já usado
-      no resto do projeto (`docs/context/desenvolvimento.md`) — só que aqui o "real" é a AWS
+      no resto do projeto (`memory/constitution.md`) — só que aqui o "real" é a AWS
       de verdade, não o LocalStack: não ajuda o perfil `docker`/CI local, é o roteiro pra
       quando a conta AWS real (Decisão 5) estiver disponível.
 
@@ -345,7 +345,7 @@ acesso à AWS real — dá para avançar nelas dentro de uma sessão de agente. 
 da decisão 10 (`EMAIL_EVENT`) também não depende de AWS e pode ser desenhado junto. As
 decisões 5–7 e a parte de infraestrutura da 10 (Configuration Set, tópico SNS, fila de
 eventos) dependem de acesso à conta AWS do projeto, fora do alcance das ferramentas
-disponíveis aqui — ver `docs/context/desenvolvimento.md` para o padrão já usado nas iterações
+disponíveis aqui — ver `memory/constitution.md` para o padrão já usado nas iterações
 anteriores de documentar claramente o que foi validado de verdade vs. o que ficou por
 raciocínio/pendente de uma sessão local ou de quem tem as credenciais.
 
@@ -420,7 +420,7 @@ dois (`INVITE`/`REGISTRATION_LINK`): `Participation` sem `User` vinculado não g
 só e-mail.
 
 **Todo o texto visível do e-mail está em português**, seguindo a mesma convenção do resto da
-GUI (`docs/context/desenvolvimento.md`) — identificadores/comentários continuam em inglês, só o
+GUI (`memory/constitution.md`) — identificadores/comentários continuam em inglês, só o
 conteúdo voltado ao usuário final muda de idioma.
 
 **Pendência Java resolvida (commit c415c89, e a escolha do arquivo físico ligada na seção

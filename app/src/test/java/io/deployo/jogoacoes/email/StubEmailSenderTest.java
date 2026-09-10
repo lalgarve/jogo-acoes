@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
-import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,41 +31,56 @@ class StubEmailSenderTest {
 
     private EmailSender emailSender;
 
+    // sent_email is insert-only (no UPDATE/DELETE grant in production, see
+    // memory/constitution.md) and, in the H2 sandbox profile, lives in one fixed named
+    // in-memory database (jdbc:h2:mem:jogo_acoes) shared by every test class in the same
+    // Maven run -- Cucumber's @SpringBootTest scenarios hit real HTTP endpoints and commit
+    // for real, unlike this @DataJpaTest's own rolled-back transaction. So the table can
+    // already hold rows from other tests by the time these run; assertions below look up the
+    // exact row this test created (by its own unique link) and check the count grew by
+    // exactly one, instead of assuming the table starts empty.
     @Test
     void recordsTheSendWithTheAssociatedUser() {
         emailSender = newStubEmailSender();
         User user = userRepository.save(newUser("alice@example.com"));
+        long before = sentEmailRepository.count();
+        String link = "https://jogo-acoes.example/login/" + UUID.randomUUID();
 
         emailSender.send(new EmailRequest(user.getId(), "alice@example.com", user.getName(), null, null,
-                "https://jogo-acoes.example/login/abc123", EmailTemplate.LOGIN_LINK));
+                link, EmailTemplate.LOGIN_LINK));
 
-        List<SentEmail> sent = sentEmailRepository.findAll();
-        assertThat(sent).hasSize(1);
-        assertThat(sent.get(0).getUser().getId()).isEqualTo(user.getId());
-        assertThat(sent.get(0).getEmail()).isEqualTo("alice@example.com");
-        assertThat(sent.get(0).getLink()).isEqualTo("https://jogo-acoes.example/login/abc123");
-        assertThat(sent.get(0).getTemplate()).isEqualTo(EmailTemplate.LOGIN_LINK);
-        assertThat(sent.get(0).getSentAt()).isNotNull();
+        assertThat(sentEmailRepository.count()).isEqualTo(before + 1);
+        SentEmail sent = sentEmailRepository.findByLink(link).orElseThrow();
+        assertThat(sent.getUser().getId()).isEqualTo(user.getId());
+        assertThat(sent.getEmail()).isEqualTo("alice@example.com");
+        assertThat(sent.getLink()).isEqualTo(link);
+        assertThat(sent.getTemplate()).isEqualTo(EmailTemplate.LOGIN_LINK);
+        assertThat(sent.getSentAt()).isNotNull();
     }
 
     @Test
     void recordsTheSendWithoutAUserWhenRecipientHasNoAccountYet() {
         emailSender = newStubEmailSender();
+        long before = sentEmailRepository.count();
+        String link = "https://jogo-acoes.example/entry/" + UUID.randomUUID();
 
         emailSender.send(new EmailRequest(null, "bob@example.com", null, "Copa Jogo de Ações", null,
-                "https://jogo-acoes.example/entry/xyz789", EmailTemplate.REGISTRATION_LINK));
+                link, EmailTemplate.REGISTRATION_LINK));
 
-        List<SentEmail> sent = sentEmailRepository.findAll();
-        assertThat(sent).hasSize(1);
-        assertThat(sent.get(0).getUser()).isNull();
-        assertThat(sent.get(0).getTemplate()).isEqualTo(EmailTemplate.REGISTRATION_LINK);
+        assertThat(sentEmailRepository.count()).isEqualTo(before + 1);
+        SentEmail sent = sentEmailRepository.findByLink(link).orElseThrow();
+        assertThat(sent.getUser()).isNull();
+        assertThat(sent.getTemplate()).isEqualTo(EmailTemplate.REGISTRATION_LINK);
     }
 
     @Test
     void rejectsAnUnknownUserId() {
         emailSender = newStubEmailSender();
 
-        assertThatThrownBy(() -> emailSender.send(new EmailRequest(999L, "carol@example.com", null,
+        // Long.MAX_VALUE, not a low fixed ID like 999L: this shared H2 database accumulates
+        // rows across the whole test run (see class-level note above), so a low ID could
+        // eventually collide with a real user once enough tests have run before this one.
+        assertThatThrownBy(() -> emailSender.send(new EmailRequest(Long.MAX_VALUE, "carol@example.com", null,
                 "Copa Jogo de Ações", null, "https://jogo-acoes.example/invite/qqq", EmailTemplate.INVITE)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
