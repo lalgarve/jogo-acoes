@@ -40,15 +40,18 @@ estrutura de arquivo, para a convenção do [spec-kit](https://github.com/github
 
 **Decisões a tomar antes de aplicar:**
 
-- Migrar os documentos de iteração já existentes (`iteracao-2.md` a `iteracao-4.md`) para a
-  estrutura nova, ou só passar a usá-la a partir daqui, deixando os anteriores como estão
-  (histórico, não reescrito — mesmo princípio já usado para a convenção de commits em
-  `desenvolvimento.md`, seção "Nota histórica")? **Provável: só a partir daqui** — reescrever
-  documentos já fechados não agrega, e o padrão do projeto já é não retrabalhar histórico.
+- **Resolvido (sessão 2026-09-09/10, ver seção 7):** os documentos de iteração
+  (`iteracao-N.md`, este incluído) continuam sendo escritos e **atualizados incrementalmente,
+  sessão a sessão**, não só até a adoção do spec-kit nem só no início do planejamento de cada
+  iteração. `specs/NNN-*`, quando/se adotado, registra decisão técnica de escopo fechado de
+  uma funcionalidade — não substitui nem interrompe este diário. Boa parte do que se discute
+  numa sessão (organização de issues, convenção de label, a própria granularidade de
+  `specs/NNN-*` abaixo) não vira spec nenhuma, e só fica registrada aqui.
 - Granularidade do slug `NNN-*`: uma pasta `specs/` por iteração (equivalente a
   `iteracao-N.md`), ou uma por funcionalidade dentro da iteração (mais granular, mais próximo
   do uso comum do spec-kit)? Afeta diretamente como esta própria iteração seria estruturada se
-  já nascesse no formato novo.
+  já nascesse no formato novo. **Ainda sem critério operacional** — falta definir o que conta
+  como funcionalidade grande o suficiente para justificar uma pasta própria (ver seção 7).
 - Os `.feature` Gherkin continuam vivendo em `app/src/test/resources/features` (contrato de
   aceite, executável) — o spec-kit não substitui isso, `spec.md`/`plan.md`/`tasks.md` registram
   decisão e planejamento, papel equivalente ao que `iteracao-N.md` já cumpre hoje.
@@ -258,10 +261,57 @@ resposta.
   API key, fluxos de e-mail assíncronos), então um roteiro de casos de teste via Swagger UI
   ajuda tanto a validação manual quanto a avaliação do professor.
 
+## 7. Diário desta iteração — continuidade entre sessões
+
+Esta seção existe para o objetivo original de todo `docs/context/iteracao-N.md`, descrito em
+`docs/context/desenvolvimento.md`: permitir retomar o trabalho depois de uma troca de chat, ou
+depois de uma sessão que travou no meio (ficou repetindo pergunta/resposta sem sair) — não só
+descrever o plano inicial da iteração uma única vez. Boa parte do que é decidido/discutido numa
+sessão de trabalho não cabe em spec nenhuma (`specs/NNN-*`, quando/se adotado, cobre só decisão
+técnica de escopo fechado de uma funcionalidade específica) — é aqui que esse contexto de
+processo fica registrado, sessão a sessão, incrementalmente, e não apagado/reescrito a cada
+retomada.
+
+### Sessão 2026-09-09/10
+
+**Feito:**
+- PR #40 aberta (`docs/alinhamento-projeto-disciplina` → `master`), adicionando
+  `docs/context/alinhamento-projeto-disciplina.md` — ainda não mesclada.
+- As 16 issues já existentes (#20–#35) foram traduzidas para inglês (título e corpo) e o
+  número da iteração saiu do título, passando a viver só como label `iteration-N`. Motivação:
+  um campo numérico "Iteration" foi criado no GitHub Project, e a ideia é que um script
+  popule esse campo a partir do label ao adicionar a issue ao Project — não existe automação
+  nativa do GitHub para isso (ver decisão em aberto abaixo).
+- Renumeração aplicada nas issues, refletindo a renumeração já registrada no `roadmap.md`
+  atual (que hoje pula de Iteração 6 para Iteração 8 — a antiga Iteração 7 em diante deslocou
+  +1): #26→`iteration-8`, #27→`iteration-9`, #28→`iteration-10`, #29→`iteration-11`,
+  #30→`iteration-12`, #31→`iteration-13`, #32→`iteration-14`, #33→`iteration-15`,
+  #34→`iteration-16`, #35→`iteration-17`. #20–#23 (Iterações 1–4) mantiveram o número, só
+  tradução. #24/#25 mantiveram `iteration-5`/`iteration-6` (o número em si não mudou nessas
+  duas, só o escopo), com uma nota inserida no corpo de cada uma indicando que o escopo antigo
+  ("Redução de bounce no SES", "Deploy, observabilidade e hardening") foi substituído/absorvido
+  pelo escopo novo dessas iterações, descrito neste documento e em `docs/roadmap.md`.
+
+**Decisões em aberto levantadas nesta sessão** (novas, além das já listadas no resumo no fim
+deste documento):
+- Como popular o campo "Iteration" (numérico) do GitHub Project a partir do label da issue —
+  decidido que a fonte da verdade é o label (`iteration-N`), sincronizado por script ao
+  adicionar a issue ao Project; o script em si ainda não existe.
+- Granularidade de divisão em `specs/NNN-*` continua sem critério operacional definido (ver
+  seção 1) — falta decidir o que conta como funcionalidade grande o suficiente para ter pasta
+  própria, distinto da pergunta de nível mais alto "por iteração ou por funcionalidade".
+
+**Confirmado nesta sessão:** este arquivo (e os das iterações seguintes) são atualizados
+incrementalmente a cada sessão relevante de trabalho — não são escritos uma vez no início do
+planejamento e congelados dali em diante. É o mecanismo principal de continuidade entre trocas
+de chat ou sessão travada, cobrindo inclusive decisão de processo (como esta) que não tem lugar
+em spec nenhuma.
+
 ## Decisões em aberto (resumo)
 
-- Migrar `iteracao-N.md` antigos para o formato spec-kit, ou só usá-lo daqui pra frente?
-- Granularidade das pastas `specs/NNN-*` — por iteração ou por funcionalidade?
+- Granularidade das pastas `specs/NNN-*` — por iteração ou por funcionalidade? E, uma vez
+  escolhido o nível, o que conta como unidade grande o suficiente para ter pasta própria (ver
+  seção 7)?
 - `app/` também migra para o Config Server, ou mantém profiles locais?
 - O `SqsEmailSender`/templates do `app/` migram para dentro do Serviço de E-mail, ou
   convivem temporariamente com ele?
@@ -276,3 +326,4 @@ resposta.
 - Desenho exato da interface de leitura do `deployo-api-key` (assinatura, o que ela abstrai de
   local/mecanismo de armazenamento) — o princípio (interface + coluna de versão se a geração
   mudar) já está definido, falta o desenho concreto (ver seção 3.1).
+- Script de sincronização label → campo "Iteration" do GitHub Project (ver seção 7).
