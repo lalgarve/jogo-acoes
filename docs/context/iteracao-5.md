@@ -135,9 +135,10 @@ E-mail só **valida** a chave recebida (leitura), não a gera.
 **Dados que o serviço possui** (fonte da verdade só do que é dele — API keys não são mais
 emitidas nem "donas" aqui, ver abaixo):
 - `email_template` (`app_id`, `template_key`, `content`, `variables_schema`).
-- Fila de envio (estrutura ainda não detalhada — ver pendências abaixo; pode reaproveitar o
-  contrato de mensagem já validado na Iteração 4, `schemaVersion`/`correlationId`/
-  `recipientEmail`/`subject`/`body`, em vez de desenhar um novo).
+- Fila de envio — contrato ainda em aberto entre duas opções: o desenhado na Iteração 4
+  (`schemaVersion`/`correlationId`/`recipientEmail`/`subject`/`body`, já renderizado no
+  produtor) ou o revisado na seção 3.2 abaixo (`templateName`/`templateData`, renderizado
+  pelo próprio SES) — ver 3.2 para o raciocínio e o que falta decidir.
 - Log de erros de envio (estrutura ainda não detalhada).
 
 **Banco de dados:** próprio, separado do banco do `app/`, para os dados que são realmente dele
@@ -233,7 +234,63 @@ explicitamente para o Serviço de E-mail em si.
   ("Rotação: fora de escopo por enquanto").
 - Validação de `variables_schema` (JSON Schema) contra o JSON recebido, antes de renderizar —
   continua pendente, não relacionado à mudança de API-KEY.
-- Estrutura da fila de envio e do log de erros de envio — continua pendente.
+- Estrutura da fila de envio — ver seção 3.2 (alternativa via SES Templates, ainda não
+  escolhida como definitiva) e o log de erros de envio, que continua pendente.
+
+### 3.2 Renderização via SES Templates e correlação por message tags
+
+Revisão levantada em sessão: a Amazon SES tem sistema de template próprio
+(`CreateTemplate`/`SendTemplatedEmail` no SESv1, `CreateEmailTemplate` com `Content.Template`
+no SESv2). Usá-lo permite reduzir bastante o tamanho da mensagem na fila SQS — ela deixa de
+carregar `subject`/`body` já renderizados (potencialmente vários KB de HTML) e passa a
+carregar só o nome do template e um JSON pequeno de variáveis.
+
+**Decisão**: adotar `SendTemplatedEmail` (ou o equivalente SESv2) como a estratégia de envio
+do Serviço de E-mail, mantendo a Lambda "burra" (Decisão 1 da Iteração 4) — ela repassa
+`templateName`/`templateData` pro SES sem interpretar nada, exatamente como hoje repassa
+`subject`/`body` sem interpretar. O Serviço de E-mail continua sendo a fonte da verdade do
+cadastro de templates (`email_template`, com validação via `variables_schema`), mas ganha uma
+responsabilidade nova: **sincronizar cada template criado/atualizado pro SES**
+(`CreateTemplate`/`UpdateTemplate`), já que o SES precisa da própria cópia pra fazer a
+substituição no momento do envio.
+
+**Contrato de mensagem alternativo para este fluxo** (substitui, só quando o Serviço de
+E-mail é quem publica, o contrato original da Iteração 4 — que continua valendo tal como está
+para quem publica direto na fila sem passar por ele):
+
+```json
+{
+  "schemaVersion": "2",
+  "correlationId": "uuid",
+  "recipientEmail": "...",
+  "templateName": "...",
+  "templateData": { "...": "..." }
+}
+```
+
+**Correlação evento → `sent_email` sem tocar no conteúdo do e-mail**: a ideia de embutir um
+código no HTML (levantada em sessão) foi descartada — o SES já resolve isso via *message tag*
+(`Tags`/`EmailTags` no `SendTemplatedEmail`), mecanismo que já estava planejado desde a
+Decisão 10 da Iteração 4 para o fluxo original, e vale igual aqui: o `correlationId` vai como
+tag no envio, e com o *Configuration Set* de Event Publishing (Decisão 10) ligado, toda
+`Send`/`Delivery`/`Bounce`/`Complaint` publicada no tópico SNS carrega essa mesma tag de volta
+(`mail.tags.correlationId`). Nenhuma leitura de conteúdo do e-mail é necessária, e o mecanismo
+funciona igual independente de o corpo ter sido renderizado no produtor ou pelo próprio SES.
+
+**Em aberto**:
+- SESv1 (`SendTemplatedEmail`) ou SESv2 (`SendEmail` com `Content.Template`)? A v2 é a API
+  mais nova e recomendada atualmente pela AWS, mas o `email-lambda` (Iteração 4) já usa um
+  `SesClient` — checar qual das duas esse client já expõe antes de decidir.
+- **Tensão não resolvida com os 5 templates Thymeleaf já existentes**: o SES usa sintaxe
+  Handlebars (`{{variavel}}`, suporte limitado a `{{#if}}`/`{{#each}}`), sem equivalente a
+  `th:insert` — os fragmentos de header/footer reaproveitados entre os 5 arquivos
+  (`docs/context/iteracao-4.md`, "Catálogo de templates de e-mail") precisariam ser
+  duplicados manualmente em cada template do SES, ou o conteúdo final (header+corpo+footer já
+  concatenado) pré-montado antes de cadastrar no SES. Não decidido se a redução de tamanho da
+  fila compensa esse retrabalho.
+- O contrato "renderiza no produtor" (Iteração 4 original) continua existindo em paralelo pra
+  quem não usa o cadastro de templates do Serviço de E-mail — a Lambda provavelmente precisa
+  distinguir os dois casos pelo `schemaVersion`.
 
 ## 4. Sistema de Admin — decisão em aberto (revisada)
 
@@ -332,6 +389,25 @@ planejamento e congelados dali em diante. É o mecanismo principal de continuida
 de chat ou sessão travada, cobrindo inclusive decisão de processo (como esta) que não tem lugar
 em spec nenhuma.
 
+### Sessão 2026-09-13
+
+**Feito:**
+- PR #42 aberta (estrutura SDD + correção de `StubEmailSenderTest`/`AuditLogServiceTest`
+  contra o vazamento de dados entre classes de teste no H2 compartilhado do perfil
+  `sandbox`) — ainda não mesclada. Issue #41 aberta para o mesmo risco, não corrigido, em
+  `LogRepositoryTest`.
+- **Nova decisão registrada na seção 3.2**: usar `SendTemplatedEmail`/`SendEmail` com
+  `Content.Template` do SES para renderizar do lado do SES em vez de no produtor — reduz bem
+  o tamanho da mensagem na fila. Correlação evento→`sent_email` continua via *message tag*
+  do SES (`correlationId`), não por nenhum código embutido no HTML (ideia cogitada e
+  descartada em sessão) — mecanismo que já estava previsto desde a Decisão 10 da Iteração 4.
+  Ficaram em aberto: SESv1 vs. SESv2, e como reconciliar os 5 templates Thymeleaf existentes
+  (com fragmentos de header/footer) com a sintaxe Handlebars mais simples do SES.
+
+**Confirmado nesta sessão:** o diário continua sendo atualizado a cada sessão relevante,
+inclusive para registrar uma decisão pontual de arquitetura (como esta), sem esperar o
+fechamento de toda a Iteração 5.
+
 ## Decisões em aberto (resumo)
 
 - `app/` também migra para o Config Server, ou mantém profiles locais?
@@ -339,7 +415,15 @@ em spec nenhuma.
   convivem temporariamente com ele?
 - Serviço de E-mail: repositório próprio (precedente do `deployo-api-key`) ou módulo no reator
   atual?
-- Estrutura da fila de envio e do log de erros do Serviço de E-mail.
+- Estrutura definitiva da fila de envio — contrato original da Iteração 4 (`subject`/`body`
+  já renderizados) ou o revisado na seção 3.2 (`templateName`/`templateData` via SES
+  Templates, mensagem menor)? E o log de erros de envio, ainda sem estrutura desenhada.
+- SESv1 (`SendTemplatedEmail`) ou SESv2 (`SendEmail` com `Content.Template`) para o fluxo da
+  seção 3.2 — depende de checar o que o `SesClient` do `email-lambda` já expõe.
+- Como reconciliar os 5 templates Thymeleaf existentes (fragmentos `th:insert` de
+  header/footer) com a sintaxe Handlebars mais simples do SES, se a seção 3.2 for adotada —
+  duplicar o header/footer em cada template do SES, ou pré-montar o HTML final antes de
+  cadastrar.
 - Validação de `variables_schema` via JSON Schema — biblioteca e ponto de validação exatos.
 - Diagrama do fluxo de autenticação do Serviço de E-mail — precisa ser refeito considerando o
   `deployo-api-key` (não é mais o mesmo fluxo do brainstorm original).
