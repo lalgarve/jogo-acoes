@@ -27,8 +27,9 @@ mudança que aproveita mais do código já escrito (templates Thymeleaf, `EmailS
 1. Adotar a convenção de arquivos do spec-kit (SDD) para o processo já seguido.
 2. Tarefas pendentes, divididas por Etapa da disciplina (Etapa 1 primeiro — é a que não depende
    de nenhuma decisão de arquitetura nova).
-3. Confecção final do PDF do projeto e do caderno de testes Swagger — por último, depois que o
-   resto estiver estável.
+3. PDF do projeto e caderno de testes Swagger — **revisado (ver seção 6 e Issue #43)**:
+   escritos por Etapa, em paralelo ao código, num branch próprio, não mais deixados só pro
+   final.
 
 ## 1. Adoção do spec-kit (Spec-Driven Development)
 
@@ -319,9 +320,22 @@ resposta.
   do `app/` são removidos e substituídos pelo cliente Feign, ou se convivem durante uma
   transição.
 
-## 6. PDF final e caderno de testes Swagger
+## 6. PDF final e caderno de testes Swagger — por Etapa, em branch próprio
 
-Últimos itens da iteração, depois que o resto estiver estável:
+**Revisado (sessão 2026-09-13, ver Issue [#43](https://github.com/lalgarve/jogo-acoes/issues/43)):**
+o plano original ("últimos itens da iteração, depois que o resto estiver estável") foi
+substituído. PDF e caderno de testes não são código — não precisam esperar a suíte/CI do
+`app/` ficar verde pra existir — então passam a ser escritos **por Etapa, em paralelo ao
+código**, em vez de acumulados pro final:
+
+- Uma seção do PDF + os casos de teste Swagger correspondentes para cada uma das quatro
+  Etapas da disciplina (`alinhamento-projeto-disciplina.md`, seção 4), à medida que cada
+  Etapa fica pronta — não as quatro de uma vez no fim.
+- **Branch próprio**, separado dos branches de código desta iteração (ex.
+  `docs/iteracao-5-final-pdf-test-notebook`) — como não é código, revisão de documento não
+  deveria se misturar com revisão de código na mesma PR.
+
+O conteúdo em si:
 - PDF final sobre o projeto — para a entrega da disciplina (ver formato de nome de arquivo
   exigido no enunciado: `nomedoaluno_nomedadisciplina_pd.PDF`).
 - Caderno de testes para o Swagger — a API não é trivial (múltiplos serviços, autenticação por
@@ -403,6 +417,10 @@ em spec nenhuma.
   descartada em sessão) — mecanismo que já estava previsto desde a Decisão 10 da Iteração 4.
   Ficaram em aberto: SESv1 vs. SESv2, e como reconciliar os 5 templates Thymeleaf existentes
   (com fragmentos de header/footer) com a sintaxe Handlebars mais simples do SES.
+- **Seção 6 revisada e Issue #43 aberta**: PDF final e caderno de testes Swagger deixam de
+  ser "só no final" e passam a ser escritos por Etapa da disciplina, em paralelo ao código,
+  num branch próprio (separado dos branches de código da iteração), já que não são código e
+  não deveriam esperar a suíte ficar verde nem se misturar com revisão de código na mesma PR.
 
 **Confirmado nesta sessão:** o diário continua sendo atualizado a cada sessão relevante,
 inclusive para registrar uma decisão pontual de arquitetura (como esta), sem esperar o
@@ -433,3 +451,5 @@ fechamento de toda a Iteração 5.
   local/mecanismo de armazenamento) — o princípio (interface + coluna de versão se a geração
   mudar) já está definido, falta o desenho concreto (ver seção 3.1).
 - Script de sincronização label → campo "Iteration" do GitHub Project (ver seção 7).
+- Nome definitivo do branch de PDF/caderno de testes e conteúdo detalhado de cada seção por
+  Etapa — rastreado na Issue #43, não neste documento.
