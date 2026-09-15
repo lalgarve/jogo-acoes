@@ -3,3 +3,16 @@ target/
 .idea/
 *.iml
 .vscode/
+
+# LaTeX build artifacts (docs/disciplina) -- PDF is generated at delivery
+# time (decision: separate branch), not committed alongside the .tex source.
+docs/disciplina/*.aux
+docs/disciplina/*.log
+docs/disciplina/*.out
+docs/disciplina/*.toc
+docs/disciplina/*.lof
+docs/disciplina/*.lot
+docs/disciplina/*.bbl
+docs/disciplina/*.blg
+docs/disciplina/*.synctex.gz
+docs/disciplina/*.pdf
