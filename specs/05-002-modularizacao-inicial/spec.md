@@ -8,9 +8,9 @@
 
 Primeiro passo da reorganização do `app/` por domínio/funcionalidade (Etapa 1 da disciplina —
 ver `docs/context/alinhamento-projeto-disciplina.md`), em vez de por camada técnica. Move as
-classes existentes para cinco módulos: `link`, `competition`, `login`, `log`, `email`. A única
-mudança de código é criar as pastas dos módulos e ajustar pacotes, imports e demais
-referências — nenhuma lógica muda. Testar o projeto ao final.
+classes existentes para seis módulos: `link`, `competition`, `login`, `log`, `email`,
+`captcha`. A única mudança de código é criar as pastas dos módulos e ajustar pacotes, imports e
+demais referências — nenhuma lógica muda. Testar o projeto ao final.
 
 ## Motivação
 
@@ -41,8 +41,9 @@ Pacote base do módulo `app`: `dev.leilaalgarve.jogoacoes` (ver spec 05-001) —
 ├── login/        # User, Role, UserRole, LoginService (parte de autenticação/sessão,
 │                 # não o mecanismo de link em si), LoginController
 ├── log/          # Log, LogType, LogRepository, AuditLogService
-└── email/        # EmailSender, StubEmailSender, SqsEmailSender, EmailContentRenderer,
-                  # SentEmail, EmailRequest/EmailMessage/RenderedEmail
+├── email/        # EmailSender, StubEmailSender, SqsEmailSender, EmailContentRenderer,
+│                 # SentEmail, EmailRequest/EmailMessage/RenderedEmail
+└── captcha/      # CaptchaService e a integração com o provedor de captcha (ALTCHA)
 ```
 
 - Cada classe migra para o módulo correspondente ao seu domínio, não à sua camada técnica —
@@ -51,8 +52,36 @@ Pacote base do módulo `app`: `dev.leilaalgarve.jogoacoes` (ver spec 05-001) —
   `service/`/`web/`/`domain/`/`repository/` como hoje.
 - Pacotes DTO gerados pelo `openapi-generator-maven-plugin` (`{base}.api.*`) não são tocados
   por esta spec — continuam como estão, gerados a partir de `docs/openapi.yaml`.
-- Classes que não pertencem claramente a nenhum dos cinco módulos (`CaptchaService`/ALTCHA,
-  configuração de segurança, fixtures de teste compartilhadas) — ver "Decisões em aberto".
+- Classes que não pertencem claramente a nenhum dos seis módulos (configuração de segurança,
+  fixtures de teste compartilhadas) — ver "Decisões em aberto".
+
+### Convenção de sub-pacotes internos (`client`/`dto`/`exception`)
+
+Confirmado nesta sessão contra o repositório de referência da disciplina
+([`elberthmoraes-prof/desenvolvimento-avancado-com-spring-e-microsservicos-26e3-26e3`](https://github.com/elberthmoraes-prof/desenvolvimento-avancado-com-spring-e-microsservicos-26e3-26e3),
+módulo `academico-service`), para uso dentro de cada módulo de domínio à medida que a
+necessidade aparecer — **não é um requisito desta spec aplicar já em todos os módulos**, é uma
+convenção a seguir aos poucos, módulo a módulo, conforme o trabalho avançar (ex.: `client/` só
+passa a existir quando um módulo ganhar integração via OpenFeign, Etapa 2):
+
+- **`client/`**: interface `@FeignClient` + um *gateway* que encapsula a chamada remota e
+  traduz exceções do Feign (`FeignException.NotFound`, `RetryableException` etc.) em exceções
+  de domínio, mais o DTO de resposta do serviço remoto.
+- **`dto/`**: os DTOs de request/resposta do próprio módulo (`record`, sem sufixo "Dto" no
+  nome da classe — o pacote já deixa isso implícito). Ex.: `competition.dto.CreateRequest`,
+  não `CreateRequestDto`.
+- **`exception/`**: só criado dentro de um módulo quando esse módulo tiver **duas ou mais**
+  exceções próprias — uma exceção única fica solta na raiz do pacote do módulo. Existe também
+  um pacote `exception/` **global**, na raiz de `{base}`, com o `GlobalExceptionHandler` e o
+  formato padrão de resposta de erro — esse pacote global importa tipos de exceção de todos os
+  módulos, é o único lugar do projeto onde isso é esperado.
+- Nomes de pacote/classe continuam em inglês, como o restante do projeto — a convenção do
+  repositório de referência (em português) é adaptada só na estrutura, não no idioma.
+
+Observação: o próprio repositório de referência não aplica essa regra de forma 100%
+consistente (um dos módulos de exemplo mantém duas exceções na raiz do pacote, sem subpacote
+`exception/`, mesmo tendo mais de uma) — seguimos a regra como descrita acima por ser a mais
+clara de aplicar, não por ser universal naquele repositório.
 
 ## Requisitos não-funcionais
 
@@ -67,13 +96,16 @@ Nenhum além de build e suíte verdes ao final.
 - Módulos Maven de verdade (reactor multi-módulo) — isso aqui é só pacote dentro do módulo
   `app/` existente, não um novo artefato Maven.
 - Qualquer nova regra de negócio.
+- Aplicar a convenção `client`/`dto`/`exception` retroativamente em todos os módulos — como
+  descrito acima, isso é incremental, não um entregável desta spec.
 
 ## Decisões em aberto
 
-- Onde ficam classes que não pertencem claramente a nenhum dos cinco módulos: `CaptchaService`
-  /integração ALTCHA, `SecurityConfig`, `ScenarioWorld`/fixtures de teste compartilhadas
-  (`testsupport`), classes de infraestrutura genérica (se houver). Proposta: um módulo
-  `shared`/`common`, ou deixá-las na raiz do pacote — a definir antes de implementar.
+- Onde ficam classes que ainda não pertencem claramente a nenhum dos seis módulos:
+  `SecurityConfig`, `ScenarioWorld`/fixtures de teste compartilhadas (`testsupport`), classes
+  de infraestrutura genérica (se houver). Proposta: um módulo `shared`/`common`, ou deixá-las
+  na raiz do pacote — a definir antes de implementar. (`CaptchaService` não está mais nesta
+  lista — ganhou módulo próprio, `captcha/`, ver acima.)
 - Dependência de ordem com a spec 05-001 (renomear pacote base) — ver "Decisões em aberto"
   daquela spec.
 - `PlayerManagementService`/`EntryRequestService` foram colocados em `competition/` nesta
