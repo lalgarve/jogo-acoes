@@ -40,9 +40,11 @@ texto Gherkin, usando o novo mecanismo por baixo.
 
 - **URL do link carrega só o token.** O endpoint que consome o link recebe exclusivamente o
   token — nenhum outro parâmetro de rota/query influencia o resultado.
-- **Persistência do link**: a tabela grava, por link, três campos — `token`, a **chave do
-  serviço** (identifica qual implementação/consumidor esse link pertence) e o **JSON do DTO**
-  (payload específico de quem criou o link, opaco para o mecanismo genérico).
+- **Persistência do link**: a tabela grava `token`, a **chave do serviço** (identifica qual
+  implementação/consumidor esse link pertence), `id do usuário` e `email` como **colunas
+  próprias** (não escondidos dentro de um JSON opaco — evita perda de integridade referencial
+  e permite consulta/índice direto por esses campos), mais um **JSON de extensão** só com o
+  que sobra de específico de cada implementação (o campo `extra` do DTO, ver abaixo).
 - **DTO único** (`LinkDto`), sem hierarquia de subclasses: `id do usuário` e `email` como
   campos fixos, mais um campo genérico de extensão para o que cada implementação precisar além
   disso (ver `plan.md` para o formato exato do campo de extensão).
@@ -146,7 +148,9 @@ classDiagram
     class LinkRecord {
         +String token
         +String serviceKey
-        +String dtoJson
+        +Long userId
+        +String email
+        +String extraJson
         +LocalDateTime expiresAt
         +LocalDateTime usedAt
     }
