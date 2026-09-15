@@ -9,8 +9,29 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 - Stack disponível sem dependência nova: Jackson (`ObjectMapper`, já usado pelo Spring MVC nos
   controllers) para serializar/desserializar `LinkDto` de/para o `dtoJson` gravado em
   `LinkRecord`; Spring para injeção de `List<LinkHandler>` no `LinkRouter`.
-- Pré-requisito funcional: nenhum `LinkHandler` concreto pode ser implementado antes de saber
-  quais fluxos hoje passam por `LoginLink` — ver decisão em aberto abaixo.
+
+### Achados da leitura de código desta sessão
+
+Lidos `LoginService`, `LoginController`, `LoginLink`, `EntryRequestService`,
+`PlayerManagementService`, `CompetitionService` (estado em `master`) linha a linha. Três
+achados mudam o desenho em relação ao que estava ilustrado em `spec.md`:
+
+1. **Só existem dois "formatos" de link hoje, não três.** `LoginLink.participation == null`
+   (login avulso, criado só por `LoginService.requestLoginLink`) ou
+   `LoginLink.participation != null` (ligado a uma competição) — e esse segundo formato é
+   criado por **três** call sites diferentes (`EntryRequestService.requestEntry`,
+   `PlayerManagementService.sendInviteEmail`, `CompetitionService.decideInviteEmailTiming`),
+   mas os três produzem exatamente o mesmo formato de link e o mesmo comportamento no
+   consumo — convite e pedido de entrada pública não se distinguem depois de o link existir.
+   Ou seja: **dois `LinkHandler`s, não três nem um por serviço "chamador"**.
+2. **`EntryRequestService.confirmEntry` não usa `LoginLink`/token nenhum** — é uma chamada
+   autenticada direta (jogador já logado confirmando entrada). Fora do escopo desta spec.
+3. **O caso "ligado a uma competição, sem conta ainda" é de duas fases**, não uma:
+   `consumeLoginLink` devolve 202 ("registro necessário") sem marcar o link como usado, e um
+   **segundo** request (`completeRegistration(token, name)`) — no mesmo token, ainda não
+   consumido — é quem de fato cria o usuário, vincula a `Participation` e estabelece a sessão.
+   A interface `LinkHandler` com um único `handle(dto)` não comporta isso: precisa de um
+   segundo método opcional para a fase de conclusão.
 
 ## Decisões de arquitetura
 
@@ -20,55 +41,74 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 | Onde vive a chave de serviço como constante | Sem catálogo central no módulo `link` — cada `LinkHandler` declara sua própria constante de chave e se registra no `LinkRouter` só por implementar a interface | resolvida | Decisão da autora: um catálogo central em `link` reintroduziria exatamente o acoplamento que esta spec elimina (`link` teria que conhecer os nomes/chaves de todo consumidor existente). |
 | Migração de dados de `LoginLink`/`Participation` (FK) para `LinkRecord` (JSON) | Não se aplica — nenhuma migração de dados existentes é necessária | resolvida | Decisão da autora: o sistema ainda não entrou em produção, não há linha de `LoginLink` real para preservar. |
 | Serialização do DTO | Jackson `ObjectMapper`, sem dependência nova | resolvida | Já é a biblioteca de serialização usada pelo Spring MVC no resto do projeto. |
-| Como o `LinkRouter` é populado | Spring injeta `List<LinkHandler>` no construtor do `LinkRouter`, que monta o `Map<String, LinkHandler>` a partir da chave que cada implementação expõe (ex. método `key()` da interface) | resolvida | Qualquer `LinkHandler` novo só precisa ser um `@Component` implementando a interface — nenhum lugar central lista os handlers manualmente, consistente com "sem catálogo" acima. |
+| Como o `LinkRouter` é populado | Spring injeta `List<LinkHandler>` no construtor do `LinkRouter`, que monta o `Map<String, LinkHandler>` a partir da chave que cada implementação expõe (método `key()` da interface) | resolvida | Qualquer `LinkHandler` novo só precisa ser um `@Component` implementando a interface — nenhum lugar central lista os handlers manualmente, consistente com "sem catálogo" acima. |
 | Colisão de chave entre duas implementações | `LinkRouter` falha ao subir o contexto Spring se duas implementações declararem a mesma chave, em vez de uma sobrescrever a outra silenciosamente no mapa | resolvida | Sem catálogo central (decisão acima), nada mais detectaria a colisão — falhar cedo no boot troca um bug silencioso de produção por um erro de inicialização óbvio. |
-| Mapeamento exato dos fluxos atuais (login avulso, convite de competição, pedido de entrada) para implementações concretas de `LinkHandler` | Em aberto | em aberto | Requer revisão linha a linha de `LoginService`/`EntryRequestService`/`PlayerManagementService` (não feita nesta sessão) para saber se são 1, 2 ou 3 `LinkHandler`s distintos — os nomes usados no diagrama "depois" de `spec.md` são ilustrativos. |
+| Mapeamento exato dos fluxos atuais para implementações concretas de `LinkHandler` | **Dois handlers**: `LoginLinkHandler` (chave `"login"`, módulo `login`) para o login avulso; `CompetitionLinkHandler` (chave `"competition-entry"`, módulo `competition`) para convite **e** pedido de entrada pública — mesmo handler, já que os três call sites de criação produzem o mesmo formato e o mesmo comportamento de consumo. `EntryRequestService.confirmEntry` fica de fora — não usa link. | resolvida | Ver "Achados da leitura de código desta sessão" acima. |
+| Consumo em duas fases (link ligado a participação, sem conta ainda) | `LinkHandler` ganha um segundo método, com implementação padrão que recusa: `default LinkOutcome complete(LinkDto dto, Map<String,String> extra) { throw new UnsupportedOperationException(...); }`, além de `LinkOutcome consume(LinkDto dto)`. `LinkRecord` só é marcado como usado quando um dos dois devolve o resultado final — `consume` pode devolver um `LinkOutcome` do tipo "pendente" sem consumir o registro. `LoginLinkHandler` nunca implementa `complete` (login avulso é sempre uma fase só); `CompetitionLinkHandler` implementa as duas. | resolvida | É o único jeito de manter a interface única + mapa (nenhuma decisão anterior muda) cobrindo um fluxo que hoje é de fato dois requests HTTP sobre o mesmo token. |
+| Onde vive a lógica de estabelecer sessão (`SecurityContext` + gravar `LoginSession`) após qualquer consumo bem-sucedido | Em aberto | em aberto | É genérica (idêntica nos dois handlers), o que sugere pertencer a `link` como utilitário chamado pelos handlers — mas `LoginSession` foi alocada em `link` na spec 05-002 por guardar "dispositivo"/sessão, um conceito que também é razoável chamar de `login`. Não é uma decisão desta spec sozinha; revisar junto da 05-002 antes de implementar. |
 
 ## Estrutura de módulos/pacotes
 
 ```
 {base}.link
-├── LinkController          # único endpoint: recebe o token, delega em LinkService.consume
+├── LinkController          # endpoints: consumir token, e completar registro pendente
 ├── LinkService              # create(serviceKey, dto): grava LinkRecord, devolve token
-│                            # consume(token): lê LinkRecord, desserializa dto, chama LinkRouter
+│                            # consume(token): le LinkRecord, desserializa dto, chama LinkRouter.consume
+│                            # complete(token, extra): idem, chama LinkRouter.complete (fase 2)
 ├── LinkRouter               # Map<String, LinkHandler> montado a partir de List<LinkHandler> injetada
-├── LinkHandler              # interface: String key(); void handle(LinkDto dto)
+├── LinkHandler               # interface: String key(); LinkOutcome consume(LinkDto dto);
+│                            #   default LinkOutcome complete(LinkDto dto, Map<String,String> extra)
+├── LinkOutcome               # resultado: autenticado (com dado de redirecionamento) ou
+│                            #   "registro pendente" (sinaliza ao controller devolver 202)
 ├── LinkDto                  # record: Long userId, String email, Map<String,String> extra
 └── LinkRecord               # entidade JPA: id, token, serviceKey, dtoJson, expiresAt, usedAt
 
 {base}.login
-└── LoginLinkHandler         # implements LinkHandler, key() = "login" (nome final a confirmar)
+└── LoginLinkHandler         # implements LinkHandler, key() = "login" -- só consume(), sem complete()
 
 {base}.competition
-└── <a definir>              # 1+ implementações de LinkHandler para convite/pedido de entrada
-                              # — quantidade e nomes dependem da decisão em aberto acima
+└── CompetitionLinkHandler   # implements LinkHandler, key() = "competition-entry"
+                              # consume(): autentica se dto.userId() != null; senão devolve "pendente"
+                              # complete(dto, extra): cria User, vincula Participation (extra["participationId"]),
+                              #   status = IN_COMPETITION
 ```
 
 - Cada `LinkHandler` concreto mora no módulo que o implementa (`login`, `competition`), nunca
   em `link` — é o que inverte a direção de dependência descrita na spec.
 - `LinkDto.extra` carrega os campos específicos de cada implementação como pares
-  texto-texto (ex. `competitionId`) — cada `LinkHandler` só sabe interpretar as chaves que ele
-  mesmo colocou lá no momento de criar o link (via `LinkService.create`); `link` nunca olha
-  dentro de `extra`.
+  texto-texto — `CompetitionLinkHandler` usa pelo menos `participationId` (para localizar a
+  `Participation` a confirmar/vincular, já que `LinkRecord` não tem mais FK direta pra ela).
+  `link` nunca olha dentro de `extra`.
+- **Achado incidental, fora do escopo desta spec**: `PlayerManagementService.sendInviteEmail`
+  e `CompetitionService.decideInviteEmailTiming` hoje duplicam quase byte a byte a lógica de
+  criar um `LoginLink` ligado a uma `Participation` e escolher o template de e-mail. Centralizar
+  a criação em `LinkService.create("competition-entry", dto)` remove essa duplicação como
+  efeito colateral — vale mencionar como motivação extra ao implementar, mas não é requisito
+  desta spec.
 
 ## Riscos e trade-offs
 
 - **Perda de integridade referencial no banco**: `LinkRecord` não tem FK pra `User`/
-  `Participation` — `dtoJson` é texto livre, então um `userId` inválido dentro dele só é
-  percebido quando o `LinkHandler` tenta usá-lo (ex. `userRepository.findById` vazio), não no
-  momento de gravar o link. Aceito nesta spec (ver decisão "migração de dados" acima), mas o
-  teste de verificação dedicado que cada implementação precisa ter (requisito da spec) deve
-  cobrir explicitamente o caso de `userId` inexistente — o banco não pega mais esse erro
-  sozinho.
+  `Participation` — `dtoJson` é texto livre, então um `userId`/`participationId` inválido
+  dentro dele só é percebido quando o `LinkHandler` tenta usá-lo, não no momento de gravar o
+  link. Aceito nesta spec (ver decisão "migração de dados" acima), mas o teste de verificação
+  dedicado que cada implementação precisa ter (requisito da spec) deve cobrir explicitamente
+  esse caso — o banco não pega mais esse erro sozinho.
 - **`extra` fracamente tipado**: nenhum compilador ajuda a garantir que um `LinkHandler`
   recebeu as chaves que espera dentro de `extra`. Mitigação: cada implementação valida o
-  conteúdo de `extra` logo no início do `handle()` e falha com mensagem clara (ex.
-  `IllegalArgumentException` nomeando a chave faltante), em vez de deixar uma
+  conteúdo de `extra` logo no início de `consume()`/`complete()` e falha com mensagem clara
+  (ex. `IllegalArgumentException` nomeando a chave faltante), em vez de deixar uma
   `NullPointerException` genérica estourar no meio da lógica de negócio.
 - **Sem catálogo de chaves + falha no boot por colisão**: resolve a colisão silenciosa, mas
   significa que uma chave duplicada só aparece ao subir a aplicação (não em tempo de
   compilação) — aceitável dado que isso só aconteceria ao adicionar um `LinkHandler` novo, um
   evento raro e sempre acompanhado de teste próprio.
+- **Método `complete` como `default` que lança exceção**: um `LinkHandler` que não suporta
+  conclusão em duas fases só descobre isso em tempo de execução, se `LinkService` chamar
+  `complete` no handler errado. Mitigação: `LinkService.complete(token, extra)` só deveria ser
+  alcançável a partir de um `LinkOutcome` "pendente" anterior — o próprio fluxo (202 → só then
+  o cliente chama completar) já impede isso na prática, mas vale um teste explícito provando
+  que chamar `complete` sem um `consume` pendente antes falha de forma controlada.
 - **Nenhum mecanismo impede um `LinkHandler` em `competition` de importar tipos de `login`
   diretamente** (contornando o módulo `link`) — não é o acoplamento que esta spec ataca (que é
   `link` conhecer os consumidores), mas é uma deriva arquitetural parecida. Fora do escopo
