@@ -43,10 +43,9 @@ texto Gherkin, usando o novo mecanismo por baixo.
 - **Persistência do link**: a tabela grava, por link, três campos — `token`, a **chave do
   serviço** (identifica qual implementação/consumidor esse link pertence) e o **JSON do DTO**
   (payload específico de quem criou o link, opaco para o mecanismo genérico).
-- **DTO**: tem no mínimo dois campos — `id do usuário` e `email` — comuns a qualquer
-  consumidor. Campos adicionais específicos de cada consumidor fazem parte do mesmo JSON
-  (formato exato — herança de DTO vs. campo genérico de extensão — é decisão em aberto, ver
-  abaixo).
+- **DTO único** (`LinkDto`), sem hierarquia de subclasses: `id do usuário` e `email` como
+  campos fixos, mais um campo genérico de extensão para o que cada implementação precisar além
+  disso (ver `plan.md` para o formato exato do campo de extensão).
 - **`LinkRouter`**: componente que recebe a chave de serviço gravada no link e despacha para a
   implementação correta, usando um **mapa** (chave de serviço → implementação).
 - **Interface** (ex. `LinkHandler`) que recebe o DTO já desserializado — cada implementação
@@ -73,8 +72,8 @@ texto Gherkin, usando o novo mecanismo por baixo.
 - Expiração/uso único do token — mecanismo já existente, mantido como está.
 - Rate limiting novo para o endpoint de consumo do link.
 - Mapear exaustivamente todo fluxo atual (login avulso, convite de competição, pedido de
-  entrada) para uma implementação de `LinkHandler` específica — a lista exata de
-  implementações necessárias é levantada no `plan.md`, não fechada aqui.
+  entrada) para uma implementação de `LinkHandler` específica — ver `plan.md`, ainda em
+  aberto.
 
 ## Diagramas de classes
 
@@ -156,6 +155,7 @@ classDiagram
     class LinkDto {
         +Long userId
         +String email
+        +Map~String,String~ extra
     }
     class LoginLinkHandler {
         +handle(dto)
@@ -175,26 +175,17 @@ classDiagram
 
 `LinkService`/`LinkRouter`/`LinkRecord`/`LinkHandler`/`LinkDto` (módulo `link`) não referenciam
 nenhum tipo de `login`/`competition`. `LoginLinkHandler` e `CompetitionInviteLinkHandler`
-(nomes ilustrativos — ver "Decisões em aberto") vivem nos módulos consumidores e dependem de
-`link`, nunca o contrário.
+(nomes ilustrativos — ver `plan.md`) vivem nos módulos consumidores e dependem de `link`, nunca
+o contrário.
 
 ## Decisões em aberto
 
-- **Formato exato do DTO com campos extras por implementação**: subclasse de um `LinkDto` base
-  (`userId`+`email`), ou um DTO único com um campo genérico de extensão (ex.
-  `Map<String,String> extra`)? Afeta como o JSON é desserializado antes de chegar em cada
-  `LinkHandler`.
+As decisões técnicas desta spec (formato do DTO, onde vive a chave de serviço, migração de
+dados) foram resolvidas e estão registradas em `plan.md`, não aqui — ver "Decisões de
+arquitetura" naquele arquivo. Nesta camada de requisito, o único ponto ainda sem resposta é:
+
 - **Mapeamento exato dos fluxos atuais para implementações de `LinkHandler`**: quantas
   implementações existem de fato hoje (login avulso, convite de competição, pedido de entrada
   podem ser 1, 2 ou 3 `LinkHandler`s distintos) — precisa revisar `LoginService`/
   `EntryRequestService`/`PlayerManagementService` linha a linha antes de implementar; os nomes
-  usados nos diagramas acima são ilustrativos, não confirmados.
-- **Onde vive a chave de serviço como constante**: enum no módulo `link`, ou cada
-  implementação declara a própria string sem um catálogo central? Um catálogo central
-  reintroduziria acoplamento (`link` precisaria saber os nomes); a proposta é cada
-  implementação só se registrar no `LinkRouter` com sua própria chave, sem `link` ter uma
-  lista fechada.
-- **Migração de dados**: `LoginLink`/`Participation` hoje têm uma FK real — migrar isso pra
-  `LinkRecord` (token/serviceKey/dtoJson) exige popular o JSON a partir do estado atual, ou
-  essa spec só vale pra links novos? A decidir antes de implementar (não há dados de produção
-  ainda, então provavelmente não é um problema real, mas vale confirmar).
+  usados nos diagramas acima são ilustrativos, não confirmados. Ver `plan.md`.
