@@ -426,6 +426,60 @@ em spec nenhuma.
 inclusive para registrar uma decisão pontual de arquitetura (como esta), sem esperar o
 fechamento de toda a Iteração 5.
 
+### Sessão 2026-09-15
+
+**Feito:**
+- **Primeiras três specs de Iteração 5 escritas** (`specs/05-001-refactor-pacote-base`,
+  `specs/05-002-modularizacao-inicial`, `specs/05-003-desacoplamento-login-link`) — tratadas
+  como primeiro roadmap de implementação, sujeito a mudar. 05-001 renomeia o pacote base
+  (`io.deployo` → `dev.leilaalgarve`, domínio `deployo.io` não é mais da autora); 05-002 é o
+  primeiro passo de modularização por domínio (`link`/`competition`/`login`/`log`/`email`,
+  depois `captcha`); 05-003 desacopla o módulo `link` dos seus consumidores via
+  `LinkRouter`/`LinkHandler`/`LinkDto`.
+- `plan.md` da 05-003 escrito depois de ler `LoginService`/`LoginController`/`LoginLink`/
+  `EntryRequestService`/`PlayerManagementService`/`CompetitionService` (estado em `master`)
+  linha a linha — três achados mudaram o desenho em relação ao que a spec ilustrava
+  inicialmente: só existem **dois** `LinkHandler`s de verdade (não três, nem um por serviço
+  chamador — três call sites diferentes criam o mesmo formato de link ligado a competição);
+  `EntryRequestService.confirmEntry` não usa link/token nenhum (fora de escopo); o caso "link
+  ligado a competição, sem conta ainda" é de **duas fases HTTP** sobre o mesmo token
+  (`consume` retorna 202 pendente, `complete` fecha o cadastro depois) — a interface
+  `LinkHandler` ganhou um segundo método (`complete`, com implementação padrão que recusa)
+  por causa disso.
+- **Nova decisão (05-003)**: colisão de chave entre dois `LinkHandler`s continua falhando no
+  boot do Spring, e ganhou também um **teste dedicado** (`LinkRouterKeyUniquenessTest` ou
+  similar) que constrói o `LinkRouter` com as implementações reais e verifica chave não-nula
+  e não-duplicada sem precisar subir o contexto inteiro — registrado em `plan.md`.
+- **Nova decisão (05-003)**: `LinkRecord` deixa de gravar o DTO inteiro serializado num único
+  campo JSON — `userId` e `email` viram **colunas próprias** da entidade (reduzindo a perda de
+  integridade referencial que um JSON opaco causaria), e só o campo `extra` do `LinkDto` (o
+  que sobra de específico de cada implementação, ex. `participationId`) continua sendo
+  serializado, num campo `extraJson` menor. Atualizado em `spec.md` (requisito funcional +
+  diagrama "Depois") e `plan.md` (estrutura de pacotes + riscos) daquela spec.
+- **Nova decisão (05-002)**: `CaptchaService`/integração ALTCHA ganha módulo próprio,
+  `captcha/` — deixou de ser um item em aberto sobre "onde colocar classe que não pertence a
+  nenhum módulo".
+- **Convenção `client`/`dto`/`exception` confirmada e documentada em 05-002**, contra o
+  repositório de referência da disciplina
+  ([`elberthmoraes-prof/desenvolvimento-avancado-com-spring-e-microsservicos-26e3-26e3`](https://github.com/elberthmoraes-prof/desenvolvimento-avancado-com-spring-e-microsservicos-26e3-26e3),
+  módulo `academico-service`, clonado localmente e lido arquivo a arquivo): `client/` (Feign +
+  Gateway que traduz exceções + DTO de resposta remota, usado a partir da Etapa 2/OpenFeign);
+  `dto/` (DTOs do próprio módulo, sem sufixo "Dto" no nome da classe); `exception/` por módulo
+  só quando esse módulo tiver duas ou mais exceções próprias (uma exceção única fica na raiz
+  do pacote), mais um `exception/` global na raiz de `{base}` com o `GlobalExceptionHandler`.
+  Nomes de pacote/classe continuam em inglês — só a estrutura é adaptada do repositório de
+  referência (em português), não o idioma. Observação registrada: o próprio repositório de
+  referência não segue essa regra 100% consistentemente (um módulo mantém duas exceções soltas
+  na raiz do pacote, sem subpacote `exception/`) — a spec adota a regra mesmo assim, por ser a
+  mais clara de aplicar. Aplicação **incremental**, módulo a módulo, à medida que o trabalho
+  avança — não é um requisito upfront da 05-002 em si.
+
+**Confirmado nesta sessão:** o diário continua sendo atualizado a cada sessão relevante de
+trabalho, mesmo quando o essencial da decisão técnica já está registrado dentro de uma spec
+(`specs/05-002-.../spec.md`, `specs/05-003-.../plan.md`) — este arquivo guarda o resumo
+narrativo e o porquê de cada mudança de rumo, papel que uma tabela de decisões dentro de uma
+spec não cumpre sozinha.
+
 ## Decisões em aberto (resumo)
 
 - `app/` também migra para o Config Server, ou mantém profiles locais?
@@ -453,3 +507,8 @@ fechamento de toda a Iteração 5.
 - Script de sincronização label → campo "Iteration" do GitHub Project (ver seção 7).
 - Nome definitivo do branch de PDF/caderno de testes e conteúdo detalhado de cada seção por
   Etapa — rastreado na Issue #43, não neste documento.
+- Onde vive a lógica de estabelecer sessão (`SecurityContext`/`LoginSession`) após consumir um
+  link com sucesso — depende de uma decisão conjunta entre as specs 05-002 e 05-003, ver
+  `specs/05-003-desacoplamento-login-link/plan.md`.
+- Onde ficam `SecurityConfig`/`testsupport`/fixtures compartilhadas na modularização inicial
+  (05-002) — ver "Decisões em aberto" daquela spec.
