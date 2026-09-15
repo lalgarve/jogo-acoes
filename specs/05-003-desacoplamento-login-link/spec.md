@@ -48,11 +48,11 @@ texto Gherkin, usando o novo mecanismo por baixo.
   disso (ver `plan.md` para o formato exato do campo de extensão).
 - **`LinkRouter`**: componente que recebe a chave de serviço gravada no link e despacha para a
   implementação correta, usando um **mapa** (chave de serviço → implementação).
-- **Interface** (ex. `LinkHandler`) que recebe o DTO já desserializado — cada implementação
-  concreta faz a chamada de negócio correspondente (ex.: uma implementação de login estabelece
-  sessão; uma implementação de convite de competição confirma participação). Essas
-  implementações vivem nos módulos consumidores (`login`, `competition`), não no módulo
-  `link`.
+- **Interface** (`LinkHandler`) que recebe o DTO já desserializado — cada implementação
+  concreta faz a chamada de negócio correspondente (login estabelece sessão; convite/pedido de
+  entrada de competição confirma participação — ver `plan.md` para o motivo de os dois
+  segundos casos serem uma única implementação). Essas implementações vivem nos módulos
+  consumidores (`login`, `competition`), não no módulo `link`.
 - **Toda implementação tem uma chave própria** (o valor gravado como "chave do serviço") **e
   um teste de verificação dedicado** — não basta o teste do mecanismo genérico de roteamento,
   cada implementação prova que funciona por si.
@@ -71,9 +71,8 @@ texto Gherkin, usando o novo mecanismo por baixo.
 - Mudar o conteúdo/visual do e-mail que carrega o link.
 - Expiração/uso único do token — mecanismo já existente, mantido como está.
 - Rate limiting novo para o endpoint de consumo do link.
-- Mapear exaustivamente todo fluxo atual (login avulso, convite de competição, pedido de
-  entrada) para uma implementação de `LinkHandler` específica — ver `plan.md`, ainda em
-  aberto.
+- `EntryRequestService.confirmEntry` — não usa token/link nenhum (jogador já autenticado
+  confirmando entrada direto da sessão), fora do alcance desta spec.
 
 ## Diagramas de classes
 
@@ -132,14 +131,17 @@ módulo `competition`.
 classDiagram
     class LinkController {
         +consume(token)
+        +complete(token, extra)
     }
     class LinkService {
         +create(serviceKey, dto) String
         +consume(token)
+        +complete(token, extra)
     }
     class LinkRouter {
         -Map~String, LinkHandler~ handlers
-        +route(serviceKey, dto)
+        +consume(serviceKey, dto)
+        +complete(serviceKey, dto, extra)
     }
     class LinkRecord {
         +String token
@@ -150,7 +152,8 @@ classDiagram
     }
     class LinkHandler {
         <<interface>>
-        +handle(dto)
+        +consume(dto)
+        +complete(dto, extra)
     }
     class LinkDto {
         +Long userId
@@ -158,10 +161,11 @@ classDiagram
         +Map~String,String~ extra
     }
     class LoginLinkHandler {
-        +handle(dto)
+        +consume(dto)
     }
-    class CompetitionInviteLinkHandler {
-        +handle(dto)
+    class CompetitionLinkHandler {
+        +consume(dto)
+        +complete(dto, extra)
     }
 
     LinkController --> LinkService
@@ -169,23 +173,20 @@ classDiagram
     LinkService --> LinkRouter
     LinkRouter --> LinkHandler : despacha via chave
     LinkHandler <|.. LoginLinkHandler
-    LinkHandler <|.. CompetitionInviteLinkHandler
+    LinkHandler <|.. CompetitionLinkHandler
     LinkHandler ..> LinkDto : recebe
 ```
 
 `LinkService`/`LinkRouter`/`LinkRecord`/`LinkHandler`/`LinkDto` (módulo `link`) não referenciam
-nenhum tipo de `login`/`competition`. `LoginLinkHandler` e `CompetitionInviteLinkHandler`
-(nomes ilustrativos — ver `plan.md`) vivem nos módulos consumidores e dependem de `link`, nunca
-o contrário.
+nenhum tipo de `login`/`competition`. `LoginLinkHandler` (módulo `login`) e
+`CompetitionLinkHandler` (módulo `competition` — cobre convite **e** pedido de entrada
+pública, mesmo formato de link e mesmo comportamento de consumo para os dois, ver `plan.md`)
+vivem nos módulos consumidores e dependem de `link`, nunca o contrário. `complete` só existe
+de fato em `CompetitionLinkHandler` — `LoginLinkHandler` nunca precisa de uma segunda fase.
 
 ## Decisões em aberto
 
-As decisões técnicas desta spec (formato do DTO, onde vive a chave de serviço, migração de
-dados) foram resolvidas e estão registradas em `plan.md`, não aqui — ver "Decisões de
-arquitetura" naquele arquivo. Nesta camada de requisito, o único ponto ainda sem resposta é:
-
-- **Mapeamento exato dos fluxos atuais para implementações de `LinkHandler`**: quantas
-  implementações existem de fato hoje (login avulso, convite de competição, pedido de entrada
-  podem ser 1, 2 ou 3 `LinkHandler`s distintos) — precisa revisar `LoginService`/
-  `EntryRequestService`/`PlayerManagementService` linha a linha antes de implementar; os nomes
-  usados nos diagramas acima são ilustrativos, não confirmados. Ver `plan.md`.
+Nenhuma decisão de requisito em aberto. As decisões técnicas desta spec — formato do DTO,
+onde vive a chave de serviço, migração de dados, e o mapeamento exato dos fluxos atuais para
+`LoginLinkHandler`/`CompetitionLinkHandler` — foram todas resolvidas e estão registradas em
+`plan.md` ("Decisões de arquitetura").
