@@ -34,8 +34,7 @@ public class SecurityConfig {
                 .httpBasic(basic -> basic.disable())
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/login-requests", "/login-links/**", "/competitions/*/entry-requests").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/competitions").permitAll()
+                        .requestMatchers("/login-requests", "/login-links/**", "/competitions/*/entry-requests", "/competitions/public").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/competitions").hasRole("ADMINISTRATOR")
                         .requestMatchers("/competitions/*/invite-emails", "/competitions/*/players", "/competitions/*/players/**")
                         .hasRole("ADMINISTRATOR")
