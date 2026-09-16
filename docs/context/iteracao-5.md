@@ -591,6 +591,31 @@ sessão após consumir um link (`SecurityContext`/`LoginSession`, ver lista de f
 abaixo) foi resolvida pela implementação — vive em `LinkSessionService`
 (`LoginLinkSessionService`, em `login/`), removida da lista de pendências.
 
+### Sessão 2026-09-16 (continuação) — PR #48 mergeado; preparação da próxima spec (módulo `login`)
+
+**Feito:**
+- PR [#48](https://github.com/lalgarve/jogo-acoes/pull/48) (as três specs 05-001/05-002/05-003)
+  aberto, CI verde, sem conflito, sem review pendente, e mergeado em `master`.
+- A pedido, revisado o estado atual do módulo `login`/`link` como preparação para a próxima
+  spec, começando pelos diagramas (antes de desenhar qualquer mudança nova):
+  - `docs/diagrams/classes.md` conferido contra o código atual — já estava correto (atualizado
+    durante a própria 05-003), nenhuma mudança necessária.
+  - `docs/diagrams/sequencia.md` **reescrito** nas seções 1 (login — agora dividida em 1a
+    pedido/1b consumo genérico via `LinkService`/`LinkRouter`/`LinkHandler`), 3 (criação de
+    competição + convite), 4 (pedido de entrada — mais uma nova seção 4b detalhando o consumo
+    em duas fases de `CompetitionLinkHandler`) e 5 (gerência de jogadores): todas ainda citavam
+    `LoginService`/`LoginLink`/`LoginLinkRepository`, removidos na 05-003. Seções 2 e 6 não
+    mudam (não afetadas pelo refactor). Os dois diagramas mais complexos (1b, 4b) validados via
+    Mermaid antes de salvar.
+- **Achado durante essa revisão, não relacionado à 05-003**: `EmailValidationService`/
+  `MxRecordResolver`/`DisposableDomainRepository`/`DisposableDomain`/`EmailRejectedException`/
+  `DisposableDomainRefreshJob` — documentados em `der.md`, `classes.md` ("Verificação de
+  e-mail") e `sequencia.md` (seção 2) como se existissem — **não existem no código**, nem há
+  tabela `disposable_domain` em nenhuma migração Flyway. Sinalizado com um aviso explícito na
+  seção 2 de `sequencia.md` e nesta lista de decisões em aberto, sem alterar `der.md`/
+  `classes.md` por ora — decisão de como tratar isso fica para depois, fora do escopo desta
+  revisão.
+
 ## Decisões em aberto (resumo)
 
 - `app/` também migra para o Config Server, ou mantém profiles locais?
@@ -618,6 +643,9 @@ abaixo) foi resolvida pela implementação — vive em `LinkSessionService`
 - Script de sincronização label → campo "Iteration" do GitHub Project (ver seção 7).
 - Nome definitivo do branch de PDF/caderno de testes e conteúdo detalhado de cada seção por
   Etapa — rastreado na Issue #43, não neste documento.
-- `docs/diagrams/sequencia.md` está desatualizado desde a implementação da spec 05-003 (ainda
-  reflete `LoginService`/`LoginLink`) — precisa refazer os diagramas de sequência afetados
-  (login, convite/pedido de entrada de competição).
+- **`EmailValidationService`/`MxRecordResolver`/`DisposableDomainRepository` nunca foram
+  implementados**, apesar de documentados como se existissem em `der.md` (`DISPOSABLE_DOMAIN`),
+  `classes.md` ("Verificação de e-mail") e `sequencia.md` (seção 2) — confirmado por grep no
+  código nesta sessão (nenhuma classe, nenhuma tabela `disposable_domain` em nenhuma migração
+  Flyway). Sinalizado nos três lugares; decidir depois se vira spec própria ou se a
+  documentação deve ser corrigida para remover a menção.
