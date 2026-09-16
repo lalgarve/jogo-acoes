@@ -18,7 +18,7 @@ pequenas o bastante para não precisar de PR isolada).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Passos Cucumber para `browse_public_competitions.feature` — chamada HTTP direta a `GET /competitions/public`, corpo/resposta em JSON cru; rodar e confirmar que falha agora (404, caminho ainda não existe) | — | [P] | #50 |
+| ~~T001~~ | Passos Cucumber para `browse_public_competitions.feature` — chamada HTTP direta a `GET /competitions/public`, corpo/resposta em JSON cru; rodar e confirmar que falha agora (caminho ainda não existe — `401` nos cenários sem sessão, porque `/competitions/public` ainda não está no `permitAll` do `SecurityConfig`, `404` no cenário com sessão, onde a rota simplesmente não existe; ambos confirmam a mesma causa raiz) | — | [P] | #50 |
 | T002 | Passos Cucumber para `view_my_competitions.feature` — chamadas diretas a `GET /competitions/mine` e `GET /competitions/{id}`, mesmo princípio (JSON cru, sem classe gerada); inclui o cenário de confirmar entrada a partir da tela de detalhe, que já chama o `POST /competitions/{id}/entry-requests` existente; rodar e confirmar que falha agora | — | [P] | #50 |
 | T003 | Contrato: adicionar os schemas `CompetitionSummary`/`CompetitionDetail`, os três caminhos novos (`GET /competitions/public`, `GET /competitions/mine`, `GET /competitions/{competitionId}`) e a extensão `x-roles` em toda operação de `docs/openapi.yaml` (novas e já existentes) — formaliza exatamente o que T001/T002 já esperavam | T001, T002 | | #50 |
 | T004 | Adicionar `ParticipationRepository.findByUser_Id(Long userId)` | T003 | [P] | #50 |
