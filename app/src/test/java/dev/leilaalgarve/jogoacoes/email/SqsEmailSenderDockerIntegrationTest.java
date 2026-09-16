@@ -1,6 +1,6 @@
 package dev.leilaalgarve.jogoacoes.email;
 
-import dev.leilaalgarve.jogoacoes.domain.EmailTemplate;
+import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

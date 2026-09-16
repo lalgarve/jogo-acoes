@@ -1,8 +1,8 @@
 package dev.leilaalgarve.jogoacoes.email;
 
 import io.awspring.cloud.sqs.operations.SqsTemplate;
-import dev.leilaalgarve.jogoacoes.domain.EmailTemplate;
-import dev.leilaalgarve.jogoacoes.domain.SentEmail;
+import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
+import dev.leilaalgarve.jogoacoes.email.SentEmail;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

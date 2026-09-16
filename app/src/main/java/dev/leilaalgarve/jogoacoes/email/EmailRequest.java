@@ -1,7 +1,7 @@
 package dev.leilaalgarve.jogoacoes.email;
 
-import dev.leilaalgarve.jogoacoes.domain.EmailTemplate;
-import dev.leilaalgarve.jogoacoes.domain.RequestType;
+import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
+import dev.leilaalgarve.jogoacoes.competition.RequestType;
 
 /**
  * Everything an {@link EmailSender} needs to record the send and pick/render the right one of

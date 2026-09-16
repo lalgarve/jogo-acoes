@@ -1,6 +1,6 @@
 package dev.leilaalgarve.jogoacoes.email;
 
-import dev.leilaalgarve.jogoacoes.domain.RequestType;
+import dev.leilaalgarve.jogoacoes.competition.RequestType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
 import org.thymeleaf.TemplateEngine;

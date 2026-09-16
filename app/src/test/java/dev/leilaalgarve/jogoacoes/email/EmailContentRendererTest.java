@@ -1,7 +1,7 @@
 package dev.leilaalgarve.jogoacoes.email;
 
-import dev.leilaalgarve.jogoacoes.domain.EmailTemplate;
-import dev.leilaalgarve.jogoacoes.domain.RequestType;
+import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
+import dev.leilaalgarve.jogoacoes.competition.RequestType;
 import org.junit.jupiter.api.Test;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.spring6.SpringTemplateEngine;

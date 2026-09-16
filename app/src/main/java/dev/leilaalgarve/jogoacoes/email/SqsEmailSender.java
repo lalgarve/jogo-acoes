@@ -1,7 +1,7 @@
 package dev.leilaalgarve.jogoacoes.email;
 
 import io.awspring.cloud.sqs.operations.SqsTemplate;
-import dev.leilaalgarve.jogoacoes.domain.SentEmail;
+import dev.leilaalgarve.jogoacoes.email.SentEmail;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
