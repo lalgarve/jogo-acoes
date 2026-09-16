@@ -73,13 +73,6 @@ public class LoginController implements LoginApi {
     }
 
     private LoginResult toLoginResult(LinkOutcome outcome) {
-        Map<String, String> data = outcome.redirectData();
-        LoginResult result = new LoginResult();
-        result.setRedirectTo(LoginResult.RedirectToEnum.fromValue(data.get("redirectTo")));
-        String competitionId = data.get("competitionId");
-        if (competitionId != null) {
-            result.competitionId(Long.valueOf(competitionId));
-        }
-        return result;
+        return new LoginResult().redirectTo(outcome.redirectData().get("redirectTo"));
     }
 }

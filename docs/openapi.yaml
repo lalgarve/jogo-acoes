@@ -199,6 +199,13 @@ paths:
       tags: [login]
       operationId: requestLoginLink
       summary: Request a login link for an already-registered player or the administrator
+      description: >
+        Spec 05-005: `returnTo`, when present, is the page the caller was trying to reach
+        before being asked to log in — consuming the resulting link redirects there instead
+        of the role-based default. Must be a same-origin relative path (starts with a single
+        `/`, never `//` right after); anything else is silently ignored, falling back to the
+        default, since this endpoint requires no session and an unvalidated redirect target
+        would be an open redirect.
       x-roles: []
       requestBody:
         required: true
@@ -209,6 +216,10 @@ paths:
               required: [email]
               properties:
                 email: { type: string, format: email }
+                returnTo:
+                  type: string
+                  nullable: true
+                  description: Same-origin relative path to redirect to after login — see the operation description.
       responses:
         '202': { description: Accepted — link sent by e-mail if the address is known }
 
@@ -234,7 +245,7 @@ paths:
         '200':
           description: >
             Valid link, already-registered player — session established, redirect target
-            in the response body (competition page, admin page, or competitions list).
+            (a same-origin path) in the response body. See spec 05-005.
           content:
             application/json:
               schema:
@@ -542,12 +553,16 @@ components:
         email: { type: string, format: email }
 
     LoginResult:
+      description: >
+        Spec 05-005: `redirectTo` is a full same-origin path, not a symbol — either the
+        caller's own `returnTo` (see requestLoginLink) when it was honored, or a role-based
+        default (`/admin`, `/competitions/mine`, or `/competitions/{id}`) otherwise. No
+        separate `competitionId` field — the id is already embedded in the path when
+        applicable.
       type: object
       properties:
         redirectTo:
           type: string
-          enum: [competition-page, competitions-list, admin-page]
-        competitionId: { type: integer, format: int64, nullable: true }
 
     Error:
       type: object
