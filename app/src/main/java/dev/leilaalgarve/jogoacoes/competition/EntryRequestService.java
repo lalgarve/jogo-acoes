@@ -1,0 +1,150 @@
+package dev.leilaalgarve.jogoacoes.competition;
+
+import dev.leilaalgarve.jogoacoes.log.AuditLogService;
+
+import dev.leilaalgarve.jogoacoes.api.model.EntryRequest;
+import dev.leilaalgarve.jogoacoes.captcha.CaptchaService;
+import dev.leilaalgarve.jogoacoes.competition.Competition;
+import dev.leilaalgarve.jogoacoes.competition.CompetitionType;
+import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
+import dev.leilaalgarve.jogoacoes.log.LogType;
+import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
+import dev.leilaalgarve.jogoacoes.link.LinkService;
+import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
+import dev.leilaalgarve.jogoacoes.competition.Participation;
+import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
+import dev.leilaalgarve.jogoacoes.competition.RequestType;
+import dev.leilaalgarve.jogoacoes.login.User;
+import dev.leilaalgarve.jogoacoes.email.EmailRequest;
+import dev.leilaalgarve.jogoacoes.email.EmailSender;
+import dev.leilaalgarve.jogoacoes.competition.CompetitionRepository;
+import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
+import dev.leilaalgarve.jogoacoes.login.UserRepository;
+import dev.leilaalgarve.jogoacoes.captcha.CaptchaInvalidException;
+import dev.leilaalgarve.jogoacoes.competition.CompetitionNotFoundException;
+import dev.leilaalgarve.jogoacoes.competition.EntryRequestValidationException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.Optional;
+
+@Service
+public class EntryRequestService {
+
+    private final CompetitionRepository competitionRepository;
+    private final ParticipationRepository participationRepository;
+    private final LinkService linkService;
+    private final UserRepository userRepository;
+    private final EmailSender emailSender;
+    private final CaptchaService captchaService;
+    private final AuditLogService auditLogService;
+
+    public EntryRequestService(CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
+                                LinkService linkService, UserRepository userRepository,
+                                EmailSender emailSender, CaptchaService captchaService, AuditLogService auditLogService) {
+        this.competitionRepository = competitionRepository;
+        this.participationRepository = participationRepository;
+        this.linkService = linkService;
+        this.userRepository = userRepository;
+        this.emailSender = emailSender;
+        this.captchaService = captchaService;
+        this.auditLogService = auditLogService;
+    }
+
+    /** Logged-in player confirming entry directly from their session -- no e-mail round trip. */
+    @Transactional
+    public Participation confirmEntry(Long competitionId) {
+        Competition competition = findCompetition(competitionId);
+        User user = currentUser();
+
+        Participation participation = participationRepository.findByCompetition_IdAndUser_Id(competitionId, user.getId())
+                .orElse(null);
+
+        if (competition.getType() == CompetitionType.PRIVATE && participation == null) {
+            // No invite on record -- 404 rather than 403, so as not to reveal the competition exists.
+            throw new CompetitionNotFoundException(competitionId);
+        }
+
+        if (participation == null) {
+            participation = new Participation();
+            participation.setCompetition(competition);
+            participation.setUser(user);
+            participation.setEmail(user.getEmail());
+            participation.setRequestType(RequestType.REQUEST);
+        }
+        participation.setStatus(ParticipationStatus.IN_COMPETITION);
+        participation.setJoinedAt(LocalDate.now());
+        participation = participationRepository.save(participation);
+        auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participation.getId(), user,
+                "Participation status changed to IN_COMPETITION");
+        return participation;
+    }
+
+    /** Unregistered or logged-out player: e-mail + captcha, gets a link instead of immediate entry. */
+    @Transactional
+    public void requestEntry(Long competitionId, EntryRequest request) {
+        Competition competition = findCompetition(competitionId);
+        if (competition.getType() == CompetitionType.PRIVATE) {
+            throw new CompetitionNotFoundException(competitionId);
+        }
+
+        String email = request != null ? request.getEmail() : null;
+        if (email == null || email.isBlank()) {
+            throw new EntryRequestValidationException("Invalid e-mail");
+        }
+        String captchaToken = request.getCaptchaToken();
+        if (!captchaService.verify(captchaToken)) {
+            throw new CaptchaInvalidException("Failed captcha");
+        }
+
+        Optional<User> existingUser = userRepository.findByEmail(email);
+        EmailTemplate template = existingUser.filter(User::isRegistered).isPresent()
+                ? EmailTemplate.LOGIN_LINK
+                : EmailTemplate.REGISTRATION_LINK;
+
+        Participation participation = participationRepository
+                .findByCompetition_IdAndEmailAndStatusNot(competitionId, email, ParticipationStatus.IN_COMPETITION)
+                .orElseGet(() -> {
+                    Participation p = new Participation();
+                    p.setCompetition(competition);
+                    p.setEmail(email);
+                    p.setUser(existingUser.orElse(null));
+                    p.setStatus(ParticipationStatus.EMAIL_NOT_SENT);
+                    p.setRequestType(RequestType.REQUEST);
+                    return p;
+                });
+        participation = participationRepository.save(participation);
+
+        Long userId = existingUser.map(User::getId).orElse(null);
+        Map<String, String> extra = Map.of(CompetitionLinkHandler.PARTICIPATION_ID_EXTRA_KEY, String.valueOf(participation.getId()));
+        LinkCreationResult created = linkService.create(CompetitionLinkHandler.KEY, new LinkPayload(userId, email, extra));
+        auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), existingUser.orElse(null),
+                "Entry request login link issued to " + email);
+
+        String name = existingUser.map(User::getName).orElse(null);
+        emailSender.send(new EmailRequest(userId, email, name, competition.getName(), RequestType.REQUEST,
+                "/login-links/" + created.token(), template));
+
+        if (participation.getFirstEmailSentDate() == null) {
+            participation.setFirstEmailSentDate(LocalDate.now());
+        }
+        participation.setStatus(ParticipationStatus.EMAIL_SENT);
+        participationRepository.save(participation);
+        auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participation.getId(), existingUser.orElse(null),
+                "Participation status changed to EMAIL_SENT");
+    }
+
+    private Competition findCompetition(Long competitionId) {
+        return competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+    }
+
+    private User currentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + email));
+    }
+}

@@ -34,7 +34,7 @@ altcha:
 login:
   max-devices-per-user: 3
 
-# email.sender picks the EmailSender bean (io.deployo.jogoacoes.email): "stub" (default, no
+# email.sender picks the EmailSender bean (dev.leilaalgarve.jogoacoes.email): "stub" (default, no
 # value needed) just records to sent_email; "sqs" publishes to the command queue for
 # email-lambda to pick up (docs/context/iteracao-4.md). Only set to "sqs" in profiles that
 # actually have a queue to publish to -- see application-docker.yml/application-staging.yml/

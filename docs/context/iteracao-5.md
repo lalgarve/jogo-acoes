@@ -27,8 +27,9 @@ mudança que aproveita mais do código já escrito (templates Thymeleaf, `EmailS
 1. Adotar a convenção de arquivos do spec-kit (SDD) para o processo já seguido.
 2. Tarefas pendentes, divididas por Etapa da disciplina (Etapa 1 primeiro — é a que não depende
    de nenhuma decisão de arquitetura nova).
-3. Confecção final do PDF do projeto e do caderno de testes Swagger — por último, depois que o
-   resto estiver estável.
+3. PDF do projeto e caderno de testes Swagger — **revisado (ver seção 6 e Issue #43)**:
+   escritos por Etapa, em paralelo ao código, num branch próprio, não mais deixados só pro
+   final.
 
 ## 1. Adoção do spec-kit (Spec-Driven Development)
 
@@ -135,9 +136,10 @@ E-mail só **valida** a chave recebida (leitura), não a gera.
 **Dados que o serviço possui** (fonte da verdade só do que é dele — API keys não são mais
 emitidas nem "donas" aqui, ver abaixo):
 - `email_template` (`app_id`, `template_key`, `content`, `variables_schema`).
-- Fila de envio (estrutura ainda não detalhada — ver pendências abaixo; pode reaproveitar o
-  contrato de mensagem já validado na Iteração 4, `schemaVersion`/`correlationId`/
-  `recipientEmail`/`subject`/`body`, em vez de desenhar um novo).
+- Fila de envio — contrato ainda em aberto entre duas opções: o desenhado na Iteração 4
+  (`schemaVersion`/`correlationId`/`recipientEmail`/`subject`/`body`, já renderizado no
+  produtor) ou o revisado na seção 3.2 abaixo (`templateName`/`templateData`, renderizado
+  pelo próprio SES) — ver 3.2 para o raciocínio e o que falta decidir.
 - Log de erros de envio (estrutura ainda não detalhada).
 
 **Banco de dados:** próprio, separado do banco do `app/`, para os dados que são realmente dele
@@ -233,7 +235,63 @@ explicitamente para o Serviço de E-mail em si.
   ("Rotação: fora de escopo por enquanto").
 - Validação de `variables_schema` (JSON Schema) contra o JSON recebido, antes de renderizar —
   continua pendente, não relacionado à mudança de API-KEY.
-- Estrutura da fila de envio e do log de erros de envio — continua pendente.
+- Estrutura da fila de envio — ver seção 3.2 (alternativa via SES Templates, ainda não
+  escolhida como definitiva) e o log de erros de envio, que continua pendente.
+
+### 3.2 Renderização via SES Templates e correlação por message tags
+
+Revisão levantada em sessão: a Amazon SES tem sistema de template próprio
+(`CreateTemplate`/`SendTemplatedEmail` no SESv1, `CreateEmailTemplate` com `Content.Template`
+no SESv2). Usá-lo permite reduzir bastante o tamanho da mensagem na fila SQS — ela deixa de
+carregar `subject`/`body` já renderizados (potencialmente vários KB de HTML) e passa a
+carregar só o nome do template e um JSON pequeno de variáveis.
+
+**Decisão**: adotar `SendTemplatedEmail` (ou o equivalente SESv2) como a estratégia de envio
+do Serviço de E-mail, mantendo a Lambda "burra" (Decisão 1 da Iteração 4) — ela repassa
+`templateName`/`templateData` pro SES sem interpretar nada, exatamente como hoje repassa
+`subject`/`body` sem interpretar. O Serviço de E-mail continua sendo a fonte da verdade do
+cadastro de templates (`email_template`, com validação via `variables_schema`), mas ganha uma
+responsabilidade nova: **sincronizar cada template criado/atualizado pro SES**
+(`CreateTemplate`/`UpdateTemplate`), já que o SES precisa da própria cópia pra fazer a
+substituição no momento do envio.
+
+**Contrato de mensagem alternativo para este fluxo** (substitui, só quando o Serviço de
+E-mail é quem publica, o contrato original da Iteração 4 — que continua valendo tal como está
+para quem publica direto na fila sem passar por ele):
+
+```json
+{
+  "schemaVersion": "2",
+  "correlationId": "uuid",
+  "recipientEmail": "...",
+  "templateName": "...",
+  "templateData": { "...": "..." }
+}
+```
+
+**Correlação evento → `sent_email` sem tocar no conteúdo do e-mail**: a ideia de embutir um
+código no HTML (levantada em sessão) foi descartada — o SES já resolve isso via *message tag*
+(`Tags`/`EmailTags` no `SendTemplatedEmail`), mecanismo que já estava planejado desde a
+Decisão 10 da Iteração 4 para o fluxo original, e vale igual aqui: o `correlationId` vai como
+tag no envio, e com o *Configuration Set* de Event Publishing (Decisão 10) ligado, toda
+`Send`/`Delivery`/`Bounce`/`Complaint` publicada no tópico SNS carrega essa mesma tag de volta
+(`mail.tags.correlationId`). Nenhuma leitura de conteúdo do e-mail é necessária, e o mecanismo
+funciona igual independente de o corpo ter sido renderizado no produtor ou pelo próprio SES.
+
+**Em aberto**:
+- SESv1 (`SendTemplatedEmail`) ou SESv2 (`SendEmail` com `Content.Template`)? A v2 é a API
+  mais nova e recomendada atualmente pela AWS, mas o `email-lambda` (Iteração 4) já usa um
+  `SesClient` — checar qual das duas esse client já expõe antes de decidir.
+- **Tensão não resolvida com os 5 templates Thymeleaf já existentes**: o SES usa sintaxe
+  Handlebars (`{{variavel}}`, suporte limitado a `{{#if}}`/`{{#each}}`), sem equivalente a
+  `th:insert` — os fragmentos de header/footer reaproveitados entre os 5 arquivos
+  (`docs/context/iteracao-4.md`, "Catálogo de templates de e-mail") precisariam ser
+  duplicados manualmente em cada template do SES, ou o conteúdo final (header+corpo+footer já
+  concatenado) pré-montado antes de cadastrar no SES. Não decidido se a redução de tamanho da
+  fila compensa esse retrabalho.
+- O contrato "renderiza no produtor" (Iteração 4 original) continua existindo em paralelo pra
+  quem não usa o cadastro de templates do Serviço de E-mail — a Lambda provavelmente precisa
+  distinguir os dois casos pelo `schemaVersion`.
 
 ## 4. Sistema de Admin — decisão em aberto (revisada)
 
@@ -262,9 +320,22 @@ resposta.
   do `app/` são removidos e substituídos pelo cliente Feign, ou se convivem durante uma
   transição.
 
-## 6. PDF final e caderno de testes Swagger
+## 6. PDF final e caderno de testes Swagger — por Etapa, em branch próprio
 
-Últimos itens da iteração, depois que o resto estiver estável:
+**Revisado (sessão 2026-09-13, ver Issue [#43](https://github.com/lalgarve/jogo-acoes/issues/43)):**
+o plano original ("últimos itens da iteração, depois que o resto estiver estável") foi
+substituído. PDF e caderno de testes não são código — não precisam esperar a suíte/CI do
+`app/` ficar verde pra existir — então passam a ser escritos **por Etapa, em paralelo ao
+código**, em vez de acumulados pro final:
+
+- Uma seção do PDF + os casos de teste Swagger correspondentes para cada uma das quatro
+  Etapas da disciplina (`alinhamento-projeto-disciplina.md`, seção 4), à medida que cada
+  Etapa fica pronta — não as quatro de uma vez no fim.
+- **Branch próprio**, separado dos branches de código desta iteração (ex.
+  `docs/iteracao-5-final-pdf-test-notebook`) — como não é código, revisão de documento não
+  deveria se misturar com revisão de código na mesma PR.
+
+O conteúdo em si:
 - PDF final sobre o projeto — para a entrega da disciplina (ver formato de nome de arquivo
   exigido no enunciado: `nomedoaluno_nomedadisciplina_pd.PDF`).
 - Caderno de testes para o Swagger — a API não é trivial (múltiplos serviços, autenticação por
@@ -332,6 +403,194 @@ planejamento e congelados dali em diante. É o mecanismo principal de continuida
 de chat ou sessão travada, cobrindo inclusive decisão de processo (como esta) que não tem lugar
 em spec nenhuma.
 
+### Sessão 2026-09-13
+
+**Feito:**
+- PR #42 aberta (estrutura SDD + correção de `StubEmailSenderTest`/`AuditLogServiceTest`
+  contra o vazamento de dados entre classes de teste no H2 compartilhado do perfil
+  `sandbox`) — ainda não mesclada. Issue #41 aberta para o mesmo risco, não corrigido, em
+  `LogRepositoryTest`.
+- **Nova decisão registrada na seção 3.2**: usar `SendTemplatedEmail`/`SendEmail` com
+  `Content.Template` do SES para renderizar do lado do SES em vez de no produtor — reduz bem
+  o tamanho da mensagem na fila. Correlação evento→`sent_email` continua via *message tag*
+  do SES (`correlationId`), não por nenhum código embutido no HTML (ideia cogitada e
+  descartada em sessão) — mecanismo que já estava previsto desde a Decisão 10 da Iteração 4.
+  Ficaram em aberto: SESv1 vs. SESv2, e como reconciliar os 5 templates Thymeleaf existentes
+  (com fragmentos de header/footer) com a sintaxe Handlebars mais simples do SES.
+- **Seção 6 revisada e Issue #43 aberta**: PDF final e caderno de testes Swagger deixam de
+  ser "só no final" e passam a ser escritos por Etapa da disciplina, em paralelo ao código,
+  num branch próprio (separado dos branches de código da iteração), já que não são código e
+  não deveriam esperar a suíte ficar verde nem se misturar com revisão de código na mesma PR.
+
+**Confirmado nesta sessão:** o diário continua sendo atualizado a cada sessão relevante,
+inclusive para registrar uma decisão pontual de arquitetura (como esta), sem esperar o
+fechamento de toda a Iteração 5.
+
+### Sessão 2026-09-15
+
+**Feito:**
+- **Primeiras três specs de Iteração 5 escritas** (`specs/05-001-refactor-pacote-base`,
+  `specs/05-002-modularizacao-inicial`, `specs/05-003-desacoplamento-login-link`) — tratadas
+  como primeiro roadmap de implementação, sujeito a mudar. 05-001 renomeia o pacote base
+  (`io.deployo` → `dev.leilaalgarve`, domínio `deployo.io` não é mais da autora); 05-002 é o
+  primeiro passo de modularização por domínio (`link`/`competition`/`login`/`log`/`email`,
+  depois `captcha`); 05-003 desacopla o módulo `link` dos seus consumidores via
+  `LinkRouter`/`LinkHandler`/`LinkDto`.
+- `plan.md` da 05-003 escrito depois de ler `LoginService`/`LoginController`/`LoginLink`/
+  `EntryRequestService`/`PlayerManagementService`/`CompetitionService` (estado em `master`)
+  linha a linha — três achados mudaram o desenho em relação ao que a spec ilustrava
+  inicialmente: só existem **dois** `LinkHandler`s de verdade (não três, nem um por serviço
+  chamador — três call sites diferentes criam o mesmo formato de link ligado a competição);
+  `EntryRequestService.confirmEntry` não usa link/token nenhum (fora de escopo); o caso "link
+  ligado a competição, sem conta ainda" é de **duas fases HTTP** sobre o mesmo token
+  (`consume` retorna 202 pendente, `complete` fecha o cadastro depois) — a interface
+  `LinkHandler` ganhou um segundo método (`complete`, com implementação padrão que recusa)
+  por causa disso.
+- **Nova decisão (05-003)**: colisão de chave entre dois `LinkHandler`s continua falhando no
+  boot do Spring, e ganhou também um **teste dedicado** (`LinkRouterKeyUniquenessTest` ou
+  similar) que constrói o `LinkRouter` com as implementações reais e verifica chave não-nula
+  e não-duplicada sem precisar subir o contexto inteiro — registrado em `plan.md`.
+- **Nova decisão (05-003)**: `LinkRecord` deixa de gravar o DTO inteiro serializado num único
+  campo JSON — `userId` e `email` viram **colunas próprias** da entidade (reduzindo a perda de
+  integridade referencial que um JSON opaco causaria), e só o campo `extra` do `LinkDto` (o
+  que sobra de específico de cada implementação, ex. `participationId`) continua sendo
+  serializado, num campo `extraJson` menor. Atualizado em `spec.md` (requisito funcional +
+  diagrama "Depois") e `plan.md` (estrutura de pacotes + riscos) daquela spec.
+- **Nova decisão (05-002)**: `CaptchaService`/integração ALTCHA ganha módulo próprio,
+  `captcha/` — deixou de ser um item em aberto sobre "onde colocar classe que não pertence a
+  nenhum módulo".
+- **Convenção `client`/`dto`/`exception` confirmada e documentada em 05-002**, contra o
+  repositório de referência da disciplina
+  ([`elberthmoraes-prof/desenvolvimento-avancado-com-spring-e-microsservicos-26e3-26e3`](https://github.com/elberthmoraes-prof/desenvolvimento-avancado-com-spring-e-microsservicos-26e3-26e3),
+  módulo `academico-service`, clonado localmente e lido arquivo a arquivo): `client/` (Feign +
+  Gateway que traduz exceções + DTO de resposta remota, usado a partir da Etapa 2/OpenFeign);
+  `dto/` (DTOs do próprio módulo, sem sufixo "Dto" no nome da classe); `exception/` por módulo
+  só quando esse módulo tiver duas ou mais exceções próprias (uma exceção única fica na raiz
+  do pacote), mais um `exception/` global na raiz de `{base}` com o `GlobalExceptionHandler`.
+  Nomes de pacote/classe continuam em inglês — só a estrutura é adaptada do repositório de
+  referência (em português), não o idioma. Observação registrada: o próprio repositório de
+  referência não segue essa regra 100% consistentemente (um módulo mantém duas exceções soltas
+  na raiz do pacote, sem subpacote `exception/`) — a spec adota a regra mesmo assim, por ser a
+  mais clara de aplicar. Aplicação **incremental**, módulo a módulo, à medida que o trabalho
+  avança — não é um requisito upfront da 05-002 em si.
+
+**Confirmado nesta sessão:** o diário continua sendo atualizado a cada sessão relevante de
+trabalho, mesmo quando o essencial da decisão técnica já está registrado dentro de uma spec
+(`specs/05-002-.../spec.md`, `specs/05-003-.../plan.md`) — este arquivo guarda o resumo
+narrativo e o porquê de cada mudança de rumo, papel que uma tabela de decisões dentro de uma
+spec não cumpre sozinha.
+
+### Sessão 2026-09-16
+
+**Feito:**
+- **Duas decisões em aberto da spec 05-001 resolvidas:** o `groupId` do `pom.xml` muda junto
+  com o pacote Java (`io.deployo` → `dev.leilaalgarve`), mesmo não sendo publicado em nenhum
+  repositório Maven — mantém coerência entre pacote e coordenada, e as coordenadas dos módulos
+  do reator (`app`, `email-lambda`) são revisadas na mesma mudança; e `email-lambda` também
+  tem seu pacote renomeado junto com `app/`, no mesmo escopo desta spec (presumido
+  `io.deployo.*` como o resto do projeto — confirmar o pacote real ao implementar, mas o
+  destino já está decidido). Atualizado em `specs/05-001-refactor-pacote-base/spec.md`.
+- **Uma decisão em aberto da spec 05-002 resolvida:** `SecurityConfig` migra para `login/`
+  (mesmo raciocínio que já aloca `LoginService`/`LoginController` ali); `ScenarioWorld`/
+  fixtures de teste compartilhadas (`testsupport`) e classes de infraestrutura genérica sem
+  domínio próprio ganham um módulo novo, `common/` — a modularização inicial passa de seis
+  para sete módulos (`link`, `competition`, `login`, `log`, `email`, `captcha`, `common`).
+  Atualizado em `specs/05-002-modularizacao-inicial/spec.md` (estrutura de pastas + decisões
+  em aberto).
+- **`tasks.md` escrito para as três specs**: `05-001` (13 tarefas T001–T013, mudança mecânica
+  sem `plan.md` próprio), `05-002` (13 tarefas T001–T013, incluindo T001 como bloqueio
+  explícito para confirmar o destino de `PlayerManagementService`/`EntryRequestService` antes
+  de mover), `05-003` (19 tarefas T001–T019, quebrando `plan.md` em passos de implementação —
+  tipos base, mecanismo genérico, os dois handlers concretos, os testes exigidos pela spec,
+  migração das call sites antigas e remoção de código morto).
+- **Três Issues-épico abertas**, uma por spec, cada uma com o checklist completo de `tasks.md`
+  e labels `iteration-5` + `refactor` (label `refactor` criada nesta sessão, mesmo padrão de
+  `docs`/`test` criadas em sessões anteriores): Issue
+  [#45](https://github.com/lalgarve/jogo-acoes/issues/45) (05-001), Issue
+  [#46](https://github.com/lalgarve/jogo-acoes/issues/46) (05-002), Issue
+  [#47](https://github.com/lalgarve/jogo-acoes/issues/47) (05-003). `spec.md`/`tasks.md` de
+  cada uma atualizados para apontar pra sua Issue.
+- **Correção na 05-003: `LinkDto` renomeado para `LinkPayload`**, movido para o pacote
+  `{base}.link.dto` — a spec tinha sido escrita antes de aplicar a convenção de sub-pacotes
+  `client`/`dto`/`exception` (documentada em 05-002) ao próprio módulo `link`, e o nome
+  original ainda carregava o sufixo "Dto" que essa convenção proíbe. Variáveis/parâmetros
+  também renomeados de `dto` para `payload` em `spec.md`/`plan.md`/`tasks.md` para
+  consistência. `LoginLinkHandler`/`CompetitionLinkHandler` (módulos `login`/`competition`)
+  passam a importar `{base}.link.dto.LinkPayload` como o único tipo de `link` que cruza a
+  fronteira do módulo.
+
+**Confirmado nesta sessão:** decisões pontuais de fechamento de spec (como estas) também
+entram no diário, não só decisões novas de arquitetura — o objetivo é que quem retomar o
+trabalho depois de uma troca de sessão veja aqui, em ordem cronológica, quando e por que cada
+"Decisões em aberto" de uma spec foi fechada, sem precisar reconstruir isso só pelo histórico
+de commits.
+
+### Sessão 2026-09-16 (continuação) — implementação das três specs
+
+**Feito:** implementação de código das três specs planejadas nesta sessão, nesta ordem
+(05-001 → 05-002 → 05-003), em clone local (`add_repo`/`register_repo_root`), com a suíte
+completa rodada e verde após cada uma.
+
+- **05-001 (rename de pacote)**: `io.deployo` → `dev.leilaalgarve` em `app/` e
+  `email-lambda/` (85 arquivos), `groupId` dos três `pom.xml` (`app`, `email-lambda`, raiz)
+  atualizado junto, conforme decidido. Commit
+  `refactor: rename base Java package io.deployo to dev.leilaalgarve`. Issue
+  [#45](https://github.com/lalgarve/jogo-acoes/issues/45) fechada, `tasks.md` com T001–T013
+  riscados.
+- **05-002 (modularização)**: ~46 classes principais e de teste redistribuídas nos sete
+  módulos (`link`, `login`, `competition`, `log`, `email`, `captcha`, `common`). Descoberto na
+  prática: mover classes para dentro de pacotes já existentes (`email/`, `captcha/`) também
+  precisa do ajuste de `package`/imports, não só as pastas novas — passo que tinha ficado
+  faltando no script inicial e foi corrigido manualmente em 4 arquivos. Imports que deixaram
+  de ser "mesmo pacote" após a divisão foram resolvidos com um script Python auxiliar
+  (mapa nome-de-classe → FQN), com remoção manual de alguns falsos positivos (nomes de classe
+  citados em javadoc/string, não em código de fato). Commit
+  `refactor: modularize app/ by domain (link, competition, login, log, email, captcha,
+  common)`. Issue [#46](https://github.com/lalgarve/jogo-acoes/issues/46) fechada, `tasks.md`
+  com T001–T013 riscados.
+- **05-003 (desacoplar `link`)**: implementado `LinkPayload`/`LinkRecord`/`LinkOutcome`/
+  `LinkHandler`/`LinkRouter`/`LinkService`/`LinkCreationResult`/`LinkSessionService` em
+  `link/`, `LoginLinkHandler`/`LoginLinkSessionService` em `login/`,
+  `CompetitionLinkHandler` em `competition/`; `LoginLink`/`LoginLinkRepository`/`LoginService`
+  removidos (mortos); migração Flyway `V6__decouple_login_link_into_link_record.sql` (+
+  espelho H2). **Três desvios em relação ao desenho original de `plan.md`**, todos detalhados
+  em `plan.md` ("Achados feitos durante a implementação") e refletidos em `spec.md`/
+  `tasks.md`:
+  1. `LinkHandler` ganhou um terceiro método, `alreadyAuthenticated`, não previsto — necessário
+     para o atalho "jogador já logado neste dispositivo" que `login.feature` exige (o desenho
+     original de 2 métodos não cobria esse caminho sem pular lógica de sessão indevidamente).
+  2. Não existe uma classe `LinkController` separada — `LoginController` (já existente, em
+     `login/`) passou a delegar `consumeLoginLink`/`completeRegistration` para `LinkService`,
+     mantendo `requestLoginLink` como lógica própria. `LinkService.create` passou a devolver
+     `LinkCreationResult(id, token)` (não só o token), porque os três call sites de
+     `competition` precisam do id numérico para auditoria.
+  3. Escopo extra descoberto durante a implementação (fora da lista original de `tasks.md`):
+     `LoginSession` (também em `link/` desde a 05-002) tinha uma FK Java direta pra
+     `login.User`, violando o mesmo requisito de direção de dependência que motivou o
+     redesenho de `LinkRecord` — corrigido trocando `User user` por `Long userId` (sem FK).
+  - **Descoberta técnica**: este projeto usa Jackson 3 (`tools.jackson.*`, não
+    `com.fasterxml.jackson.*`) — `LinkService` foi escrito inicialmente com os imports errados
+    (Jackson 2) e corrigido; `tools.jackson.core.JacksonException` é unchecked (extends
+    `RuntimeException`), então não precisa de try/catch ao redor das chamadas de
+    serialização/desserialização de `extra`.
+  - `docs/diagrams/der.md`/`classes.md` atualizados (`LOGIN_LINK` → `LINK_RECORD`, sem FK para
+    `User`/`Participation`); `docs/diagrams/sequencia.md` **não** foi atualizado — sinalizado
+    como pendência conhecida (4 diagramas de sequência a refazer), fora do escopo desta
+    sessão.
+  - Suíte completa (`mvn -pl app -am clean test`): **89 testes, 0 falhas, 0 erros** — todos os
+    `.feature` de login/competição sem nenhuma alteração de texto Gherkin, mais os 4 testes
+    dedicados novos (`LinkRouterKeyUniquenessTest`, `LoginLinkHandlerTest`,
+    `CompetitionLinkHandlerTest`, `LinkServiceTest`); `email-lambda` inalterado (2 testes, 1
+    skip, como antes). Commit
+    `refactor: decouple the link module from login/competition (LinkRouter/LinkHandler)`.
+    Issue [#47](https://github.com/lalgarve/jogo-acoes/issues/47) fechada, `tasks.md` com
+    T001–T019 riscados (desvios documentados na própria tabela).
+
+**Confirmado nesta sessão:** a "Decisão em aberto" sobre onde vive a lógica de estabelecer
+sessão após consumir um link (`SecurityContext`/`LoginSession`, ver lista de fechamento
+abaixo) foi resolvida pela implementação — vive em `LinkSessionService`
+(`LoginLinkSessionService`, em `login/`), removida da lista de pendências.
+
 ## Decisões em aberto (resumo)
 
 - `app/` também migra para o Config Server, ou mantém profiles locais?
@@ -339,7 +598,15 @@ em spec nenhuma.
   convivem temporariamente com ele?
 - Serviço de E-mail: repositório próprio (precedente do `deployo-api-key`) ou módulo no reator
   atual?
-- Estrutura da fila de envio e do log de erros do Serviço de E-mail.
+- Estrutura definitiva da fila de envio — contrato original da Iteração 4 (`subject`/`body`
+  já renderizados) ou o revisado na seção 3.2 (`templateName`/`templateData` via SES
+  Templates, mensagem menor)? E o log de erros de envio, ainda sem estrutura desenhada.
+- SESv1 (`SendTemplatedEmail`) ou SESv2 (`SendEmail` com `Content.Template`) para o fluxo da
+  seção 3.2 — depende de checar o que o `SesClient` do `email-lambda` já expõe.
+- Como reconciliar os 5 templates Thymeleaf existentes (fragmentos `th:insert` de
+  header/footer) com a sintaxe Handlebars mais simples do SES, se a seção 3.2 for adotada —
+  duplicar o header/footer em cada template do SES, ou pré-montar o HTML final antes de
+  cadastrar.
 - Validação de `variables_schema` via JSON Schema — biblioteca e ponto de validação exatos.
 - Diagrama do fluxo de autenticação do Serviço de E-mail — precisa ser refeito considerando o
   `deployo-api-key` (não é mais o mesmo fluxo do brainstorm original).
@@ -349,3 +616,8 @@ em spec nenhuma.
   local/mecanismo de armazenamento) — o princípio (interface + coluna de versão se a geração
   mudar) já está definido, falta o desenho concreto (ver seção 3.1).
 - Script de sincronização label → campo "Iteration" do GitHub Project (ver seção 7).
+- Nome definitivo do branch de PDF/caderno de testes e conteúdo detalhado de cada seção por
+  Etapa — rastreado na Issue #43, não neste documento.
+- `docs/diagrams/sequencia.md` está desatualizado desde a implementação da spec 05-003 (ainda
+  reflete `LoginService`/`LoginLink`) — precisa refazer os diagramas de sequência afetados
+  (login, convite/pedido de entrada de competição).
