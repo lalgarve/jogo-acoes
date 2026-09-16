@@ -4,13 +4,13 @@ Feature: Redirect to the originally requested page after login
   So that I do not have to navigate there again manually
 
   Scenario: Player tries to access a competition's details without being logged in
-    Given the player is registered but not logged in
+    Given the player is registered and not logged in
     When they try to access a specific competition's details
     Then the system sends them a login link by e-mail
     And clicking that link logs them in and takes them straight to that competition's details
 
   Scenario: Player tries to access their competitions list without being logged in
-    Given the player is registered but not logged in
+    Given the player is registered and not logged in
     When they try to access the list of their own competitions
     Then the system sends them a login link by e-mail
     And clicking that link logs them in and takes them straight to their competitions list
