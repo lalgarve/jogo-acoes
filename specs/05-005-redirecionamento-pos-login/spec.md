@@ -1,7 +1,7 @@
 # Spec: Redirecionamento pós-login para o destino original
 
 **Status:** rascunho
-**Issue:** —
+**Issue:** [#51](https://github.com/lalgarve/jogo-acoes/issues/51)
 **Iteração:** iteration-5
 
 ## Resumo

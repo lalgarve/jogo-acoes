@@ -1,7 +1,7 @@
 # Spec: Visão do jogador sobre competições
 
 **Status:** rascunho
-**Issue:** —
+**Issue:** [#50](https://github.com/lalgarve/jogo-acoes/issues/50)
 **Iteração:** iteration-5
 
 ## Resumo

@@ -12,22 +12,23 @@ geradas, que ainda não existem) e devem rodar e falhar de forma previsível (40
 ainda não existe) antes de qualquer outra tarefa. O contrato OpenAPI vem em seguida,
 formalizando exatamente o que os passos já esperavam, e só depois disso a implementação.
 
-Ainda sem Issue-épico aberta — a coluna Issue é preenchida depois que ela existir, mesmo
-padrão já usado nas specs 05-001/05-002/05-003.
+Todas as tarefas abaixo são acompanhadas como checklist na Issue-épico
+[#50](https://github.com/lalgarve/jogo-acoes/issues/50) — nenhuma virou Issue própria (todas
+pequenas o bastante para não precisar de PR isolada).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Passos Cucumber para `browse_public_competitions.feature` — chamada HTTP direta a `GET /competitions/public`, corpo/resposta em JSON cru; rodar e confirmar que falha agora (404, caminho ainda não existe) | — | [P] | — |
-| T002 | Passos Cucumber para `view_my_competitions.feature` — chamadas diretas a `GET /competitions/mine` e `GET /competitions/{id}`, mesmo princípio (JSON cru, sem classe gerada); inclui o cenário de confirmar entrada a partir da tela de detalhe, que já chama o `POST /competitions/{id}/entry-requests` existente; rodar e confirmar que falha agora | — | [P] | — |
-| T003 | Contrato: adicionar os schemas `CompetitionSummary`/`CompetitionDetail`, os três caminhos novos (`GET /competitions/public`, `GET /competitions/mine`, `GET /competitions/{competitionId}`) e a extensão `x-roles` em toda operação de `docs/openapi.yaml` (novas e já existentes) — formaliza exatamente o que T001/T002 já esperavam | T001, T002 | | — |
-| T004 | Adicionar `ParticipationRepository.findByUser_Id(Long userId)` | T003 | [P] | — |
-| T005 | Adicionar `CompetitionRepository.findByTypeAndStatus(CompetitionType, CompetitionStatus)` | T003 | [P] | — |
-| T006 | Criar `CompetitionAccessResolver` (função pura: `resolve(competition, participation, isAdministrator)` → `READ_WRITE`/`READ`/`DENIED`), em `competition/` | T003 | [P] | — |
-| T007 | Teste dedicado de `CompetitionAccessResolver` cobrindo toda a matriz: participante em competição aberta (`READ_WRITE`); participou de competição encerrada (`READ`); convidado/pediu mas não confirmou (`READ`); administrador sem participar (`READ`); sem nenhuma relação, não administrador (`DENIED`) — sem subir o contexto Spring | T006 | [P] | — |
-| T008 | Criar `CompetitionViewService` (`listPublicCompetitions()`, `listMyCompetitions(userId)` agrupando em `participating`/`pastParticipations`/`pendingConfirmation`, `getCompetitionDetail(competitionId, userId ou null, isAdministrator)`), usando `CompetitionAccessResolver` | T004, T005, T006 | | — |
-| T009 | Implementar as três operações novas em `CompetitionsController` (gerado a partir de T003), delegando pra `CompetitionViewService` | T008 | | — |
-| T010 | Atualizar `SecurityConfig`: `/competitions/public` público (`permitAll`); `/competitions/mine` e `GET /competitions/{competitionId}` exigem sessão (qualquer papel autenticado — a checagem fina de acesso é do `CompetitionAccessResolver`, não da rota) | T009 | | — |
-| T011 | Rodar a suíte completa: confirmar que T001/T002 passam agora (verde) e que os cenários já existentes (login, convite, pedido de entrada, gerência de jogadores) continuam passando sem alteração de texto Gherkin | T009, T010 | | — |
+| T001 | Passos Cucumber para `browse_public_competitions.feature` — chamada HTTP direta a `GET /competitions/public`, corpo/resposta em JSON cru; rodar e confirmar que falha agora (404, caminho ainda não existe) | — | [P] | #50 |
+| T002 | Passos Cucumber para `view_my_competitions.feature` — chamadas diretas a `GET /competitions/mine` e `GET /competitions/{id}`, mesmo princípio (JSON cru, sem classe gerada); inclui o cenário de confirmar entrada a partir da tela de detalhe, que já chama o `POST /competitions/{id}/entry-requests` existente; rodar e confirmar que falha agora | — | [P] | #50 |
+| T003 | Contrato: adicionar os schemas `CompetitionSummary`/`CompetitionDetail`, os três caminhos novos (`GET /competitions/public`, `GET /competitions/mine`, `GET /competitions/{competitionId}`) e a extensão `x-roles` em toda operação de `docs/openapi.yaml` (novas e já existentes) — formaliza exatamente o que T001/T002 já esperavam | T001, T002 | | #50 |
+| T004 | Adicionar `ParticipationRepository.findByUser_Id(Long userId)` | T003 | [P] | #50 |
+| T005 | Adicionar `CompetitionRepository.findByTypeAndStatus(CompetitionType, CompetitionStatus)` | T003 | [P] | #50 |
+| T006 | Criar `CompetitionAccessResolver` (função pura: `resolve(competition, participation, isAdministrator)` → `READ_WRITE`/`READ`/`DENIED`), em `competition/` | T003 | [P] | #50 |
+| T007 | Teste dedicado de `CompetitionAccessResolver` cobrindo toda a matriz: participante em competição aberta (`READ_WRITE`); participou de competição encerrada (`READ`); convidado/pediu mas não confirmou (`READ`); administrador sem participar (`READ`); sem nenhuma relação, não administrador (`DENIED`) — sem subir o contexto Spring | T006 | [P] | #50 |
+| T008 | Criar `CompetitionViewService` (`listPublicCompetitions()`, `listMyCompetitions(userId)` agrupando em `participating`/`pastParticipations`/`pendingConfirmation`, `getCompetitionDetail(competitionId, userId ou null, isAdministrator)`), usando `CompetitionAccessResolver` | T004, T005, T006 | | #50 |
+| T009 | Implementar as três operações novas em `CompetitionsController` (gerado a partir de T003), delegando pra `CompetitionViewService` | T008 | | #50 |
+| T010 | Atualizar `SecurityConfig`: `/competitions/public` público (`permitAll`); `/competitions/mine` e `GET /competitions/{competitionId}` exigem sessão (qualquer papel autenticado — a checagem fina de acesso é do `CompetitionAccessResolver`, não da rota) | T009 | | #50 |
+| T011 | Rodar a suíte completa: confirmar que T001/T002 passam agora (verde) e que os cenários já existentes (login, convite, pedido de entrada, gerência de jogadores) continuam passando sem alteração de texto Gherkin | T009, T010 | | #50 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
