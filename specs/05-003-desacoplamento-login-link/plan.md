@@ -32,67 +32,71 @@ achados mudam o desenho em relação ao que estava ilustrado em `spec.md`:
    `consumeLoginLink` devolve 202 ("registro necessário") sem marcar o link como usado, e um
    **segundo** request (`completeRegistration(token, name)`) — no mesmo token, ainda não
    consumido — é quem de fato cria o usuário, vincula a `Participation` e estabelece a sessão.
-   A interface `LinkHandler` com um único `handle(dto)` não comporta isso: precisa de um
+   A interface `LinkHandler` com um único `handle(payload)` não comporta isso: precisa de um
    segundo método opcional para a fase de conclusão.
 
 ## Decisões de arquitetura
 
 | Pergunta | Decisão | Status | Raciocínio |
 |---|---|---|---|
-| Formato do DTO com campos extra por implementação | `LinkDto` único (sem hierarquia de subclasses): `Long userId`, `String email`, `Map<String, String> extra` | resolvida | Decisão da autora (sessão 2026-09-15): um DTO único evita que `LinkService`/`LinkRouter` precisem conhecer/fazer downcast de tipos concretos por implementação — o único contrato que `link` enxerga é sempre o mesmo tipo. O custo (fraco tipamento de `extra`) é aceito — ver "Riscos e trade-offs". |
+| Formato do DTO com campos extra por implementação | `LinkPayload` único (sem hierarquia de subclasses): `Long userId`, `String email`, `Map<String, String> extra` — vive em `{base}.link.dto`, sem sufixo "Dto" no nome, seguindo a convenção de sub-pacotes definida na spec 05-002 | resolvida | Decisão da autora (sessão 2026-09-15): um DTO único evita que `LinkService`/`LinkRouter` precisem conhecer/fazer downcast de tipos concretos por implementação — o único contrato que `link` enxerga é sempre o mesmo tipo. O custo (fraco tipamento de `extra`) é aceito — ver "Riscos e trade-offs". Nome ajustado nesta sessão (2026-09-16) para aplicar a convenção `dto/` já documentada em 05-002, que ainda não tinha sido usada aqui. |
 | Onde vive a chave de serviço como constante | Sem catálogo central no módulo `link` — cada `LinkHandler` declara sua própria constante de chave e se registra no `LinkRouter` só por implementar a interface | resolvida | Decisão da autora: um catálogo central em `link` reintroduziria exatamente o acoplamento que esta spec elimina (`link` teria que conhecer os nomes/chaves de todo consumidor existente). |
 | Migração de dados de `LoginLink`/`Participation` (FK) para `LinkRecord` (JSON) | Não se aplica — nenhuma migração de dados existentes é necessária | resolvida | Decisão da autora: o sistema ainda não entrou em produção, não há linha de `LoginLink` real para preservar. |
 | Serialização do DTO | Jackson `ObjectMapper`, sem dependência nova, aplicado só ao campo `extra` (ver "Persistência do link" abaixo) | resolvida | Já é a biblioteca de serialização usada pelo Spring MVC no resto do projeto. |
 | Como o `LinkRouter` é populado | Spring injeta `List<LinkHandler>` no construtor do `LinkRouter`, que monta o `Map<String, LinkHandler>` a partir da chave que cada implementação expõe (método `key()` da interface) | resolvida | Qualquer `LinkHandler` novo só precisa ser um `@Component` implementando a interface — nenhum lugar central lista os handlers manualmente, consistente com "sem catálogo" acima. |
 | Colisão de chave entre duas implementações | `LinkRouter` falha ao subir o contexto Spring se duas implementações declararem a mesma chave, em vez de uma sobrescrever a outra silenciosamente no mapa. **Além disso**, um teste dedicado (`LinkRouterKeyUniquenessTest` ou similar) verifica isso explicitamente: constrói o `LinkRouter` com todas as implementações reais de `LinkHandler` presentes no contexto e checa que cada `key()` é não-nula e única, sem depender de subir a aplicação inteira. | resolvida | Sem catálogo central (decisão acima), nada mais detectaria a colisão — falhar cedo no boot troca um bug silencioso de produção por um erro de inicialização óbvio. Decisão da autora (sessão 2026-09-15): o teste dedicado dá o mesmo sinal de forma rápida e explícita, sem esperar um `@SpringBootTest` completo, e documenta o requisito "toda implementação tem chave definida e não duplicada" da spec. |
 | Mapeamento exato dos fluxos atuais para implementações concretas de `LinkHandler` | **Dois handlers**: `LoginLinkHandler` (chave `"login"`, módulo `login`) para o login avulso; `CompetitionLinkHandler` (chave `"competition-entry"`, módulo `competition`) para convite **e** pedido de entrada pública — mesmo handler, já que os três call sites de criação produzem o mesmo formato e o mesmo comportamento de consumo. `EntryRequestService.confirmEntry` fica de fora — não usa link. | resolvida | Ver "Achados da leitura de código desta sessão" acima. |
-| Consumo em duas fases (link ligado a participação, sem conta ainda) | `LinkHandler` ganha um segundo método, com implementação padrão que recusa: `default LinkOutcome complete(LinkDto dto, Map<String,String> extra) { throw new UnsupportedOperationException(...); }`, além de `LinkOutcome consume(LinkDto dto)`. `LinkRecord` só é marcado como usado quando um dos dois devolve o resultado final — `consume` pode devolver um `LinkOutcome` do tipo "pendente" sem consumir o registro. `LoginLinkHandler` nunca implementa `complete` (login avulso é sempre uma fase só); `CompetitionLinkHandler` implementa as duas. | resolvida | É o único jeito de manter a interface única + mapa (nenhuma decisão anterior muda) cobrindo um fluxo que hoje é de fato dois requests HTTP sobre o mesmo token. |
-| Persistência do link: `userId`/`email` como colunas ou dentro do JSON | `LinkRecord` grava `userId` e `email` como **colunas próprias** da entidade, não dentro de um JSON opaco. Só o campo `extra` do `LinkDto` (o que sobra de específico de cada implementação) vira JSON, num campo `extraJson` separado. | resolvida | Decisão da autora (sessão 2026-09-15): reduz a perda de integridade referencial que gravar o DTO inteiro como JSON causaria (ver "Riscos e trade-offs") — `userId`/`email` continuam consultáveis/indexáveis diretamente, e o mecanismo genérico de `link` segue sem precisar conhecer nada sobre o significado de `extra`. |
+| Consumo em duas fases (link ligado a participação, sem conta ainda) | `LinkHandler` ganha um segundo método, com implementação padrão que recusa: `default LinkOutcome complete(LinkPayload payload, Map<String,String> extra) { throw new UnsupportedOperationException(...); }`, além de `LinkOutcome consume(LinkPayload payload)`. `LinkRecord` só é marcado como usado quando um dos dois devolve o resultado final — `consume` pode devolver um `LinkOutcome` do tipo "pendente" sem consumir o registro. `LoginLinkHandler` nunca implementa `complete` (login avulso é sempre uma fase só); `CompetitionLinkHandler` implementa as duas. | resolvida | É o único jeito de manter a interface única + mapa (nenhuma decisão anterior muda) cobrindo um fluxo que hoje é de fato dois requests HTTP sobre o mesmo token. |
+| Persistência do link: `userId`/`email` como colunas ou dentro do JSON | `LinkRecord` grava `userId` e `email` como **colunas próprias** da entidade, não dentro de um JSON opaco. Só o campo `extra` do `LinkPayload` (o que sobra de específico de cada implementação) vira JSON, num campo `extraJson` separado. | resolvida | Decisão da autora (sessão 2026-09-15): reduz a perda de integridade referencial que gravar o payload inteiro como JSON causaria (ver "Riscos e trade-offs") — `userId`/`email` continuam consultáveis/indexáveis diretamente, e o mecanismo genérico de `link` segue sem precisar conhecer nada sobre o significado de `extra`. |
 | Onde vive a lógica de estabelecer sessão (`SecurityContext` + gravar `LoginSession`) após qualquer consumo bem-sucedido | Em aberto | em aberto | É genérica (idêntica nos dois handlers), o que sugere pertencer a `link` como utilitário chamado pelos handlers — mas `LoginSession` foi alocada em `link` na spec 05-002 por guardar "dispositivo"/sessão, um conceito que também é razoável chamar de `login`. Não é uma decisão desta spec sozinha; revisar junto da 05-002 antes de implementar. |
 
 ## Estrutura de módulos/pacotes
 
 ```
 {base}.link
-├── LinkController          # endpoints: consumir token, e completar registro pendente
-├── LinkService              # create(serviceKey, dto): grava LinkRecord, devolve token
-│                            # consume(token): le LinkRecord, monta dto (userId/email das
-│                            #   colunas + extra desserializado de extraJson), chama
-│                            #   LinkRouter.consume
-│                            # complete(token, extra): idem, chama LinkRouter.complete (fase 2)
-├── LinkRouter               # Map<String, LinkHandler> montado a partir de List<LinkHandler> injetada
-├── LinkHandler               # interface: String key(); LinkOutcome consume(LinkDto dto);
-│                            #   default LinkOutcome complete(LinkDto dto, Map<String,String> extra)
-├── LinkOutcome               # resultado: autenticado (com dado de redirecionamento) ou
-│                            #   "registro pendente" (sinaliza ao controller devolver 202)
-├── LinkDto                  # record: Long userId, String email, Map<String,String> extra
-└── LinkRecord               # entidade JPA: id, token, serviceKey, userId, email, extraJson,
-                              #   expiresAt, usedAt
+├── LinkController           # endpoints: consumir token, e completar registro pendente
+├── LinkService               # create(serviceKey, payload): grava LinkRecord, devolve token
+│                             # consume(token): le LinkRecord, monta payload (userId/email das
+│                             #   colunas + extra desserializado de extraJson), chama
+│                             #   LinkRouter.consume
+│                             # complete(token, extra): idem, chama LinkRouter.complete (fase 2)
+├── LinkRouter                # Map<String, LinkHandler> montado a partir de List<LinkHandler> injetada
+├── LinkHandler                # interface: String key(); LinkOutcome consume(LinkPayload payload);
+│                             #   default LinkOutcome complete(LinkPayload payload, Map<String,String> extra)
+├── LinkOutcome                # resultado: autenticado (com dado de redirecionamento) ou
+│                             #   "registro pendente" (sinaliza ao controller devolver 202)
+├── LinkRecord                 # entidade JPA: id, token, serviceKey, userId, email, extraJson,
+│                             #   expiresAt, usedAt
+└── dto
+    └── LinkPayload            # record: Long userId, String email, Map<String,String> extra —
+                                #   sem sufixo "Dto" no nome, convenção da spec 05-002
 
 {base}.login
 └── LoginLinkHandler         # implements LinkHandler, key() = "login" -- só consume(), sem complete()
 
 {base}.competition
 └── CompetitionLinkHandler   # implements LinkHandler, key() = "competition-entry"
-                              # consume(): autentica se dto.userId() != null; senão devolve "pendente"
-                              # complete(dto, extra): cria User, vincula Participation (extra["participationId"]),
+                              # consume(): autentica se payload.userId() != null; senão devolve "pendente"
+                              # complete(payload, extra): cria User, vincula Participation (extra["participationId"]),
                               #   status = IN_COMPETITION
 ```
 
 - Cada `LinkHandler` concreto mora no módulo que o implementa (`login`, `competition`), nunca
-  em `link` — é o que inverte a direção de dependência descrita na spec.
-- `LinkService` monta `LinkRecord` a partir do `LinkDto` copiando `userId`/`email` diretamente
-  para as colunas correspondentes e serializando **só** `extra` para `extraJson` — o resto do
-  DTO nunca passa por JSON. Na leitura, o caminho inverso: `userId`/`email` vêm das colunas,
-  `extra` é desserializado de `extraJson`.
-- `LinkDto.extra` carrega os campos específicos de cada implementação como pares
+  em `link` — é o que inverte a direção de dependência descrita na spec. `LoginLinkHandler`/
+  `CompetitionLinkHandler` importam `{base}.link.dto.LinkPayload` (o único tipo de `link` que
+  cruza a fronteira do módulo, além da própria interface `LinkHandler`).
+- `LinkService` monta `LinkRecord` a partir do `LinkPayload` copiando `userId`/`email`
+  diretamente para as colunas correspondentes e serializando **só** `extra` para `extraJson` —
+  o resto do payload nunca passa por JSON. Na leitura, o caminho inverso: `userId`/`email` vêm
+  das colunas, `extra` é desserializado de `extraJson`.
+- `LinkPayload.extra` carrega os campos específicos de cada implementação como pares
   texto-texto — `CompetitionLinkHandler` usa pelo menos `participationId` (para localizar a
   `Participation` a confirmar/vincular, já que `LinkRecord` não tem FK direta pra ela). `link`
   nunca olha dentro de `extra`.
 - **Achado incidental, fora do escopo desta spec**: `PlayerManagementService.sendInviteEmail`
   e `CompetitionService.decideInviteEmailTiming` hoje duplicam quase byte a byte a lógica de
   criar um `LoginLink` ligado a uma `Participation` e escolher o template de e-mail. Centralizar
-  a criação em `LinkService.create("competition-entry", dto)` remove essa duplicação como
+  a criação em `LinkService.create("competition-entry", payload)` remove essa duplicação como
   efeito colateral — vale mencionar como motivação extra ao implementar, mas não é requisito
   desta spec.
 
