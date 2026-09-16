@@ -3,11 +3,11 @@ Feature: View my competitions
   I want to see the competitions I am involved in
   So that I can access them without searching through e-mails
 
-  Background:
-    Given the user is a registered player
-    And the user is logged into the system
-
   Rule: The player's competition list is grouped by their relationship to each competition
+
+    Background:
+      Given the user is a registered player
+      And the user is logged into the system
 
     Scenario: Player views a competition they are currently participating in
       Given the player is registered in an open competition
@@ -32,6 +32,10 @@ Feature: View my competitions
       Then the system shows that competition under "invited, not confirmed"
 
   Rule: Viewing a single competition's details depends on the player's relationship to it
+
+    Background:
+      Given the user is a registered player
+      And the user is logged into the system
 
     Scenario: Player accesses the details of a competition they currently participate in
       Given the player is registered in an open competition
@@ -60,12 +64,15 @@ Feature: View my competitions
     Scenario: Player tries to access the details of a competition they have no relationship to
       Given the player never participated in or was invited to a competition
       When they try to access that competition's details
-      Then the system denies access and shows an error message
+      Then the system shows an error message without revealing whether the competition exists
 
   Rule: The administrator can always view a competition's details, even without participating
 
-    Scenario: Administrator accesses the details of a competition they did not join
+    Background:
       Given the user is the system administrator
-      And is not a participant in a competition
+      And the user is logged into the system
+
+    Scenario: Administrator accesses the details of a competition they did not join
+      Given is not a participant in a competition
       When they access that competition's details
       Then the system shows the competition's basic information with read-only access
