@@ -1,7 +1,7 @@
 # Spec: Modularização inicial do `app/` por domínio
 
 **Status:** rascunho
-**Issue:** —
+**Issue:** [#46](https://github.com/lalgarve/jogo-acoes/issues/46)
 **Iteração:** iteration-5
 
 ## Resumo
