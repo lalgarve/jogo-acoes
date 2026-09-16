@@ -3,7 +3,7 @@ package dev.leilaalgarve.jogoacoes.common.testsupport;
 import io.cucumber.spring.ScenarioScope;
 import dev.leilaalgarve.jogoacoes.api.model.CompetitionCreateRequest;
 import dev.leilaalgarve.jogoacoes.competition.Competition;
-import dev.leilaalgarve.jogoacoes.link.LoginLink;
+import dev.leilaalgarve.jogoacoes.link.LinkRecord;
 import dev.leilaalgarve.jogoacoes.login.User;
 import io.restassured.RestAssured;
 import io.restassured.config.RestAssuredConfig;
@@ -45,7 +45,7 @@ public class ScenarioWorld {
     private Competition targetCompetition;
     private String candidateEmail;
     private String candidateName;
-    private LoginLink currentLoginLink;
+    private LinkRecord currentLoginLink;
     private Long currentParticipationId;
     private List<Long> selectedParticipationIds;
     private List<String> candidateEmails;
@@ -124,11 +124,11 @@ public class ScenarioWorld {
         this.candidateName = candidateName;
     }
 
-    public LoginLink getCurrentLoginLink() {
+    public LinkRecord getCurrentLoginLink() {
         return currentLoginLink;
     }
 
-    public void setCurrentLoginLink(LoginLink currentLoginLink) {
+    public void setCurrentLoginLink(LinkRecord currentLoginLink) {
         this.currentLoginLink = currentLoginLink;
     }
 

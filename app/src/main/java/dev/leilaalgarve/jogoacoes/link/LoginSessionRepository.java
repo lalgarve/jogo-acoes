@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface LoginSessionRepository extends JpaRepository<LoginSession, Long> {
 
-    List<LoginSession> findByUser_IdAndEndedAtIsNullOrderByCreatedAtAsc(Long userId);
+    List<LoginSession> findByUserIdAndEndedAtIsNullOrderByCreatedAtAsc(Long userId);
 }

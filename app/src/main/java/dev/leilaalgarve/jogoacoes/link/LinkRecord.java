@@ -1,22 +1,23 @@
 package dev.leilaalgarve.jogoacoes.link;
 
-import dev.leilaalgarve.jogoacoes.competition.Participation;
-import dev.leilaalgarve.jogoacoes.login.User;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
+/**
+ * Replaces {@code LoginLink}: `userId`/`email` are real columns (queryable/indexable), but
+ * neither has a FK to another module's table anymore — `link` doesn't know what `login`'s
+ * `User` or `competition`'s `Participation` even are. Whatever a specific {@link LinkHandler}
+ * needs beyond those two fields is serialized, opaque to this module, into {@link #extraJson}.
+ */
 @Entity
-@Table(name = "login_link")
-public class LoginLink {
+@Table(name = "link_record")
+public class LinkRecord {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,8 +26,17 @@ public class LoginLink {
     @Column(nullable = false, unique = true)
     private String token;
 
+    @Column(name = "service_key", nullable = false)
+    private String serviceKey;
+
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(nullable = false)
     private String email;
+
+    @Column(name = "extra_json")
+    private String extraJson;
 
     @Column(name = "email_sent_at")
     private LocalDateTime emailSentAt;
@@ -39,14 +49,6 @@ public class LoginLink {
 
     @Column(name = "invalidated_at")
     private LocalDateTime invalidatedAt;
-
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
-
-    @ManyToOne
-    @JoinColumn(name = "participation_id")
-    private Participation participation;
 
     public Long getId() {
         return id;
@@ -64,12 +66,36 @@ public class LoginLink {
         this.token = token;
     }
 
+    public String getServiceKey() {
+        return serviceKey;
+    }
+
+    public void setServiceKey(String serviceKey) {
+        this.serviceKey = serviceKey;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
     public String getEmail() {
         return email;
     }
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getExtraJson() {
+        return extraJson;
+    }
+
+    public void setExtraJson(String extraJson) {
+        this.extraJson = extraJson;
     }
 
     public LocalDateTime getEmailSentAt() {
@@ -102,21 +128,5 @@ public class LoginLink {
 
     public void setInvalidatedAt(LocalDateTime invalidatedAt) {
         this.invalidatedAt = invalidatedAt;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public Participation getParticipation() {
-        return participation;
-    }
-
-    public void setParticipation(Participation participation) {
-        this.participation = participation;
     }
 }

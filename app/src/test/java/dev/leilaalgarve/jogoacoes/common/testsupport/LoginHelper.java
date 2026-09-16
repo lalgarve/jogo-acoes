@@ -1,8 +1,9 @@
 package dev.leilaalgarve.jogoacoes.common.testsupport;
 
-import dev.leilaalgarve.jogoacoes.link.LoginLink;
+import dev.leilaalgarve.jogoacoes.link.LinkRecord;
+import dev.leilaalgarve.jogoacoes.login.LoginLinkHandler;
 import dev.leilaalgarve.jogoacoes.login.User;
-import dev.leilaalgarve.jogoacoes.link.LoginLinkRepository;
+import dev.leilaalgarve.jogoacoes.link.LinkRecordRepository;
 import dev.leilaalgarve.jogoacoes.common.testsupport.ScenarioWorld;
 import io.restassured.response.Response;
 import org.springframework.stereotype.Component;
@@ -21,10 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Component
 public class LoginHelper {
 
-    private final LoginLinkRepository loginLinkRepository;
+    private final LinkRecordRepository linkRecordRepository;
 
-    public LoginHelper(LoginLinkRepository loginLinkRepository) {
-        this.loginLinkRepository = loginLinkRepository;
+    public LoginHelper(LinkRecordRepository linkRecordRepository) {
+        this.linkRecordRepository = linkRecordRepository;
     }
 
     public void loginAs(ScenarioWorld world, User user) {
@@ -32,12 +33,13 @@ public class LoginHelper {
     }
 
     public void loginAs(ScenarioWorld world, User user, String device) {
-        LoginLink link = new LoginLink();
+        LinkRecord link = new LinkRecord();
         link.setToken(UUID.randomUUID().toString());
+        link.setServiceKey(LoginLinkHandler.KEY);
         link.setEmail(user.getEmail());
-        link.setUser(user);
+        link.setUserId(user.getId());
         link.setExpiresAt(LocalDateTime.now().plusHours(1));
-        link = loginLinkRepository.save(link);
+        link = linkRecordRepository.save(link);
 
         Response response = world.request(device)
                 .when()

@@ -1,6 +1,7 @@
 # Spec: Desacoplar o módulo `link` dos seus consumidores
 
-**Status:** rascunho
+**Status:** implementado (sessão 2026-09-16 — ver `plan.md` para achados feitos durante a
+implementação e `tasks.md` para o checklist)
 **Issue:** [#47](https://github.com/lalgarve/jogo-acoes/issues/47)
 **Iteração:** iteration-5
 
@@ -128,23 +129,27 @@ classDiagram
 `LoginLink` diretamente — acoplamento nos dois sentidos entre o que seria o módulo `link` e o
 módulo `competition`.
 
-### Depois (com `LinkRouter` + interface)
+### Depois (com `LinkRouter` + interface) — estado final implementado
 
 ```mermaid
 classDiagram
-    class LinkController {
-        +consume(token)
-        +complete(token, extra)
+    class LoginController {
+        +consumeLoginLink(token)
+        +completeRegistration(token, name)
+        +requestLoginLink(email)
     }
     class LinkService {
-        +create(serviceKey, payload) String
+        +create(serviceKey, payload) LinkCreationResult
         +consume(token)
         +complete(token, extra)
     }
     class LinkRouter {
         -Map~String, LinkHandler~ handlers
-        +consume(serviceKey, payload)
-        +complete(serviceKey, payload, extra)
+    }
+    class LinkSessionService {
+        <<interface>>
+        +currentAuthenticatedUserId() Long
+        +establish(userId, token)
     }
     class LinkRecord {
         +String token
@@ -158,6 +163,7 @@ classDiagram
     class LinkHandler {
         <<interface>>
         +consume(payload)
+        +alreadyAuthenticated(userId, payload)
         +complete(payload, extra)
     }
     class LinkPayload {
@@ -167,31 +173,49 @@ classDiagram
     }
     class LoginLinkHandler {
         +consume(payload)
+        +alreadyAuthenticated(userId, payload)
+    }
+    class LoginLinkSessionService {
+        +currentAuthenticatedUserId() Long
+        +establish(userId, token)
     }
     class CompetitionLinkHandler {
         +consume(payload)
+        +alreadyAuthenticated(userId, payload)
         +complete(payload, extra)
     }
 
-    LinkController --> LinkService
+    LoginController --> LinkService
     LinkService --> LinkRecord : le e grava
     LinkService --> LinkRouter
+    LinkService --> LinkSessionService
     LinkRouter --> LinkHandler : despacha via chave
     LinkHandler <|.. LoginLinkHandler
     LinkHandler <|.. CompetitionLinkHandler
     LinkHandler ..> LinkPayload : recebe
+    LinkSessionService <|.. LoginLinkSessionService
 ```
 
-`LinkService`/`LinkRouter`/`LinkRecord`/`LinkHandler`/`LinkPayload` (módulo `link`) não
-referenciam nenhum tipo de `login`/`competition`. `LoginLinkHandler` (módulo `login`) e
-`CompetitionLinkHandler` (módulo `competition` — cobre convite **e** pedido de entrada
-pública, mesmo formato de link e mesmo comportamento de consumo para os dois, ver `plan.md`)
-vivem nos módulos consumidores e dependem de `link`, nunca o contrário. `complete` só existe
-de fato em `CompetitionLinkHandler` — `LoginLinkHandler` nunca precisa de uma segunda fase.
+`LinkService`/`LinkRouter`/`LinkRecord`/`LinkHandler`/`LinkSessionService`/`LinkPayload`
+(módulo `link`) não referenciam nenhum tipo de `login`/`competition`. `LoginLinkHandler`/
+`LoginLinkSessionService` (módulo `login`) e `CompetitionLinkHandler` (módulo `competition` —
+cobre convite **e** pedido de entrada pública, mesmo formato de link e mesmo comportamento de
+consumo para os dois, ver `plan.md`) vivem nos módulos consumidores e dependem de `link`,
+nunca o contrário. `complete` só existe de fato em `CompetitionLinkHandler` —
+`LoginLinkHandler` nunca precisa de uma segunda fase.
+
+**Duas correções em relação ao desenho original desta spec, feitas durante a implementação e
+detalhadas em `plan.md`:** não existe uma classe `LinkController` separada em `link/` — o
+`LoginController` já existente (em `login/`, implementando o contrato OpenAPI `LoginApi`)
+passou a delegar `consumeLoginLink`/`completeRegistration` para `LinkService`, mantendo
+`requestLoginLink` como lógica própria (criar um login avulso não tem nada de genérico pra
+despachar); e `LinkHandler` ganhou um terceiro método, `alreadyAuthenticated`, para o atalho
+de "usuário já logado neste dispositivo" que `login.feature` exige (ver `plan.md`, achado 4).
 
 ## Decisões em aberto
 
 Nenhuma decisão de requisito em aberto. As decisões técnicas desta spec — formato do DTO
-(`LinkPayload`), onde vive a chave de serviço, migração de dados, e o mapeamento exato dos
-fluxos atuais para `LoginLinkHandler`/`CompetitionLinkHandler` — foram todas resolvidas e
-estão registradas em `plan.md` ("Decisões de arquitetura").
+(`LinkPayload`), onde vive a chave de serviço, migração de dados, onde vive a lógica de
+sessão (`LinkSessionService`), e o mapeamento exato dos fluxos atuais para
+`LoginLinkHandler`/`CompetitionLinkHandler` — foram todas resolvidas e implementadas; ver
+`plan.md` ("Decisões de arquitetura") e `tasks.md` para o checklist completo.

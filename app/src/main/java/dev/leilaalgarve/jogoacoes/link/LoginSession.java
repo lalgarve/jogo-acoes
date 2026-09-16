@@ -1,14 +1,11 @@
 package dev.leilaalgarve.jogoacoes.link;
 
-import dev.leilaalgarve.jogoacoes.login.User;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
@@ -22,13 +19,12 @@ public class LoginSession {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @OneToOne
-    @JoinColumn(name = "login_link_id", nullable = false, unique = true)
-    private LoginLink loginLink;
+    @JoinColumn(name = "link_record_id", nullable = false, unique = true)
+    private LinkRecord linkRecord;
 
     @Column(name = "device_id", nullable = false)
     private String deviceId;
@@ -47,20 +43,20 @@ public class LoginSession {
         this.id = id;
     }
 
-    public User getUser() {
-        return user;
+    public Long getUserId() {
+        return userId;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
-    public LoginLink getLoginLink() {
-        return loginLink;
+    public LinkRecord getLinkRecord() {
+        return linkRecord;
     }
 
-    public void setLoginLink(LoginLink loginLink) {
-        this.loginLink = loginLink;
+    public void setLinkRecord(LinkRecord linkRecord) {
+        this.linkRecord = linkRecord;
     }
 
     public String getDeviceId() {

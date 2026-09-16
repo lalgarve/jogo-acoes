@@ -7,14 +7,15 @@ import dev.leilaalgarve.jogoacoes.api.model.CompleteRegistrationRequest;
 import dev.leilaalgarve.jogoacoes.api.model.RequestLoginLinkRequest;
 import dev.leilaalgarve.jogoacoes.competition.Competition;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionStatus;
-import dev.leilaalgarve.jogoacoes.link.LoginLink;
+import dev.leilaalgarve.jogoacoes.link.LinkRecord;
 import dev.leilaalgarve.jogoacoes.link.LoginSession;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
+import dev.leilaalgarve.jogoacoes.login.LoginLinkHandler;
 import dev.leilaalgarve.jogoacoes.login.User;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionRepository;
-import dev.leilaalgarve.jogoacoes.link.LoginLinkRepository;
+import dev.leilaalgarve.jogoacoes.link.LinkRecordRepository;
 import dev.leilaalgarve.jogoacoes.link.LoginSessionRepository;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
 import dev.leilaalgarve.jogoacoes.login.UserRepository;
@@ -43,7 +44,7 @@ public class LoginSteps {
     private final LoginLinkFixtures loginLinkFixtures;
     private final CompetitionRepository competitionRepository;
     private final ParticipationRepository participationRepository;
-    private final LoginLinkRepository loginLinkRepository;
+    private final LinkRecordRepository linkRecordRepository;
     private final LoginSessionRepository loginSessionRepository;
     private final UserRepository userRepository;
     private final int maxDevicesPerUser;
@@ -51,7 +52,7 @@ public class LoginSteps {
     public LoginSteps(ScenarioWorld world, UserMother userMother, LoginHelper loginHelper,
                        CompetitionFixtures competitionFixtures, LoginLinkFixtures loginLinkFixtures,
                        CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
-                       LoginLinkRepository loginLinkRepository, LoginSessionRepository loginSessionRepository,
+                       LinkRecordRepository linkRecordRepository, LoginSessionRepository loginSessionRepository,
                        UserRepository userRepository, @Value("${login.max-devices-per-user}") int maxDevicesPerUser) {
         this.world = world;
         this.userMother = userMother;
@@ -60,7 +61,7 @@ public class LoginSteps {
         this.loginLinkFixtures = loginLinkFixtures;
         this.competitionRepository = competitionRepository;
         this.participationRepository = participationRepository;
-        this.loginLinkRepository = loginLinkRepository;
+        this.linkRecordRepository = linkRecordRepository;
         this.loginSessionRepository = loginSessionRepository;
         this.userRepository = userRepository;
         this.maxDevicesPerUser = maxDevicesPerUser;
@@ -282,8 +283,8 @@ public class LoginSteps {
                 .post("/login-requests");
         assertThat(response.statusCode()).isEqualTo(202);
 
-        LoginLink link = loginLinkRepository
-                .findFirstByUser_IdAndUsedAtIsNullAndInvalidatedAtIsNullOrderByIdDesc(world.getCurrentUser().getId())
+        LinkRecord link = linkRecordRepository
+                .findFirstByUserIdAndUsedAtIsNullAndInvalidatedAtIsNullOrderByIdDesc(world.getCurrentUser().getId())
                 .orElseThrow();
         world.setCurrentLoginLink(link);
     }
@@ -322,12 +323,13 @@ public class LoginSteps {
     @Given("a registered player used the login link to log in on one device")
     public void a_registered_player_used_the_login_link_to_log_in_on_one_device() {
         world.setCurrentUser(userMother.registeredPlayer());
-        LoginLink link = new LoginLink();
+        LinkRecord link = new LinkRecord();
         link.setToken(UUID.randomUUID().toString());
+        link.setServiceKey(LoginLinkHandler.KEY);
         link.setEmail(world.getCurrentUser().getEmail());
-        link.setUser(world.getCurrentUser());
+        link.setUserId(world.getCurrentUser().getId());
         link.setExpiresAt(LocalDateTime.now().plusHours(1));
-        link = loginLinkRepository.save(link);
+        link = linkRecordRepository.save(link);
         world.setCurrentLoginLink(link);
 
         Response response = world.request(ScenarioWorld.PRIMARY_DEVICE)
@@ -363,7 +365,7 @@ public class LoginSteps {
         participation.setRequestType(RequestType.REQUEST);
         participation = participationRepository.save(participation);
 
-        LoginLink link = loginLinkFixtures.linkForParticipation(participation);
+        LinkRecord link = loginLinkFixtures.linkForParticipation(participation);
         world.setCurrentLoginLink(link);
 
         Response response = world.request("other")
@@ -375,12 +377,13 @@ public class LoginSteps {
     @Given("a registered player has an active login link that has not been used yet")
     public void a_registered_player_has_an_active_login_link_that_has_not_been_used_yet() {
         world.setCurrentUser(userMother.registeredPlayer());
-        LoginLink link = new LoginLink();
+        LinkRecord link = new LinkRecord();
         link.setToken(UUID.randomUUID().toString());
+        link.setServiceKey(LoginLinkHandler.KEY);
         link.setEmail(world.getCurrentUser().getEmail());
-        link.setUser(world.getCurrentUser());
+        link.setUserId(world.getCurrentUser().getId());
         link.setExpiresAt(LocalDateTime.now().plusHours(1));
-        link = loginLinkRepository.save(link);
+        link = linkRecordRepository.save(link);
         world.setCurrentLoginLink(link);
     }
 
@@ -396,7 +399,7 @@ public class LoginSteps {
     @Then("the previous login link is invalidated")
     public void the_previous_login_link_is_invalidated() {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
-        LoginLink oldLink = loginLinkRepository.findById(world.getCurrentLoginLink().getId()).orElseThrow();
+        LinkRecord oldLink = linkRecordRepository.findById(world.getCurrentLoginLink().getId()).orElseThrow();
         assertThat(oldLink.getInvalidatedAt()).isNotNull();
     }
 
@@ -407,8 +410,8 @@ public class LoginSteps {
                 .get("/login-links/{token}", world.getCurrentLoginLink().getToken());
         assertThat(oldAttempt.statusCode()).isEqualTo(400);
 
-        LoginLink newLink = loginLinkRepository
-                .findFirstByUser_IdAndUsedAtIsNullAndInvalidatedAtIsNullOrderByIdDesc(world.getCurrentUser().getId())
+        LinkRecord newLink = linkRecordRepository
+                .findFirstByUserIdAndUsedAtIsNullAndInvalidatedAtIsNullOrderByIdDesc(world.getCurrentUser().getId())
                 .orElseThrow();
         Response newAttempt = world.request()
                 .when()
@@ -432,7 +435,7 @@ public class LoginSteps {
     @Then("the system ends the oldest active session")
     public void the_system_ends_the_oldest_active_session() {
         List<LoginSession> sessions = loginSessionRepository.findAll().stream()
-                .filter(session -> session.getUser().getId().equals(world.getCurrentUser().getId()))
+                .filter(session -> session.getUserId().equals(world.getCurrentUser().getId()))
                 .sorted(Comparator.comparing(LoginSession::getCreatedAt))
                 .toList();
         assertThat(sessions).isNotEmpty();
@@ -442,7 +445,7 @@ public class LoginSteps {
     @Then("the player remains within the configured device limit")
     public void the_player_remains_within_the_configured_device_limit() {
         long activeCount = loginSessionRepository
-                .findByUser_IdAndEndedAtIsNullOrderByCreatedAtAsc(world.getCurrentUser().getId())
+                .findByUserIdAndEndedAtIsNullOrderByCreatedAtAsc(world.getCurrentUser().getId())
                 .size();
         assertThat(activeCount).isEqualTo(maxDevicesPerUser);
     }

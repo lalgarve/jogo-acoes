@@ -13,7 +13,7 @@ public enum LogType {
 
     COMPETITION_CREATED("Competition created", "competition"),
     PARTICIPATION_STATUS_CHANGED("Participation status changed", "participation"),
-    LOGIN_LINK_ISSUED("Login link issued", "login_link");
+    LOGIN_LINK_ISSUED("Login link issued", "link_record");
 
     private final String description;
     private final String relatedTable;

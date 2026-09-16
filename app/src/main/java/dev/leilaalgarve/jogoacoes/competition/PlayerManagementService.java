@@ -5,7 +5,9 @@ import dev.leilaalgarve.jogoacoes.log.AuditLogService;
 import dev.leilaalgarve.jogoacoes.competition.Competition;
 import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.log.LogType;
-import dev.leilaalgarve.jogoacoes.link.LoginLink;
+import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
+import dev.leilaalgarve.jogoacoes.link.LinkService;
+import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
@@ -13,7 +15,6 @@ import dev.leilaalgarve.jogoacoes.login.User;
 import dev.leilaalgarve.jogoacoes.email.EmailRequest;
 import dev.leilaalgarve.jogoacoes.email.EmailSender;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionRepository;
-import dev.leilaalgarve.jogoacoes.link.LoginLinkRepository;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
 import dev.leilaalgarve.jogoacoes.login.UserRepository;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionNotFoundException;
@@ -24,28 +25,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 
 @Service
 public class PlayerManagementService {
 
-    private static final int LINK_VALIDITY_DAYS = 7;
-
     private final CompetitionRepository competitionRepository;
     private final ParticipationRepository participationRepository;
-    private final LoginLinkRepository loginLinkRepository;
+    private final LinkService linkService;
     private final EmailSender emailSender;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
 
     public PlayerManagementService(CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
-                                    LoginLinkRepository loginLinkRepository, EmailSender emailSender,
+                                    LinkService linkService, EmailSender emailSender,
                                     UserRepository userRepository, AuditLogService auditLogService) {
         this.competitionRepository = competitionRepository;
         this.participationRepository = participationRepository;
-        this.loginLinkRepository = loginLinkRepository;
+        this.linkService = linkService;
         this.emailSender = emailSender;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
@@ -92,10 +90,10 @@ public class PlayerManagementService {
     public void removePlayer(Long competitionId, Long participationId) {
         Participation participation = findParticipation(competitionId, participationId);
         String email = participation.getEmail();
-        // A player invited (or who requested entry) and already e-mailed has a LoginLink
-        // pointing at this participation -- LOGIN_LINK.participation_id is a real FK, unlike
-        // LOG's, so it must go first or the delete below violates referential integrity.
-        loginLinkRepository.deleteByParticipation_Id(participationId);
+        // Any LinkRecord created for this participation only carries its id inside extraJson
+        // (no FK, see spec 05-003) -- deleting the participation doesn't need to touch it
+        // first; a link clicked afterward just fails to resolve the participation, same as
+        // any other invalid-link case.
         participationRepository.delete(participation);
         auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participationId, currentUser(),
                 "Participation for " + email + " removed from competition");
@@ -114,22 +112,17 @@ public class PlayerManagementService {
     }
 
     private void sendInviteEmail(Participation participation) {
-        String token = UUID.randomUUID().toString();
-        LoginLink link = new LoginLink();
-        link.setToken(token);
-        link.setEmail(participation.getEmail());
-        link.setUser(participation.getUser());
-        link.setParticipation(participation);
-        link.setEmailSentAt(LocalDateTime.now());
-        link.setExpiresAt(LocalDateTime.now().plusDays(LINK_VALIDITY_DAYS));
-        loginLinkRepository.save(link);
-        auditLogService.record(LogType.LOGIN_LINK_ISSUED, link.getId(), currentUser(),
+        User user = participation.getUser();
+        Long userId = user != null ? user.getId() : null;
+        Map<String, String> extra = Map.of(CompetitionLinkHandler.PARTICIPATION_ID_EXTRA_KEY, String.valueOf(participation.getId()));
+        LinkCreationResult created = linkService.create(CompetitionLinkHandler.KEY,
+                new LinkPayload(userId, participation.getEmail(), extra));
+        auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), currentUser(),
                 "Invite login link issued to " + participation.getEmail());
 
-        User user = participation.getUser();
-        emailSender.send(new EmailRequest(user != null ? user.getId() : null, participation.getEmail(),
+        emailSender.send(new EmailRequest(userId, participation.getEmail(),
                 user != null ? user.getName() : null, participation.getCompetition().getName(), participation.getRequestType(),
-                "/login-links/" + token, templateFor(participation)));
+                "/login-links/" + created.token(), templateFor(participation)));
 
         if (participation.getFirstEmailSentDate() == null) {
             participation.setFirstEmailSentDate(LocalDate.now());

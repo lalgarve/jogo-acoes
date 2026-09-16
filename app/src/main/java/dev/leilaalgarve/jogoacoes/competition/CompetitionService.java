@@ -8,7 +8,9 @@ import dev.leilaalgarve.jogoacoes.competition.CompetitionStatus;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionType;
 import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.log.LogType;
-import dev.leilaalgarve.jogoacoes.link.LoginLink;
+import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
+import dev.leilaalgarve.jogoacoes.link.LinkService;
+import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
@@ -16,7 +18,6 @@ import dev.leilaalgarve.jogoacoes.login.User;
 import dev.leilaalgarve.jogoacoes.email.EmailRequest;
 import dev.leilaalgarve.jogoacoes.email.EmailSender;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionRepository;
-import dev.leilaalgarve.jogoacoes.link.LoginLinkRepository;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
 import dev.leilaalgarve.jogoacoes.login.UserRepository;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionNotFoundException;
@@ -27,28 +28,25 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 
 @Service
 public class CompetitionService {
 
-    private static final int INVITE_LINK_VALIDITY_DAYS = 7;
-
     private final CompetitionRepository competitionRepository;
     private final ParticipationRepository participationRepository;
-    private final LoginLinkRepository loginLinkRepository;
+    private final LinkService linkService;
     private final UserRepository userRepository;
     private final EmailSender emailSender;
     private final AuditLogService auditLogService;
 
     public CompetitionService(CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
-                               LoginLinkRepository loginLinkRepository, UserRepository userRepository, EmailSender emailSender,
+                               LinkService linkService, UserRepository userRepository, EmailSender emailSender,
                                AuditLogService auditLogService) {
         this.competitionRepository = competitionRepository;
         this.participationRepository = participationRepository;
-        this.loginLinkRepository = loginLinkRepository;
+        this.linkService = linkService;
         this.userRepository = userRepository;
         this.emailSender = emailSender;
         this.auditLogService = auditLogService;
@@ -106,22 +104,22 @@ public class CompetitionService {
         User admin = currentUser();
         List<Participation> pending = participationRepository.findByCompetition_IdAndStatus(competitionId, ParticipationStatus.EMAIL_NOT_SENT);
         for (Participation participation : pending) {
-            String token = UUID.randomUUID().toString();
-            LoginLink link = new LoginLink();
-            link.setToken(token);
-            link.setEmail(participation.getEmail());
-            link.setParticipation(participation);
-            link.setEmailSentAt(LocalDateTime.now());
-            link.setExpiresAt(LocalDateTime.now().plusDays(INVITE_LINK_VALIDITY_DAYS));
-            loginLinkRepository.save(link);
-            auditLogService.record(LogType.LOGIN_LINK_ISSUED, link.getId(), admin,
+            User user = participation.getUser();
+            Long userId = user != null ? user.getId() : null;
+            // decideInviteEmailTiming never links a User directly to the link itself (unlike
+            // the other two competition-entry call sites) -- it's read off participation.getUser()
+            // here, at creation time, since LinkRecord no longer carries a Participation to
+            // fall back to at consumption time (see spec 05-003).
+            Map<String, String> extra = Map.of(CompetitionLinkHandler.PARTICIPATION_ID_EXTRA_KEY, String.valueOf(participation.getId()));
+            LinkCreationResult created = linkService.create(CompetitionLinkHandler.KEY,
+                    new LinkPayload(userId, participation.getEmail(), extra));
+            auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), admin,
                     "Invite login link issued to " + participation.getEmail());
 
-            User user = participation.getUser();
             EmailTemplate template = user != null ? EmailTemplate.LOGIN_LINK : EmailTemplate.INVITE;
-            emailSender.send(new EmailRequest(user != null ? user.getId() : null, participation.getEmail(),
+            emailSender.send(new EmailRequest(userId, participation.getEmail(),
                     user != null ? user.getName() : null, competition.getName(), participation.getRequestType(),
-                    "/login-links/" + token, template));
+                    "/login-links/" + created.token(), template));
 
             participation.setStatus(ParticipationStatus.EMAIL_SENT);
             participation.setFirstEmailSentDate(LocalDate.now());

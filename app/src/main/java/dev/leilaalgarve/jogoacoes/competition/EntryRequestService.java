@@ -8,7 +8,9 @@ import dev.leilaalgarve.jogoacoes.competition.Competition;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionType;
 import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.log.LogType;
-import dev.leilaalgarve.jogoacoes.link.LoginLink;
+import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
+import dev.leilaalgarve.jogoacoes.link.LinkService;
+import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
@@ -16,7 +18,6 @@ import dev.leilaalgarve.jogoacoes.login.User;
 import dev.leilaalgarve.jogoacoes.email.EmailRequest;
 import dev.leilaalgarve.jogoacoes.email.EmailSender;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionRepository;
-import dev.leilaalgarve.jogoacoes.link.LoginLinkRepository;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
 import dev.leilaalgarve.jogoacoes.login.UserRepository;
 import dev.leilaalgarve.jogoacoes.captcha.CaptchaInvalidException;
@@ -27,29 +28,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class EntryRequestService {
 
-    private static final int LINK_VALIDITY_DAYS = 7;
-
     private final CompetitionRepository competitionRepository;
     private final ParticipationRepository participationRepository;
-    private final LoginLinkRepository loginLinkRepository;
+    private final LinkService linkService;
     private final UserRepository userRepository;
     private final EmailSender emailSender;
     private final CaptchaService captchaService;
     private final AuditLogService auditLogService;
 
     public EntryRequestService(CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
-                                LoginLinkRepository loginLinkRepository, UserRepository userRepository,
+                                LinkService linkService, UserRepository userRepository,
                                 EmailSender emailSender, CaptchaService captchaService, AuditLogService auditLogService) {
         this.competitionRepository = competitionRepository;
         this.participationRepository = participationRepository;
-        this.loginLinkRepository = loginLinkRepository;
+        this.linkService = linkService;
         this.userRepository = userRepository;
         this.emailSender = emailSender;
         this.captchaService = captchaService;
@@ -120,22 +118,15 @@ public class EntryRequestService {
                 });
         participation = participationRepository.save(participation);
 
-        String token = UUID.randomUUID().toString();
-        LoginLink link = new LoginLink();
-        link.setToken(token);
-        link.setEmail(email);
-        link.setUser(existingUser.orElse(null));
-        link.setParticipation(participation);
-        link.setEmailSentAt(LocalDateTime.now());
-        link.setExpiresAt(LocalDateTime.now().plusDays(LINK_VALIDITY_DAYS));
-        loginLinkRepository.save(link);
-        auditLogService.record(LogType.LOGIN_LINK_ISSUED, link.getId(), existingUser.orElse(null),
+        Long userId = existingUser.map(User::getId).orElse(null);
+        Map<String, String> extra = Map.of(CompetitionLinkHandler.PARTICIPATION_ID_EXTRA_KEY, String.valueOf(participation.getId()));
+        LinkCreationResult created = linkService.create(CompetitionLinkHandler.KEY, new LinkPayload(userId, email, extra));
+        auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), existingUser.orElse(null),
                 "Entry request login link issued to " + email);
 
-        Long userId = existingUser.map(User::getId).orElse(null);
         String name = existingUser.map(User::getName).orElse(null);
         emailSender.send(new EmailRequest(userId, email, name, competition.getName(), RequestType.REQUEST,
-                "/login-links/" + token, template));
+                "/login-links/" + created.token(), template));
 
         if (participation.getFirstEmailSentDate() == null) {
             participation.setFirstEmailSentDate(LocalDate.now());

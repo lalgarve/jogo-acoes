@@ -3,15 +3,18 @@ package dev.leilaalgarve.jogoacoes.log;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionService;
 import dev.leilaalgarve.jogoacoes.competition.EntryRequestService;
 import dev.leilaalgarve.jogoacoes.competition.PlayerManagementService;
-import dev.leilaalgarve.jogoacoes.login.LoginService;
+import dev.leilaalgarve.jogoacoes.login.LoginController;
 
 import dev.leilaalgarve.jogoacoes.api.model.CompetitionCreateRequest;
+import dev.leilaalgarve.jogoacoes.api.model.CompleteRegistrationRequest;
 import dev.leilaalgarve.jogoacoes.api.model.DecideInviteEmailTimingRequest;
+import dev.leilaalgarve.jogoacoes.api.model.RequestLoginLinkRequest;
 import dev.leilaalgarve.jogoacoes.competition.Competition;
 import dev.leilaalgarve.jogoacoes.log.Log;
 import dev.leilaalgarve.jogoacoes.log.LogType;
-import dev.leilaalgarve.jogoacoes.link.LoginLink;
+import dev.leilaalgarve.jogoacoes.link.LinkRecord;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
+import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
 import dev.leilaalgarve.jogoacoes.login.User;
 import dev.leilaalgarve.jogoacoes.log.LogRepository;
@@ -61,7 +64,7 @@ class AuditLoggingIntegrationTest {
     private EntryRequestService entryRequestService;
 
     @Autowired
-    private LoginService loginService;
+    private LoginController loginController;
 
     @Autowired
     private PlayerManagementService playerManagementService;
@@ -83,7 +86,7 @@ class AuditLoggingIntegrationTest {
 
     @BeforeEach
     void bindMockHttpRequest() {
-        // LoginService.markUsedAndEstablishSession reads the User-Agent header and saves the
+        // LoginLinkSessionService.establish reads the User-Agent header and saves the
         // security context onto the request/response -- both request-scoped beans, so a call
         // needs a thread-bound request the same way a real HTTP call to the app would provide it.
         RequestContextHolder.setRequestAttributes(
@@ -157,7 +160,7 @@ class AuditLoggingIntegrationTest {
     void requestingALoginLinkAuditsTheIssuance() {
         User user = userMother.registeredPlayer();
 
-        loginService.requestLoginLink(user.getEmail());
+        loginController.requestLoginLink(new RequestLoginLinkRequest().email(user.getEmail()));
 
         List<Log> logs = logRepository.findAll();
         assertThat(logs).anySatisfy(log -> {
@@ -170,10 +173,12 @@ class AuditLoggingIntegrationTest {
     void completingRegistrationAuditsTheStatusChange() {
         Competition publicCompetition = competitionFixtures.publicCompetition();
         String email = "newplayer-" + UUID.randomUUID() + "@example.com";
-        LoginLink link = loginLinkFixtures.pendingParticipationLink(publicCompetition, email, RequestType.REQUEST);
-        Long participationId = link.getParticipation().getId();
+        LinkRecord link = loginLinkFixtures.pendingParticipationLink(publicCompetition, email, RequestType.REQUEST);
+        Long participationId = participationRepository
+                .findByCompetition_IdAndEmailAndStatusNot(publicCompetition.getId(), email, ParticipationStatus.IN_COMPETITION)
+                .orElseThrow().getId();
 
-        loginService.completeRegistration(link.getToken(), "New Player");
+        loginController.completeRegistration(link.getToken(), new CompleteRegistrationRequest().name("New Player"));
 
         List<Log> logs = logRepository.findAll();
         assertThat(logs).anySatisfy(log -> {
