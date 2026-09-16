@@ -36,7 +36,7 @@ class LoginLinkHandlerTest {
 
         assertThat(outcome.isPending()).isFalse();
         assertThat(outcome.userId()).isEqualTo(1L);
-        assertThat(outcome.redirectData()).containsEntry("redirectTo", "competitions-list");
+        assertThat(outcome.redirectData()).containsEntry("redirectTo", "/competitions/mine");
     }
 
     @Test
@@ -46,7 +46,7 @@ class LoginLinkHandlerTest {
 
         LinkOutcome outcome = handler.consume(new LinkPayload(2L, "admin@example.com", Map.of()));
 
-        assertThat(outcome.redirectData()).containsEntry("redirectTo", "admin-page");
+        assertThat(outcome.redirectData()).containsEntry("redirectTo", "/admin");
     }
 
     @Test
@@ -59,7 +59,16 @@ class LoginLinkHandlerTest {
         LinkOutcome outcome = handler.alreadyAuthenticated(2L, new LinkPayload(1L, "player@example.com", Map.of()));
 
         assertThat(outcome.userId()).isEqualTo(2L);
-        assertThat(outcome.redirectData()).containsEntry("redirectTo", "admin-page");
+        assertThat(outcome.redirectData()).containsEntry("redirectTo", "/admin");
+    }
+
+    @Test
+    void consumeHonorsAnAlreadyValidatedReturnToOverTheRoleBasedDefault() {
+        LoginLinkHandler handler = new LoginLinkHandler(userRoleRepository);
+
+        LinkOutcome outcome = handler.consume(new LinkPayload(1L, "player@example.com", Map.of("returnTo", "/competitions/42")));
+
+        assertThat(outcome.redirectData()).containsEntry("redirectTo", "/competitions/42");
     }
 
     @Test

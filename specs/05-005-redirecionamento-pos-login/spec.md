@@ -1,6 +1,7 @@
 # Spec: Redirecionamento pós-login para o destino original
 
-**Status:** rascunho
+**Status:** implementado (sessão 2026-09-16 — ver `plan.md` para achados feitos durante a
+implementação e `tasks.md` para o checklist)
 **Issue:** [#51](https://github.com/lalgarve/jogo-acoes/issues/51)
 **Iteração:** iteration-5
 

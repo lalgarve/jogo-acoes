@@ -122,8 +122,7 @@ public class CompetitionLinkHandler implements LinkHandler {
 
     private LinkOutcome redirectFor(Participation participation, Long userId) {
         Map<String, String> redirectData = new HashMap<>();
-        redirectData.put("redirectTo", "competition-page");
-        redirectData.put("competitionId", String.valueOf(participation.getCompetition().getId()));
+        redirectData.put("redirectTo", "/competitions/" + participation.getCompetition().getId());
         return LinkOutcome.authenticated(userId, redirectData);
     }
 

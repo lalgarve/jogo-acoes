@@ -218,7 +218,6 @@ paths:
                 email: { type: string, format: email }
                 returnTo:
                   type: string
-                  nullable: true
                   description: Same-origin relative path to redirect to after login — see the operation description.
       responses:
         '202': { description: Accepted — link sent by e-mail if the address is known }
