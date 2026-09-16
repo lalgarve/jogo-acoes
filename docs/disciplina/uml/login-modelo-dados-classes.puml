@@ -1,0 +1,62 @@
+@startuml login-modelo-dados-classes
+
+title Modelo de dados persistido -- User/Role e LinkRecord/LoginSession
+
+class User {
+  +id : Long
+  +name : String
+  +email : String
+  +registered : boolean
+}
+
+class Role {
+  +id : Long
+  +name : String
+}
+
+class UserRoleId {
+  +userId : Long
+  +roleId : Long
+}
+
+class UserRole {
+  +id : UserRoleId
+  +assignedAt : LocalDateTime
+}
+
+class LinkRecord {
+  +id : Long
+  +token : String
+  +serviceKey : String
+  +userId : Long
+  +email : String
+  +extraJson : String
+  +emailSentAt : LocalDateTime
+  +expiresAt : LocalDateTime
+  +usedAt : LocalDateTime
+  +invalidatedAt : LocalDateTime
+}
+
+class LoginSession {
+  +id : Long
+  +userId : Long
+  +deviceId : String
+  +createdAt : LocalDateTime
+  +endedAt : LocalDateTime
+}
+
+User "1" --> "0..*" UserRole : papéis
+Role "1" --> "0..*" UserRole
+UserRole --> UserRoleId : chave composta
+LinkRecord "1" --> "0..1" LoginSession
+
+note right of LinkRecord
+  userId sem FK -- o módulo link
+  não conhece User
+end note
+
+note right of LoginSession
+  userId sem FK -- mesma razão
+end note
+
+@enduml

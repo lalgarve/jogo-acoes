@@ -1,0 +1,56 @@
+@startuml login-consumo-sequencia
+
+title Consumo genérico do link (GET /login-links/{token})
+
+actor Jogador as J
+participant LoginController as LC
+participant LinkService as LiS
+participant LinkRecordRepository as LRR
+participant LinkRouter as Router
+participant LinkHandler as H
+participant LinkSessionService as SS
+
+J -> LC : GET /login-links/{token}
+LC -> LiS : consume(token)
+LiS -> LRR : findByToken(token)
+LRR --> LiS : LinkRecord (ou vazio)
+
+alt não encontrado, invalidado ou expirado
+  LiS -->x LC : LoginLinkInvalidException
+  LC --> J : erro (link inválido/expirado)
+else link válido
+  LiS -> Router : handlerFor(record.serviceKey)
+  Router --> LiS : LinkHandler concreto
+  LiS -> SS : currentAuthenticatedUserId()
+  SS --> LiS : Optional<Long>
+
+  alt já autenticado neste dispositivo
+    LiS -> H : alreadyAuthenticated(currentUserId, payload)
+    H --> LiS : LinkOutcome
+    note over LiS : atalho -- não marca o link como usado
+    LiS --> LC : LinkOutcome{redirectData}
+    LC --> J : 200 + redirecionamento
+  else não autenticado neste dispositivo
+    alt link.usedAt != null
+      LiS -->x LC : LoginLinkUsedOnAnotherDeviceException
+      LC --> J : erro (usado noutro dispositivo)
+    else link ainda não usado
+      LiS -> H : consume(payload)
+      H --> LiS : LinkOutcome (autenticado ou pending)
+      alt outcome pending
+        LiS --> LC : LinkOutcome.pending()
+        LC --> J : 202 Accepted
+      else outcome autenticado
+        LiS -> LRR : save(record com usedAt = now)
+        LiS -> SS : establish(outcome.userId(), token)
+        SS -> SS : enforceDeviceLimit(user)
+        SS -> SS : monta Authentication + salva SecurityContext
+        SS -> SS : save(LoginSession{userId, linkRecord, deviceId, createdAt})
+        LiS --> LC : LinkOutcome{redirectData}
+        LC --> J : 200 + redirecionamento
+      end
+    end
+  end
+end
+
+@enduml

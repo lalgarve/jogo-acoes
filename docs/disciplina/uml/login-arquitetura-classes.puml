@@ -1,0 +1,81 @@
+@startuml login-arquitetura-classes
+
+title Arquitetura do mecanismo de link (login/link/competition)
+
+class LoginController {
+  +consumeLoginLink(token)
+  +completeRegistration(token, name)
+  +requestLoginLink(email)
+}
+
+class LinkService {
+  +create(serviceKey, payload) : LinkCreationResult
+  +consume(token)
+  +complete(token, extra)
+}
+
+class LinkRouter {
+  -handlers : Map<String, LinkHandler>
+}
+
+interface LinkSessionService {
+  +currentAuthenticatedUserId() : Long
+  +establish(userId, token)
+}
+
+class LinkRecord {
+  +token : String
+  +serviceKey : String
+  +userId : Long
+  +email : String
+  +extraJson : String
+  +expiresAt : LocalDateTime
+  +usedAt : LocalDateTime
+}
+
+interface LinkHandler {
+  +consume(payload)
+  +alreadyAuthenticated(userId, payload)
+  +complete(payload, extra)
+}
+
+class LinkPayload <<record>> {
+  +userId : Long
+  +email : String
+  +extra : Map<String,String>
+}
+
+class LoginLinkHandler {
+  +consume(payload)
+  +alreadyAuthenticated(userId, payload)
+}
+
+class LoginLinkSessionService {
+  +currentAuthenticatedUserId() : Long
+  +establish(userId, token)
+}
+
+class CompetitionLinkHandler {
+  +consume(payload)
+  +alreadyAuthenticated(userId, payload)
+  +complete(payload, extra)
+}
+
+LoginController --> LinkService
+LinkService --> LinkRecord : lê e grava
+LinkService --> LinkRouter
+LinkService --> LinkSessionService
+LinkRouter --> LinkHandler : despacha via chave
+LinkHandler <|.. LoginLinkHandler
+LinkHandler <|.. CompetitionLinkHandler
+LinkHandler ..> LinkPayload : recebe
+LinkSessionService <|.. LoginLinkSessionService
+
+note right of LinkHandler
+  Implementada pelos módulos consumidores
+  (login, competition) -- nunca por link.
+  Inverte a dependência que antes ia de
+  link para competition (FK direta).
+end note
+
+@enduml
