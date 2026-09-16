@@ -11,7 +11,7 @@
     <relativePath/>
   </parent>
 
-  <groupId>io.deployo.jogoacoes</groupId>
+  <groupId>dev.leilaalgarve.jogoacoes</groupId>
   <artifactId>jogo-acoes</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <name>jogo-acoes</name>
@@ -213,8 +213,8 @@
               <inputSpec>${project.basedir}/../docs/openapi.yaml</inputSpec>
               <generatorName>spring</generatorName>
               <library>spring-boot</library>
-              <apiPackage>io.deployo.jogoacoes.api</apiPackage>
-              <modelPackage>io.deployo.jogoacoes.api.model</modelPackage>
+              <apiPackage>dev.leilaalgarve.jogoacoes.api</apiPackage>
+              <modelPackage>dev.leilaalgarve.jogoacoes.api.model</modelPackage>
               <configOptions>
                 <interfaceOnly>true</interfaceOnly>
                 <useTags>true</useTags>
@@ -234,7 +234,7 @@
                (interfaceOnly): interfaces/DTOs and its enum-converter config, none of it
                hand-written, so none of it should count toward our own coverage gate. -->
           <excludes>
-            <exclude>io/deployo/jogoacoes/api/**</exclude>
+            <exclude>dev/leilaalgarve/jogoacoes/api/**</exclude>
             <exclude>org/openapitools/**</exclude>
           </excludes>
         </configuration>
