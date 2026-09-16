@@ -16,21 +16,31 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue-épico
 [#46](https://github.com/lalgarve/jogo-acoes/issues/46) — nenhuma virou Issue própria (todas
 pequenas o bastante para não precisar de PR isolada).
 
+**Concluído (commit `refactor: modularize app/ by domain`, branch
+`claude/jogo-acoes-iteracao-5-5hloak`, aplicado depois da 05-001)** — todas as tarefas abaixo,
+T001–T013. T001 resolvido mantendo `PlayerManagementService`/`EntryRequestService` em
+`competition/`, conforme a proposta original da spec (raciocínio confirmado: ambos operam
+sobre `Participation`, e a spec 05-003 já assume que `CompetitionLinkHandler` mora em
+`competition/`, substituindo a duplicação de criação de link que hoje vive nesses dois
+serviços). T011: os pacotes `{base}.api.*` gerados pelo `openapi-generator-maven-plugin`
+permanecem intocados, confirmado. Suíte completa verde (10 classes de teste, 0 falhas/erros)
+em suas novas localizações de módulo.
+
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Confirmar o destino de `PlayerManagementService`/`EntryRequestService` (ver "Decisões em aberto" da spec — hoje propostos em `competition/`) antes de movê-los | — | [P] | #46 |
-| T002 | Criar o pacote `{base}.link` e mover `LoginLink`, `LoginSession` e demais classes do mecanismo de token/link mágico | — | [P] | #46 |
-| T003 | Criar o pacote `{base}.login` e mover `User`, `Role`, `UserRole`, `LoginService`, `LoginController`, `SecurityConfig` | — | [P] | #46 |
-| T004 | Criar o pacote `{base}.competition` e mover `Competition`, `Participation`, `CompetitionService`, `EntryRequestService`, `PlayerManagementService` e controllers correspondentes, conforme decisão confirmada em T001 | T001 | | #46 |
-| T005 | Criar o pacote `{base}.log` e mover `Log`, `LogType`, `LogRepository`, `AuditLogService` | — | [P] | #46 |
-| T006 | Criar o pacote `{base}.email` e mover `EmailSender`, `StubEmailSender`, `SqsEmailSender`, `EmailContentRenderer`, `SentEmail`, `EmailRequest`/`EmailMessage`/`RenderedEmail` | — | [P] | #46 |
-| T007 | Criar o pacote `{base}.captcha` e mover `CaptchaService` e a integração com o provedor de captcha (ALTCHA) | — | [P] | #46 |
-| T008 | Criar o pacote `{base}.common` e mover `ScenarioWorld`/fixtures de teste compartilhadas (`testsupport`) e classes de infraestrutura genérica sem domínio próprio | — | [P] | #46 |
-| T009 | Atualizar todos os imports afetados pelas movimentações (T002–T008) em todo `app/` (main e test) | T002, T003, T004, T005, T006, T007, T008 | | #46 |
-| T010 | Atualizar javadoc/comentários/configuração que ainda citem os pacotes técnicos antigos (`web`, `service`, `repository`, `domain`) por nome | T009 | | #46 |
-| T011 | Confirmar que os pacotes DTO gerados pelo `openapi-generator-maven-plugin` (`{base}.api.*`) permanecem intocados — checagem, sem mudança esperada | — | [P] | #46 |
-| T012 | Grep final por remanescentes de `.web.`/`.service.`/`.repository.`/`.domain.` fora dos sete módulos, e corrigir | T009, T010 | | #46 |
-| T013 | Rodar a suíte completa (`.feature` + testes unitários/integração) e confirmar 100% verde, sem nenhuma asserção alterada — só localização/pacote muda | T011, T012 | | #46 |
+| ~~T001~~ | Confirmar o destino de `PlayerManagementService`/`EntryRequestService` (ver "Decisões em aberto" da spec — hoje propostos em `competition/`) antes de movê-los | — | [P] | #46 |
+| ~~T002~~ | Criar o pacote `{base}.link` e mover `LoginLink`, `LoginSession` e demais classes do mecanismo de token/link mágico | — | [P] | #46 |
+| ~~T003~~ | Criar o pacote `{base}.login` e mover `User`, `Role`, `UserRole`, `LoginService`, `LoginController`, `SecurityConfig` | — | [P] | #46 |
+| ~~T004~~ | Criar o pacote `{base}.competition` e mover `Competition`, `Participation`, `CompetitionService`, `EntryRequestService`, `PlayerManagementService` e controllers correspondentes, conforme decisão confirmada em T001 | T001 | | #46 |
+| ~~T005~~ | Criar o pacote `{base}.log` e mover `Log`, `LogType`, `LogRepository`, `AuditLogService` | — | [P] | #46 |
+| ~~T006~~ | Criar o pacote `{base}.email` e mover `EmailSender`, `StubEmailSender`, `SqsEmailSender`, `EmailContentRenderer`, `SentEmail`, `EmailRequest`/`EmailMessage`/`RenderedEmail` | — | [P] | #46 |
+| ~~T007~~ | Criar o pacote `{base}.captcha` e mover `CaptchaService` e a integração com o provedor de captcha (ALTCHA) | — | [P] | #46 |
+| ~~T008~~ | Criar o pacote `{base}.common` e mover `ScenarioWorld`/fixtures de teste compartilhadas (`testsupport`) e classes de infraestrutura genérica sem domínio próprio | — | [P] | #46 |
+| ~~T009~~ | Atualizar todos os imports afetados pelas movimentações (T002–T008) em todo `app/` (main e test) | T002, T003, T004, T005, T006, T007, T008 | | #46 |
+| ~~T010~~ | Atualizar javadoc/comentários/configuração que ainda citem os pacotes técnicos antigos (`web`, `service`, `repository`, `domain`) por nome | T009 | | #46 |
+| ~~T011~~ | Confirmar que os pacotes DTO gerados pelo `openapi-generator-maven-plugin` (`{base}.api.*`) permanecem intocados — checagem, sem mudança esperada | — | [P] | #46 |
+| ~~T012~~ | Grep final por remanescentes de `.web.`/`.service.`/`.repository.`/`.domain.` fora dos sete módulos, e corrigir | T009, T010 | | #46 |
+| ~~T013~~ | Rodar a suíte completa (`.feature` + testes unitários/integração) e confirmar 100% verde, sem nenhuma asserção alterada — só localização/pacote muda | T011, T012 | | #46 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
