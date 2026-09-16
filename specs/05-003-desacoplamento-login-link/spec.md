@@ -1,7 +1,7 @@
 # Spec: Desacoplar o módulo `link` dos seus consumidores
 
 **Status:** rascunho
-**Issue:** —
+**Issue:** [#47](https://github.com/lalgarve/jogo-acoes/issues/47)
 **Iteração:** iteration-5
 
 ## Resumo
