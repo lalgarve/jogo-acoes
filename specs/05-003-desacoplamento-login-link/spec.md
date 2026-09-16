@@ -44,17 +44,18 @@ texto Gherkin, usando o novo mecanismo por baixo.
   implementação/consumidor esse link pertence), `id do usuário` e `email` como **colunas
   próprias** (não escondidos dentro de um JSON opaco — evita perda de integridade referencial
   e permite consulta/índice direto por esses campos), mais um **JSON de extensão** só com o
-  que sobra de específico de cada implementação (o campo `extra` do DTO, ver abaixo).
-- **DTO único** (`LinkDto`), sem hierarquia de subclasses: `id do usuário` e `email` como
-  campos fixos, mais um campo genérico de extensão para o que cada implementação precisar além
-  disso (ver `plan.md` para o formato exato do campo de extensão).
+  que sobra de específico de cada implementação (o campo `extra` do payload, ver abaixo).
+- **DTO único** (`LinkPayload`, em `{base}.link.dto` — sem sufixo "Dto" no nome, seguindo a
+  convenção de sub-pacotes definida na spec 05-002), sem hierarquia de subclasses: `id do
+  usuário` e `email` como campos fixos, mais um campo genérico de extensão (`extra`) para o
+  que cada implementação precisar além disso (ver `plan.md` para o formato exato desse campo).
 - **`LinkRouter`**: componente que recebe a chave de serviço gravada no link e despacha para a
   implementação correta, usando um **mapa** (chave de serviço → implementação).
-- **Interface** (`LinkHandler`) que recebe o DTO já desserializado — cada implementação
-  concreta faz a chamada de negócio correspondente (login estabelece sessão; convite/pedido de
-  entrada de competição confirma participação — ver `plan.md` para o motivo de os dois
-  segundos casos serem uma única implementação). Essas implementações vivem nos módulos
-  consumidores (`login`, `competition`), não no módulo `link`.
+- **Interface** (`LinkHandler`) que recebe o `LinkPayload` já desserializado — cada
+  implementação concreta faz a chamada de negócio correspondente (login estabelece sessão;
+  convite/pedido de entrada de competição confirma participação — ver `plan.md` para o motivo
+  de os dois segundos casos serem uma única implementação). Essas implementações vivem nos
+  módulos consumidores (`login`, `competition`), não no módulo `link`.
 - **Toda implementação tem uma chave própria** (o valor gravado como "chave do serviço") **e
   um teste de verificação dedicado** — não basta o teste do mecanismo genérico de roteamento,
   cada implementação prova que funciona por si.
@@ -136,14 +137,14 @@ classDiagram
         +complete(token, extra)
     }
     class LinkService {
-        +create(serviceKey, dto) String
+        +create(serviceKey, payload) String
         +consume(token)
         +complete(token, extra)
     }
     class LinkRouter {
         -Map~String, LinkHandler~ handlers
-        +consume(serviceKey, dto)
-        +complete(serviceKey, dto, extra)
+        +consume(serviceKey, payload)
+        +complete(serviceKey, payload, extra)
     }
     class LinkRecord {
         +String token
@@ -156,20 +157,20 @@ classDiagram
     }
     class LinkHandler {
         <<interface>>
-        +consume(dto)
-        +complete(dto, extra)
+        +consume(payload)
+        +complete(payload, extra)
     }
-    class LinkDto {
+    class LinkPayload {
         +Long userId
         +String email
         +Map~String,String~ extra
     }
     class LoginLinkHandler {
-        +consume(dto)
+        +consume(payload)
     }
     class CompetitionLinkHandler {
-        +consume(dto)
-        +complete(dto, extra)
+        +consume(payload)
+        +complete(payload, extra)
     }
 
     LinkController --> LinkService
@@ -178,11 +179,11 @@ classDiagram
     LinkRouter --> LinkHandler : despacha via chave
     LinkHandler <|.. LoginLinkHandler
     LinkHandler <|.. CompetitionLinkHandler
-    LinkHandler ..> LinkDto : recebe
+    LinkHandler ..> LinkPayload : recebe
 ```
 
-`LinkService`/`LinkRouter`/`LinkRecord`/`LinkHandler`/`LinkDto` (módulo `link`) não referenciam
-nenhum tipo de `login`/`competition`. `LoginLinkHandler` (módulo `login`) e
+`LinkService`/`LinkRouter`/`LinkRecord`/`LinkHandler`/`LinkPayload` (módulo `link`) não
+referenciam nenhum tipo de `login`/`competition`. `LoginLinkHandler` (módulo `login`) e
 `CompetitionLinkHandler` (módulo `competition` — cobre convite **e** pedido de entrada
 pública, mesmo formato de link e mesmo comportamento de consumo para os dois, ver `plan.md`)
 vivem nos módulos consumidores e dependem de `link`, nunca o contrário. `complete` só existe
@@ -190,7 +191,7 @@ de fato em `CompetitionLinkHandler` — `LoginLinkHandler` nunca precisa de uma 
 
 ## Decisões em aberto
 
-Nenhuma decisão de requisito em aberto. As decisões técnicas desta spec — formato do DTO,
-onde vive a chave de serviço, migração de dados, e o mapeamento exato dos fluxos atuais para
-`LoginLinkHandler`/`CompetitionLinkHandler` — foram todas resolvidas e estão registradas em
-`plan.md` ("Decisões de arquitetura").
+Nenhuma decisão de requisito em aberto. As decisões técnicas desta spec — formato do DTO
+(`LinkPayload`), onde vive a chave de serviço, migração de dados, e o mapeamento exato dos
+fluxos atuais para `LoginLinkHandler`/`CompetitionLinkHandler` — foram todas resolvidas e
+estão registradas em `plan.md` ("Decisões de arquitetura").
