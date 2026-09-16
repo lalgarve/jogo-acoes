@@ -480,6 +480,30 @@ trabalho, mesmo quando o essencial da decisão técnica já está registrado den
 narrativo e o porquê de cada mudança de rumo, papel que uma tabela de decisões dentro de uma
 spec não cumpre sozinha.
 
+### Sessão 2026-09-16
+
+**Feito:**
+- **Duas decisões em aberto da spec 05-001 resolvidas:** o `groupId` do `pom.xml` muda junto
+  com o pacote Java (`io.deployo` → `dev.leilaalgarve`), mesmo não sendo publicado em nenhum
+  repositório Maven — mantém coerência entre pacote e coordenada, e as coordenadas dos módulos
+  do reator (`app`, `email-lambda`) são revisadas na mesma mudança; e `email-lambda` também
+  tem seu pacote renomeado junto com `app/`, no mesmo escopo desta spec (presumido
+  `io.deployo.*` como o resto do projeto — confirmar o pacote real ao implementar, mas o
+  destino já está decidido). Atualizado em `specs/05-001-refactor-pacote-base/spec.md`.
+- **Uma decisão em aberto da spec 05-002 resolvida:** `SecurityConfig` migra para `login/`
+  (mesmo raciocínio que já aloca `LoginService`/`LoginController` ali); `ScenarioWorld`/
+  fixtures de teste compartilhadas (`testsupport`) e classes de infraestrutura genérica sem
+  domínio próprio ganham um módulo novo, `common/` — a modularização inicial passa de seis
+  para sete módulos (`link`, `competition`, `login`, `log`, `email`, `captcha`, `common`).
+  Atualizado em `specs/05-002-modularizacao-inicial/spec.md` (estrutura de pastas + decisões
+  em aberto).
+
+**Confirmado nesta sessão:** decisões pontuais de fechamento de spec (como estas duas) também
+entram no diário, não só decisões novas de arquitetura — o objetivo é que quem retomar o
+trabalho depois de uma troca de sessão veja aqui, em ordem cronológica, quando e por que cada
+"Decisões em aberto" de uma spec foi fechada, sem precisar reconstruir isso só pelo histórico
+de commits.
+
 ## Decisões em aberto (resumo)
 
 - `app/` também migra para o Config Server, ou mantém profiles locais?
@@ -510,5 +534,3 @@ spec não cumpre sozinha.
 - Onde vive a lógica de estabelecer sessão (`SecurityContext`/`LoginSession`) após consumir um
   link com sucesso — depende de uma decisão conjunta entre as specs 05-002 e 05-003, ver
   `specs/05-003-desacoplamento-login-link/plan.md`.
-- Onde ficam `SecurityConfig`/`testsupport`/fixtures compartilhadas na modularização inicial
-  (05-002) — ver "Decisões em aberto" daquela spec.
