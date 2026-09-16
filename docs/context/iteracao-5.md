@@ -497,8 +497,29 @@ spec não cumpre sozinha.
   para sete módulos (`link`, `competition`, `login`, `log`, `email`, `captcha`, `common`).
   Atualizado em `specs/05-002-modularizacao-inicial/spec.md` (estrutura de pastas + decisões
   em aberto).
+- **`tasks.md` escrito para as três specs**: `05-001` (13 tarefas T001–T013, mudança mecânica
+  sem `plan.md` próprio), `05-002` (13 tarefas T001–T013, incluindo T001 como bloqueio
+  explícito para confirmar o destino de `PlayerManagementService`/`EntryRequestService` antes
+  de mover), `05-003` (19 tarefas T001–T019, quebrando `plan.md` em passos de implementação —
+  tipos base, mecanismo genérico, os dois handlers concretos, os testes exigidos pela spec,
+  migração das call sites antigas e remoção de código morto).
+- **Três Issues-épico abertas**, uma por spec, cada uma com o checklist completo de `tasks.md`
+  e labels `iteration-5` + `refactor` (label `refactor` criada nesta sessão, mesmo padrão de
+  `docs`/`test` criadas em sessões anteriores): Issue
+  [#45](https://github.com/lalgarve/jogo-acoes/issues/45) (05-001), Issue
+  [#46](https://github.com/lalgarve/jogo-acoes/issues/46) (05-002), Issue
+  [#47](https://github.com/lalgarve/jogo-acoes/issues/47) (05-003). `spec.md`/`tasks.md` de
+  cada uma atualizados para apontar pra sua Issue.
+- **Correção na 05-003: `LinkDto` renomeado para `LinkPayload`**, movido para o pacote
+  `{base}.link.dto` — a spec tinha sido escrita antes de aplicar a convenção de sub-pacotes
+  `client`/`dto`/`exception` (documentada em 05-002) ao próprio módulo `link`, e o nome
+  original ainda carregava o sufixo "Dto" que essa convenção proíbe. Variáveis/parâmetros
+  também renomeados de `dto` para `payload` em `spec.md`/`plan.md`/`tasks.md` para
+  consistência. `LoginLinkHandler`/`CompetitionLinkHandler` (módulos `login`/`competition`)
+  passam a importar `{base}.link.dto.LinkPayload` como o único tipo de `link` que cruza a
+  fronteira do módulo.
 
-**Confirmado nesta sessão:** decisões pontuais de fechamento de spec (como estas duas) também
+**Confirmado nesta sessão:** decisões pontuais de fechamento de spec (como estas) também
 entram no diário, não só decisões novas de arquitetura — o objetivo é que quem retomar o
 trabalho depois de uma troca de sessão veja aqui, em ordem cronológica, quando e por que cada
 "Decisões em aberto" de uma spec foi fechada, sem precisar reconstruir isso só pelo histórico
