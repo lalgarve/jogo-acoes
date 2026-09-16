@@ -56,7 +56,7 @@ segurança ou comportamento.
 
 ## Decisões em aberto
 
-- ~~`groupId` do `pom.xml` muda junto, ou fica como está?~~ **Resolvido (sessão 2026-09-16:
+- ~~`groupId` do `pom.xml` muda junto, ou fica como está?~~ **Resolvido (sessão 2026-09-16):
   muda junto.** O `groupId` acompanha o pacote Java (`io.deployo` → `dev.leilaalgarve`), mesmo
   não sendo publicado em nenhum repositório Maven — mantém coerência entre pacote e
   coordenada. As coordenadas dos módulos do reator (`app`, `email-lambda`) são revisadas em
