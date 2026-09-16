@@ -34,8 +34,11 @@ nenhum cenário alterado, e nenhum teste unitário/integração muda de asserç�
   que citem o pacote por nome, configuração que referencia classes por nome totalmente
   qualificado (ex.: `apiPackage`/`modelPackage` do `openapi-generator-maven-plugin`, se
   configurado com `io.deployo`).
-- `pom.xml` de cada módulo: `groupId`, se estiver alinhado ao pacote Java, também é revisado
-  (ver "Decisões em aberto").
+- `pom.xml` de cada módulo do reator (`app`, `email-lambda`): `groupId` muda junto com o
+  pacote Java, de `io.deployo` para `dev.leilaalgarve` — decisão resolvida nesta sessão, ver
+  "Decisões em aberto".
+- `email-lambda` também é renomeado de `io.deployo.*` para `dev.leilaalgarve.*`, no mesmo
+  escopo desta spec, não como trabalho separado — ver "Decisões em aberto".
 
 ## Requisitos não-funcionais
 
@@ -53,11 +56,16 @@ segurança ou comportamento.
 
 ## Decisões em aberto
 
-- `groupId` do `pom.xml` (a confirmar se hoje usa `io.deployo`) muda junto, ou fica como está
-  por não ser publicado em nenhum repositório Maven? Se mudar, as coordenadas dos módulos do
-  reator (`app`, `email-lambda`) precisam ser revisadas em conjunto.
-- Confirmar o pacote Java atual do módulo `email-lambda` antes de aplicar — presumido também
-  `io.deployo.*`, não verificado linha a linha nesta sessão.
+- ~~`groupId` do `pom.xml` muda junto, ou fica como está?~~ **Resolvido (sessão 2026-09-16):
+  muda junto.** O `groupId` acompanha o pacote Java (`io.deployo` → `dev.leilaalgarve`), mesmo
+  não sendo publicado em nenhum repositório Maven — mantém coerência entre pacote e
+  coordenada. As coordenadas dos módulos do reator (`app`, `email-lambda`) são revisadas em
+  conjunto, na mesma mudança.
+- ~~Confirmar o pacote Java atual do módulo `email-lambda` antes de aplicar.~~ **Resolvido
+  (sessão 2026-09-16): muda pacote.** `email-lambda` também é renomeado de `io.deployo.*` para
+  `dev.leilaalgarve.*`, junto com `app/` — presumido `io.deployo.*` como o resto do projeto,
+  não verificado linha a linha nesta sessão; confirmar o pacote real ao implementar, mas o
+  destino já está decidido, não é mais uma decisão em aberto.
 - Ordem em relação à spec 05-002 (modularização): esta spec (renomear prefixo) deveria ser
   aplicada **antes** de 05-002 (mover para módulos), pra não editar o mesmo import duas vezes
   com duas mudanças em andamento simultaneamente — mas as duas são operações estruturalmente
