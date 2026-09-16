@@ -8,9 +8,9 @@
 
 Primeiro passo da reorganização do `app/` por domínio/funcionalidade (Etapa 1 da disciplina —
 ver `docs/context/alinhamento-projeto-disciplina.md`), em vez de por camada técnica. Move as
-classes existentes para seis módulos: `link`, `competition`, `login`, `log`, `email`,
-`captcha`. A única mudança de código é criar as pastas dos módulos e ajustar pacotes, imports e
-demais referências — nenhuma lógica muda. Testar o projeto ao final.
+classes existentes para sete módulos: `link`, `competition`, `login`, `log`, `email`,
+`captcha`, `common`. A única mudança de código é criar as pastas dos módulos e ajustar
+pacotes, imports e demais referências — nenhuma lógica muda. Testar o projeto ao final.
 
 ## Motivação
 
@@ -39,11 +39,13 @@ Pacote base do módulo `app`: `dev.leilaalgarve.jogoacoes` (ver spec 05-001) —
 ├── competition/  # Competition, Participation, CompetitionService, EntryRequestService,
 │                 # PlayerManagementService, controllers correspondentes
 ├── login/        # User, Role, UserRole, LoginService (parte de autenticação/sessão,
-│                 # não o mecanismo de link em si), LoginController
+│                 # não o mecanismo de link em si), LoginController, SecurityConfig
 ├── log/          # Log, LogType, LogRepository, AuditLogService
 ├── email/        # EmailSender, StubEmailSender, SqsEmailSender, EmailContentRenderer,
 │                 # SentEmail, EmailRequest/EmailMessage/RenderedEmail
-└── captcha/      # CaptchaService e a integração com o provedor de captcha (ALTCHA)
+├── captcha/      # CaptchaService e a integração com o provedor de captcha (ALTCHA)
+└── common/       # ScenarioWorld/fixtures de teste compartilhadas (testsupport) e classes de
+                  # infraestrutura genérica sem domínio próprio
 ```
 
 - Cada classe migra para o módulo correspondente ao seu domínio, não à sua camada técnica —
@@ -52,8 +54,10 @@ Pacote base do módulo `app`: `dev.leilaalgarve.jogoacoes` (ver spec 05-001) —
   `service/`/`web/`/`domain/`/`repository/` como hoje.
 - Pacotes DTO gerados pelo `openapi-generator-maven-plugin` (`{base}.api.*`) não são tocados
   por esta spec — continuam como estão, gerados a partir de `docs/openapi.yaml`.
-- Classes que não pertencem claramente a nenhum dos seis módulos (configuração de segurança,
-  fixtures de teste compartilhadas) — ver "Decisões em aberto".
+- `SecurityConfig` migra para `login/` (é configuração de autenticação/sessão, mesmo
+  raciocínio que já coloca `LoginService`/`LoginController` lá); fixtures de teste
+  compartilhadas (`ScenarioWorld`/`testsupport`) e qualquer classe de infraestrutura genérica
+  sem domínio próprio migram para o módulo novo `common/` — ver "Decisões em aberto".
 
 ### Convenção de sub-pacotes internos (`client`/`dto`/`exception`)
 
@@ -101,11 +105,12 @@ Nenhum além de build e suíte verdes ao final.
 
 ## Decisões em aberto
 
-- Onde ficam classes que ainda não pertencem claramente a nenhum dos seis módulos:
+- ~~Onde ficam classes que ainda não pertencem claramente a nenhum dos módulos de domínio:
   `SecurityConfig`, `ScenarioWorld`/fixtures de teste compartilhadas (`testsupport`), classes
-  de infraestrutura genérica (se houver). Proposta: um módulo `shared`/`common`, ou deixá-las
-  na raiz do pacote — a definir antes de implementar. (`CaptchaService` não está mais nesta
-  lista — ganhou módulo próprio, `captcha/`, ver acima.)
+  de infraestrutura genérica?~~ **Resolvido (sessão 2026-09-16):** `SecurityConfig` migra
+  para `login/`. `ScenarioWorld`/`testsupport`/infraestrutura genérica sem domínio próprio
+  ganham um módulo novo, `common/` — ver "Nova estrutura de pastas" acima. (`CaptchaService`
+  já não estava mais nesta lista — módulo próprio, `captcha/`.)
 - Dependência de ordem com a spec 05-001 (renomear pacote base) — ver "Decisões em aberto"
   daquela spec.
 - `PlayerManagementService`/`EntryRequestService` foram colocados em `competition/` nesta
