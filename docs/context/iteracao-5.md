@@ -525,6 +525,72 @@ trabalho depois de uma troca de sessão veja aqui, em ordem cronológica, quando
 "Decisões em aberto" de uma spec foi fechada, sem precisar reconstruir isso só pelo histórico
 de commits.
 
+### Sessão 2026-09-16 (continuação) — implementação das três specs
+
+**Feito:** implementação de código das três specs planejadas nesta sessão, nesta ordem
+(05-001 → 05-002 → 05-003), em clone local (`add_repo`/`register_repo_root`), com a suíte
+completa rodada e verde após cada uma.
+
+- **05-001 (rename de pacote)**: `io.deployo` → `dev.leilaalgarve` em `app/` e
+  `email-lambda/` (85 arquivos), `groupId` dos três `pom.xml` (`app`, `email-lambda`, raiz)
+  atualizado junto, conforme decidido. Commit
+  `refactor: rename base Java package io.deployo to dev.leilaalgarve`. Issue
+  [#45](https://github.com/lalgarve/jogo-acoes/issues/45) fechada, `tasks.md` com T001–T013
+  riscados.
+- **05-002 (modularização)**: ~46 classes principais e de teste redistribuídas nos sete
+  módulos (`link`, `login`, `competition`, `log`, `email`, `captcha`, `common`). Descoberto na
+  prática: mover classes para dentro de pacotes já existentes (`email/`, `captcha/`) também
+  precisa do ajuste de `package`/imports, não só as pastas novas — passo que tinha ficado
+  faltando no script inicial e foi corrigido manualmente em 4 arquivos. Imports que deixaram
+  de ser "mesmo pacote" após a divisão foram resolvidos com um script Python auxiliar
+  (mapa nome-de-classe → FQN), com remoção manual de alguns falsos positivos (nomes de classe
+  citados em javadoc/string, não em código de fato). Commit
+  `refactor: modularize app/ by domain (link, competition, login, log, email, captcha,
+  common)`. Issue [#46](https://github.com/lalgarve/jogo-acoes/issues/46) fechada, `tasks.md`
+  com T001–T013 riscados.
+- **05-003 (desacoplar `link`)**: implementado `LinkPayload`/`LinkRecord`/`LinkOutcome`/
+  `LinkHandler`/`LinkRouter`/`LinkService`/`LinkCreationResult`/`LinkSessionService` em
+  `link/`, `LoginLinkHandler`/`LoginLinkSessionService` em `login/`,
+  `CompetitionLinkHandler` em `competition/`; `LoginLink`/`LoginLinkRepository`/`LoginService`
+  removidos (mortos); migração Flyway `V6__decouple_login_link_into_link_record.sql` (+
+  espelho H2). **Três desvios em relação ao desenho original de `plan.md`**, todos detalhados
+  em `plan.md` ("Achados feitos durante a implementação") e refletidos em `spec.md`/
+  `tasks.md`:
+  1. `LinkHandler` ganhou um terceiro método, `alreadyAuthenticated`, não previsto — necessário
+     para o atalho "jogador já logado neste dispositivo" que `login.feature` exige (o desenho
+     original de 2 métodos não cobria esse caminho sem pular lógica de sessão indevidamente).
+  2. Não existe uma classe `LinkController` separada — `LoginController` (já existente, em
+     `login/`) passou a delegar `consumeLoginLink`/`completeRegistration` para `LinkService`,
+     mantendo `requestLoginLink` como lógica própria. `LinkService.create` passou a devolver
+     `LinkCreationResult(id, token)` (não só o token), porque os três call sites de
+     `competition` precisam do id numérico para auditoria.
+  3. Escopo extra descoberto durante a implementação (fora da lista original de `tasks.md`):
+     `LoginSession` (também em `link/` desde a 05-002) tinha uma FK Java direta pra
+     `login.User`, violando o mesmo requisito de direção de dependência que motivou o
+     redesenho de `LinkRecord` — corrigido trocando `User user` por `Long userId` (sem FK).
+  - **Descoberta técnica**: este projeto usa Jackson 3 (`tools.jackson.*`, não
+    `com.fasterxml.jackson.*`) — `LinkService` foi escrito inicialmente com os imports errados
+    (Jackson 2) e corrigido; `tools.jackson.core.JacksonException` é unchecked (extends
+    `RuntimeException`), então não precisa de try/catch ao redor das chamadas de
+    serialização/desserialização de `extra`.
+  - `docs/diagrams/der.md`/`classes.md` atualizados (`LOGIN_LINK` → `LINK_RECORD`, sem FK para
+    `User`/`Participation`); `docs/diagrams/sequencia.md` **não** foi atualizado — sinalizado
+    como pendência conhecida (4 diagramas de sequência a refazer), fora do escopo desta
+    sessão.
+  - Suíte completa (`mvn -pl app -am clean test`): **89 testes, 0 falhas, 0 erros** — todos os
+    `.feature` de login/competição sem nenhuma alteração de texto Gherkin, mais os 4 testes
+    dedicados novos (`LinkRouterKeyUniquenessTest`, `LoginLinkHandlerTest`,
+    `CompetitionLinkHandlerTest`, `LinkServiceTest`); `email-lambda` inalterado (2 testes, 1
+    skip, como antes). Commit
+    `refactor: decouple the link module from login/competition (LinkRouter/LinkHandler)`.
+    Issue [#47](https://github.com/lalgarve/jogo-acoes/issues/47) fechada, `tasks.md` com
+    T001–T019 riscados (desvios documentados na própria tabela).
+
+**Confirmado nesta sessão:** a "Decisão em aberto" sobre onde vive a lógica de estabelecer
+sessão após consumir um link (`SecurityContext`/`LoginSession`, ver lista de fechamento
+abaixo) foi resolvida pela implementação — vive em `LinkSessionService`
+(`LoginLinkSessionService`, em `login/`), removida da lista de pendências.
+
 ## Decisões em aberto (resumo)
 
 - `app/` também migra para o Config Server, ou mantém profiles locais?
@@ -552,6 +618,6 @@ de commits.
 - Script de sincronização label → campo "Iteration" do GitHub Project (ver seção 7).
 - Nome definitivo do branch de PDF/caderno de testes e conteúdo detalhado de cada seção por
   Etapa — rastreado na Issue #43, não neste documento.
-- Onde vive a lógica de estabelecer sessão (`SecurityContext`/`LoginSession`) após consumir um
-  link com sucesso — depende de uma decisão conjunta entre as specs 05-002 e 05-003, ver
-  `specs/05-003-desacoplamento-login-link/plan.md`.
+- `docs/diagrams/sequencia.md` está desatualizado desde a implementação da spec 05-003 (ainda
+  reflete `LoginService`/`LoginLink`) — precisa refazer os diagramas de sequência afetados
+  (login, convite/pedido de entrada de competição).
