@@ -4,59 +4,113 @@ Um diagrama por fluxo, cobrindo os pontos de entrada do sistema: login, criaçã
 competição e convite, verificação de e-mail, pedido de entrada em competição pública,
 gerência de jogadores e o pipeline assíncrono de envio de e-mail.
 
-## 1. Login
+## 1. Login (mecanismo genérico de link — `LinkService`/`LinkRouter`/`LinkHandler`)
 
-Pedido de link e consumo em um dispositivo novo — as regras de dispositivo (reuso de link,
-limite por usuário) ficam resumidas numa nota; `LoginService.consumeLoginLink` trata todas no
-mesmo método.
+Desde a spec 05-003, um único endpoint genérico (`GET /login-links/{token}`) consome **qualquer**
+link — tanto o login avulso quanto um link de convite/pedido de entrada de competição — porque
+`LinkRouter` despacha pela `service_key` gravada no `LinkRecord` para o `LinkHandler` correto
+(`LoginLinkHandler` ou `CompetitionLinkHandler`, ver [`classes.md`](classes.md)). O diagrama 1a
+mostra o pedido de um login avulso; o 1b mostra o consumo, genérico o bastante para cobrir os dois
+handlers — o ramo específico de `CompetitionLinkHandler` (registro em duas fases) está detalhado
+na seção 4b.
+
+### 1a. Pedido de login avulso
 
 ```mermaid
 sequenceDiagram
     actor J as Jogador
     participant LC as LoginController
-    participant LS as LoginService
-    participant EV as EmailValidationService
+    participant LiS as LinkService
     participant UR as UserRepository
-    participant LLR as LoginLinkRepository
     participant AL as AuditLogService
     participant ES as EmailSender
 
-    J->>LC: POST /login-links {email}
-    LC->>LS: requestLoginLink(email)
-    LS->>EV: validate(email)
-    alt domínio sem MX ou descartável
-        EV--xLS: EmailRejectedException
-        LS-->>LC: erro
-        LC-->>J: 422 Unprocessable Entity
-    else domínio ok
-        EV-->>LS: ok
-        LS->>UR: findByEmail(email)
-        UR-->>LS: User (ou vazio)
-        alt e-mail conhecido
-            LS->>LLR: invalida links anteriores do usuário
-            LS->>LLR: save(novo LoginLink)
-            LS->>AL: record(LOGIN_LINK_ISSUED)
-            LS->>ES: send(EmailRequest{template=LOGIN_LINK})
-        else e-mail desconhecido
-            Note over LS: não revela se o e-mail existe -- retorna igual
-        end
-        LS-->>LC: void
+    J->>LC: POST /login-requests {email}
+    LC->>UR: findByEmail(email)
+    UR-->>LC: User (ou vazio)
+    alt e-mail desconhecido
+        Note over LC: não revela se o e-mail existe -- retorna igual
+        LC-->>J: 202 Accepted
+    else e-mail conhecido
+        LC->>LiS: invalidateActiveLinksFor(user.id)
+        Note over LiS: invalida qualquer LinkRecord ainda ativo<br/>(não usado/expirado) desse usuário -- só se<br/>aplica a login avulso, não a links de competição
+        LC->>LiS: create("login", LinkPayload{userId, email, extra={}})
+        LiS-->>LC: LinkCreationResult{id, token}
+        LC->>AL: record(LOGIN_LINK_ISSUED)
+        LC->>ES: send(EmailRequest{template=LOGIN_LINK, link=/login-links/{token}})
         LC-->>J: 202 Accepted
     end
-
-    J->>LC: GET /login-links/{token}
-    LC->>LS: consumeLoginLink(token)
-    LS->>LLR: findByToken(token)
-    LLR-->>LS: LoginLink
-    Note over LS: valida expiração, já usado,<br/>autenticado ou não, competição fechada
-    LS->>LLR: save(link com usedAt)
-    LS->>LS: enforceDeviceLimit(user)<br/>encerra sessão mais antiga se no limite
-    LS->>LS: cria LoginSession + SecurityContext
-    LS-->>LC: LoginResult{redirectTo}
-    LC-->>J: 200 + redirecionamento
 ```
 
+### 1b. Consumo do link (genérico)
+
+```mermaid
+sequenceDiagram
+    actor J as Jogador
+    participant LC as LoginController
+    participant LiS as LinkService
+    participant LRR as LinkRecordRepository
+    participant Router as LinkRouter
+    participant H as LinkHandler<br/>(LoginLinkHandler ou CompetitionLinkHandler)
+    participant SS as LinkSessionService<br/>(LoginLinkSessionService)
+
+    J->>LC: GET /login-links/{token}
+    LC->>LiS: consume(token)
+    LiS->>LRR: findByToken(token)
+    LRR-->>LiS: LinkRecord (ou vazio)
+    alt não encontrado, invalidado ou expirado
+        LiS--xLC: LoginLinkInvalidException
+        LC-->>J: erro (link inválido/expirado)
+    else link válido
+        LiS->>Router: handlerFor(record.serviceKey)
+        Router-->>LiS: LinkHandler concreto
+        LiS->>SS: currentAuthenticatedUserId()
+        SS-->>LiS: Optional~Long~
+        alt já autenticado neste dispositivo
+            LiS->>H: alreadyAuthenticated(currentUserId, payload)
+            H-->>LiS: LinkOutcome
+            Note over LiS: atalho -- não marca o link como usado nem<br/>mexe na sessão, mesmo que já tenha sido<br/>usado noutro dispositivo antes
+            LiS-->>LC: LinkOutcome{redirectData}
+            LC-->>J: 200 + redirecionamento
+        else não autenticado neste dispositivo
+            alt link.usedAt != null
+                LiS--xLC: LoginLinkUsedOnAnotherDeviceException
+                LC-->>J: erro (usado noutro dispositivo)
+            else link ainda não usado
+                LiS->>H: consume(payload)
+                H-->>LiS: LinkOutcome (autenticado ou pending)
+                alt outcome pending
+                    Note over LiS,H: só acontece com CompetitionLinkHandler<br/>(payload sem userId) -- ver seção 4b
+                    LiS-->>LC: LinkOutcome.pending()
+                    LC-->>J: 202 Accepted
+                else outcome autenticado
+                    LiS->>LRR: save(record com usedAt = now)
+                    LiS->>SS: establish(outcome.userId(), token)
+                    SS->>SS: enforceDeviceLimit(user)<br/>encerra a sessão mais antiga se no limite
+                    SS->>SS: monta Authentication (roles) + salva SecurityContext
+                    SS->>SS: save(LoginSession{userId, linkRecord, deviceId, createdAt})
+                    LiS-->>LC: LinkOutcome{redirectData}
+                    LC-->>J: 200 + redirecionamento
+                end
+            end
+        end
+    end
+```
+
+`LoginLinkHandler.consume`/`alreadyAuthenticated` decidem o destino (`admin-page` ou
+`competitions-list`) consultando o papel do usuário (`UserRoleRepository`) — omitido do diagrama
+por brevidade, é uma chamada só.
+
 ## 2. Verificação de e-mail antes do cadastro
+
+> ⚠️ **Não implementado.** `EmailValidationService`/`MxRecordResolver`/`DisposableDomainRepository`/
+> `DisposableDomain`/`EmailRejectedException`/`DisposableDomainRefreshJob` não existem no código
+> atual (`app/src/main/java/`) nem há tabela `disposable_domain` em nenhuma migração Flyway —
+> conferido nesta sessão (2026-09-16) ao revisar o módulo `login` para a próxima spec. Esta seção
+> documenta um mecanismo que só existe aqui e em [`der.md`](der.md#notas-de-modelagem)/
+> [`classes.md`](classes.md#verificação-de-e-mail), nunca implementado. Mantido como está por ora
+> (fora do escopo desta revisão) — decidir depois se vira uma spec própria ou se a documentação é
+> que deve ser corrigida.
 
 Checagem síncrona feita no momento em que qualquer e-mail é coletado (convite de
 administrador, pedido de entrada, pedido de login) — mesmo ponto onde o captcha já é
@@ -123,11 +177,10 @@ sequenceDiagram
     actor A as Administrador
     participant CC as CompetitionsController
     participant CS as CompetitionService
-    participant EV as EmailValidationService
     participant UR as UserRepository
     participant PR as ParticipationRepository
-    participant LLR as LoginLinkRepository
     participant AL as AuditLogService
+    participant LiS as LinkService
     participant ES as EmailSender
 
     A->>CC: POST /competitions {type: PRIVATE, emails[]}
@@ -136,17 +189,10 @@ sequenceDiagram
     CS->>CS: save(Competition, status=AWAITING_INVITES)
     CS->>AL: record(COMPETITION_CREATED)
     loop cada e-mail convidado
-        CS->>EV: validate(email)
-        alt domínio sem MX ou descartável
-            EV--xCS: EmailRejectedException
-            Note over CS: e-mail rejeitado não entra na<br/>competição -- não cria Participation
-        else domínio ok
-            EV-->>CS: ok
-            CS->>UR: findByEmail(email).filter(isRegistered)
-            UR-->>CS: User (ou vazio) -- já tem conta?
-            CS->>PR: save(Participation, status=EMAIL_NOT_SENT, requestType=INVITE)
-            CS->>AL: record(PARTICIPATION_STATUS_CHANGED)
-        end
+        CS->>UR: findByEmail(email).filter(isRegistered)
+        UR-->>CS: User (ou vazio) -- já tem conta?
+        CS->>PR: save(Participation, status=EMAIL_NOT_SENT, requestType=INVITE)
+        CS->>AL: record(PARTICIPATION_STATUS_CHANGED)
     end
     CS-->>CC: Competition
     CC-->>A: 201 Created
@@ -154,7 +200,9 @@ sequenceDiagram
     A->>CC: POST /competitions/{id}/decide-invite-timing {timing: NOW}
     CC->>CS: decideInviteEmailTiming(id, NOW)
     loop cada Participation com status=EMAIL_NOT_SENT
-        CS->>LLR: save(LoginLink)
+        CS->>LiS: create("competition-entry", LinkPayload{userId, email, extra={participationId}})
+        Note over CS,LiS: userId vem de participation.getUser(), lido<br/>agora -- LinkRecord não tem mais Participation<br/>pra buscar isso de volta no consumo (spec 05-003)
+        LiS-->>CS: LinkCreationResult{id, token}
         CS->>AL: record(LOGIN_LINK_ISSUED)
         CS->>ES: send(EmailRequest)
         Note over ES: template = INVITE (sem conta) ou<br/>LOGIN_LINK (já tem conta) --<br/>EmailContentRenderer escolhe o .html<br/>físico por origin=INVITE + competitionName
@@ -177,10 +225,9 @@ sequenceDiagram
     participant ERC as EntryRequestsController
     participant ERS as EntryRequestService
     participant Cap as CaptchaService
-    participant EV as EmailValidationService
     participant UR as UserRepository
     participant PR as ParticipationRepository
-    participant LLR as LoginLinkRepository
+    participant LiS as LinkService
     participant AL as AuditLogService
     participant ES as EmailSender
 
@@ -188,38 +235,90 @@ sequenceDiagram
     ERC->>ERS: requestEntry(id, request)
     ERS->>Cap: verify(captchaToken)
     Cap-->>ERS: ok (ou CaptchaInvalidException)
-    ERS->>EV: validate(email)
-    alt domínio sem MX ou descartável
-        EV--xERS: EmailRejectedException
-        ERS-->>ERC: erro
-        ERC-->>J: 422 Unprocessable Entity
-    else domínio ok
-        EV-->>ERS: ok
-        ERS->>UR: findByEmail(email)
-        UR-->>ERS: User (ou vazio)
-        Note over ERS: template = REGISTRATION_LINK (sem conta)<br/>ou LOGIN_LINK (já registrado)
-        ERS->>PR: find ou cria Participation (requestType=REQUEST)
-        ERS->>LLR: save(LoginLink)
-        ERS->>AL: record(LOGIN_LINK_ISSUED)
-        ERS->>ES: send(EmailRequest)
-        ERS->>PR: save(status=EMAIL_SENT)
-        ERS->>AL: record(PARTICIPATION_STATUS_CHANGED)
-        ERS-->>ERC: void
-        ERC-->>J: 202 Accepted
+    ERS->>UR: findByEmail(email)
+    UR-->>ERS: User (ou vazio)
+    Note over ERS: template = REGISTRATION_LINK (sem conta)<br/>ou LOGIN_LINK (já registrado)
+    ERS->>PR: find ou cria Participation (requestType=REQUEST)
+    ERS->>PR: save(participation, status=EMAIL_NOT_SENT)
+    ERS->>LiS: create("competition-entry", LinkPayload{userId, email, extra={participationId}})
+    LiS-->>ERS: LinkCreationResult{id, token}
+    ERS->>AL: record(LOGIN_LINK_ISSUED)
+    ERS->>ES: send(EmailRequest)
+    ERS->>PR: save(status=EMAIL_SENT)
+    ERS->>AL: record(PARTICIPATION_STATUS_CHANGED)
+    ERS-->>ERC: void
+    ERC-->>J: 202 Accepted
+```
+
+### 4b. Consumo de um link de competição (dois casos)
+
+Detalha o ramo `H.consume(payload)`/`H.complete(...)` da seção 1b quando `record.serviceKey ==
+"competition-entry"` — os dois casos citados no cenário "New player logs in.../Registered player
+confirms entry..." de `login.feature`.
+
+```mermaid
+sequenceDiagram
+    actor J as Jogador
+    participant LC as LoginController
+    participant LiS as LinkService
+    participant H as CompetitionLinkHandler
+    participant PR as ParticipationRepository
+    participant UR as UserRepository
+    participant RR as RoleRepository /<br/>UserRoleRepository
+    participant AL as AuditLogService
+    participant SS as LinkSessionService
+
+    Note over LC,H: continuação do consumo genérico (seção 1b),<br/>GET /login-links/{token}
+
+    LC->>LiS: consume(token)
+    LiS->>H: consume(payload)
+    H->>PR: findById(extra["participationId"])
+    PR-->>H: Participation
+    alt competição fechada e registro não concluído
+        H--xLiS: LoginLinkInvalidException
+        LiS-->>LC: erro
+        LC-->>J: erro
+    else registro concluído, ou competição ainda aberta
+        alt payload.userId() == null (nunca teve conta)
+            H-->>LiS: LinkOutcome.pending()
+            LiS-->>LC: pending
+            LC-->>J: 202 Accepted
+
+            J->>LC: POST /login-links/{token}/registration {name}
+            LC->>LiS: complete(token, {name})
+            LiS->>H: complete(payload, {name})
+            H->>UR: save(new User{name, email, registered=true})
+            H->>RR: assignRole(user, PLAYER)
+            H->>PR: save(Participation{user, status=IN_COMPETITION, joinedAt})
+            H->>AL: record(PARTICIPATION_STATUS_CHANGED)
+            H-->>LiS: LinkOutcome.authenticated(user.id, redirectData)
+            LiS->>SS: establish(user.id, token)
+            Note over SS: mesmo mecanismo de sessão/limite<br/>de dispositivos da seção 1b
+            LiS-->>LC: LinkOutcome{redirectTo=competition-page}
+            LC-->>J: 200 + redireciona
+        else payload.userId() != null (já tem conta)
+            H-->>LiS: LinkOutcome.authenticated(userId, redirectData)
+            Note over LiS: segue igual à seção 1b --<br/>marca o link usado + establish()
+            LiS-->>LC: LinkOutcome{redirectTo=competition-page}
+            LC-->>J: 200 + redireciona
+        end
     end
 ```
 
 ## 5. Gerência de jogadores — reenvio e remoção
 
 `resendInviteEmail(s)` reaproveita o mesmo `sendInviteEmail` privado usado na criação (fluxo
-3); a remoção precisa apagar o `LoginLink` antes da `Participation` por causa da FK real.
+3). A remoção não precisa mais apagar nada em `link/` antes da `Participation` — desde a spec
+05-003, `LinkRecord.extraJson` só carrega o `participationId` como dado opaco, sem FK real (ao
+contrário da antiga `LoginLink.participation_id`), então um link clicado depois de o jogador
+remover só falha ao resolver a participação, como qualquer outro link inválido.
 
 ```mermaid
 sequenceDiagram
     actor A as Administrador
     participant PC as PlayersController
     participant PS as PlayerManagementService
-    participant LLR as LoginLinkRepository
+    participant LiS as LinkService
     participant PR as ParticipationRepository
     participant AL as AuditLogService
     participant ES as EmailSender
@@ -227,7 +326,8 @@ sequenceDiagram
     A->>PC: POST /competitions/{id}/players/{pid}/resend-invite
     PC->>PS: resendInviteEmail(id, pid)
     PS->>PS: sendInviteEmail(participation)
-    PS->>LLR: save(LoginLink)
+    PS->>LiS: create("competition-entry", LinkPayload{userId, email, extra={participationId}})
+    LiS-->>PS: LinkCreationResult{id, token}
     PS->>AL: record(LOGIN_LINK_ISSUED)
     PS->>ES: send(EmailRequest)
     Note over ES: templateFor(participation):<br/>já tem conta → LOGIN_LINK,<br/>senão, INVITE ou REGISTRATION_LINK<br/>conforme requestType
@@ -238,8 +338,6 @@ sequenceDiagram
 
     A->>PC: DELETE /competitions/{id}/players/{pid}
     PC->>PS: removePlayer(id, pid)
-    PS->>LLR: deleteByParticipation_Id(pid)
-    Note over PS: precisa vir antes -- LOGIN_LINK.participation_id<br/>é FK real, diferente de LOG
     PS->>PR: delete(participation)
     PS->>AL: record(PARTICIPATION_STATUS_CHANGED, "removed")
     PS-->>PC: void
