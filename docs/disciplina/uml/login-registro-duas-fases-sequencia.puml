@@ -1,0 +1,44 @@
+@startuml login-registro-duas-fases-sequencia
+
+title Consumo de link de competição em duas fases
+
+actor Jogador as J
+participant LoginController as LC
+participant LinkService as LiS
+participant CompetitionLinkHandler as H
+participant ParticipationRepository as PR
+participant UserRepository as UR
+participant LinkSessionService as SS
+
+note over LC, H
+  continuação do consumo genérico
+  (ver login-consumo-sequencia)
+end note
+
+LC -> LiS : consume(token)
+LiS -> H : consume(payload)
+H -> PR : findById(extra["participationId"])
+PR --> H : Participation
+
+alt payload.userId() == null (nunca teve conta)
+  H --> LiS : LinkOutcome.pending()
+  LiS --> LC : pending
+  LC --> J : 202 Accepted
+
+  J -> LC : POST /login-links/{token}/registration {name}
+  LC -> LiS : complete(token, {name})
+  LiS -> H : complete(payload, {name})
+  H -> UR : save(new User{name, email, registered=true, role=PLAYER})
+  H -> PR : save(Participation{user, status=IN_COMPETITION})
+  H --> LiS : LinkOutcome.authenticated(user.id, redirectData)
+  LiS -> SS : establish(user.id, token)
+  LiS --> LC : LinkOutcome{redirectTo=competition-page}
+  LC --> J : 200 + redireciona
+else payload.userId() != null (já tem conta)
+  H --> LiS : LinkOutcome.authenticated(userId, redirectData)
+  note over LiS : segue igual ao consumo genérico --\nmarca usado + establish()
+  LiS --> LC : LinkOutcome{redirectTo=competition-page}
+  LC --> J : 200 + redireciona
+end
+
+@enduml

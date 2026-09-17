@@ -57,10 +57,34 @@ BDD define o que o sistema deve fazer em instruções estruturadas. Essas instru
 | Tratamento de exceções centralizado | Atendido — ApiExceptionHandler com @ControllerAdvice |
 | Duas ou mais consultas Spring Data além do CRUD básico | Atendido — bem mais que duas, em vários repositórios |
 | Documentação da API via OpenAPI/Swagger | Atendido como contrato estático (docs/openapi.yaml); falta uma UI interativa (Swagger UI) rodando junto da aplicação — ver seção 5 |
-| Organização de pacotes por domínio/funcionalidade, não por camada técnica | **Não atendido** — pacotes hoje são web/, service/, repository/, domain/, email/, captcha/ |
+| Organização de pacotes por domínio/funcionalidade, não por camada técnica | Atendido — pacotes reorganizados por domínio (link/, login/, competition/, log/, email/, captcha/, common/); ver "Principais tarefas realizadas na Etapa 1" abaixo |
 | README com módulos, dependência entre eles e candidato a serviço independente | Parcial — a informação existe implicitamente, mas não está escrita no README nesse formato |
 
 ### **Principais tarefas realizadas na Etapa 1**
+
+Reorganizamos os pacotes de `app/` por domínio de negócio (`link`, `login`, `competition`, `log`, `email`, `captcha`, `common`), abandonando a separação anterior por camada técnica (`web`/`service`/`repository`/`domain`).
+
+Como estudo de caso desse princípio, revisamos em seguida o mecanismo de login por link mágico enviado por e-mail. Antes da revisão, o pacote responsável pelo link tinha uma referência direta (chave estrangeira) para a competição — o mecanismo genérico de link "sabia" sobre um caso de uso específico, violando a separação de responsabilidades entre módulos. Invertemos essa dependência aplicando o Dependency Inversion Principle: os módulos consumidores (`login`, para login avulso; `competition`, para convite/pedido de entrada) passaram a implementar uma interface (`LinkHandler`) e a depender do mecanismo genérico, nunca o contrário. Essa direção de dependência é verificável estaticamente — nenhum import de `login`/`competition` existe dentro do pacote `link`.
+
+O diagrama abaixo mostra a arquitetura resultante: um serviço genérico (`LinkService`) orquestra o ciclo de vida do link, um roteador (`LinkRouter`) despacha pela chave de serviço gravada no link para o `LinkHandler` correto, e cada módulo consumidor implementa essa interface.
+
+![Arquitetura do mecanismo de link: LinkService, LinkRouter e os handlers de cada consumidor](image/login-arquitetura-classes.png)
+
+O modelo de dados acompanha essa inversão: as tabelas do mecanismo genérico (`link_record`, `login_session`) não têm mais chave estrangeira para as tabelas dos módulos consumidores.
+
+![Modelo de dados: User/Role e LinkRecord/LoginSession, sem FK entre os dois grupos](image/login-modelo-dados-classes.png)
+
+Os diagramas de sequência a seguir documentam o fluxo completo, do pedido do link ao consumo. Primeiro, o pedido de um login avulso:
+
+![Sequência: pedido de login avulso](image/login-pedido-sequencia.png)
+
+O consumo do link é genérico — o mesmo endpoint (`GET /login-links/{token}`) atende tanto ao login avulso quanto à confirmação de entrada em competição, despachando pela chave de serviço gravada no link no momento em que ele foi criado:
+
+![Sequência: consumo genérico do link](image/login-consumo-sequencia.png)
+
+Por fim, quando o link é de competição e o jogador nunca teve conta, o consumo inicial fica pendente até um segundo passo (fornecer o nome) completar o cadastro:
+
+![Sequência: registro em duas fases via CompetitionLinkHandler](image/login-registro-duas-fases-sequencia.png)
 
 ## **Etapa 2 — Separação e Comunicação entre Serviços**
 

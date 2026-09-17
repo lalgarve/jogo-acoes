@@ -1,0 +1,29 @@
+@startuml login-pedido-sequencia
+
+title Pedido de login avulso (POST /login-requests)
+
+actor Jogador as J
+participant LoginController as LC
+participant LinkService as LiS
+participant UserRepository as UR
+participant AuditLogService as AL
+participant EmailSender as ES
+
+J -> LC : POST /login-requests {email}
+LC -> UR : findByEmail(email)
+UR --> LC : User (ou vazio)
+
+alt e-mail desconhecido
+  note over LC : não revela se o e-mail existe -- retorna igual
+  LC --> J : 202 Accepted
+else e-mail conhecido
+  LC -> LiS : invalidateActiveLinksFor(user.id)
+  note over LiS : invalida qualquer LinkRecord ainda ativo\n(não usado/expirado) desse usuário
+  LC -> LiS : create("login", LinkPayload{userId, email, extra={}})
+  LiS --> LC : LinkCreationResult{id, token}
+  LC -> AL : record(LOGIN_LINK_ISSUED)
+  LC -> ES : send(EmailRequest{template=LOGIN_LINK, link=/login-links/{token}})
+  LC --> J : 202 Accepted
+end
+
+@enduml
