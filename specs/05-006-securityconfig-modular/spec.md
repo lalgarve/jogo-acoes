@@ -1,7 +1,7 @@
 # Spec: SecurityConfig modular por módulo
 
 **Status:** rascunho
-**Issue:** #<número da Issue-épico, quando criada>
+**Issue:** [#53](https://github.com/lalgarve/jogo-acoes/issues/53)
 **Iteração:** iteration-5
 
 ## Resumo

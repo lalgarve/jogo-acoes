@@ -7,10 +7,12 @@ vivem os testes) já estão resolvidas em `plan.md` — esta lista só quebra a 
 passos.
 
 **Pré-requisito de ordem (não bloqueio técnico rígido)**: pressupõe a spec
-[05-006](../05-006-securityconfig-modular/tasks.md) já aplicada — `SecurityConfigContributor`
-por módulo é o que deixa a autorização real organizada e legível; o `WebInvocationPrivilegeEvaluator`
-funcionaria igual contra o `SecurityConfig` monolítico de hoje, mas faz mais sentido sequenciar
-depois pra não competir por revisão na mesma janela (ver `plan.md`).
+[05-006](../05-006-securityconfig-modular/tasks.md) (Issue-épico
+[#53](https://github.com/lalgarve/jogo-acoes/issues/53)) já aplicada —
+`SecurityConfigContributor` por módulo é o que deixa a autorização real organizada e legível; o
+`WebInvocationPrivilegeEvaluator` funcionaria igual contra o `SecurityConfig` monolítico de
+hoje, mas faz mais sentido sequenciar depois pra não competir por revisão na mesma janela (ver
+`plan.md`).
 
 **Ordem: testes primeiro, sem passo de contrato** — mesmo princípio das specs anteriores, mas
 adaptado: esta spec não implementa comportamento nenhum, ela só verifica que o contrato já
@@ -19,12 +21,16 @@ final da spec, não um passo intermediário — cada um deve, idealmente, já na
 estado atual (é o que a spec afirma); se algum nascer vermelho, isso é um achado real (divergência
 entre `docs/openapi.yaml` e o código), corrigido na T003.
 
+Todas as tarefas abaixo são acompanhadas como checklist na Issue-épico
+[#54](https://github.com/lalgarve/jogo-acoes/issues/54) — nenhuma virou Issue própria (todas
+pequenas o bastante para não precisar de PR isolada).
+
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Escrever `common/OpenApiRoutesConsistencyTest.java` — lê `docs/openapi.yaml` com SnakeYAML, extrai `(método, path)` de cada operação; compara contra `RequestMappingHandlerMapping` filtrado ao pacote-base do projeto; rodar e registrar o resultado (esperado: verde, nenhuma rota fora do contrato hoje) | — | [P] | #<n> |
-| T002 | Escrever `common/OpenApiRolesConsistencyTest.java` — lê `x-roles` de cada operação; para cada uma, três chamadas a `WebInvocationPrivilegeEvaluator` (anônimo, `ROLE_PLAYER`, `ROLE_ADMINISTRATOR`) contra o path com placeholders substituídos por `999999`; compara resultado contra o esperado (`[]` → permite as três; `[ADMINISTRATOR]` → só `ROLE_ADMINISTRATOR`; `[PLAYER, ADMINISTRATOR]` → nega só anônimo); rodar e registrar o resultado (esperado: verde, ver levantamento em `plan.md`) | — | [P] | #<n> |
-| T003 | Só se T001 e/ou T002 vierem vermelhos: investigar e corrigir o lado errado (`docs/openapi.yaml` ou o código — rota/regra de acesso), registrando o achado no `plan.md` desta spec. Se os dois vierem verdes na primeira execução, marcar esta tarefa como não aplicável ao concluir a spec, sem código nenhum pra escrever | T001, T002 | | #<n> |
-| T004 | Rodar a suíte completa (`mvn test`) — confirmar que os dois testes novos entram na contagem e tudo continua verde, sem nenhuma mudança de comportamento além da eventual correção da T003 | T001, T002, T003 | | #<n> |
+| T001 | Escrever `common/OpenApiRoutesConsistencyTest.java` — lê `docs/openapi.yaml` com SnakeYAML, extrai `(método, path)` de cada operação; compara contra `RequestMappingHandlerMapping` filtrado ao pacote-base do projeto; rodar e registrar o resultado (esperado: verde, nenhuma rota fora do contrato hoje) | — | [P] | #54 |
+| T002 | Escrever `common/OpenApiRolesConsistencyTest.java` — lê `x-roles` de cada operação; para cada uma, três chamadas a `WebInvocationPrivilegeEvaluator` (anônimo, `ROLE_PLAYER`, `ROLE_ADMINISTRATOR`) contra o path com placeholders substituídos por `999999`; compara resultado contra o esperado (`[]` → permite as três; `[ADMINISTRATOR]` → só `ROLE_ADMINISTRATOR`; `[PLAYER, ADMINISTRATOR]` → nega só anônimo); rodar e registrar o resultado (esperado: verde, ver levantamento em `plan.md`) | — | [P] | #54 |
+| T003 | Só se T001 e/ou T002 vierem vermelhos: investigar e corrigir o lado errado (`docs/openapi.yaml` ou o código — rota/regra de acesso), registrando o achado no `plan.md` desta spec. Se os dois vierem verdes na primeira execução, marcar esta tarefa como não aplicável ao concluir a spec, sem código nenhum pra escrever | T001, T002 | | #54 |
+| T004 | Rodar a suíte completa (`mvn test`) — confirmar que os dois testes novos entram na contagem e tudo continua verde, sem nenhuma mudança de comportamento além da eventual correção da T003 | T001, T002, T003 | | #54 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.

@@ -1,7 +1,7 @@
 # Spec: Consistência entre contrato OpenAPI e implementação
 
 **Status:** rascunho
-**Issue:** #<número da Issue-épico, quando criada>
+**Issue:** [#54](https://github.com/lalgarve/jogo-acoes/issues/54)
 **Iteração:** iteration-5
 
 ## Resumo

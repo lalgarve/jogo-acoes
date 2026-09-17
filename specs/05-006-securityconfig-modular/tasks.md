@@ -14,17 +14,21 @@ eles verificam — um dos dois nasce vermelho (nada implementa `SecurityConfigCo
 o outro já nasce verde (nenhuma rota muda nesta spec, ele serve de trava contra regressão
 futura, não de ciclo vermelho/verde).
 
+Todas as tarefas abaixo são acompanhadas como checklist na Issue-épico
+[#53](https://github.com/lalgarve/jogo-acoes/issues/53) — nenhuma virou Issue própria (todas
+pequenas o bastante para não precisar de PR isolada).
+
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Adicionar dependência `com.tngtech.archunit:archunit-junit5` (escopo `test`, versão mais recente estável) ao `app/pom.xml` | — | [P] | #<n> |
-| T002 | Criar a interface `SecurityConfigContributor` em `login/` — só a interface (`contribute(registry)`), nenhuma implementação ainda; necessária pra T003 poder referenciar o tipo | — | [P] | #<n> |
-| T003 | Escrever `common/ArchitectureTest.java` (regra ArchUnit: toda classe `@RestController` está num pacote-base que também contém uma classe implementando `SecurityConfigContributor`) e rodar — confirmar que falha (vermelho): `login`/`competition` têm `@RestController` mas nenhuma classe implementa `SecurityConfigContributor` ainda | T001, T002 | | #<n> |
-| T004 | Escrever `common/RouteOwnershipTest.java` (via `RequestMappingHandlerMapping`: nenhuma rota mapeia `/`; cada primeiro segmento de path pertence a um único módulo) e rodar — já deve passar (verde) sem nenhuma mudança de rota | — | [P] | #<n> |
-| T005 | Criar `login/LoginSecurityConfigContributor.java` (`@Component`), movendo para lá os matchers `permitAll` de `/login-requests`, `/login-links/**` que hoje estão em `SecurityConfig` | T002 | | #<n> |
-| T006 | Criar `competition/CompetitionSecurityConfigContributor.java` (`@Component`), movendo para lá os matchers de `/competitions*` (públicos e administrativos) que hoje estão em `SecurityConfig` | T002 | | #<n> |
-| T007 | Atualizar `SecurityConfig.securityFilterChain`: injetar `List<SecurityConfigContributor>`, iterar chamando `contribute(registry)` de cada um, remover os `requestMatchers` de módulo que ficaram inline, manter `.anyRequest().authenticated()` por último e toda a config transversal (csrf/formLogin/httpBasic/`SecurityContextRepository`/`exceptionHandling`) como está | T005, T006 | | #<n> |
-| T008 | Rodar `ArchitectureTest` de novo — confirmar verde | T003, T007 | | #<n> |
-| T009 | Rodar a suíte completa (`mvn test`) — confirmar que a contagem/resultado de comportamento não muda em relação ao estado antes desta spec (mesmos 119 cenários/testes existentes, mais os dois testes novos, nenhuma rota/regra de acesso diferente) | T004, T008 | | #<n> |
+| T001 | Adicionar dependência `com.tngtech.archunit:archunit-junit5` (escopo `test`, versão mais recente estável) ao `app/pom.xml` | — | [P] | #53 |
+| T002 | Criar a interface `SecurityConfigContributor` em `login/` — só a interface (`contribute(registry)`), nenhuma implementação ainda; necessária pra T003 poder referenciar o tipo | — | [P] | #53 |
+| T003 | Escrever `common/ArchitectureTest.java` (regra ArchUnit: toda classe `@RestController` está num pacote-base que também contém uma classe implementando `SecurityConfigContributor`) e rodar — confirmar que falha (vermelho): `login`/`competition` têm `@RestController` mas nenhuma classe implementa `SecurityConfigContributor` ainda | T001, T002 | | #53 |
+| T004 | Escrever `common/RouteOwnershipTest.java` (via `RequestMappingHandlerMapping`: nenhuma rota mapeia `/`; cada primeiro segmento de path pertence a um único módulo) e rodar — já deve passar (verde) sem nenhuma mudança de rota | — | [P] | #53 |
+| T005 | Criar `login/LoginSecurityConfigContributor.java` (`@Component`), movendo para lá os matchers `permitAll` de `/login-requests`, `/login-links/**` que hoje estão em `SecurityConfig` | T002 | | #53 |
+| T006 | Criar `competition/CompetitionSecurityConfigContributor.java` (`@Component`), movendo para lá os matchers de `/competitions*` (públicos e administrativos) que hoje estão em `SecurityConfig` | T002 | | #53 |
+| T007 | Atualizar `SecurityConfig.securityFilterChain`: injetar `List<SecurityConfigContributor>`, iterar chamando `contribute(registry)` de cada um, remover os `requestMatchers` de módulo que ficaram inline, manter `.anyRequest().authenticated()` por último e toda a config transversal (csrf/formLogin/httpBasic/`SecurityContextRepository`/`exceptionHandling`) como está | T005, T006 | | #53 |
+| T008 | Rodar `ArchitectureTest` de novo — confirmar verde | T003, T007 | | #53 |
+| T009 | Rodar a suíte completa (`mvn test`) — confirmar que a contagem/resultado de comportamento não muda em relação ao estado antes desta spec (mesmos 119 cenários/testes existentes, mais os dois testes novos, nenhuma rota/regra de acesso diferente) | T004, T008 | | #53 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
