@@ -9,6 +9,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.security.web.context.SecurityContextRepository;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * URL-based authorization (decision 4 in docs/context/iteracao-3.md): no UserDetailsService/
@@ -16,6 +17,11 @@ import java.io.IOException;
  * auto-configuration to work with -- this SecurityFilterChain replaces it entirely.
  * Authentication itself is established by LinkService/LoginLinkSessionService after
  * LoginController validates a login link, not by anything in this filter chain.
+ *
+ * Per-module route rules live in each module's own {@link SecurityConfigContributor} (spec
+ * 05-006) -- this class only aggregates them and appends the final
+ * {@code anyRequest().authenticated()} catch-all, plus configuration that isn't any module's
+ * concern (csrf/formLogin/httpBasic/session repository/exception handling).
  */
 @Configuration
 @EnableWebSecurity
@@ -27,18 +33,17 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityContextRepository securityContextRepository) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityContextRepository securityContextRepository,
+                                                     List<SecurityConfigContributor> contributors) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .formLogin(login -> login.disable())
                 .httpBasic(basic -> basic.disable())
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/login-requests", "/login-links/**", "/competitions/*/entry-requests", "/competitions/public").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/competitions").hasRole("ADMINISTRATOR")
-                        .requestMatchers("/competitions/*/invite-emails", "/competitions/*/players", "/competitions/*/players/**")
-                        .hasRole("ADMINISTRATOR")
-                        .anyRequest().authenticated())
+                .authorizeHttpRequests(authorize -> {
+                    contributors.forEach(contributor -> contributor.contribute(authorize));
+                    authorize.anyRequest().authenticated();
+                })
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(SecurityConfig::writeNotLoggedIn)
                         .accessDeniedHandler((request, response, accessDeniedException) -> writeAccessDenied(response)));

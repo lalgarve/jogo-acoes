@@ -1,6 +1,6 @@
 # Spec: SecurityConfig modular por módulo
 
-**Status:** rascunho
+**Status:** implementado (sessão 2026-09-17 — ver `tasks.md` para o checklist)
 **Issue:** [#53](https://github.com/lalgarve/jogo-acoes/issues/53)
 **Iteração:** iteration-5
 
