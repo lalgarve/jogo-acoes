@@ -26,7 +26,10 @@ inversão de dependência que esta spec aplica a regras de autorização em vez 
 | Módulos sem endpoint HTTP hoje (`email`, `log`, `captcha`, `common`) | Não ganham contributor nesta spec. | resolvida | Nenhuma rota para registrar — um contributor vazio não teria propósito; ver "Fora de escopo" em `spec.md`. |
 | O que fica central em `SecurityConfig`, fora dos contributors | `csrf().disable()`, `formLogin().disable()`, `httpBasic().disable()`, o bean `SecurityContextRepository`, `exceptionHandling` (401/403 em JSON), e o `.anyRequest().authenticated()` final. | resolvida | Nenhum desses é regra de rota de um módulo específico — é configuração transversal do mecanismo de autenticação/sessão do sistema inteiro. |
 | ArchUnit para checar "todo módulo com `@RestController` tem contributor"? | Sim — nova dependência `com.tngtech.archunit:archunit-junit5` (escopo `test`, versão mais recente estável no Maven Central no momento da implementação). Um teste `ArchitectureTest` usa `@AnalyzeClasses(packages = "dev.leilaalgarve.jogoacoes")` com uma regra customizada: toda classe anotada `@RestController` deve estar num pacote-base que também contenha uma classe implementando `SecurityConfigContributor`. Roda como teste normal (`mvn test`), falha o build inteiro se violada — não é um teste isolado que alguém possa esquecer de olhar. | resolvida | Mitiga diretamente o risco "nenhuma checagem em tempo de compilação contra rota órfã" já sinalizado nesta spec. ArchUnit é o padrão de mercado pra regra estrutural desse tipo (reflection sobre bytecode/classes/pacotes) — não faz sentido inventar mecanismo próprio pra isso. |
-| ArchUnit também detecta contributors com matchers sobrepostos entre módulos? | Não — fora do alcance da ferramenta: ArchUnit opera sobre estrutura de classes/pacotes/dependências, não sobre os valores de `String` passados em runtime pro DSL do Spring Security (`requestMatchers("/algum/caminho")`). Esse risco continua coberto só pela convenção de prefixo por módulo (spec.md) + cobertura comportamental da suíte Cucumber existente. | resolvida | Ser honesto sobre o limite da ferramenta evita falsa sensação de segurança. A alternativa — um teste que reconstrói o `SecurityFilterChain` de verdade e bate URLs de exemplo contra cada regra — é mais cara e frágil do que confiar na suíte Cucumber, que já cobre esse comportamento de qualquer forma (é o critério de aceite desta própria spec). |
+| ArchUnit também detecta contributors com matchers sobrepostos entre módulos? | Não — fora do alcance da ferramenta: ArchUnit opera sobre estrutura de classes/pacotes/dependências, não sobre os valores de `String` passados em runtime pro DSL do Spring Security (`requestMatchers("/algum/caminho")`). **Revisão abaixo**: essa parte da análise era certa (ArchUnit não é a ferramenta), mas a conclusão de que não valia a pena checar automaticamente estava incompleta — existe uma ferramenta melhor pra esse caso específico. | resolvida | — |
+| Como detectar sobreposição de rota entre módulos de forma automática, então? | Um teste dedicado usando `RequestMappingHandlerMapping` — o bean real do Spring MVC que resolve as rotas de verdade a partir das anotações dos controllers (inclusive herdadas das interfaces geradas pelo OpenAPI-generator, ex. `CompetitionsApi`). Agrupa os `RequestMappingInfo` por módulo (pacote) e por primeiro segmento de path, e falha se (a) algum padrão for exatamente `/`, ou (b) o mesmo primeiro segmento aparecer em módulos diferentes. | resolvida | Mais preciso que reconstruir/parsear os literais do `SecurityConfigContributor`: usa a metadata que o próprio Spring já computou, sem duplicar lógica de resolução de path. Também mais barato que subir a suíte Cucumber inteira só pra essa checagem estrutural — roda como teste unitário comum. |
+| Onde vive o teste de `RequestMappingHandlerMapping` | `common/RouteOwnershipTest.java` — mesmo módulo do `ArchitectureTest`. `@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)`, autowire de `RequestMappingHandlerMapping`, sem precisar subir servidor de verdade (porta aleatória). | resolvida | Mesmo critério de `common/` já usado pro `ArchitectureTest` — infra de verificação sem domínio próprio. Contexto completo (não um `@WebMvcTest` fatiado) porque os controllers dependem de serviços/repositórios reais pra instanciar, mesmo padrão que o resto da suíte já usa. |
+| Como o teste define "módulo" e "primeiro segmento de rota" | Módulo = segmento de pacote imediatamente após o pacote-base `dev.leilaalgarve.jogoacoes` (`handlerMethod.getBeanType().getPackageName()`) — mesmo critério do `ArchitectureTest`; handler methods fora do pacote-base (ex. `BasicErrorController` do Spring Boot, mapeando `/error`) são ignorados. Primeiro segmento = trecho até a próxima `/` depois de remover a barra inicial (`/competitions/public` → `competitions`; `/login-requests` → `login-requests`; `/login-links/**` → `login-links`). | resolvida | Consistência entre os dois testes de arquitetura; `/error` não é rota de nenhum módulo de domínio, não faz sentido incluir na checagem. Regra de segmento simples o bastante pra cobrir as rotas reais de hoje sem generalizar além do necessário. |
 | Onde vive o teste ArchUnit | `common/` (módulo já reservado a infra/testsupport sem domínio próprio — mesmo critério que já aloca `ScenarioWorld`/fixtures lá, spec 05-002), classe `ArchitectureTest`. Nome genérico, não `SecurityConfigContributorArchitectureTest`, para comportar outras regras estruturais do projeto no futuro sem precisar de uma classe por regra. | resolvida | Um teste de arquitetura é infra sem dono de domínio, mesmo raciocínio que já levou `common/` a existir. |
 
 Decisões marcadas "em aberto" viram commit `decision:` quando resolvidas (ver
@@ -45,6 +48,8 @@ Decisões marcadas "em aberto" viram commit `decision:` quando resolvidas (ver
   agrupamento de hoje.
 - `common/ArchitectureTest.java` (novo, teste) — regra ArchUnit "todo `@RestController` tem
   `SecurityConfigContributor` no mesmo pacote-base".
+- `common/RouteOwnershipTest.java` (novo, teste) — via `RequestMappingHandlerMapping`: nenhuma
+  rota mapeia `/`; cada primeiro segmento de path pertence a um único módulo.
 - `app/pom.xml` (modificado) — dependência nova `com.tngtech.archunit:archunit-junit5`, escopo
   `test`.
 
@@ -57,12 +62,14 @@ Decisões marcadas "em aberto" viram commit `decision:` quando resolvidas (ver
   `CompetitionSecurityConfigContributor` continua existindo). Falha segura de qualquer forma: a
   rota não coberta cai no `anyRequest().authenticated()` central, nunca fica aberta por
   acidente.
-- **Contributors com matchers sobrepostos entre módulos diferentes não são detectados** — a
-  invariante ("cada módulo só mexe no próprio prefixo de rota") é uma convenção, não uma
-  checagem automática; violação só apareceria em produção como uma regra silenciosamente
-  ignorada pelo "primeiro match vence" do Spring Security. Aceitável pelo tamanho atual do
-  projeto (2 módulos com HTTP hoje); revisar se crescer para módulos com namespaces de rota
-  menos óbvios.
+- **Sobreposição de rota entre módulos, agora verificada automaticamente** — o teste
+  `RouteOwnershipTest` (`RequestMappingHandlerMapping`) garante que dois módulos não mapeiam sob
+  o mesmo primeiro segmento de path, e que nenhum mapeia o path raiz. O que continua sem
+  checagem automática é mais fino: um `SecurityConfigContributor` cujo matcher (`String`
+  literal) não corresponde exatamente às rotas reais do próprio módulo (ex. erro de digitação) —
+  esse caso residual já é pego pela suíte Cucumber comportamental (a rota erraria o
+  comportamento de acesso e algum cenário existente falharia), não por um teste de arquitetura
+  dedicado.
 - **Refactor puramente estrutural, sem `.feature` novo** — a suíte Cucumber existente é o único
   critério de aceite; risco baixo (mesma regra, só reorganizada), mas exige rodar a suíte
   completa antes/depois para confirmar bit-a-bit que nada mudou (mesma contagem, mesmos

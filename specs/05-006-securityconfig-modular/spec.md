@@ -53,26 +53,37 @@ mesmos cenários, sem nenhuma alteração de texto Gherkin.
   tem uma classe implementando `SecurityConfigContributor` no mesmo pacote-base — se um módulo
   novo expuser rota HTTP e esquecer de registrar suas próprias regras, o build falha em vez de
   a rota cair silenciosamente (e sem aviso) no `anyRequest().authenticated()` central.
+- Teste dedicado usando `RequestMappingHandlerMapping` (metadados reais de rota que o Spring MVC
+  calcula a partir dos `@RequestMapping`/`@GetMapping`/etc. dos controllers — não uma convenção
+  lida de fora) garante duas invariantes sobre o mapeamento de rotas da aplicação inteira: (1)
+  nenhum controller de nenhum módulo mapeia o path raiz (`/`); (2) cada primeiro segmento de path
+  (ex. `competitions`, `login-requests`) é mapeado por controllers de um único módulo — se dois
+  módulos mapearem sob o mesmo prefixo, o teste falha listando o prefixo e os módulos em
+  conflito.
 
 ## Requisitos não-funcionais
 
 - **Nenhuma mudança de comportamento observável**: mesmas rotas públicas, mesmas rotas exigindo
   `ROLE_ADMINISTRATOR`, mesmas mensagens de erro 401/403.
-- **Invariante de não-sobreposição entre módulos**: cada contributor só registra matchers dentro
-  do prefixo de recurso do próprio módulo (`/login-*` para o módulo `login`, `/competitions*`
-  para o módulo `competition`, e assim por diante para módulos futuros) — como módulos
-  diferentes nunca competem pelo mesmo caminho, a ordem em que os contributors são aplicados não
-  afeta o resultado (só dentro de um mesmo contributor a ordem dos seus próprios matchers
-  importa, exatamente como já é hoje dentro do método único).
+- **Invariante de não-sobreposição entre módulos, verificada automaticamente**: cada contributor
+  só registra matchers dentro do prefixo de recurso do próprio módulo (`/login-*` para o módulo
+  `login`, `/competitions*` para o módulo `competition`, e assim por diante para módulos
+  futuros) — e o teste de `RequestMappingHandlerMapping` acima garante que os módulos, de fato,
+  nunca mapeiam rota nenhuma sob o mesmo prefixo em primeiro lugar (deixa de ser só uma
+  convenção não verificada). Como módulos diferentes nunca competem pelo mesmo caminho, a ordem
+  em que os contributors são aplicados no `SecurityFilterChain` não afeta o resultado (só dentro
+  de um mesmo contributor a ordem dos seus próprios matchers importa, exatamente como já é hoje
+  dentro do método único).
 
 ## Fora de escopo
 
 - Módulos que hoje não expõem endpoint HTTP nenhum (`email`, `log`, `captcha`, `common`) não
   ganham contributor nesta spec — só quando algum deles passar a expor uma rota própria.
-- O teste ArchUnit desta spec verifica só "o módulo tem um contributor" (existência), não
-  "o contributor cobre exatamente as mesmas rotas que os controllers do módulo expõem", nem
-  detecta matchers de módulos diferentes que se sobreponham entre si — ver `plan.md` para por
-  que essas duas checagens ficam fora do alcance da ferramenta nesta spec.
+- O teste ArchUnit desta spec verifica só "o módulo tem um contributor" (existência), não "o
+  contributor cobre exatamente as mesmas rotas que os controllers do módulo expõem" — essa
+  checagem fina (contributor ↔ rotas reais do próprio módulo) continua sem cobertura automática,
+  ver `plan.md`. A sobreposição de rota *entre módulos diferentes* é coberta pelo teste de
+  `RequestMappingHandlerMapping` acima, não pelo ArchUnit.
 - Não resolve a divergência entre `x-roles` (anotação OpenAPI, documentação) e a autorização de
   fato em `SecurityConfig`, já sinalizada como risco em aberto no `plan.md` da spec 05-004 — fica
   como possível trabalho futuro habilitado por esta reorganização (cada contributor vira uma
