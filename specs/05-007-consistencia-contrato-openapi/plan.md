@@ -52,12 +52,14 @@ em lugar nenhum).
   `SecurityConfig` monolítico de hoje também (`WebInvocationPrivilegeEvaluator` não sabe nem se
   importa como a regra foi organizada em código), mas faz mais sentido sequenciar depois da
   05-006 pra não competir por revisão na mesma janela.
-- **`WebInvocationPrivilegeEvaluator` pode não estar auto-configurado como bean** dependendo de
-  como o Spring Boot decide registrar (normalmente é automático quando há uma única cadeia de
-  segurança, mas não é garantido em toda configuração) — plano B, se faltar: construir
-  `DefaultWebInvocationPrivilegeEvaluator` manualmente a partir do(s) `SecurityFilterChain`
-  injetado(s) (o construtor aceita `List<SecurityFilterChain>` diretamente); não muda a decisão
-  de arquitetura, só o jeito de obter a instância.
+- ~~**`WebInvocationPrivilegeEvaluator` pode não estar auto-configurado como bean**~~ — não se
+  confirmou: `WebSecurityConfiguration` (importada por `@EnableWebSecurity`, já presente em
+  `SecurityConfig`) expõe um bean `privilegeEvaluator()` automaticamente. `@Autowired
+  WebInvocationPrivilegeEvaluator` funcionou direto, sem nenhuma construção manual. (Achado
+  extra: a implementação real em Spring Security 7.x é
+  `AuthorizationManagerWebInvocationPrivilegeEvaluator`, não `DefaultWebInvocationPrivilegeEvaluator`
+  como o "Plano B" original desta linha supunha — API baseada em `AuthorizationManager`, não na
+  antiga `FilterSecurityInterceptor`; irrelevante na prática já que o bean vem pronto.)
 - **Falso positivo se um path tiver múltiplos segmentos-variável em posições que colidem com
   literais de outra rota** (ex. testar `/competitions/{competitionId}` com um valor que por
   acaso bate num path literal de outra rota) — mitigação: usar um valor dummy improvável

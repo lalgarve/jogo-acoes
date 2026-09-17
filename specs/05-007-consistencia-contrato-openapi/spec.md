@@ -1,6 +1,7 @@
 # Spec: Consistência entre contrato OpenAPI e implementação
 
-**Status:** rascunho
+**Status:** implementado (sessão 2026-09-17 — ver `plan.md` para achados e `tasks.md` para o
+checklist)
 **Issue:** [#54](https://github.com/lalgarve/jogo-acoes/issues/54)
 **Iteração:** iteration-5
 
