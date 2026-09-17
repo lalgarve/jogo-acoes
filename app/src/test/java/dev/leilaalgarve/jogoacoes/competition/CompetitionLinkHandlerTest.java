@@ -62,8 +62,7 @@ class CompetitionLinkHandlerTest {
 
         assertThat(outcome.isPending()).isFalse();
         assertThat(outcome.userId()).isEqualTo(5L);
-        assertThat(outcome.redirectData()).containsEntry("redirectTo", "competition-page");
-        assertThat(outcome.redirectData()).containsEntry("competitionId", "10");
+        assertThat(outcome.redirectData()).containsEntry("redirectTo", "/competitions/10");
     }
 
     @Test
@@ -97,7 +96,7 @@ class CompetitionLinkHandlerTest {
         LinkOutcome outcome = handler().consume(payload(user.getId(), 1L));
 
         assertThat(outcome.isPending()).isFalse();
-        assertThat(outcome.redirectData()).containsEntry("redirectTo", "competition-page");
+        assertThat(outcome.redirectData()).containsEntry("redirectTo", "/competitions/10");
     }
 
     @Test
@@ -121,7 +120,7 @@ class CompetitionLinkHandlerTest {
         assertThat(outcome.userId()).isEqualTo(7L);
         assertThat(participation.getStatus()).isEqualTo(ParticipationStatus.IN_COMPETITION);
         assertThat(participation.getUser().getId()).isEqualTo(7L);
-        assertThat(outcome.redirectData()).containsEntry("competitionId", "10");
+        assertThat(outcome.redirectData()).containsEntry("redirectTo", "/competitions/10");
     }
 
     @Test

@@ -16,32 +16,16 @@ tags:
   - name: entry-requests
   - name: login
   - name: players
+  - name: my-competitions
 
 paths:
   /competitions:
-    get:
-      tags: [entry-requests]
-      operationId: listPublicCompetitions
-      summary: List public competitions open to entry requests
-      parameters:
-        - name: type
-          in: query
-          schema:
-            $ref: '#/components/schemas/CompetitionType'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Competition'
     post:
       tags: [competitions]
       operationId: createCompetition
       summary: Create a competition (public or private)
       description: Requires an authenticated administrator (ROLE_ADMINISTRATOR).
+      x-roles: [ADMINISTRATOR]
       requestBody:
         required: true
         content:
@@ -68,6 +52,73 @@ paths:
         '403':
           description: Logged in, but not an administrator
 
+  /competitions/public:
+    get:
+      tags: [competitions]
+      operationId: listPublicCompetitions
+      summary: List public competitions open to entry requests
+      description: >
+        Discovery — no session required. Only PUBLIC competitions with status OPEN; a
+        competition never appears here once CLOSED, and PRIVATE competitions never appear
+        here at all (spec 05-004, browse_public_competitions.feature). Replaces the
+        `GET /competitions` placeholder that was in this contract but never implemented.
+      x-roles: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompetitionSummary'
+
+  /competitions/mine:
+    get:
+      tags: [my-competitions]
+      operationId: listMyCompetitions
+      summary: List the caller's own competitions, grouped by relationship
+      description: >
+        Requires a logged-in session (any authenticated role) — spec 05-004,
+        view_my_competitions.feature. Three fixed groups, always present even when empty.
+      x-roles: [PLAYER, ADMINISTRATOR]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyCompetitions'
+        '401': { description: Not logged in }
+
+  /competitions/{competitionId}:
+    get:
+      tags: [my-competitions]
+      operationId: getCompetitionDetail
+      summary: Get a competition's basic information and the caller's access level to it
+      description: >
+        Requires a logged-in session (any authenticated role); the caller's relationship to
+        the competition (participant, invited/requested-but-unconfirmed, administrator, or
+        none) decides `accessLevel`, not the route itself — see spec 05-004's
+        `CompetitionAccessResolver`. A player with no relationship to the competition gets
+        `404`, not `403`, so as not to reveal it exists (same pattern as
+        `requestOrConfirmEntry`).
+      x-roles: [PLAYER, ADMINISTRATOR]
+      parameters:
+        - name: competitionId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompetitionDetail'
+        '401': { description: Not logged in }
+        '404': { description: "Competition not found, or the caller has no relationship to it" }
+
   /competitions/{competitionId}/invite-emails:
     post:
       tags: [competitions]
@@ -76,6 +127,7 @@ paths:
       description: >
         "the administrator decides to send the invite e-mails <timing>" — timing is `now`
         or `later`. `later` leaves the competition AWAITING_INVITES with no e-mails sent yet.
+      x-roles: [ADMINISTRATOR]
       parameters:
         - name: competitionId
           in: path
@@ -111,7 +163,9 @@ paths:
         needs no body — entry is confirmed immediately from the session. A private
         competition without a prior invite always rejects (404, so as not to reveal it
         exists). Requesting again while a request is still pending resends the link instead
-        of creating a duplicate.
+        of creating a duplicate. Also the mechanism behind "confirm entry" from the spec
+        05-004 competition details screen (`canConfirmEntry`) — same endpoint, no new one.
+      x-roles: []
       parameters:
         - name: competitionId
           in: path
@@ -145,6 +199,14 @@ paths:
       tags: [login]
       operationId: requestLoginLink
       summary: Request a login link for an already-registered player or the administrator
+      description: >
+        Spec 05-005: `returnTo`, when present, is the page the caller was trying to reach
+        before being asked to log in — consuming the resulting link redirects there instead
+        of the role-based default. Must be a same-origin relative path (starts with a single
+        `/`, never `//` right after); anything else is silently ignored, falling back to the
+        default, since this endpoint requires no session and an unvalidated redirect target
+        would be an open redirect.
+      x-roles: []
       requestBody:
         required: true
         content:
@@ -154,6 +216,9 @@ paths:
               required: [email]
               properties:
                 email: { type: string, format: email }
+                returnTo:
+                  type: string
+                  description: Same-origin relative path to redirect to after login — see the operation description.
       responses:
         '202': { description: Accepted — link sent by e-mail if the address is known }
 
@@ -169,6 +234,7 @@ paths:
         on the current device, which just redirects); a fresh link for the same player
         invalidates any previous unused link; exceeding the configured device limit ends
         the oldest session instead of blocking the new login.
+      x-roles: []
       parameters:
         - name: token
           in: path
@@ -178,7 +244,7 @@ paths:
         '200':
           description: >
             Valid link, already-registered player — session established, redirect target
-            in the response body (competition page, admin page, or competitions list).
+            (a same-origin path) in the response body. See spec 05-005.
           content:
             application/json:
               schema:
@@ -199,6 +265,7 @@ paths:
       tags: [login]
       operationId: completeRegistration
       summary: Complete registration for a new player and confirm competition entry
+      x-roles: []
       parameters:
         - name: token
           in: path
@@ -227,6 +294,7 @@ paths:
       tags: [players]
       operationId: listPlayers
       summary: List/filter a competition's players
+      x-roles: [ADMINISTRATOR]
       parameters:
         - name: competitionId
           in: path
@@ -251,6 +319,7 @@ paths:
       tags: [players]
       operationId: invitePlayers
       summary: Invite new players to an existing private competition
+      x-roles: [ADMINISTRATOR]
       parameters:
         - name: competitionId
           in: path
@@ -275,6 +344,7 @@ paths:
       tags: [players]
       operationId: updatePlayerEmail
       summary: Edit a player's e-mail
+      x-roles: [ADMINISTRATOR]
       parameters:
         - name: competitionId
           in: path
@@ -310,6 +380,7 @@ paths:
       description: >
         Same underlying action for "remove that player" and "cancel the invite" — a
         pending invite is just a player whose status hasn't reached IN_COMPETITION yet.
+      x-roles: [ADMINISTRATOR]
       parameters:
         - name: competitionId
           in: path
@@ -327,6 +398,7 @@ paths:
       tags: [players]
       operationId: resendPlayerInviteEmail
       summary: Send or resend the invite e-mail to one player
+      x-roles: [ADMINISTRATOR]
       parameters:
         - name: competitionId
           in: path
@@ -344,6 +416,7 @@ paths:
       tags: [players]
       operationId: resendPlayerInviteEmails
       summary: Send or resend the invite e-mail to a group of players
+      x-roles: [ADMINISTRATOR]
       parameters:
         - name: competitionId
           in: path
@@ -389,6 +462,55 @@ components:
         status: { $ref: '#/components/schemas/CompetitionStatus' }
         creatorId: { type: integer, format: int64 }
 
+    CompetitionSummary:
+      description: >
+        Basic information only (spec 05-004) — used for discovery/listing, never the
+        response of createCompetition (that stays `Competition`, which also carries
+        `creatorId`/fees, administrator-only concerns).
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        type: { $ref: '#/components/schemas/CompetitionType' }
+        status: { $ref: '#/components/schemas/CompetitionStatus' }
+        startDate: { type: string, format: date }
+        durationDays: { type: integer }
+
+    AccessLevel:
+      type: string
+      enum: [READ, READ_WRITE]
+
+    CompetitionDetail:
+      allOf:
+        - $ref: '#/components/schemas/CompetitionSummary'
+        - type: object
+          properties:
+            recurring: { type: boolean }
+            buyFee: { type: number, format: double }
+            sellFee: { type: number, format: double }
+            accessLevel: { $ref: '#/components/schemas/AccessLevel' }
+            canConfirmEntry:
+              type: boolean
+              description: >
+                True when the caller has a pending Participation (invited or requested, not
+                yet confirmed) for this competition — the client should offer a "confirm
+                entry" action that calls POST /competitions/{competitionId}/entry-requests
+                with no body (the same endpoint requestOrConfirmEntry already exposes).
+
+    MyCompetitions:
+      description: Always all three groups, even when empty — never a flat list.
+      type: object
+      properties:
+        participating:
+          type: array
+          items: { $ref: '#/components/schemas/CompetitionSummary' }
+        pastParticipations:
+          type: array
+          items: { $ref: '#/components/schemas/CompetitionSummary' }
+        pendingConfirmation:
+          type: array
+          items: { $ref: '#/components/schemas/CompetitionSummary' }
+
     CompetitionCreateRequest:
       type: object
       required: [name, type, startDate, durationDays, buyFee, sellFee]
@@ -430,12 +552,16 @@ components:
         email: { type: string, format: email }
 
     LoginResult:
+      description: >
+        Spec 05-005: `redirectTo` is a full same-origin path, not a symbol — either the
+        caller's own `returnTo` (see requestLoginLink) when it was honored, or a role-based
+        default (`/admin`, `/competitions/mine`, or `/competitions/{id}`) otherwise. No
+        separate `competitionId` field — the id is already embedded in the path when
+        applicable.
       type: object
       properties:
         redirectTo:
           type: string
-          enum: [competition-page, competitions-list, admin-page]
-        competitionId: { type: integer, format: int64, nullable: true }
 
     Error:
       type: object

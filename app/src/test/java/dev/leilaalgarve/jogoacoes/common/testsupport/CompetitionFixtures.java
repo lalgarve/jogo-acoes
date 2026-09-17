@@ -39,6 +39,11 @@ public class CompetitionFixtures {
         return persist(CompetitionType.PUBLIC, CompetitionStatus.CLOSED);
     }
 
+    /** For combinations the three named factories above don't cover (e.g. an open private competition, invites already sent). */
+    public Competition custom(CompetitionType type, CompetitionStatus status) {
+        return persist(type, status);
+    }
+
     private Competition persist(CompetitionType type, CompetitionStatus status) {
         Competition competition = new Competition();
         competition.setName("Fixture competition " + UUID.randomUUID());

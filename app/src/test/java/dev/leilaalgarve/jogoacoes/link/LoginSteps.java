@@ -166,7 +166,7 @@ public class LoginSteps {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(200);
         String redirectTo = world.getLastResponse().jsonPath().getString("redirectTo");
         if (redirectTo != null) {
-            assertThat(redirectTo).isEqualTo("competition-page");
+            assertThat(redirectTo).isEqualTo("/competitions/" + world.getTargetCompetition().getId());
         } else {
             // The entry-requests endpoint returns a Participation, not a LoginResult --
             // matching competitionId is this endpoint's equivalent of a redirect target.
@@ -292,13 +292,13 @@ public class LoginSteps {
     @Then("the system redirects them to the page listing the competitions they are participating in or have participated in")
     public void the_system_redirects_them_to_the_page_listing_the_competitions() {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(200);
-        assertThat(world.getLastResponse().jsonPath().getString("redirectTo")).isEqualTo("competitions-list");
+        assertThat(world.getLastResponse().jsonPath().getString("redirectTo")).isEqualTo("/competitions/mine");
     }
 
     @Then("the system redirects them to the administration page")
     public void the_system_redirects_them_to_the_administration_page() {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(200);
-        assertThat(world.getLastResponse().jsonPath().getString("redirectTo")).isEqualTo("admin-page");
+        assertThat(world.getLastResponse().jsonPath().getString("redirectTo")).isEqualTo("/admin");
     }
 
     // -- Invalid/expired link --

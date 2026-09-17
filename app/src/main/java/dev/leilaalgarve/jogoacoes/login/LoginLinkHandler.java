@@ -30,19 +30,29 @@ public class LoginLinkHandler implements LinkHandler {
         if (payload.userId() == null) {
             throw new IllegalArgumentException("A standalone login link must always carry a userId");
         }
-        return redirectFor(payload.userId());
+        return redirectFor(payload.userId(), payload);
     }
 
     @Override
     public LinkOutcome alreadyAuthenticated(Long authenticatedUserId, LinkPayload payload) {
-        return redirectFor(authenticatedUserId);
+        return redirectFor(authenticatedUserId, payload);
     }
 
-    private LinkOutcome redirectFor(Long userId) {
-        boolean administrator = hasRole(userId, RoleName.ADMINISTRATOR);
+    /**
+     * Spec 05-005: an already-validated {@code returnTo} carried in {@code payload.extra()}
+     * (see {@code ReturnToValidator}/{@code LoginController.requestLoginLink}) wins over the
+     * role-based default.
+     */
+    private LinkOutcome redirectFor(Long userId, LinkPayload payload) {
+        String returnTo = payload.extra().get("returnTo");
         Map<String, String> redirectData = new HashMap<>();
-        redirectData.put("redirectTo", administrator ? "admin-page" : "competitions-list");
+        redirectData.put("redirectTo", returnTo != null ? returnTo : defaultDestination(userId));
         return LinkOutcome.authenticated(userId, redirectData);
+    }
+
+    private String defaultDestination(Long userId) {
+        boolean administrator = hasRole(userId, RoleName.ADMINISTRATOR);
+        return administrator ? "/admin" : "/competitions/mine";
     }
 
     private boolean hasRole(Long userId, String roleName) {

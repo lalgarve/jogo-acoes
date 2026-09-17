@@ -64,7 +64,10 @@ public class LoginController implements LoginApi {
         }
 
         linkService.invalidateActiveLinksFor(user.getId());
-        LinkCreationResult created = linkService.create(LoginLinkHandler.KEY, new LinkPayload(user.getId(), email, Map.of()));
+        Map<String, String> extra = ReturnToValidator.validate(requestLoginLinkRequest.getReturnTo())
+                .map(returnTo -> Map.of("returnTo", returnTo))
+                .orElse(Map.of());
+        LinkCreationResult created = linkService.create(LoginLinkHandler.KEY, new LinkPayload(user.getId(), email, extra));
         auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), user, "Login link issued to " + email);
 
         emailSender.send(new EmailRequest(user.getId(), email, user.getName(), null, null,
@@ -73,13 +76,6 @@ public class LoginController implements LoginApi {
     }
 
     private LoginResult toLoginResult(LinkOutcome outcome) {
-        Map<String, String> data = outcome.redirectData();
-        LoginResult result = new LoginResult();
-        result.setRedirectTo(LoginResult.RedirectToEnum.fromValue(data.get("redirectTo")));
-        String competitionId = data.get("competitionId");
-        if (competitionId != null) {
-            result.competitionId(Long.valueOf(competitionId));
-        }
-        return result;
+        return new LoginResult().redirectTo(outcome.redirectData().get("redirectTo"));
     }
 }
