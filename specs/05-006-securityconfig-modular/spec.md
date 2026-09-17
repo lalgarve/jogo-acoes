@@ -49,6 +49,10 @@ mesmos cenários, sem nenhuma alteração de texto Gherkin.
 - Configuração transversal que não é de nenhum módulo específico (csrf, formLogin, httpBasic,
   `SecurityContextRepository`, tratamento de exceção 401/403) continua central em
   `SecurityConfig`, sem mudança.
+- Teste ArchUnit garante, no build, que todo módulo com pelo menos um `@RestController` também
+  tem uma classe implementando `SecurityConfigContributor` no mesmo pacote-base — se um módulo
+  novo expuser rota HTTP e esquecer de registrar suas próprias regras, o build falha em vez de
+  a rota cair silenciosamente (e sem aviso) no `anyRequest().authenticated()` central.
 
 ## Requisitos não-funcionais
 
@@ -65,6 +69,10 @@ mesmos cenários, sem nenhuma alteração de texto Gherkin.
 
 - Módulos que hoje não expõem endpoint HTTP nenhum (`email`, `log`, `captcha`, `common`) não
   ganham contributor nesta spec — só quando algum deles passar a expor uma rota própria.
+- O teste ArchUnit desta spec verifica só "o módulo tem um contributor" (existência), não
+  "o contributor cobre exatamente as mesmas rotas que os controllers do módulo expõem", nem
+  detecta matchers de módulos diferentes que se sobreponham entre si — ver `plan.md` para por
+  que essas duas checagens ficam fora do alcance da ferramenta nesta spec.
 - Não resolve a divergência entre `x-roles` (anotação OpenAPI, documentação) e a autorização de
   fato em `SecurityConfig`, já sinalizada como risco em aberto no `plan.md` da spec 05-004 — fica
   como possível trabalho futuro habilitado por esta reorganização (cada contributor vira uma

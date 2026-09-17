@@ -25,6 +25,9 @@ inversão de dependência que esta spec aplica a regras de autorização em vez 
 | Contributors novos por módulo | `LoginSecurityConfigContributor` (`login/`) — move `/login-requests`, `/login-links/**` (`permitAll`). `CompetitionSecurityConfigContributor` (`competition/`) — move `/competitions/public`, `/competitions/*/entry-requests` (`permitAll`) e `POST /competitions`, `/competitions/*/invite-emails`, `/competitions/*/players`, `/competitions/*/players/**` (`hasRole(ADMINISTRATOR)`). Nenhuma rota muda de módulo dono — muda só onde o código que a registra mora. | resolvida | Mapeamento 1:1 com os controllers já existentes por módulo (`LoginController` em `login/`; os três controllers de competição em `competition/`). |
 | Módulos sem endpoint HTTP hoje (`email`, `log`, `captcha`, `common`) | Não ganham contributor nesta spec. | resolvida | Nenhuma rota para registrar — um contributor vazio não teria propósito; ver "Fora de escopo" em `spec.md`. |
 | O que fica central em `SecurityConfig`, fora dos contributors | `csrf().disable()`, `formLogin().disable()`, `httpBasic().disable()`, o bean `SecurityContextRepository`, `exceptionHandling` (401/403 em JSON), e o `.anyRequest().authenticated()` final. | resolvida | Nenhum desses é regra de rota de um módulo específico — é configuração transversal do mecanismo de autenticação/sessão do sistema inteiro. |
+| ArchUnit para checar "todo módulo com `@RestController` tem contributor"? | Sim — nova dependência `com.tngtech.archunit:archunit-junit5` (escopo `test`, versão mais recente estável no Maven Central no momento da implementação). Um teste `ArchitectureTest` usa `@AnalyzeClasses(packages = "dev.leilaalgarve.jogoacoes")` com uma regra customizada: toda classe anotada `@RestController` deve estar num pacote-base que também contenha uma classe implementando `SecurityConfigContributor`. Roda como teste normal (`mvn test`), falha o build inteiro se violada — não é um teste isolado que alguém possa esquecer de olhar. | resolvida | Mitiga diretamente o risco "nenhuma checagem em tempo de compilação contra rota órfã" já sinalizado nesta spec. ArchUnit é o padrão de mercado pra regra estrutural desse tipo (reflection sobre bytecode/classes/pacotes) — não faz sentido inventar mecanismo próprio pra isso. |
+| ArchUnit também detecta contributors com matchers sobrepostos entre módulos? | Não — fora do alcance da ferramenta: ArchUnit opera sobre estrutura de classes/pacotes/dependências, não sobre os valores de `String` passados em runtime pro DSL do Spring Security (`requestMatchers("/algum/caminho")`). Esse risco continua coberto só pela convenção de prefixo por módulo (spec.md) + cobertura comportamental da suíte Cucumber existente. | resolvida | Ser honesto sobre o limite da ferramenta evita falsa sensação de segurança. A alternativa — um teste que reconstrói o `SecurityFilterChain` de verdade e bate URLs de exemplo contra cada regra — é mais cara e frágil do que confiar na suíte Cucumber, que já cobre esse comportamento de qualquer forma (é o critério de aceite desta própria spec). |
+| Onde vive o teste ArchUnit | `common/` (módulo já reservado a infra/testsupport sem domínio próprio — mesmo critério que já aloca `ScenarioWorld`/fixtures lá, spec 05-002), classe `ArchitectureTest`. Nome genérico, não `SecurityConfigContributorArchitectureTest`, para comportar outras regras estruturais do projeto no futuro sem precisar de uma classe por regra. | resolvida | Um teste de arquitetura é infra sem dono de domínio, mesmo raciocínio que já levou `common/` a existir. |
 
 Decisões marcadas "em aberto" viram commit `decision:` quando resolvidas (ver
 `memory/constitution.md`), atualizando esta tabela no mesmo commit.
@@ -40,14 +43,20 @@ Decisões marcadas "em aberto" viram commit `decision:` quando resolvidas (ver
 - `competition/CompetitionSecurityConfigContributor.java` (novo) — `@Component`, registra os
   matchers de `/competitions*` já existentes (públicos e administrativos), com o mesmo
   agrupamento de hoje.
+- `common/ArchitectureTest.java` (novo, teste) — regra ArchUnit "todo `@RestController` tem
+  `SecurityConfigContributor` no mesmo pacote-base".
+- `app/pom.xml` (modificado) — dependência nova `com.tngtech.archunit:archunit-junit5`, escopo
+  `test`.
 
 ## Riscos e trade-offs
 
-- **Nenhuma checagem em tempo de compilação contra rota "órfã"** — se um módulo adicionar um
-  endpoint novo e esquecer de estender seu contributor (ou criar um contributor para um módulo
-  novo), a rota cai no `anyRequest().authenticated()` central por padrão (exige sessão, nunca
-  fica aberta por acidente) — falha segura, mas silenciosa; não há teste dedicado nesta spec que
-  force "todo `@RestController` tem contributor correspondente".
+- **Checagem de rota "órfã" mitigada, não eliminada** — o teste ArchUnit garante que todo módulo
+  com `@RestController` tem *algum* `SecurityConfigContributor`, mas não que esse contributor
+  cobre exatamente as rotas atuais do módulo (ex. o módulo `competition` ganha um endpoint novo e
+  o contributor existente não é atualizado — o ArchUnit não detecta isso, só que a classe
+  `CompetitionSecurityConfigContributor` continua existindo). Falha segura de qualquer forma: a
+  rota não coberta cai no `anyRequest().authenticated()` central, nunca fica aberta por
+  acidente.
 - **Contributors com matchers sobrepostos entre módulos diferentes não são detectados** — a
   invariante ("cada módulo só mexe no próprio prefixo de rota") é uma convenção, não uma
   checagem automática; violação só apareceria em produção como uma regra silenciosamente
