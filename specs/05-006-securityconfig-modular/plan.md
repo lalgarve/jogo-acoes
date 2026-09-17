@@ -75,6 +75,7 @@ Decisões marcadas "em aberto" viram commit `decision:` quando resolvidas (ver
   completa antes/depois para confirmar bit-a-bit que nada mudou (mesma contagem, mesmos
   cenários, nenhuma alteração de texto Gherkin).
 - **Não resolve a divergência `x-roles`/`SecurityConfig` sinalizada na spec 05-004** — continua
-  em aberto; esta reorganização só deixa o terreno mais preparado para um checador futuro (um
-  teste que percorra os contributors e compare com `x-roles` do `docs/openapi.yaml`), que não é
-  implementado aqui.
+  em aberto nesta spec; esta reorganização só deixa o terreno mais preparado pra isso
+  (`SecurityConfigContributor` dá um ponto único de leitura da autorização real por módulo). O
+  checador em si é a spec [05-007](../05-007-consistencia-contrato-openapi/spec.md), que
+  também reaproveita o teste de `RequestMappingHandlerMapping` desta spec.

@@ -85,9 +85,10 @@ mesmos cenários, sem nenhuma alteração de texto Gherkin.
   ver `plan.md`. A sobreposição de rota *entre módulos diferentes* é coberta pelo teste de
   `RequestMappingHandlerMapping` acima, não pelo ArchUnit.
 - Não resolve a divergência entre `x-roles` (anotação OpenAPI, documentação) e a autorização de
-  fato em `SecurityConfig`, já sinalizada como risco em aberto no `plan.md` da spec 05-004 — fica
-  como possível trabalho futuro habilitado por esta reorganização (cada contributor vira uma
-  fonte única e consultável por módulo), não implementado aqui.
+  fato em `SecurityConfig`, já sinalizada como risco em aberto no `plan.md` da spec 05-004 — esta
+  reorganização deixa o terreno preparado pra isso (cada contributor vira uma fonte única e
+  consultável por módulo), mas quem resolve de fato é a spec
+  [05-007](../05-007-consistencia-contrato-openapi/spec.md), não esta.
 - Não muda o mecanismo de autenticação (`LinkService`/`LoginLinkSessionService`) nem o
   `SecurityContextRepository`.
 
