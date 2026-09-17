@@ -95,6 +95,26 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
 
 ## Log de decisões
 
+### Sessão 2026-09-16
+
+- Primeiros diagramas desta pasta: 5 arquivos PlantUML em `uml/` (`login-arquitetura-classes`,
+  `login-modelo-dados-classes`, `login-pedido-sequencia`, `login-consumo-sequencia`,
+  `login-registro-duas-fases-sequencia`), cobrindo o mecanismo de link/login revisado na spec
+  `05-003` — validados localmente (`plantuml -checkonly`, exit 0) e renderizados em PNG para
+  `image/` (`plantuml -tpng`), a primeira vez que essa pasta deixa de estar vazia.
+- Conteúdo correspondente adicionado ao rascunho `.md`, seção "Principais tarefas realizadas
+  na Etapa 1", com as 5 imagens referenciadas via Markdown padrão (`![...](image/arquivo.png)`)
+  — troca para `\includegraphics` só na geração do `.tex`, por enquanto continua Markdown puro
+  (ver "Fluxo de edição" acima).
+- Linha da tabela de status da Etapa 1 ("Organização de pacotes por domínio/funcionalidade")
+  corrigida de "Não atendido" para "Atendido", refletindo as specs `05-001`/`05-002` já
+  implementadas e mergeadas (PR #48) desde a última vez que este documento foi editado
+  (sessão 2026-09-15, antes dessas specs existirem).
+- Branch usado: `43-write-the-final-pdf-and-the-swagger-test-notebook-per-etapa-not-only-at-the-end-of-iteração-5`
+  (o de nome mais longo do repositório, rastreado pela Issue #43) — estava parado desde a
+  sessão 2026-09-13/15, então foi atualizado com um fast-forward simples a partir de `master`
+  antes desta sessão (sem conflito — o branch é um ancestral direto de `master`).
+
 ### Sessão 2026-09-15
 
 - POV do rascunho mudado de 1ª pessoa do singular para plural em
