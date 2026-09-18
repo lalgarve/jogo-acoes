@@ -148,6 +148,16 @@
       <scope>test</scope>
     </dependency>
 
+    <!-- Architecture tests (spec 05-006) — checks module boundary invariants (e.g. every
+         module with a @RestController has a SecurityConfigContributor) as regular JUnit 5
+         tests. Latest stable on Maven Central as of 2026-08-04. -->
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>1.5.0</version>
+      <scope>test</scope>
+    </dependency>
+
     <!-- Required by the code the openapi-generator-maven-plugin produces (spring generator). -->
     <dependency>
       <groupId>io.swagger.core.v3</groupId>
