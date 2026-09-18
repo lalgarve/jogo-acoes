@@ -1,7 +1,7 @@
 # Spec: Organizar exceções por módulo em subpacote `exception/`
 
 **Status:** implementado (sessão 2026-09-18 — ver `tasks.md` para o checklist)
-**Issue:** #<número da Issue-épico, quando criada>
+**Issue:** [#56](https://github.com/lalgarve/jogo-acoes/issues/56)
 **Iteração:** iteration-5
 
 ## Resumo
