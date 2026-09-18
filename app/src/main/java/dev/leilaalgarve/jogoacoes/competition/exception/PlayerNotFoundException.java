@@ -1,4 +1,4 @@
-package dev.leilaalgarve.jogoacoes.competition;
+package dev.leilaalgarve.jogoacoes.competition.exception;
 
 /** No participation with the given id in the given competition. Maps to HTTP 404. */
 public class PlayerNotFoundException extends RuntimeException {

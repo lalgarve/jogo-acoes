@@ -1,4 +1,4 @@
-package dev.leilaalgarve.jogoacoes.competition;
+package dev.leilaalgarve.jogoacoes.competition.exception;
 
 /** No competition with the given id. Maps to HTTP 404. */
 public class CompetitionNotFoundException extends RuntimeException {

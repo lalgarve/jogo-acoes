@@ -1,4 +1,4 @@
-package dev.leilaalgarve.jogoacoes.competition;
+package dev.leilaalgarve.jogoacoes.competition.exception;
 
 /** A business-rule validation failure on competition creation. Maps to HTTP 400. */
 public class CompetitionValidationException extends RuntimeException {

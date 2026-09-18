@@ -1,6 +1,8 @@
 package dev.leilaalgarve.jogoacoes.link;
 
 import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
+import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkInvalidException;
+import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkUsedOnAnotherDeviceException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;

@@ -1,7 +1,7 @@
 package dev.leilaalgarve.jogoacoes.competition;
 
 import dev.leilaalgarve.jogoacoes.link.LinkOutcome;
-import dev.leilaalgarve.jogoacoes.link.LoginLinkInvalidException;
+import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkInvalidException;
 import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import dev.leilaalgarve.jogoacoes.log.AuditLogService;
 import dev.leilaalgarve.jogoacoes.login.Role;
