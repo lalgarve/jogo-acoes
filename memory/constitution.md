@@ -214,6 +214,15 @@ O label `iteration-N` (não o número no título — retirado de lá na Iteraç�
 de um GitHub Project, via script, ao adicionar a issue ao Project — sincronização ainda não
 automatizada (decisão em aberto registrada em `docs/context/iteracao-5.md`).
 
+**Label `react`**: marca uma Issue cujo trabalho só pode (ou só faz sentido) ser retomado
+quando existir um front-end React — hoje o projeto é só back-end. Usado, por exemplo, pra
+registrar uma limitação técnica do lado do servidor cuja mitigação de verdade depende de código
+rodando no browser (ex.: negociação de User-Agent Client Hints, que se beneficia de o front-end
+garantir uma segunda visita à mesma origem, ou de coletar hints via `navigator.userAgentData`
+direto em JavaScript). Não é um label de tipo (`feat`/`fix`/...) nem de iteração — pode conviver
+com qualquer um dos dois quando o trabalho entrar de fato numa iteração; enquanto isso não
+acontece, a Issue fica sem label de iteração, já que não pertence a nenhuma ainda.
+
 Commits e PRs fecham a Issue correspondente com `Closes #N` na mensagem — mesma convenção
 usada para referenciar uma decisão resolvida em `iteracao-N.md`/`plan.md`, só que apontando
 para a Issue.
