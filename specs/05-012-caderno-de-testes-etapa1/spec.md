@@ -1,7 +1,7 @@
 # Spec: Caderno de testes — Etapa 1 (Swagger)
 
 **Status:** rascunho
-**Issue:** #<número da Issue-épico, quando criada>
+**Issue:** [#62](https://github.com/lalgarve/jogo-acoes/issues/62)
 **Iteração:** iteration-5
 
 ## Resumo

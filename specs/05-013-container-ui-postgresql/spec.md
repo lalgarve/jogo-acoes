@@ -1,7 +1,7 @@
 # Spec: Container de UI web para o PostgreSQL
 
 **Status:** rascunho
-**Issue:** #<número da Issue-épico, quando criada>
+**Issue:** [#63](https://github.com/lalgarve/jogo-acoes/issues/63)
 **Iteração:** iteration-5
 
 ## Resumo

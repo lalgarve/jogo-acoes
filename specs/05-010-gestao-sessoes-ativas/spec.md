@@ -1,7 +1,7 @@
 # Spec: Gestão de sessões ativas (listar e revogar)
 
 **Status:** rascunho
-**Issue:** #<número da Issue-épico, quando criada>
+**Issue:** [#60](https://github.com/lalgarve/jogo-acoes/issues/60)
 **Iteração:** iteration-5
 
 ## Resumo
