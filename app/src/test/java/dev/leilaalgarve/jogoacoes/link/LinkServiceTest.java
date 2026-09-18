@@ -1,5 +1,6 @@
 package dev.leilaalgarve.jogoacoes.link;
 
+import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkInvalidException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

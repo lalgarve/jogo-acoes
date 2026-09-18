@@ -1,13 +1,13 @@
 package dev.leilaalgarve.jogoacoes.common;
 
 import dev.leilaalgarve.jogoacoes.captcha.CaptchaInvalidException;
-import dev.leilaalgarve.jogoacoes.competition.CompetitionNotFoundException;
-import dev.leilaalgarve.jogoacoes.competition.CompetitionValidationException;
-import dev.leilaalgarve.jogoacoes.competition.EntryRequestValidationException;
-import dev.leilaalgarve.jogoacoes.competition.PlayerNotFoundException;
-import dev.leilaalgarve.jogoacoes.competition.PlayerValidationException;
-import dev.leilaalgarve.jogoacoes.link.LoginLinkInvalidException;
-import dev.leilaalgarve.jogoacoes.link.LoginLinkUsedOnAnotherDeviceException;
+import dev.leilaalgarve.jogoacoes.competition.exception.CompetitionNotFoundException;
+import dev.leilaalgarve.jogoacoes.competition.exception.CompetitionValidationException;
+import dev.leilaalgarve.jogoacoes.competition.exception.EntryRequestValidationException;
+import dev.leilaalgarve.jogoacoes.competition.exception.PlayerNotFoundException;
+import dev.leilaalgarve.jogoacoes.competition.exception.PlayerValidationException;
+import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkInvalidException;
+import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkUsedOnAnotherDeviceException;
 
 import dev.leilaalgarve.jogoacoes.api.model.Error;
 import org.springframework.http.HttpStatus;

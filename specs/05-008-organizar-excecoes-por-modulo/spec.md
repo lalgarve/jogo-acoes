@@ -1,6 +1,6 @@
 # Spec: Organizar exceções por módulo em subpacote `exception/`
 
-**Status:** rascunho
+**Status:** implementado (sessão 2026-09-18 — ver `tasks.md` para o checklist)
 **Issue:** #<número da Issue-épico, quando criada>
 **Iteração:** iteration-5
 

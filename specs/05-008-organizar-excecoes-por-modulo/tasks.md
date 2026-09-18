@@ -12,13 +12,13 @@ módulos qualificam hoje (duas ou mais exceções próprias) — `competition` (
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Mover as 5 exceções de `competition/` (`CompetitionNotFoundException`, `CompetitionValidationException`, `EntryRequestValidationException`, `PlayerNotFoundException`, `PlayerValidationException`) para `competition/exception/`, ajustando a declaração `package` em cada uma | — | [P] | #<n> |
-| T002 | Mover as 2 exceções de `link/` (`LoginLinkInvalidException`, `LoginLinkUsedOnAnotherDeviceException`) para `link/exception/`, ajustando a declaração `package` em cada uma | — | [P] | #<n> |
-| T003 | Atualizar imports dentro do próprio módulo `competition` que referenciam as classes movidas: `CompetitionService`, `EntryRequestService`, `PlayerManagementService`, `CompetitionLinkHandler` (main) e `CompetitionLinkHandlerTest` (test) | T001 | | #<n> |
-| T004 | Atualizar imports dentro do próprio módulo `link` que referenciam as classes movidas: `LinkService` (main) e `LinkServiceTest` (test) | T002 | | #<n> |
-| T005 | Atualizar `common/ApiExceptionHandler` — importa as 7 classes movidas (as 5 de `competition` + as 2 de `link`), nenhum `@ExceptionHandler`/mapeamento HTTP muda, só o import | T001, T002 | | #<n> |
-| T006 | Grep final por `dev.leilaalgarve.jogoacoes.competition.CompetitionNotFoundException` e demais nomes totalmente qualificados antigos (fora de diretórios de build gerados) para achar referência residual não coberta pelas tarefas acima, e corrigir | T003, T004, T005 | | #<n> |
-| T007 | Rodar a suíte completa (`mvn test`) e confirmar 100% verde, mesma contagem de testes de antes desta spec, nenhuma asserção alterada — só pacote/import muda | T006 | | #<n> |
+| ~~T001~~ | Mover as 5 exceções de `competition/` (`CompetitionNotFoundException`, `CompetitionValidationException`, `EntryRequestValidationException`, `PlayerNotFoundException`, `PlayerValidationException`) para `competition/exception/`, ajustando a declaração `package` em cada uma | — | [P] | #<n> |
+| ~~T002~~ | Mover as 2 exceções de `link/` (`LoginLinkInvalidException`, `LoginLinkUsedOnAnotherDeviceException`) para `link/exception/`, ajustando a declaração `package` em cada uma | — | [P] | #<n> |
+| ~~T003~~ | Atualizar imports dentro do próprio módulo `competition` que referenciam as classes movidas: `CompetitionService`, `EntryRequestService`, `PlayerManagementService`, `CompetitionLinkHandler` (main) e `CompetitionLinkHandlerTest` (test) | T001 | | #<n> |
+| ~~T004~~ | Atualizar imports dentro do próprio módulo `link` que referenciam as classes movidas: `LinkService` (main) e `LinkServiceTest` (test) | T002 | | #<n> |
+| ~~T005~~ | Atualizar `common/ApiExceptionHandler` — importa as 7 classes movidas (as 5 de `competition` + as 2 de `link`), nenhum `@ExceptionHandler`/mapeamento HTTP muda, só o import | T001, T002 | | #<n> |
+| ~~T006~~ | Grep final por `dev.leilaalgarve.jogoacoes.competition.CompetitionNotFoundException` e demais nomes totalmente qualificados antigos (fora de diretórios de build gerados) para achar referência residual não coberta pelas tarefas acima, e corrigir — confirmado: nenhuma ocorrência residual | T003, T004, T005 | | #<n> |
+| ~~T007~~ | Rodar a suíte completa (`mvn test`) e confirmar 100% verde, mesma contagem de testes de antes desta spec, nenhuma asserção alterada — só pacote/import muda — confirmado: **125 testes, 0 falhas, 0 erros**, mesma contagem de antes | T006 | | #<n> |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.

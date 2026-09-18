@@ -1,4 +1,4 @@
-package dev.leilaalgarve.jogoacoes.link;
+package dev.leilaalgarve.jogoacoes.link.exception;
 
 /** The login link doesn't exist, or is used/invalidated/expired. Maps to HTTP 400. */
 public class LoginLinkInvalidException extends RuntimeException {
