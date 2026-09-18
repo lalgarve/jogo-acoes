@@ -178,7 +178,8 @@ class AuditLoggingIntegrationTest {
                 .findByCompetition_IdAndEmailAndStatusNot(publicCompetition.getId(), email, ParticipationStatus.IN_COMPETITION)
                 .orElseThrow().getId();
 
-        loginController.completeRegistration(link.getToken(), new CompleteRegistrationRequest().name("New Player"));
+        loginController.completeRegistration(link.getToken(), new CompleteRegistrationRequest().name("New Player"),
+                null, null, null, null);
 
         List<Log> logs = logRepository.findAll();
         assertThat(logs).anySatisfy(log -> {

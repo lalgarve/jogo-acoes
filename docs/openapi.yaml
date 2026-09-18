@@ -240,6 +240,10 @@ paths:
           in: path
           required: true
           schema: { type: string }
+        - $ref: '#/components/parameters/SecChUa'
+        - $ref: '#/components/parameters/SecChUaPlatform'
+        - $ref: '#/components/parameters/SecChUaPlatformVersion'
+        - $ref: '#/components/parameters/SecChUaMobile'
       responses:
         '200':
           description: >
@@ -271,6 +275,10 @@ paths:
           in: path
           required: true
           schema: { type: string }
+        - $ref: '#/components/parameters/SecChUa'
+        - $ref: '#/components/parameters/SecChUaPlatform'
+        - $ref: '#/components/parameters/SecChUaPlatformVersion'
+        - $ref: '#/components/parameters/SecChUaMobile'
       requestBody:
         required: true
         content:
@@ -437,6 +445,34 @@ paths:
         '202': { description: Accepted }
 
 components:
+  parameters:
+    # User-Agent Client Hints (spec 05-009) -- optional, low/high-entropy headers a Chromium
+    # browser sends once the server has requested them via Accept-CH. Declared here so
+    # Swagger UI shows a fillable field for manual testing without a real browser.
+    SecChUa:
+      name: Sec-CH-UA
+      in: header
+      required: false
+      schema: { type: string }
+      description: Browser brand/version list, Structured Field syntax (e.g. `"Chromium";v="131"`).
+    SecChUaPlatform:
+      name: Sec-CH-UA-Platform
+      in: header
+      required: false
+      schema: { type: string }
+      description: OS platform, quoted string (e.g. `"Windows"`).
+    SecChUaPlatformVersion:
+      name: Sec-CH-UA-Platform-Version
+      in: header
+      required: false
+      schema: { type: string }
+      description: OS platform version, quoted string (e.g. `"15.0.0"`).
+    SecChUaMobile:
+      name: Sec-CH-UA-Mobile
+      in: header
+      required: false
+      schema: { type: string }
+      description: Structured Field boolean (`?0`/`?1`) -- whether the device is mobile.
   schemas:
     CompetitionType:
       type: string

@@ -23,6 +23,11 @@ import java.util.Map;
  * {@link LinkService} (login is just one more {@code LinkHandler} it dispatches to);
  * `requestLoginLink` stays here because creating a standalone login link is entirely a `login`
  * concern (nothing generic to dispatch) -- see plan.md's revision of this controller's home.
+ *
+ * <p>The `Sec-CH-UA*` parameters both methods below accept (spec 05-009) are declared in the
+ * contract purely so Swagger UI shows a fillable field for them -- neither method reads its own
+ * parameter, since {@link LoginLinkSessionService} already resolves the device label straight
+ * from the injected {@code HttpServletRequest}, the same way it already did for `User-Agent`.
  */
 @RestController
 public class LoginController implements LoginApi {
@@ -41,7 +46,8 @@ public class LoginController implements LoginApi {
     }
 
     @Override
-    public ResponseEntity<LoginResult> consumeLoginLink(String token) {
+    public ResponseEntity<LoginResult> consumeLoginLink(String token, String secCHUA, String secCHUAPlatform,
+                                                          String secCHUAPlatformVersion, String secCHUAMobile) {
         LinkOutcome outcome = linkService.consume(token);
         if (outcome.isPending()) {
             return ResponseEntity.status(202).build();
@@ -50,7 +56,9 @@ public class LoginController implements LoginApi {
     }
 
     @Override
-    public ResponseEntity<LoginResult> completeRegistration(String token, CompleteRegistrationRequest completeRegistrationRequest) {
+    public ResponseEntity<LoginResult> completeRegistration(String token, CompleteRegistrationRequest completeRegistrationRequest,
+                                                              String secCHUA, String secCHUAPlatform,
+                                                              String secCHUAPlatformVersion, String secCHUAMobile) {
         LinkOutcome outcome = linkService.complete(token, Map.of("name", completeRegistrationRequest.getName()));
         return ResponseEntity.ok(toLoginResult(outcome));
     }

@@ -33,8 +33,9 @@ import java.util.Optional;
  * id, and it turns out not to be needed: "is this device already authenticated" (checked one
  * level up, in {@code LinkService}) plus "has this link already been used" is enough to
  * implement every device-related rule in login.feature. LOGIN_SESSION's device_id column is
- * filled from the User-Agent header purely as a human-readable label, per der.md's "device name
- * to show the player" -- it plays no role in any decision here.
+ * filled by {@link DeviceLabelResolver} (User-Agent Client Hints when present, spec 05-009)
+ * purely as a human-readable label, per der.md's "device name to show the player" -- it plays no
+ * role in any decision here.
  */
 @Component
 public class LoginLinkSessionService implements LinkSessionService {
@@ -110,7 +111,11 @@ public class LoginLinkSessionService implements LinkSessionService {
     }
 
     private String deviceLabel() {
-        String userAgent = request.getHeader("User-Agent");
-        return userAgent != null ? userAgent : "unknown-device";
+        return DeviceLabelResolver.resolve(
+                request.getHeader("Sec-CH-UA"),
+                request.getHeader("Sec-CH-UA-Platform"),
+                request.getHeader("Sec-CH-UA-Platform-Version"),
+                request.getHeader("Sec-CH-UA-Mobile"),
+                request.getHeader("User-Agent"));
     }
 }

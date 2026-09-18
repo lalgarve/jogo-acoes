@@ -8,6 +8,7 @@ import dev.leilaalgarve.jogoacoes.link.LinkRecord;
 import dev.leilaalgarve.jogoacoes.link.LinkRecordRepository;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
 import dev.leilaalgarve.jogoacoes.login.LoginLinkHandler;
+import dev.leilaalgarve.jogoacoes.login.User;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -49,6 +50,19 @@ public class LoginLinkFixtures {
         link.setEmail(participation.getEmail());
         link.setExtraJson("{\"" + CompetitionLinkHandler.PARTICIPATION_ID_EXTRA_KEY + "\":\"" + participation.getId() + "\"}");
         link.setExpiresAt(LocalDateTime.now().plusDays(7));
+        return linkRecordRepository.save(link);
+    }
+
+    /** An active, unused standalone login link for an already-registered user -- same shape
+     * {@link dev.leilaalgarve.jogoacoes.common.testsupport.LoginHelper#loginAs} builds inline,
+     * exposed here so a step can consume it with custom headers instead of the default ones. */
+    public LinkRecord activeLink(User user) {
+        LinkRecord link = new LinkRecord();
+        link.setToken(UUID.randomUUID().toString());
+        link.setServiceKey(LoginLinkHandler.KEY);
+        link.setEmail(user.getEmail());
+        link.setUserId(user.getId());
+        link.setExpiresAt(LocalDateTime.now().plusHours(1));
         return linkRecordRepository.save(link);
     }
 

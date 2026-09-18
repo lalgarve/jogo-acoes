@@ -200,6 +200,15 @@
       <artifactId>spring-session-jdbc</artifactId>
       <version>4.1.0</version>
     </dependency>
+
+    <!-- Serves an interactive Swagger UI (spec 05-009) against the static docs/openapi.yaml
+         contract; springdoc.api-docs.enabled=false below turns off its annotation-scanning
+         generator so this never becomes a second, competing contract source. -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>3.1.1</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -207,6 +216,33 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <!-- Copies the same docs/openapi.yaml the generator below reads into
+             target/classes/static, so Swagger UI (springdoc.swagger-ui.url) serves the real
+             contract instead of a second, hand-duplicated copy. -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy-openapi-contract-for-swagger-ui</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.basedir}/../docs</directory>
+                  <includes>
+                    <include>openapi.yaml</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.openapitools</groupId>
