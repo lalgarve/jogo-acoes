@@ -33,6 +33,16 @@ services:
       timeout: 5s
       retries: 10
 
+  # Web UI to inspect the docker-compose Postgres without a local psql/client install (spec
+  # 05-013) -- used, among other things, by the caderno de testes' (spec 05-012) verification
+  # SELECTs. Local-only: no volume/state of its own, no other profile runs it.
+  adminer:
+    image: adminer
+    depends_on:
+      - db
+    ports:
+      - "8081:8080"
+
   app:
     build: .
     depends_on:
