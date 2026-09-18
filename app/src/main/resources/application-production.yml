@@ -16,3 +16,10 @@ spring:
 # switches and docs/context/iteracao-4.md for the queue-name property.
 email:
   sender: sqs
+
+# Overrides application.yml's DEBUG back to root's own default (INFO) -- spec 05-011's three
+# logging aspects log at DEBUG, so they simply stop appearing here, with no dedicated OFF level
+# or in-code profile check needed.
+logging:
+  level:
+    dev.leilaalgarve.jogoacoes: INFO
