@@ -41,3 +41,19 @@ login:
 # application-production.yml.
 email:
   queue-name: ${EMAIL_QUEUE_NAME:jogo-acoes-email-commands}
+
+# Swagger UI (spec 05-009) against the static docs/openapi.yaml contract, copied to
+# static/openapi.yaml at build time (app/pom.xml). springdoc.api-docs.enabled: false turns
+# out to disable the whole SpringDocConfiguration bean the UI controller itself depends on
+# (@ConditionalOnBean), not just the JSON endpoint -- confirmed by running it, not just
+# reading the docs. packages-to-scan pointed at a nonexistent package gets the same effect
+# (no annotation-scanned operations, so /v3/api-docs never becomes a second contract) without
+# starving the UI of the bean it needs.
+springdoc:
+  packages-to-scan: dev.leilaalgarve.jogoacoes.__no_annotation_scanning__
+  swagger-ui:
+    # A leading-slash URL here is resolved by the browser from the server root, not from
+    # server.servlet.context-path -- without the prefix the UI tries to fetch /openapi.yaml
+    # instead of /api/openapi.yaml and 404s (confirmed by loading the page, not just reading
+    # the property docs).
+    url: ${server.servlet.context-path}/openapi.yaml

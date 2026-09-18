@@ -594,6 +594,12 @@ abaixo) foi resolvida pela implementação — vive em `LinkSessionService`
 ## Decisões em aberto (resumo)
 
 - `app/` também migra para o Config Server, ou mantém profiles locais?
+- **Plano da autora (sessão 2026-09-18, ainda não uma spec)**: VictoriaLogs na Etapa 3, na mesma
+  lógica do Spring Cloud Config Server — centralização de configuração de ambiente (Config
+  Server) e centralização de log (VictoriaLogs), os dois cobrindo a mesma Etapa. A spec
+  `05-011-logging-aspectos` (log via aspectos, console/texto simples, nível DEBUG) já deixa uma
+  nota cruzada pra isso nos seus "Riscos e trade-offs" — sem desenho de integração ainda, só o
+  registro da intenção.
 - O `SqsEmailSender`/templates do `app/` migram para dentro do Serviço de E-mail, ou
   convivem temporariamente com ele?
 - Serviço de E-mail: repositório próprio (precedente do `deployo-api-key`) ou módulo no reator
