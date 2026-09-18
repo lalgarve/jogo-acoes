@@ -17,6 +17,7 @@ tags:
   - name: login
   - name: players
   - name: my-competitions
+  - name: sessions
 
 paths:
   /competitions:
@@ -444,6 +445,50 @@ paths:
       responses:
         '202': { description: Accepted }
 
+  /sessions:
+    get:
+      tags: [sessions]
+      operationId: listActiveSessions
+      summary: List the caller's own active login sessions (devices)
+      description: >
+        Spec 05-010: every LOGIN_SESSION with `ended_at IS NULL` belonging to the
+        authenticated player, most recent first. `current` flags the one matching the HTTP
+        session that made this request.
+      x-roles: [PLAYER, ADMINISTRATOR]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+        '401': { description: Not logged in }
+
+  /sessions/{sessionId}:
+    delete:
+      tags: [sessions]
+      operationId: revokeSession
+      summary: End one of the caller's own active sessions, on any device
+      description: >
+        Spec 05-010: has a real effect, not just cosmetic -- the underlying HTTP session is
+        deleted too (Spring Session JDBC), so the next request from that device gets `401`.
+        Revoking the session making this very request is allowed (self-logout from another
+        device's session list). `404` both when the session doesn't exist and when it
+        belongs to another player -- same not-revealing-existence pattern as
+        `getCompetitionDetail`.
+      x-roles: [PLAYER, ADMINISTRATOR]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '204': { description: No Content }
+        '401': { description: Not logged in }
+        '404': { description: "Session not found, or belongs to another player" }
+
 components:
   parameters:
     # User-Agent Client Hints (spec 05-009) -- optional, low/high-entropy headers a Chromium
@@ -598,6 +643,18 @@ components:
       properties:
         redirectTo:
           type: string
+
+    Session:
+      description: >
+        Spec 05-010: one active LOGIN_SESSION (`ended_at IS NULL`) belonging to the caller.
+        `deviceLabel` is display-only (spec 05-009's Client Hints label, or a raw
+        User-Agent/`"unknown-device"` fallback) -- never used for any access decision.
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        deviceLabel: { type: string }
+        createdAt: { type: string, format: date-time }
+        current: { type: boolean }
 
     Error:
       type: object
