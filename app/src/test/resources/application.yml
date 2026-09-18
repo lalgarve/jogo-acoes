@@ -40,3 +40,10 @@ login:
 # unconditionally anyway, so it's not missing the one time it matters.
 email:
   queue-name: jogo-acoes-email-commands
+
+# See src/main/resources/application.yml -- same replaces-not-layers reason as above; without
+# this repeated here too, the three logging aspects (spec 05-011) never actually appear during
+# tests even though the "real" application.yml already turns DEBUG on for dev.leilaalgarve.jogoacoes.
+logging:
+  level:
+    dev.leilaalgarve.jogoacoes: DEBUG

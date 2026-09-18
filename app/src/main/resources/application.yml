@@ -57,3 +57,12 @@ springdoc:
     # instead of /api/openapi.yaml and 404s (confirmed by loading the page, not just reading
     # the property docs).
     url: ${server.servlet.context-path}/openapi.yaml
+
+# DEBUG for the whole application package, not just common.logging (spec 05-011) -- this is
+# what makes ControllerLoggingAspect/RepositoryLoggingAspect/QueueLoggingAspect appear on the
+# console (they all log at DEBUG), and establishes the same convention for any future log
+# in the app. root stays at Spring Boot's own default (INFO). application-production.yml
+# overrides this back to INFO to suppress the three aspects there.
+logging:
+  level:
+    dev.leilaalgarve.jogoacoes: DEBUG
