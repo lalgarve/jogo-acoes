@@ -34,6 +34,29 @@ convenções da linguagem). Documentação em português porque é o idioma da e
 sentido traduzir decisões e raciocínio para um idioma que não é o nativo de quem escreve e
 lê.
 
+## Status do sistema: pré-produção
+
+O sistema ainda não tem usuários reais nem dado em produção — está em pré-produção durante toda
+a Iteração 5, e continua assim até este status ser explicitamente revisado neste documento.
+Isso tem consequências diretas em como `spec.md`/`plan.md` são escritas e implementadas:
+
+- **Nenhuma migração de dado existente é necessária.** Uma coluna nova pode ser `NOT NULL`
+  direto, sem `default`/sem virar `nullable` "para registros antigos" — não existe registro
+  antigo real que dependa disso. Uma tabela pode ser recriada, uma coluna removida, um enum
+  perder valores, sem plano de migração dos dados já lá.
+- **Nenhuma preocupação de compatibilidade retroativa de contrato** (versionamento de API,
+  período de depreciação, cliente antigo continuando a funcionar) — `docs/openapi.yaml` pode
+  mudar de forma incompatível entre specs, sem manter a forma anterior funcionando em paralelo.
+- **Nenhum plano de rollback que preserve dado real** — uma migration Flyway nova pode fazer
+  `DROP COLUMN`/`DROP TABLE` sem se preocupar com "e se alguém já tiver algo lá".
+- Isso não dispensa manter a suíte de testes verde nem seguir TDD/API-first — só remove a
+  categoria de risco "o que fazer com dado/cliente já existente", que normalmente motivaria
+  `nullable`s defensivos, migrações em duas fases, ou versionamento de contrato.
+
+**Quando isso muda**: no primeiro deploy com usuário real em produção, esta seção precisa ser
+atualizada (ou removida) — a partir daí, specs que tocam schema/contrato voltam a precisar
+considerar migração de dado existente e compatibilidade retroativa.
+
 ## Adoção do spec-kit (Spec-Driven Development) — a partir da Iteração 5
 
 O processo já seguido no projeto desde a Iteração 1 (specs em `.feature` antes do código,

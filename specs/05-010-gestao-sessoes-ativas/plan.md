@@ -16,7 +16,7 @@ cookie expirar.
 
 | Pergunta | Decisão | Status | Raciocínio |
 |---|---|---|---|
-| Como fazer a revogação ter efeito real, não só cosmético | `LOGIN_SESSION` ganha uma coluna nova, `http_session_id` (String, nullable pra registros antigos), gravada em `establish()` a partir de `request.getSession().getId()` **depois** de `securityContextRepository.saveContext(...)` (que é o que garante que a sessão HTTP já existe/persistiu). Revogar chama `SessionRepository<S>` (bean já disponível via Spring Session JDBC) `.deleteById(httpSessionId)` — apaga a sessão de verdade; a próxima requisição daquele dispositivo chega sem `SecurityContext`, cai no 401 padrão. | resolvida | Reaproveita a infraestrutura de sessão já configurada (`spring.session.store-type: jdbc`) em vez de inventar um filtro novo que consulte `LOGIN_SESSION` a cada requisição (mais barato, sem I/O extra por request). |
+| Como fazer a revogação ter efeito real, não só cosmético | `LOGIN_SESSION` ganha uma coluna nova, `http_session_id` (String, **`NOT NULL`** — sistema em pré-produção, ver `memory/constitution.md`, não existe registro antigo pra se preocupar), gravada em `establish()` a partir de `request.getSession().getId()` **depois** de `securityContextRepository.saveContext(...)` (que é o que garante que a sessão HTTP já existe/persistiu). Revogar chama `SessionRepository<S>` (bean já disponível via Spring Session JDBC) `.deleteById(httpSessionId)` — apaga a sessão de verdade; a próxima requisição daquele dispositivo chega sem `SecurityContext`, cai no 401 padrão. | resolvida | Reaproveita a infraestrutura de sessão já configurada (`spring.session.store-type: jdbc`) em vez de inventar um filtro novo que consulte `LOGIN_SESSION` a cada requisição (mais barato, sem I/O extra por request). |
 | `alreadyAuthenticated` (mesmo dispositivo) também grava `http_session_id`? | Não precisa gravar de novo — a sessão HTTP já existe (é a mesma), e a `LOGIN_SESSION` já foi criada na primeira vez. | resolvida | Não há `LOGIN_SESSION` nova nesse caminho, então não há nada pra atualizar. |
 | Onde vive o novo controller | `login/SessionsController.java`, implementando uma interface gerada nova (`SessionsApi`) — mesmo critério de `LoginController`: gestão de sessão é um assunto de `login/`, não de `link/` (que não sabe quem é o usuário autenticado). | resolvida | Consistente com onde `LoginLinkSessionService` (que também mexe em `LoginSession`) já vive. |
 | "É a sessão atual?" (flag na listagem) | Compara `LOGIN_SESSION.http_session_id` da linha com `request.getSession().getId()` da requisição de listagem. | resolvida | Direto, sem mecanismo novo. |
@@ -35,10 +35,5 @@ cookie expirar.
 
 ## Riscos e trade-offs
 
-- **Sessões `LOGIN_SESSION` criadas antes desta spec não têm `http_session_id`** (coluna nova,
-  nullable) — revogar uma sessão antiga dessas marca `ended_at` mas não consegue invalidar
-  sessão HTTP nenhuma (não há o quê). Aceitável — são sessões de antes da feature existir; o
-  efeito prático (bookkeeping) continua correto, só a garantia "de fato desloga" não se aplica a
-  esse caso legado.
 - **Depende indiretamente da spec 05-009** pro rótulo de dispositivo ser algo reconhecível — sem
   ela, a lista ainda funciona, só com rótulos menos úteis (User-Agent cru).
