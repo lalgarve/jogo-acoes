@@ -81,8 +81,8 @@ principal), não uma estimativa.
 | Validação via Bean Validation | Atendido — via contrato OpenAPI (`docs/openapi.yaml`), que gera as anotações no DTO |
 | Tratamento de exceções centralizado | Atendido — `ApiExceptionHandler` com `@ControllerAdvice` |
 | Duas ou mais consultas Spring Data além do CRUD básico | Atendido — bem mais que duas, em vários repositórios |
-| Documentação da API via OpenAPI/Swagger | Atendido como contrato estático (`docs/openapi.yaml`); falta uma UI interativa (Swagger UI) rodando junto da aplicação — ver seção 5 |
-| Organização de pacotes por domínio/funcionalidade, não por camada técnica | **Não atendido** — pacotes hoje são `web/`, `service/`, `repository/`, `domain/`, `email/`, `captcha/` |
+| Documentação da API via OpenAPI/Swagger | Atendido — contrato estático (`docs/openapi.yaml`) e UI interativa rodando junto da aplicação (`/api/swagger-ui/index.html`, spec 05-009); ver [caderno de testes](caderno-de-testes.md), Caso 5 |
+| Organização de pacotes por domínio/funcionalidade, não por camada técnica | Atendido — pacotes reorganizados por domínio (`login/`, `link/`, `competition/`, `log/`, `email/`, `captcha/`, `common/`), specs 05-001/05-002 |
 | README com módulos, dependência entre eles e candidato a serviço independente | Parcial — a informação existe implicitamente, mas não está escrita no README nesse formato |
 | Tag `etapa-1` | **Não atendido** — no repositório existem apenas as tags referentes às iterações planejadas |
 
@@ -148,6 +148,9 @@ aberto) está em `docs/context/iteracao-5.md`.
    dentro do Serviço de E-mail.
 7. Criar as tags `etapa-1` a `etapa-4` no repositório, conforme cada etapa for efetivamente
    fechada.
+
+*Atualização: os itens 1 (specs 05-001/05-002) e 3 (spec 05-009) desta lista original já
+foram resolvidos — ver a tabela da Etapa 1 na seção 4, acima.*
 
 ## 6. Metodologia de desenvolvimento com IA
 
