@@ -6,10 +6,10 @@
 
 ## Resumo
 
-Loga em nível INFO, via aspectos (Spring AOP), toda entrada/saída de controller, leitura/escrita
-no banco (repositórios Spring Data) e mensagem enviada pra fila (SQS) — sem espalhar chamada de
-log manual pelo código de negócio. Listas/mapas longos aparecem truncados no log (só o primeiro
-item + quantidade restante). Em produção, esses logs não aparecem.
+Loga em nível DEBUG, via aspectos (Spring AOP), toda entrada/saída de controller,
+leitura/escrita no banco (repositórios Spring Data) e mensagem enviada pra fila (SQS) — sem
+espalhar chamada de log manual pelo código de negócio. Listas/mapas longos aparecem truncados no
+log (só o primeiro item + quantidade restante). Em produção, esses logs não aparecem.
 
 ## Motivação
 
@@ -29,19 +29,24 @@ Não aplicável — infraestrutura transversal, sem `.feature` novo (mesmo padr�
 
 ## Requisitos funcionais
 
-- Aspecto 1 — **controllers**: loga, em INFO, a entrada (nome do método + argumentos) e a saída
+- Aspecto 1 — **controllers**: loga, em DEBUG, a entrada (nome do método + argumentos) e a saída
   (retorno, ou exceção) de todo método de todo `@RestController`.
-- Aspecto 2 — **repositórios**: loga, em INFO, toda chamada a método de repositório Spring Data
+- Aspecto 2 — **repositórios**: loga, em DEBUG, toda chamada a método de repositório Spring Data
   (`JpaRepository`), com argumentos e retorno — cobre leitura e escrita, já que ambas passam por
   métodos de repositório.
-- Aspecto 3 — **filas**: loga, em INFO, toda mensagem enviada pela fila (SQS) — o envio feito
+- Aspecto 3 — **filas**: loga, em DEBUG, toda mensagem enviada pela fila (SQS) — o envio feito
   por `SqsEmailSender`.
 - **Truncamento de coleções**: quando um argumento ou retorno logado é uma `List`/`Set`/`Map`
   com mais de um elemento, o log mostra só o primeiro item, seguido de `+[N]` (N = quantidade de
   itens restantes) — ex. uma lista de 10 e-mails aparece como `joao@exemplo.com+[9]`. Coleções
   com 0 ou 1 item aparecem por completo, sem sufixo.
-- **Suprimido em produção**: no perfil `production`, nenhum desses logs aparece — mecanismo via
-  nível de log (`logging.level`) por perfil, não uma condicional dentro do código do aspecto.
+- **Configuração de nível por perfil**: o padrão (`root`) continua INFO (comportamento já
+  existente do Spring Boot); os pacotes da aplicação (`dev.leilaalgarve.jogoacoes`) ganham
+  DEBUG explícito nos perfis de desenvolvimento — é esse nível elevado que faz os três aspectos
+  aparecerem no console. Nenhuma condicional de ambiente dentro do código do aspecto.
+- **Suprimido em produção**: no perfil `production`, os pacotes da aplicação voltam pro `root`
+  (INFO) — como os três aspectos logam em DEBUG, deixam de aparecer, sem precisar de um nível
+  dedicado (`OFF`) nem de lógica no código.
 
 ## Requisitos não-funcionais
 
@@ -51,8 +56,12 @@ Não aplicável — infraestrutura transversal, sem `.feature` novo (mesmo padr�
 
 ## Fora de escopo
 
-- Log estruturado em JSON / integração com ferramenta de agregação de log (ex. ELK) — só
-  console, texto simples.
+- Log estruturado em JSON / integração com ferramenta de agregação de log — só console, texto
+  simples. A autora planeja VictoriaLogs na Etapa 3 da disciplina (ver
+  `docs/context/iteracao-5.md`), na mesma lógica de centralização do Spring Cloud Config Server
+  (configuração vs. log) — não é tratado aqui; quando chegar a hora, revisitar se o formato de
+  log desta spec precisa mudar pra ser consumido por ele (ex. coletado a partir do stdout do
+  container, sem mudança de formato, ou reformatado).
 - Mascarar dados sensíveis (senha, token) nos argumentos logados — não existe hoje nenhum dado
   desse tipo trafegando em texto puro nos métodos alvo (a autenticação é por link mágico, não
   senha), então não é um requisito desta spec; revisar se isso mudar no futuro.
