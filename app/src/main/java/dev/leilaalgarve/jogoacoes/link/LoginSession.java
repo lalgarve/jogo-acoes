@@ -29,6 +29,9 @@ public class LoginSession {
     @Column(name = "device_id", nullable = false)
     private String deviceId;
 
+    @Column(name = "http_session_id", nullable = false)
+    private String httpSessionId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -65,6 +68,14 @@ public class LoginSession {
 
     public void setDeviceId(String deviceId) {
         this.deviceId = deviceId;
+    }
+
+    public String getHttpSessionId() {
+        return httpSessionId;
+    }
+
+    public void setHttpSessionId(String httpSessionId) {
+        this.httpSessionId = httpSessionId;
     }
 
     public LocalDateTime getCreatedAt() {

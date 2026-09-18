@@ -97,6 +97,10 @@ public class LoginLinkSessionService implements LinkSessionService {
         session.setUserId(user.getId());
         session.setLinkRecord(linkRecord);
         session.setDeviceId(deviceLabel());
+        // Read after saveContext() above, which is what guarantees the HTTP session already
+        // exists/persisted (spec 05-010) -- this is what makes revoking a LOGIN_SESSION later
+        // (SessionsController) have a real effect via SessionRepository.deleteById(...).
+        session.setHttpSessionId(request.getSession().getId());
         session.setCreatedAt(LocalDateTime.now());
         loginSessionRepository.save(session);
     }
