@@ -67,6 +67,7 @@ nenhum for definido). Cada um tem seu arquivo `application-<nome>.yml` em
 |---|---|---|
 | `sandbox` (padrão) | H2 embarcado, migrations em `db/migration-h2` | Rodar/testar sem precisar de Docker nem Postgres instalado |
 | `docker` | PostgreSQL real em containers | Localmente via `docker-compose up`, ou CI |
+| `docker,blackbox` | PostgreSQL real em containers | Testes de caixa-preta (Swagger UI, Selenium futuro, suíte Python) — ver "Ambiente de testes blackbox" abaixo |
 | `staging` | PostgreSQL real, gerido por outra equipe | Pré-produção |
 | `production` | PostgreSQL real, gerido por outra equipe | Produção |
 
@@ -79,6 +80,54 @@ Para rodar localmente com Postgres real:
 ```
 docker-compose up
 ```
+
+## Ambiente de testes blackbox
+
+`blackbox` (spec 05-014) é um perfil empilhado sobre `docker` — nunca usado sozinho — pensado
+para exercitar a API só por fora (Swagger UI, Selenium no futuro, ou a
+[suíte de testes Python](blackbox-tests/README.md), spec 05-015), sem as duas coisas que
+normalmente exigem um cliente completo:
+
+- **Captcha sempre aceito** — não existe ainda um frontend que resolva o desafio ALTCHA de
+  verdade, então qualquer `captchaToken` (incluindo vazio) é aceito. Só neste perfil: qualquer
+  outro (`sandbox`, `docker` sozinho, `staging`, `production`) continua exigindo um captcha
+  resolvido de verdade.
+- **Administrador já semeado** — como só um administrador pode criar competições e não existe
+  via de API para criar um, a aplicação garante, de forma idempotente ao subir, um administrador
+  com e-mail `admin@blackbox.local`. Não há senha em lugar nenhum do sistema — login é sempre
+  por link mágico.
+- **Leitura do link de um e-mail por HTTP** — `POST /login-requests` nunca devolve o link no
+  corpo (deliberado, pra não revelar se o e-mail existe), e por padrão o link só é visível de
+  dentro do processo Java. `GET /blackbox/last-email?email={endereço}` devolve o link mais
+  recente enviado a um endereço (`404` se nada foi enviado ainda) — só existe neste perfil, e
+  não faz parte do contrato (`docs/openapi.yaml`): é andaime de teste, não API de produto. Não é
+  uma caixa postal completa (só o último e-mail por endereço, sem histórico) — suficiente para
+  destravar um fluxo que depende de clicar num link.
+
+Para subir:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up
+```
+
+### Com ou sem cobertura JaCoCo da aplicação exercitada externamente
+
+A suíte JUnit/Cucumber (`mvn test`/`mvn verify`) já gera seu próprio relatório JaCoCo em
+`target/site/jacoco/` — isso não muda. O ambiente `blackbox` mede um tipo diferente de
+cobertura: a da **aplicação rodando de verdade**, enquanto é exercitada de fora (Swagger UI ou a
+suíte Python), via o agente de execução do JaCoCo anexado ao processo `java -jar app.jar` —
+mecanismo diferente do `jacoco-maven-plugin` (que só instrumenta JVMs que o próprio Maven
+lança), sempre disponível na imagem mas inerte fora deste perfil.
+
+- **Com JaCoCo** (o comando acima já ativa o agente, `docker-compose.blackbox.yml` inclui
+  `JAVA_TOOL_OPTIONS` com `-javaagent`): depois de exercitar a aplicação, gere o relatório:
+  ```
+  ./scripts/blackbox-coverage.sh
+  ```
+  Abre `target/site/jacoco-blackbox/index.html` — diretório próprio, nunca sobrescreve nem se
+  mistura com `target/site/jacoco/` (suíte Java).
+- **Sem JaCoCo**: `docker compose up` normal (sem `-f docker-compose.blackbox.yml`) — a imagem
+  tem o agente embutido, mas ele nunca é ativado fora da sobreposição `blackbox`.
 
 ## Licença
 

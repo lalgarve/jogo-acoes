@@ -11,7 +11,7 @@ Ambas as tarefas são acompanhadas como checklist na Issue-épico
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
 | T001 | Adicionar serviço `adminer` ao `docker-compose.yml` (imagem `adminer`, `depends_on: db`, porta `8081:8080`) | — | | #63 |
-| T002 | `docker-compose up`, acessar `http://localhost:8081`, logar manualmente com host `db`/usuário `jogo_acoes_admin`/senha `jogo_acoes_admin`/banco `jogo_acoes`, rodar um `SELECT` simples e confirmar que retorna dado — sem mudança de código da aplicação | T001 | | #63 |
+| T002 | `docker-compose up`, acessar `http://localhost:8081`, logar manualmente com host `db`/usuário `jogo_acoes_admin`/senha `jogo_acoes_admin`/banco `jogo_acoes`, rodar um `SELECT` simples e confirmar que retorna dado — sem mudança de código da aplicação. **Não executável no ambiente de implementação** (sem daemon Docker disponível — mesma limitação já registrada em `SqsEmailSenderDockerIntegrationTest`); validado o que dava pra validar sem daemon: `docker compose -f docker-compose.yml config` confirma o YAML sintaticamente válido e o serviço `adminer` corretamente ligado a `db`/porta `8081:8080`. Passo manual (subir e clicar através da UI) fica para quem tiver Docker disponível | T001 | | #63 |
 
 - Cada linha vira um item de checklist na Issue-épico da feature, ou uma Issue própria
   quando grande o suficiente para PR isolada — a Issue leva o label `iteration-5`, além do

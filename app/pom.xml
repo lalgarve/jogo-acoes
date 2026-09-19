@@ -321,6 +321,46 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <!-- Spec 05-014: the blackbox environment measures coverage of the application while
+             it's exercised from outside (Swagger UI, or the Python suite in spec 05-015), not
+             by tests Maven itself launches: jacoco-maven-plugin above only instruments JVMs
+             Maven starts, so it can't help here. These two jars are JaCoCo's separate runtime
+             agent + CLI, copied into the Docker image (Dockerfile) so the blackbox overlay
+             (docker-compose.blackbox.yml) can attach the agent to `java -jar app.jar` via
+             JAVA_TOOL_OPTIONS and scripts/blackbox-coverage.sh can dump+report from it, same
+             JaCoCo version as jacoco-maven-plugin to keep the .exec format compatible. -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy-jacoco-agent-for-blackbox</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>org.jacoco</groupId>
+                  <artifactId>org.jacoco.agent</artifactId>
+                  <version>0.8.15</version>
+                  <classifier>runtime</classifier>
+                  <destFileName>jacocoagent.jar</destFileName>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.jacoco</groupId>
+                  <artifactId>org.jacoco.cli</artifactId>
+                  <version>0.8.15</version>
+                  <classifier>nodeps</classifier>
+                  <destFileName>jacococli.jar</destFileName>
+                </artifactItem>
+              </artifactItems>
+              <outputDirectory>${project.build.directory}/jacoco</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 

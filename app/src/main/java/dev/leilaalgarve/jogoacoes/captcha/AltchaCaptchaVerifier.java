@@ -3,6 +3,7 @@ package dev.leilaalgarve.jogoacoes.captcha;
 import org.altcha.altcha.v2.Altcha;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -20,7 +21,8 @@ import java.util.Base64;
  * standard ALTCHA design.
  */
 @Service
-public class CaptchaService {
+@ConditionalOnProperty(name = "captcha.verifier", havingValue = "altcha", matchIfMissing = true)
+public class AltchaCaptchaVerifier implements CaptchaVerifier {
 
     private static final String ALGORITHM = "SHA-256";
     private static final int COST = 50_000;
@@ -28,7 +30,7 @@ public class CaptchaService {
 
     private final String secret;
 
-    public CaptchaService(@Value("${altcha.secret}") String secret) {
+    public AltchaCaptchaVerifier(@Value("${altcha.secret}") String secret) {
         this.secret = secret;
     }
 
@@ -53,6 +55,7 @@ public class CaptchaService {
         return Base64.getEncoder().encodeToString(envelope.toString().getBytes(StandardCharsets.UTF_8));
     }
 
+    @Override
     public boolean verify(String token) {
         if (token == null || token.isBlank()) {
             return false;

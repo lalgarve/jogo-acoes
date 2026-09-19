@@ -4,7 +4,7 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import dev.leilaalgarve.jogoacoes.api.model.EntryRequest;
-import dev.leilaalgarve.jogoacoes.captcha.CaptchaService;
+import dev.leilaalgarve.jogoacoes.captcha.AltchaCaptchaVerifier;
 import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
@@ -29,12 +29,12 @@ public class RequestCompetitionEntrySteps {
     private final UserMother userMother;
     private final LoginHelper loginHelper;
     private final CompetitionFixtures competitionFixtures;
-    private final CaptchaService captchaService;
+    private final AltchaCaptchaVerifier captchaService;
     private final ParticipationRepository participationRepository;
     private final SentEmailRepository sentEmailRepository;
 
     public RequestCompetitionEntrySteps(ScenarioWorld world, UserMother userMother, LoginHelper loginHelper,
-                                         CompetitionFixtures competitionFixtures, CaptchaService captchaService,
+                                         CompetitionFixtures competitionFixtures, AltchaCaptchaVerifier captchaService,
                                          ParticipationRepository participationRepository, SentEmailRepository sentEmailRepository) {
         this.world = world;
         this.userMother = userMother;
