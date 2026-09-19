@@ -1,0 +1,14 @@
+# Spec 05-014 -- overlay, never used alone: `docker compose -f docker-compose.yml -f
+# docker-compose.blackbox.yml up`. Stacks the `blackbox` profile on top of `docker` (captcha
+# always accepted, administrator seeded, GET /blackbox/last-email) and attaches JaCoCo's
+# runtime agent to the running `java -jar app.jar` process in `tcpserver` mode (keeps listening
+# for `dump` commands, never stops the JVM) so scripts/blackbox-coverage.sh can pull coverage
+# data from the application as it's exercised externally. docker-compose.yml itself is
+# untouched -- a plain `docker compose up` never activates any of this.
+services:
+  app:
+    environment:
+      SPRING_PROFILES_ACTIVE: docker,blackbox
+      JAVA_TOOL_OPTIONS: -javaagent:/app/jacocoagent.jar=output=tcpserver,address=*,port=6300,includes=dev.leilaalgarve.jogoacoes.*
+    ports:
+      - "6300:6300"

@@ -1,0 +1,5 @@
+# Spec 05-014 -- stacked on top of `docker` (SPRING_PROFILES_ACTIVE=docker,blackbox), never
+# activated alone: this file only flips the captcha implementation, nothing else. Only
+# meaningful in combination with docker-compose.blackbox.yml (JaCoCo agent, port 6300).
+captcha:
+  verifier: always-pass
