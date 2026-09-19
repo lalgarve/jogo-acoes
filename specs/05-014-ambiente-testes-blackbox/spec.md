@@ -1,4 +1,4 @@
-# Spec: Ambiente de testes blackbox (captcha sempre válido)
+# Spec: Ambiente de testes blackbox (captcha sempre válido + cobertura JaCoCo da aplicação)
 
 **Status:** rascunho
 **Issue:** —
@@ -10,8 +10,13 @@ Um novo perfil de aplicação (`blackbox`), empilhável sobre o perfil `docker`,
 (ALTCHA) sempre é aceito como válido — necessário porque não existe (nem está no escopo atual)
 um frontend que resolva o desafio de prova-de-trabalho de verdade, o que hoje torna
 `captchaToken` impossível de preencher numa chamada blackbox real sem reimplementar o algoritmo
-do ALTCHA no lado do teste. Junto com isso, documenta no `README.md` como rodar a suíte Java com
-ou sem instrumentação do JaCoCo, e como gerar o relatório de cobertura depois.
+do ALTCHA no lado do teste. O mesmo ambiente também ganha cobertura de código JaCoCo da
+**aplicação rodando de verdade** — capturada enquanto ela é exercitada por fora (clique manual
+no Swagger UI, ou a suíte de testes blackbox em Python da spec 05-015), não pela suíte
+JUnit/Cucumber (`app/src/test`), que já tem seu próprio relatório JaCoCo e mecanismo próprio
+(`jacoco-maven-plugin`, inalterado por esta spec). São dois relatórios de cobertura distintos,
+gerados por dois mecanismos diferentes, medindo dois tipos de exercício diferentes do mesmo
+código.
 
 ## Motivação
 
@@ -22,6 +27,14 @@ exija `captchaToken`) sem resolver o desafio ALTCHA de verdade — o objetivo de
 validar o comportamento da API do ponto de vista de fora, não reimplementar prova-de-trabalho.
 Um perfil dedicado, que nunca é ativado pela suíte de testes Java nem em produção, resolve isso
 sem enfraquecer o captcha real usado em qualquer outro contexto.
+
+Além disso, sem cobertura de código medida enquanto a aplicação é exercitada por Swagger/pela
+suíte Python, a única cobertura visível hoje é a da suíte JUnit/Cucumber — não mostra se um
+teste blackbox de fato passou pelo código que se propõe a validar. `jacoco-maven-plugin`
+(usado hoje) só instrumenta JVMs que o próprio Maven lança para rodar testes — não serve para
+medir cobertura de um processo `java -jar app.jar` já em execução, exercitado de fora por HTTP;
+o mecanismo pra isso é diferente (agente de execução do JaCoCo anexado ao próprio processo,
+mais uma ferramenta de linha de comando pra extrair os dados coletados e gerar o relatório).
 
 ## Cenários (comportamento esperado)
 
@@ -44,11 +57,22 @@ specs 05-006/05-007/05-011).
   que inclua o serviço `db` — inclusive neste ambiente, sem mudança adicional; citado aqui só
   como contexto (a única forma de inspecionar o banco visualmente durante um teste blackbox é
   esse ambiente Docker, não o perfil `sandbox`/H2).
-- `README.md` ganha uma seção explicando: (1) como subir este ambiente; (2) o alcance do bypass
-  de captcha (só aqui); (3) como rodar a suíte de testes Java com JaCoCo (padrão hoje,
-  `mvn test`/`mvn verify`, relatório gerado em `target/site/jacoco/index.html`) e sem JaCoCo
-  (mais rápido, quando cobertura não importa para o que está sendo depurado) via a própria
-  flag que o `jacoco-maven-plugin` já reconhece.
+- A imagem Docker da aplicação (`Dockerfile`, usada tanto por `docker-compose.yml` quanto pela
+  sobreposição `blackbox`) embute o agente de execução do JaCoCo e o `jacococli` — presentes em
+  toda imagem, mas inertes: só o `docker-compose.blackbox.yml` de fato ativa o agente (via
+  variável de ambiente no processo `java -jar app.jar`, modo `tcpserver`, sem parar/reiniciar
+  a JVM para coletar dados), e só ele expõe a porta de *dump*. `docker-compose up` normal
+  (sem a sobreposição) roda exatamente como hoje, sem agente anexado — "com ou sem JaCoCo" é
+  literalmente subir com ou sem `docker-compose.blackbox.yml`.
+- Um script dedicado (local, roda contra o container `app` já em execução) faz o *dump* dos
+  dados de execução acumulados pelo agente e gera o relatório HTML de cobertura — comando único,
+  documentado no `README.md`, gerando o relatório num diretório próprio (não sobrescreve nem se
+  mistura com o relatório da suíte Java em `target/site/jacoco/`).
+- `README.md` ganha uma seção explicando: (1) como subir o ambiente `blackbox` (com o agente
+  JaCoCo ativo); (2) o alcance do bypass de captcha (só aqui); (3) como gerar o relatório de
+  cobertura da aplicação exercitada externamente (Swagger UI manual e/ou suíte Python, spec
+  05-015) via o script dedicado; (4) que a suíte JUnit/Cucumber continua com seu próprio
+  relatório JaCoCo de sempre (`mvn test`/`mvn verify`), sem relação com este mecanismo novo.
 
 ## Requisitos não-funcionais
 
@@ -60,6 +84,10 @@ specs 05-006/05-007/05-011).
   ambiente** — ele existe só para consumo manual (Swagger UI, Selenium) e pela suíte de testes
   blackbox em Python (spec 05-015), nunca para os testes que já rodam em `sandbox`/`docker`
   hoje.
+- **Os dois relatórios de cobertura nunca se sobrescrevem nem se confundem** — o da suíte
+  JUnit/Cucumber (`target/site/jacoco/`, gerado por `mvn test`/`mvn verify`, inalterado) e o da
+  aplicação exercitada externamente (novo, script dedicado, diretório próprio) precisam
+  conviver lado a lado, cada um respondendo por um tipo de exercício diferente do código.
 
 ## Fora de escopo
 
@@ -73,6 +101,7 @@ specs 05-006/05-007/05-011).
 
 ## Decisões em aberto
 
-Nenhuma — decisões técnicas (nome do perfil, mecanismo de seleção da implementação, arquivo de
-sobreposição do `docker-compose`, flag do JaCoCo) resolvidas em conversa antes de escrever este
-documento, ver `plan.md`.
+Nenhuma — decisões técnicas (nome do perfil, mecanismo de seleção da implementação de captcha,
+arquivo de sobreposição do `docker-compose`, como o agente JaCoCo é embutido/ativado, como o
+relatório de cobertura da aplicação exercitada externamente é gerado) resolvidas em conversa
+antes de escrever este documento, ver `plan.md`.
