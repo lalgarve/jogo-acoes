@@ -16,3 +16,13 @@ docs/disciplina/*.bbl
 docs/disciplina/*.blg
 docs/disciplina/*.synctex.gz
 docs/disciplina/*.pdf
+
+# blackbox-tests/ (spec 05-015) -- Python project, generated client and local venv aren't
+# committed: the client is regenerated from docs/openapi.yaml (source of truth), same spirit
+# as target/generated-sources on the Java side not being committed either.
+blackbox-tests/generated_client/
+blackbox-tests/.venv/
+blackbox-tests/__pycache__/
+blackbox-tests/**/__pycache__/
+blackbox-tests/.pytest_cache/
+blackbox-tests/*.egg-info/
