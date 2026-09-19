@@ -1,7 +1,7 @@
 # Spec: Suíte de testes blackbox em Python (behave + pytest)
 
 **Status:** rascunho
-**Issue:** —
+**Issue:** [#69](https://github.com/lalgarve/jogo-acoes/issues/69)
 **Iteração:** iteration-5
 
 ## Resumo

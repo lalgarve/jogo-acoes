@@ -1,7 +1,7 @@
 # Spec: Ambiente de testes blackbox (captcha sempre válido + cobertura JaCoCo da aplicação)
 
 **Status:** rascunho
-**Issue:** —
+**Issue:** [#68](https://github.com/lalgarve/jogo-acoes/issues/68)
 **Iteração:** iteration-5
 
 ## Resumo
