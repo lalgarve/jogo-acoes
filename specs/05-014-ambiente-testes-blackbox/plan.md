@@ -32,6 +32,16 @@ qualquer JVM, não só uma lançada pelo Maven — e `org.jacoco:org.jacoco.cli`
 execução acumulados de um agente rodando em modo `tcpserver`, sem parar a JVM) e `report` (gera
 HTML/XML a partir de um `.exec` + as classes/fontes compiladas).
 
+**Duas lacunas que impedem o ambiente de ser usável de fora, mesmo com captcha resolvido.**
+(1) Nenhuma linha de `app_user`/`user_role` com papel `ADMINISTRATOR` existe sem passar por
+`UserMother` (só teste) ou uma inserção manual — confirmado, não existe `POST` de usuário/
+promoção de papel em `docs/openapi.yaml`. (2) `SentEmail` (`email/SentEmail.java`,
+`sent_email`) já grava `email`/`link`/`template`/`sentAt` a cada envio — tanto
+`StubEmailSender` quanto `SqsEmailSender` chamam `SentEmailRecorder.record(...)` (confirmado
+lendo as duas classes) — mas `SentEmailRepository` só tem `findByLink` (usado internamente); não
+existe rota que devolva isso por HTTP. As duas lacunas usam o mesmo tipo de solução já aplicada
+ao captcha: alguma coisa que só existe quando `blackbox` está ativo, nunca em outro perfil.
+
 ## Decisões de arquitetura
 
 | Pergunta | Decisão | Status | Raciocínio |
@@ -43,6 +53,8 @@ HTML/XML a partir de um `.exec` + as classes/fontes compiladas).
 | Onde o agente/CLI do JaCoCo vivem | Embutidos na **mesma** imagem Docker de sempre (`Dockerfile`), sempre presentes mas inertes — `mvn dependency:copy` (executions novas em `app/pom.xml`, fase `package`) copiam `org.jacoco:org.jacoco.agent:0.8.15:jar:runtime` → `target/jacoco/jacocoagent.jar` e `org.jacoco:org.jacoco.cli:0.8.15:jar:nodeps` → `target/jacoco/jacococli.jar` (mesma versão 0.8.15 já usada pelo `jacoco-maven-plugin`, evita descompasso de formato de `.exec`); o estágio final do `Dockerfile` copia os dois pra `/app/`. Nenhum `ENTRYPOINT`/`CMD` novo — a ativação é só a variável `JAVA_TOOL_OPTIONS` (lida automaticamente por qualquer `java`, sem precisar reescrever o comando de start). | resolvida | Uma imagem só pra manter (sem Dockerfile paralelo pra um ambiente de uso ocasional); custo de ter os dois jars sempre presentes é mínimo (poucos MB) e não tem efeito nenhum enquanto `JAVA_TOOL_OPTIONS` não estiver setada — só `docker-compose.blackbox.yml` faz isso. |
 | Como o agente é configurado | `JAVA_TOOL_OPTIONS=-javaagent:/app/jacocoagent.jar=output=tcpserver,address=*,port=6300,includes=dev.leilaalgarve.jogoacoes.*` no serviço `app` de `docker-compose.blackbox.yml`, porta `6300` publicada (`"6300:6300"`, concatenada à `8080:8080` já existente). `output=tcpserver` mantém o agente escutando pra comandos `dump` a qualquer momento, sem precisar parar a JVM; `includes` restringe a instrumentação ao pacote da aplicação (mesmo espírito do `<excludes>` já usado pelo `jacoco-maven-plugin` pra não contar `api`/`org.openapitools` gerados). | resolvida | Modo padrão do JaCoCo pra "coletar cobertura de uma aplicação de vida longa, sem reiniciar" — documentado pelo próprio projeto JaCoCo para exatamente este cenário. |
 | Como gerar o relatório depois de uma sessão de teste | Script dedicado (`scripts/blackbox-coverage.sh`, raiz do repositório) que roda, em sequência: (1) `java -jar app/target/jacoco/jacococli.jar dump --address localhost --port 6300 --destfile target/jacoco-blackbox.exec` (contra o container já em execução, porta publicada no host); (2) `java -jar app/target/jacoco/jacococli.jar report target/jacoco-blackbox.exec --classfiles app/target/classes --sourcefiles app/src/main/java --html target/site/jacoco-blackbox`. Pressupõe `app/target/classes` local compilado a partir do mesmo commit rodando no container (mesma checkout) — documentado no `README.md`. Diretório de saída (`target/site/jacoco-blackbox/`) propositalmente diferente do relatório da suíte Java (`target/site/jacoco/`). | resolvida | Um comando, sem exigir lembrar dos dois passos/flags do `jacococli` toda vez; caminho de saída deliberadamente separado do relatório da suíte JUnit/Cucumber pra nunca colidir/sobrescrever. |
+| Como garantir um administrador no ambiente | `blackbox/BlackboxDataSeeder.java` (`ApplicationRunner`, `@Component @Profile("blackbox")`) — na inicialização, busca por e-mail fixo (`admin@blackbox.local`, documentado no README); se não existir, cria o `User` (`registered = true`) + `UserRole` com papel `ADMINISTRATOR`, mesma lógica de `UserMother.administrator()` (só que em código principal, gated por perfil). Idempotente (checa antes de criar) — subir/derrubar o container repetidamente não duplica nem falha. | resolvida | Reaproveita a lógica que os testes Cucumber já usam pra montar um administrador; um `ApplicationRunner` com `@Profile` é o mesmo mecanismo de "só existe em `blackbox`" já usado pro captcha, sem precisar de migration/seed de banco separado (que afetaria o perfil `docker` inteiro, inclusive CI). |
+| Como ler o link de um e-mail enviado, de fora | Novo endpoint `GET /blackbox/last-email?email={endereço}` (`blackbox/BlackboxController.java`, `@RestController @Profile("blackbox")`), lendo `SentEmailRepository.findTopByEmailOrderBySentAtDesc(email)` (método novo) e devolvendo `{ link, template, sentAt }` do envio mais recente pra aquele endereço; `404` se nada foi enviado ainda. `blackbox/BlackboxSecurityConfigContributor.java` libera a rota (`permitAll`) — não faz sentido exigir sessão pra ler o e-mail de um jogador que ainda nem tem uma. **Não entra em `docs/openapi.yaml`**: é andaime de teste, não contrato de produto — a suíte Python (spec 05-015) chama essa rota direto via HTTP, fora do cliente gerado a partir do contrato. | resolvida | Reaproveita a tabela/gravação que já existe (`SentEmail`); manter fora do contrato oficial evita que uma rota de teste vaze pro cliente gerado como se fosse API de produto, e evita qualquer fricção com `OpenApiRoutesConsistencyTest`/`OpenApiRolesConsistencyTest` (que só veem rotas do perfil em que rodam, nunca `blackbox`). |
 
 ## Estrutura de módulos/pacotes
 
@@ -65,9 +77,18 @@ HTML/XML a partir de um `.exec` + as classes/fontes compiladas).
 - `Dockerfile` (modificado) — estágio final copia os dois jars do JaCoCo pra `/app/`, sempre.
 - `docker-compose.blackbox.yml` (novo, raiz do repositório).
 - `scripts/blackbox-coverage.sh` (novo) — dump + report num comando.
-- `README.md` (modificado) — seção sobre o ambiente `blackbox` (captcha + como gerar o
-  relatório de cobertura da aplicação exercitada externamente), deixando claro que é
-  independente do relatório de sempre da suíte Java.
+- `app/src/main/java/dev/leilaalgarve/jogoacoes/blackbox/BlackboxDataSeeder.java` (novo) —
+  garante o administrador conhecido, só em `blackbox`.
+- `app/src/main/java/dev/leilaalgarve/jogoacoes/blackbox/BlackboxController.java` (novo) —
+  `GET /blackbox/last-email`, só em `blackbox`.
+- `app/src/main/java/dev/leilaalgarve/jogoacoes/blackbox/BlackboxSecurityConfigContributor.java`
+  (novo) — libera a rota acima (`permitAll`); satisfaz o `ArchitectureTest` (todo
+  `@RestController` precisa de um `SecurityConfigContributor` no mesmo pacote).
+- `app/src/main/java/dev/leilaalgarve/jogoacoes/email/SentEmailRepository.java` (modificado) —
+  novo método `findTopByEmailOrderBySentAtDesc(String email)`.
+- `README.md` (modificado) — seção sobre o ambiente `blackbox` (captcha, administrador semeado,
+  como ler o link de um e-mail, como gerar o relatório de cobertura da aplicação exercitada
+  externamente), deixando claro que o relatório é independente do de sempre da suíte Java.
 
 ## Riscos e trade-offs
 
@@ -87,3 +108,16 @@ HTML/XML a partir de um `.exec` + as classes/fontes compiladas).
   sozinho) — é o comportamento padrão do JaCoCo e é o que se quer aqui (uma sessão de teste
   inteira, com vários cliques/requisições, deve somar no mesmo relatório); reiniciar o container
   é a forma de zerar entre sessões, também documentado.
+- **`GET /blackbox/last-email` sem autenticação lê o e-mail de qualquer endereço** — divulgação
+  de informação inaceitável fora deste contexto; aceito pelas mesmas razões do bypass de
+  captcha (pré-produção, `blackbox` nunca exposto publicamente) e protegido pela mesma barreira
+  estrutural (`@Profile("blackbox")` — a classe do controller nem chega a virar bean fora desse
+  perfil).
+- **Só o último e-mail por endereço é recuperável** — se um teste disparar dois e-mails
+  seguidos pro mesmo endereço antes de ler o primeiro (ex. reenvio de convite), o primeiro link
+  fica inacessível pelo endpoint. Aceitável para os fluxos de hoje (um e-mail por vez, lido
+  logo em seguida); um endpoint que liste o histórico é o tipo de melhoria que fica para a
+  "caixa postal mais completa" citada em `spec.md`.
+- **`BlackboxDataSeeder` roda em todo start do container** — custo desprezível (uma consulta
+  `findByEmail` a mais na inicialização), mas só existe enquanto `blackbox` estiver ativo, então
+  não afeta o tempo de subida de nenhum outro perfil.

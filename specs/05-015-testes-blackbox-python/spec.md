@@ -19,8 +19,9 @@ processo Java, com acesso direto a repositórios/beans Spring pra montar estado 
 `*Fixtures`, `*Mother`) — rápida e adequada para TDD, mas não prova, do ponto de vista de um
 cliente externo real, que a API publicada funciona como o contrato descreve. Uma suíte blackbox
 em Python, rodando contra a aplicação de verdade subida via `docker-compose` (spec 05-014, perfil
-`blackbox` — sem precisar resolver captcha), fecha essa lacuna e serve de base pra testes de UI
-(Selenium) mencionados na spec 05-014.
+`blackbox` — sem precisar resolver captcha, com um administrador já semeado, e com um jeito de
+ler o link de um e-mail enviado), fecha essa lacuna e serve de base pra testes de UI (Selenium)
+mencionados na spec 05-014.
 
 ## Cenários (comportamento esperado)
 
@@ -40,6 +41,9 @@ em Python, rodando contra a aplicação de verdade subida via `docker-compose` (
   (`openapi-generator-maven-plugin`), agora gerando também o consumidor Python.
 - `behave` para os cenários de negócio (Gherkin) — passos Python chamando o cliente gerado.
 - `pytest` para os testes técnicos pontuais que não são cenário de negócio.
+- Um passo compartilhado para ler o link do e-mail mais recente enviado a um endereço (via o
+  endpoint que a spec 05-014 expõe só no ambiente `blackbox`) — sem ele, nenhum cenário que
+  dependa de clicar num link (login, registro, confirmação de convite) consegue avançar.
 - Instruções no `README.md` (ou um `README.md` próprio de `blackbox-tests/`, ver `plan.md`) de
   como instalar dependências, gerar/regenerar o cliente e rodar a suíte contra o ambiente da
   spec 05-014.

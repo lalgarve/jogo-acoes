@@ -36,6 +36,18 @@ medir cobertura de um processo `java -jar app.jar` já em execução, exercitado
 o mecanismo pra isso é diferente (agente de execução do JaCoCo anexado ao próprio processo,
 mais uma ferramenta de linha de comando pra extrair os dados coletados e gerar o relatório).
 
+Dois furos adicionais, sem os quais o ambiente não é de fato utilizável de ponta a ponta por um
+cliente externo (Swagger UI ou a suíte Python): **não existe nenhuma via de API para criar um
+administrador** — só um administrador pode criar competições (`create_competition.feature`), e
+sem uma linha em `app_user`/`user_role` já presente no banco, nenhum fluxo que dependa disso é
+alcançável de fora; e **o link do e-mail (login mágico, confirmação de registro, convite) não
+aparece em nenhuma resposta HTTP** — `POST /login-requests` sempre devolve `202` sem corpo
+(deliberadamente, pra não revelar se o e-mail existe), e o link fica só em `sent_email`
+(gravado por `StubEmailSender`/`SqsEmailSender`, spec 05-009 em diante), tabela que hoje só é
+lida por dentro do processo Java (testes Cucumber), nunca por HTTP. Sem alguma forma de ler
+esse link de fora, nenhum fluxo que dependa de clicar num link — a maioria dos fluxos do
+sistema — é exercitável às cegas.
+
 ## Cenários (comportamento esperado)
 
 Não aplicável — infraestrutura/configuração de ambiente, sem `.feature` novo (mesmo padrão das
@@ -72,7 +84,18 @@ specs 05-006/05-007/05-011).
   JaCoCo ativo); (2) o alcance do bypass de captcha (só aqui); (3) como gerar o relatório de
   cobertura da aplicação exercitada externamente (Swagger UI manual e/ou suíte Python, spec
   05-015) via o script dedicado; (4) que a suíte JUnit/Cucumber continua com seu próprio
-  relatório JaCoCo de sempre (`mvn test`/`mvn verify`), sem relação com este mecanismo novo.
+  relatório JaCoCo de sempre (`mvn test`/`mvn verify`), sem relação com este mecanismo novo;
+  (5) o e-mail do administrador semeado (ver abaixo — não há senha, o login é só por link
+  mágico) e como ler o link de um e-mail enviado durante um teste.
+- No perfil `blackbox`, a aplicação garante — de forma idempotente, ao subir — que existe um
+  administrador com e-mail/dados conhecidos, sem exigir nenhuma ação manual no banco antes de
+  começar a testar.
+- Um jeito de obter, via HTTP, o link do e-mail mais recente enviado para um endereço — só
+  disponível no perfil `blackbox`, cobrindo o que hoje só é lido por dentro do processo Java
+  (`sent_email`). Não é uma caixa postal completa (histórico, múltiplos e-mails, marcação de
+  lido) — só o suficiente pra um teste blackbox conseguir avançar um fluxo que depende de
+  clicar num link; uma experiência mais completa ("olhar na caixa postal") fica para quando a
+  spec 05-015/o roadmap tiverem uma necessidade mais completa disso.
 
 ## Requisitos não-funcionais
 
@@ -88,6 +111,11 @@ specs 05-006/05-007/05-011).
   JUnit/Cucumber (`target/site/jacoco/`, gerado por `mvn test`/`mvn verify`, inalterado) e o da
   aplicação exercitada externamente (novo, script dedicado, diretório próprio) precisam
   conviver lado a lado, cada um respondendo por um tipo de exercício diferente do código.
+- **O endpoint de leitura de e-mail é, por natureza, uma divulgação de informação que seria
+  inaceitável em produção** (qualquer chamada, sem autenticação, lê o link mais recente enviado
+  para qualquer endereço) — aceitável aqui exatamente pela mesma razão do bypass de captcha
+  (sistema em pré-produção, spec confinada ao perfil `blackbox`, nunca exposta publicamente);
+  precisa da mesma garantia estrutural de nunca existir fora desse perfil (não só documentada).
 
 ## Fora de escopo
 
@@ -98,10 +126,18 @@ specs 05-006/05-007/05-011).
 - Mudar o comportamento do captcha em qualquer perfil existente — `sandbox`/`docker` (sem o
   perfil `blackbox` empilhado)/`staging`/`production` continuam exigindo um captcha
   resolvido de verdade, comportamento idêntico ao de hoje.
+- Uma experiência de "caixa postal" de verdade (múltiplos e-mails, histórico por endereço,
+  marcação de lido, interceptação real de SMTP tipo MailHog/Mailpit) — fica para quando a
+  implementação estiver mais completa; esta spec entrega só o mínimo (último link enviado por
+  endereço) necessário pra destravar os fluxos de teste blackbox de hoje.
+- Qualquer forma de criar administrador via API de verdade (endpoint de cadastro/promoção de
+  papel) — o que esta spec resolve é só a semeadura de um administrador conhecido no ambiente
+  `blackbox`, não uma funcionalidade de produto.
 
 ## Decisões em aberto
 
 Nenhuma — decisões técnicas (nome do perfil, mecanismo de seleção da implementação de captcha,
 arquivo de sobreposição do `docker-compose`, como o agente JaCoCo é embutido/ativado, como o
-relatório de cobertura da aplicação exercitada externamente é gerado) resolvidas em conversa
-antes de escrever este documento, ver `plan.md`.
+relatório de cobertura da aplicação exercitada externamente é gerado, como o administrador é
+semeado, como o link de e-mail é lido de fora) resolvidas em conversa antes de escrever este
+documento, ver `plan.md`.
