@@ -152,11 +152,14 @@ abaixo está automatizado neste repositório:
   exemplo, sobrescrevendo o `entrypoint` do serviço `app` na hora de subir (sem alterar nenhum
   arquivo do repositório):
   ```
-  docker compose -f docker-compose.yml -f docker-compose.blackbox.yml run --rm \
+  docker compose -f docker-compose.yml -f docker-compose.blackbox.yml run --rm --service-ports \
     -e FAKETIME_OFFSET="-30 days" \
     --entrypoint "sh -c 'apt-get update -qq && apt-get install -y -qq faketime && faketime \"\$FAKETIME_OFFSET\" java -jar app.jar'" \
     app
   ```
+  `--service-ports` é obrigatório aqui — sem ele, `docker compose run` não publica as portas
+  do serviço (`8080`, e `6300` se a sobreposição `blackbox` estiver ativa), e nada rodando no
+  host consegue alcançar `localhost:8080`.
 
 Se algum dia isso não for mais suficiente (ex.: precisar que o "agora" avance de forma
 controlada durante o teste, não só fique fixo no passado), a alternativa considerada foi
