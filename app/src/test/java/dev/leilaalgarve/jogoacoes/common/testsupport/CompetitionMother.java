@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
+
 /**
  * Object Mother + Test Data Builder combo (see memory/constitution.md): each factory
  * returns a request body already filled with valid data. Scenarios that test one invalid
@@ -40,8 +42,8 @@ public final class CompetitionMother {
 
     private static List<String> inviteeEmails() {
         List<String> emails = new ArrayList<>();
-        emails.add("invitee1-" + UUID.randomUUID() + "@example.com");
-        emails.add("invitee2-" + UUID.randomUUID() + "@example.com");
+        emails.add(unique("invitee1"));
+        emails.add(unique("invitee2"));
         return emails;
     }
 }

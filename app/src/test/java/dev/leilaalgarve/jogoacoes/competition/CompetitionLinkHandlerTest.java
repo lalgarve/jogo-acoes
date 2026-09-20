@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Map;
 import java.util.Optional;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -125,7 +126,7 @@ class CompetitionLinkHandlerTest {
 
     @Test
     void consumeRejectsAPayloadMissingTheParticipationId() {
-        assertThatThrownBy(() -> handler().consume(new LinkPayload(null, "someone@example.com", Map.of())))
+        assertThatThrownBy(() -> handler().consume(new LinkPayload(null, fixed("someone"), Map.of())))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -133,7 +134,7 @@ class CompetitionLinkHandlerTest {
     void consumeRejectsAPayloadWithANonNumericParticipationId() {
         Map<String, String> extra = Map.of(CompetitionLinkHandler.PARTICIPATION_ID_EXTRA_KEY, "not-a-number");
 
-        assertThatThrownBy(() -> handler().consume(new LinkPayload(null, "someone@example.com", extra)))
+        assertThatThrownBy(() -> handler().consume(new LinkPayload(null, fixed("someone"), extra)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -146,7 +147,7 @@ class CompetitionLinkHandlerTest {
     }
 
     private LinkPayload payload(Long userId, long participationId) {
-        return new LinkPayload(userId, "player@example.com",
+        return new LinkPayload(userId, fixed("player"),
                 Map.of(CompetitionLinkHandler.PARTICIPATION_ID_EXTRA_KEY, String.valueOf(participationId)));
     }
 
@@ -162,7 +163,7 @@ class CompetitionLinkHandlerTest {
         participation.setId(1L);
         participation.setCompetition(competition);
         participation.setUser(user);
-        participation.setEmail(user != null ? user.getEmail() : "player@example.com");
+        participation.setEmail(user != null ? user.getEmail() : fixed("player"));
         participation.setStatus(status);
         participation.setRequestType(RequestType.REQUEST);
         return participation;
@@ -171,7 +172,7 @@ class CompetitionLinkHandlerTest {
     private User userWithId(Long id) {
         User user = new User();
         user.setId(id);
-        user.setEmail("player" + id + "@example.com");
+        user.setEmail(fixed("player" + id));
         user.setName("Player " + id);
         user.setRegistered(true);
         return user;

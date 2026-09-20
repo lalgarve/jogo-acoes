@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class CreateCompetitionSteps {
@@ -63,7 +64,7 @@ public class CreateCompetitionSteps {
 
     @Given("enter a list of e-mails containing an invalid e-mail address")
     public void enter_a_list_of_e_mails_containing_an_invalid_e_mail_address() {
-        world.getCompetitionRequest().emails(List.of("valid@example.com", "not-an-email"));
+        world.getCompetitionRequest().emails(List.of(fixed("valid"), "not-an-email"));
     }
 
     @Given("define the start date as {}")

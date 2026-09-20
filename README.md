@@ -94,7 +94,8 @@ normalmente exigem um cliente completo:
   resolvido de verdade.
 - **Administrador já semeado** — como só um administrador pode criar competições e não existe
   via de API para criar um, a aplicação garante, de forma idempotente ao subir, um administrador
-  com e-mail `admin@blackbox.local`. Não há senha em lugar nenhum do sistema — login é sempre
+  com e-mail `success+admin@simulator.amazonses.com` (simulador de caixa de entrada do Amazon
+  SES, spec 05-016). Não há senha em lugar nenhum do sistema — login é sempre
   por link mágico.
 - **Leitura do link de um e-mail por HTTP** — `POST /login-requests` nunca devolve o link no
   corpo (deliberado, pra não revelar se o e-mail existe), e por padrão o link só é visível de

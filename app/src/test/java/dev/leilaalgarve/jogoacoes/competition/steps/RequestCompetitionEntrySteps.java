@@ -19,8 +19,8 @@ import io.restassured.specification.RequestSpecification;
 import org.altcha.altcha.v2.Altcha;
 
 import java.util.List;
-import java.util.UUID;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class RequestCompetitionEntrySteps {
@@ -73,7 +73,7 @@ public class RequestCompetitionEntrySteps {
     public void entered_a_valid_e_mail() {
         String email = world.getCurrentUser() != null
                 ? world.getCurrentUser().getEmail()
-                : "player-" + UUID.randomUUID() + "@example.com";
+                : unique("player");
         world.setCandidateEmail(email);
     }
 
@@ -142,7 +142,7 @@ public class RequestCompetitionEntrySteps {
     public void the_player_already_requested_entry_into_a_public_competition() {
         world.setCurrentUser(null);
         world.setTargetCompetition(competitionFixtures.publicCompetition());
-        world.setCandidateEmail("player-" + UUID.randomUUID() + "@example.com");
+        world.setCandidateEmail(unique("player"));
         submitEntryRequest(new EntryRequest().email(world.getCandidateEmail()).captchaToken(validCaptchaToken()));
         assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
     }

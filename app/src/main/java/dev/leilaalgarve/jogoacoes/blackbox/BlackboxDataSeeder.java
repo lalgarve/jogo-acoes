@@ -31,7 +31,10 @@ import java.time.LocalDateTime;
 @Profile("blackbox")
 public class BlackboxDataSeeder implements ApplicationRunner {
 
-    public static final String ADMIN_EMAIL = "admin@blackbox.local";
+    // Spec 05-016: simulator.amazonses.com (Amazon SES mailbox simulator, plus addressing) --
+    // this address is real enough to flow through the actual send pipeline (SqsEmailSender,
+    // since `blackbox` stacks on `docker`), unlike a made-up local domain.
+    public static final String ADMIN_EMAIL = "success+admin@simulator.amazonses.com";
     private static final String ADMIN_NAME = "Blackbox administrator";
 
     private final UserRepository userRepository;

@@ -18,8 +18,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Optional;
-import java.util.UUID;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -63,7 +63,7 @@ class SqsEmailSenderDockerIntegrationTest {
 
     @Test
     void publishesAMessageThatCanBeReceivedFromTheRealQueue() {
-        String recipientEmail = "player-" + UUID.randomUUID() + "@example.com";
+        String recipientEmail = unique("player");
         EmailRequest request = new EmailRequest(null, recipientEmail, null, "Copa Verão", null,
                 "https://jogo-acoes.example/login-links/abc", EmailTemplate.REGISTRATION_LINK);
 

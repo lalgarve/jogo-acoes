@@ -7,7 +7,7 @@ Feature: Public competition entry, from an external HTTP client's point of view
   mailbox for.
 
   Scenario: A new player requests entry, receives a registration link, and joins the competition
-    Given the administrator is logged in via the magic link sent to "admin@blackbox.local"
+    Given the administrator is logged in via the magic link sent to "success+admin@simulator.amazonses.com"
     And the administrator creates a public competition
     When a new player requests entry into the competition with an empty CAPTCHA token
     Then the request is accepted

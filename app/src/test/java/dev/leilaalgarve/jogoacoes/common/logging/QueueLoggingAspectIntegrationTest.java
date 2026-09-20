@@ -15,8 +15,8 @@ import org.springframework.test.context.ActiveProfiles;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.UUID;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -44,7 +44,7 @@ class QueueLoggingAspectIntegrationTest {
 
     @Test
     void logsTheMessageSentThroughTheQueue(CapturedOutput output) {
-        String recipientEmail = "player-" + UUID.randomUUID() + "@example.com";
+        String recipientEmail = unique("player");
         EmailRequest request = new EmailRequest(null, recipientEmail, null, "Copa Verão", null,
                 "https://jogo-acoes.example/login-links/abc", EmailTemplate.REGISTRATION_LINK);
 

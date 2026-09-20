@@ -30,8 +30,8 @@ pequenas o bastante para não precisar de PR isolada).
 | T012 | Atualizar `README.md` (seção "Ambiente de testes blackbox") — a menção a `admin@blackbox.local` passa a citar o novo endereço | T009 | | #70 |
 | T013 | Rodar a suíte completa do módulo `app` (`mvn -pl app -am test`) — confirmar verde, incluindo `BlackboxProfileIntegrationTest` com o novo `ADMIN_EMAIL` | T002, T003, T004, T005, T006, T007, T008, T009 | | #70 |
 | T014 | Rodar a suíte de `email-lambda` (`mvn -pl email-lambda -am test`) — confirmar verde (ou *skip* gracioso sem Docker, mesmo comportamento já documentado em `EmailSendHandlerTest`) | T010 | [P] | #70 |
-| T015 | Rodar `behave`/`pytest` de `blackbox-tests/` contra o ambiente `blackbox` (spec 05-014/05-015) — confirmar verde, em particular o login do administrador semeado com o novo e-mail | T011, T012, T013 | | #70 |
-| T016 | `grep -rn "@example\.com" app/src/test email-lambda/src/test blackbox-tests/` — confirmar que só sobram os endereços propositalmente inválidos listados em "Fora de escopo" de `spec.md` (`"not-an-email"`) | T013, T014, T015 | | #70 |
+| T015 | Rodar `behave`/`pytest` de `blackbox-tests/` contra o ambiente `blackbox` (spec 05-014/05-015) — confirmar verde, em particular o login do administrador semeado com o novo e-mail. Executado com sucesso contra o jar empacotado + Postgres real (mesmo caminho usado para verificar as specs 05-014/05-015 — `docker compose up` completo não pôde ser confirmado neste ambiente pelo mesmo bloqueio de rede ao registry de imagens já registrado ali) | T011, T012, T013 | | #70 |
+| T016 | `grep -rn "@example\.com" app/src/test email-lambda/src/test blackbox-tests/features blackbox-tests/tests` — confirmar que só sobram os endereços propositalmente inválidos listados em "Fora de escopo" de `spec.md` (`"not-an-email"`). Achado na varredura: `blackbox-tests/tests/test_mailbox.py` também usava `@example.com` (não estava listado em `plan.md`) — corrigido junto | T013, T014, T015 | | #70 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.

@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class LoginSteps {
@@ -84,7 +85,7 @@ public class LoginSteps {
     private void setUpPendingParticipation(RequestType requestType) {
         String email = world.getCurrentUser() != null
                 ? world.getCurrentUser().getEmail()
-                : "player-" + UUID.randomUUID() + "@example.com";
+                : unique("player");
         world.setCandidateEmail(email);
 
         Participation participation = new Participation();
@@ -255,7 +256,7 @@ public class LoginSteps {
         boolean isPrivate = status.contains("private");
         world.setTargetCompetition(isPrivate ? competitionFixtures.privateCompetition() : competitionFixtures.publicCompetition());
         RequestType requestType = isPrivate ? RequestType.INVITE : RequestType.REQUEST;
-        world.setCandidateEmail("player-" + UUID.randomUUID() + "@example.com");
+        world.setCandidateEmail(unique("player"));
 
         Participation participation = new Participation();
         participation.setCompetition(world.getTargetCompetition());
@@ -305,7 +306,7 @@ public class LoginSteps {
 
     @Given("the user clicked a login link that is invalid or expired")
     public void the_user_clicked_a_login_link_that_is_invalid_or_expired() {
-        world.setCurrentLoginLink(loginLinkFixtures.expiredLink("someone-" + UUID.randomUUID() + "@example.com"));
+        world.setCurrentLoginLink(loginLinkFixtures.expiredLink(unique("someone")));
     }
 
     @When("the system validates the link")
