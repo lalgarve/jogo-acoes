@@ -129,6 +129,40 @@ lança), sempre disponível na imagem mas inerte fora deste perfil.
 - **Sem JaCoCo**: `docker compose up` normal (sem `-f docker-compose.blackbox.yml`) — a imagem
   tem o agente embutido, mas ele nunca é ativado fora da sobreposição `blackbox`.
 
+### Gerando dados de teste com uma data no passado
+
+Às vezes é útil gerar dados de teste como se a aplicação estivesse rodando numa data passada
+(ex.: uma competição que já começou/terminou há semanas, e-mails "enviados" há um tempo). Hoje
+não existe um `Clock` injetável no código — datas vêm direto de `LocalDate.now()`/
+`LocalDateTime.now()` — então a forma mais simples de conseguir isso é mudar o relógio que a
+JVM enxerga, sem tocar em código. Como nenhuma migration usa `NOW()`/`CURRENT_TIMESTAMP` do
+lado do Postgres (toda timestamp é calculada em Java antes de persistir), basta mexer no
+relógio do container `app` — o `db` não importa.
+
+Isso é feito manualmente, por fora, quando for gerar os dados — nenhum dos dois caminhos
+abaixo está automatizado neste repositório:
+
+- **Mudar o relógio do host** (mais simples, só em host/VM descartável dedicado a isso):
+  containers Linux normalmente compartilham o relógio do host (sem *time namespace* próprio),
+  então `sudo date -s "-30 days"` antes do `docker compose up` já muda o que a JVM enxerga em
+  `Instant.now()`/`System.currentTimeMillis()`. Lembrar de voltar o relógio do host depois —
+  isso afeta tudo que roda ali, TLS incluído.
+- **Escopado só ao container `app`**, sem mexer no host: `libfaketime` (`LD_PRELOAD`) — por
+  exemplo, sobrescrevendo o `entrypoint` do serviço `app` na hora de subir (sem alterar nenhum
+  arquivo do repositório):
+  ```
+  docker compose -f docker-compose.yml -f docker-compose.blackbox.yml run --rm \
+    -e FAKETIME_OFFSET="-30 days" \
+    --entrypoint "sh -c 'apt-get update -qq && apt-get install -y -qq faketime && faketime \"\$FAKETIME_OFFSET\" java -jar app.jar'" \
+    app
+  ```
+
+Se algum dia isso não for mais suficiente (ex.: precisar que o "agora" avance de forma
+controlada durante o teste, não só fique fixo no passado), a alternativa considerada foi
+injetar um `Clock` de verdade (bean configurável por propriedade, com uma implementação real
+para produção e uma deslocada em dias para teste) — mudança de código real, ainda não feita
+porque a opção acima resolve o caso de uso atual (gerar dados) sem tocar em nada versionado.
+
 ## Licença
 
 Este projeto está licenciado sob a GNU General Public License v3.0 (ou, a seu critério,
