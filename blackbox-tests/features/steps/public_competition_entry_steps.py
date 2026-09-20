@@ -19,7 +19,7 @@ from jogo_acoes_client.models import (
     RequestLoginLinkBody,
 )
 
-ADMIN_EMAIL = "admin@blackbox.local"
+ADMIN_EMAIL = "success+admin@simulator.amazonses.com"
 
 
 def _token_from_link(link: str) -> str:
@@ -62,7 +62,7 @@ def step_admin_creates_competition(context):
 
 @when("a new player requests entry into the competition with an empty CAPTCHA token")
 def step_player_requests_entry(context):
-    context.player_email = f"blackbox-player-{uuid.uuid4()}@example.com"
+    context.player_email = f"success+blackbox-player-{uuid.uuid4()}@simulator.amazonses.com"
     context.player_client = new_client(context)
 
     context.last_response = request_or_confirm_entry.sync_detailed(

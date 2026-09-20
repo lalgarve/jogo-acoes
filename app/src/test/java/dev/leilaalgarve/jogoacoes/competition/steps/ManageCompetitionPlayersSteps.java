@@ -21,8 +21,8 @@ import io.restassured.response.Response;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ManageCompetitionPlayersSteps {
@@ -54,7 +54,7 @@ public class ManageCompetitionPlayersSteps {
     public void a_player_in_the_competition_has_status_since(String status, String date) {
         ParticipationStatus target = parseStatus(status);
         LocalDate parsedDate = LocalDate.parse(date);
-        world.setCandidateEmail("player-" + UUID.randomUUID() + "@example.com");
+        world.setCandidateEmail(unique("player"));
 
         Participation participation = new Participation();
         participation.setCompetition(world.getTargetCompetition());
@@ -137,7 +137,7 @@ public class ManageCompetitionPlayersSteps {
 
     @Given("a player is listed in the competition")
     public void a_player_is_listed_in_the_competition() {
-        world.setCandidateEmail("player-" + UUID.randomUUID() + "@example.com");
+        world.setCandidateEmail(unique("player"));
         Participation participation = new Participation();
         participation.setCompetition(world.getTargetCompetition());
         participation.setEmail(world.getCandidateEmail());
@@ -179,9 +179,9 @@ public class ManageCompetitionPlayersSteps {
     @Given("multiple players are listed in the competition")
     public void multiple_players_are_listed_in_the_competition() {
         List<String> emails = List.of(
-                "player-" + UUID.randomUUID() + "@example.com",
-                "player-" + UUID.randomUUID() + "@example.com",
-                "player-" + UUID.randomUUID() + "@example.com");
+                unique("player"),
+                unique("player"),
+                unique("player"));
         world.setCandidateEmails(emails);
 
         List<Long> ids = emails.stream().map(email -> {
@@ -231,7 +231,7 @@ public class ManageCompetitionPlayersSteps {
 
     @When("the administrator edits the player's e-mail")
     public void the_administrator_edits_the_players_e_mail() {
-        world.setCandidateEmail("edited-" + UUID.randomUUID() + "@example.com");
+        world.setCandidateEmail(unique("edited"));
     }
 
     @When("confirms the change")
@@ -262,7 +262,7 @@ public class ManageCompetitionPlayersSteps {
 
     @Given("another player in the competition already uses a given e-mail")
     public void another_player_in_the_competition_already_uses_a_given_e_mail() {
-        String email = "taken-" + UUID.randomUUID() + "@example.com";
+        String email = unique("taken");
         world.setOtherPlayerEmail(email);
         Participation participation = new Participation();
         participation.setCompetition(world.getTargetCompetition());
@@ -314,7 +314,7 @@ public class ManageCompetitionPlayersSteps {
 
     @Given("a player has status \"e-mail sent but link not clicked\" in the competition")
     public void a_player_has_status_e_mail_sent_but_link_not_clicked_in_the_competition() {
-        world.setCandidateEmail("player-" + UUID.randomUUID() + "@example.com");
+        world.setCandidateEmail(unique("player"));
         Participation participation = new Participation();
         participation.setCompetition(world.getTargetCompetition());
         participation.setEmail(world.getCandidateEmail());
@@ -335,8 +335,8 @@ public class ManageCompetitionPlayersSteps {
     @When("the administrator enters a new list of e-mails to invite")
     public void the_administrator_enters_a_new_list_of_e_mails_to_invite() {
         world.setCandidateEmails(List.of(
-                "new-invitee-" + UUID.randomUUID() + "@example.com",
-                "new-invitee-" + UUID.randomUUID() + "@example.com"));
+                unique("new-invitee"),
+                unique("new-invitee")));
     }
 
     @When("confirms the invitation")

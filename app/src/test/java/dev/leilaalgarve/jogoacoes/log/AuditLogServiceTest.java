@@ -12,8 +12,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
-import java.util.UUID;
-
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 
 // Without this, @DataJpaTest swaps in an embedded H2 database regardless of the active
@@ -41,7 +40,7 @@ class AuditLogServiceTest {
     @Test
     void recordsAnEntryWithTheActingUser() {
         auditLogService = new AuditLogService(logRepository);
-        User actor = userRepository.save(newUser("alice-" + UUID.randomUUID() + "@example.com"));
+        User actor = userRepository.save(newUser(unique("alice")));
 
         auditLogService.record(LogType.COMPETITION_CREATED, 42L, actor, "Competition \"Test\" created");
 
@@ -62,7 +61,7 @@ class AuditLogServiceTest {
     void recordsAnEntryWithoutAnActorWhenTheEventIsNotUserInitiated() {
         auditLogService = new AuditLogService(logRepository);
         long before = logRepository.count();
-        String message = "Login link issued to bob-" + UUID.randomUUID() + "@example.com";
+        String message = "Login link issued to " + unique("bob");
 
         auditLogService.record(LogType.LOGIN_LINK_ISSUED, 7L, null, message);
 

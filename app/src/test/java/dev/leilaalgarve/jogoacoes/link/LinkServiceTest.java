@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -36,7 +37,7 @@ class LinkServiceTest {
         LinkRecord record = new LinkRecord();
         record.setToken("some-token");
         record.setServiceKey("competition-entry");
-        record.setEmail("player@example.com");
+        record.setEmail(fixed("player"));
         record.setExpiresAt(LocalDateTime.now().plusDays(1));
         record.setUsedAt(LocalDateTime.now().minusMinutes(1));
         when(linkRecordRepository.findByToken("some-token")).thenReturn(Optional.of(record));

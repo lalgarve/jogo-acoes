@@ -15,8 +15,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -70,7 +70,7 @@ class BlackboxProfileIntegrationTest {
 
     @Test
     void lastEmailReturnsTheMostRecentLinkSentToAnAddress() {
-        String email = "blackbox-test-" + UUID.randomUUID() + "@example.com";
+        String email = unique("blackbox-test");
         saveSentEmail(email, "https://jogo-acoes.example/older", LocalDateTime.now().minusMinutes(5));
         saveSentEmail(email, "https://jogo-acoes.example/newer", LocalDateTime.now());
 
@@ -83,7 +83,7 @@ class BlackboxProfileIntegrationTest {
     @Test
     void lastEmailReturnsNotFoundWhenNothingWasSentToTheAddress() {
         RestAssured.given().port(port).basePath("/api")
-                .when().get("/blackbox/last-email?email={email}", "never-sent-" + UUID.randomUUID() + "@example.com")
+                .when().get("/blackbox/last-email?email={email}", unique("never-sent"))
                 .then().statusCode(404);
     }
 

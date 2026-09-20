@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,7 +31,7 @@ class SqsEmailSenderTest {
     void publishesTheRenderedContentTaggedWithTheSentEmailIdAsCorrelationId() {
         SqsEmailSender sender = new SqsEmailSender(renderer, sqsTemplate, sentEmailRecorder, QUEUE_NAME);
 
-        EmailRequest request = new EmailRequest(1L, "alice@example.com", "Alice", null, null,
+        EmailRequest request = new EmailRequest(1L, fixed("alice"), "Alice", null, null,
                 "https://jogo-acoes.example/login-links/abc", EmailTemplate.LOGIN_LINK);
         RenderedEmail rendered = new RenderedEmail("Seu link de acesso", "<html>corpo renderizado</html>");
         SentEmail sentEmail = new SentEmail();
@@ -41,7 +42,7 @@ class SqsEmailSenderTest {
 
         sender.send(request);
 
-        verify(sqsTemplate).send(eq(QUEUE_NAME), eq(new EmailMessage("1", "42", "alice@example.com",
+        verify(sqsTemplate).send(eq(QUEUE_NAME), eq(new EmailMessage("1", "42", fixed("alice"),
                 "Seu link de acesso", "<html>corpo renderizado</html>")));
     }
 }

@@ -38,8 +38,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
-import java.util.UUID;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -172,7 +172,7 @@ class AuditLoggingIntegrationTest {
     @Test
     void completingRegistrationAuditsTheStatusChange() {
         Competition publicCompetition = competitionFixtures.publicCompetition();
-        String email = "newplayer-" + UUID.randomUUID() + "@example.com";
+        String email = unique("newplayer");
         LinkRecord link = loginLinkFixtures.pendingParticipationLink(publicCompetition, email, RequestType.REQUEST);
         Long participationId = participationRepository
                 .findByCompetition_IdAndEmailAndStatusNot(publicCompetition.getId(), email, ParticipationStatus.IN_COMPETITION)
@@ -194,7 +194,7 @@ class AuditLoggingIntegrationTest {
         Competition competition = competitionFixtures.privateCompetition();
         User admin = userMother.administrator();
         authenticateAs(admin);
-        String email = "invitee-" + UUID.randomUUID() + "@example.com";
+        String email = unique("invitee");
 
         playerManagementService.invitePlayers(competition.getId(), List.of(email));
         Long participationId = participationRepository.findByCompetition_Id(competition.getId()).get(0).getId();
