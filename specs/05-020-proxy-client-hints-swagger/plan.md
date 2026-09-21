@@ -20,6 +20,11 @@ origem de onde foi carregado) sem precisar reconfigurar nada no contrato.
 `pom.xml` da raiz só agrega, cada módulo mantém seu próprio parent/BOM (`README.md`, seção
 "Módulos"). `blackbox-proxy/` seria o terceiro, mesmo padrão de agregação.
 
+`User-Agent` entra na mesma lista de headers sobrescritos pelo proxy (pedido do usuário — "alguns
+testes precisam disso"): mesmo mecanismo dos `Sec-CH-UA*` resolve, sem precisar decidir se o
+navegador bloquearia especificamente esse header via `fetch`/XHR — o proxy sobrescreve de
+qualquer forma, então a pergunta fica irrelevante na prática.
+
 ## Decisões de arquitetura
 
 | Pergunta | Decisão | Status | Raciocínio |
@@ -29,7 +34,8 @@ origem de onde foi carregado) sem precisar reconfigurar nada no contrato.
 | Como o proxy decide o que encaminhar | Regra única: tudo que não é `POST /blackbox/proxy/headers` é encaminhado pra API real, sem lista de rotas permitidas | resolvida | Diferente da primeira tentativa (que restringia a duas rotas por cautela de superfície), aqui a transparência total é o requisito — o usuário quer navegar o Swagger inteiro através do proxy, não só duas operações. |
 | Framework/mecanismo de proxy | `@RestController` com `@RequestMapping("/**")` capturando todo método, usando `RestClient` (Spring 6.1+, já disponível via `spring-boot-starter-web`, sem dependência nova) pra montar a chamada de saída | resolvida | Mais simples que adotar Spring Cloud Gateway (WebFlux/Netty, paradigma reativo diferente do resto do projeto) só pra um proxy de poucas linhas; Gateway fica registrado aqui como alternativa se o proxy algum dia precisar crescer (roteamento por regra, retries, etc.), não escolhida agora. |
 | Headers hop-by-hop / `Content-Length` / `Host` | Nunca repassados como vieram — `RestClient` recalcula `Content-Length`, e `Connection`/`Transfer-Encoding`/`Keep-Alive`/`Host` são descartados da requisição de entrada antes de montar a de saída | resolvida | Erro clássico de proxy escrito à mão — copiar esses headers cegamente quebra a conexão (tamanho errado, `Host` da porta errada). Registrado aqui pra não esquecer na implementação. |
-| Onde/como rodar | `mvn -pl blackbox-proxy -am spring-boot:run`, documentado no README — não entra em `docker-compose.yml`/`docker-compose.blackbox.yml` nesta v1 | resolvida (era decisão em aberto em `spec.md`) | Ferramenta de uso manual e ocasional (testar rótulo de dispositivo), não parte do pipeline automático — colocar em Docker Compose acrescentaria complexidade de rede (hostname de container vs. `localhost`) sem necessidade agora; documentado como possível próximo passo, não feito. |
+| Onde/como rodar | Script `scripts/blackbox-proxy.sh` chamando `mvn -pl blackbox-proxy -am spring-boot:run` — não entra em `docker-compose.yml`/`docker-compose.blackbox.yml` nesta v1 | resolvida (era decisão em aberto em `spec.md`) | Ferramenta de uso manual e ocasional (testar rótulo de dispositivo), não parte do pipeline automático — colocar em Docker Compose acrescentaria complexidade de rede (hostname de container vs. `localhost`) sem necessidade agora; documentado como possível próximo passo, não feito. |
+| Como suportar vários dispositivos ao mesmo tempo | Não dentro de uma instância (uma configuração corrente só) — várias instâncias, cada uma sua porta, via `scripts/blackbox-proxy.sh` com `--proxy-port`/`--target-url`/`--target-port` sobrescritos | resolvida | Pedido explícito do usuário ("se o usuário quiser rodar 4 instâncias, tudo bem"); mais simples que dar à mesma instância um conceito de "sessão"/"aba" pra guardar mais de uma configuração — cada instância já é isolada (seu próprio `DeviceHeaderStore` em memória) de graça. |
 
 ## Estrutura de módulos/pacotes
 
@@ -38,7 +44,7 @@ blackbox-proxy/
   pom.xml                          # parent próprio (spring-boot-starter-parent), spring-boot-starter-web só
   src/main/java/.../blackboxproxy/
     BlackboxProxyApplication.java  # @SpringBootApplication
-    DeviceHeaderStore.java         # estado em memória (AtomicReference), guarda os 4 valores atuais
+    DeviceHeaderStore.java         # estado em memória (AtomicReference), guarda os 5 valores atuais
     DeviceHeaderController.java    # POST /blackbox/proxy/headers -> DeviceHeaderStore
     ReverseProxyController.java    # @RequestMapping("/**") todo método -> encaminha pra TARGET_BASE_URL
   src/main/resources/application.yml
@@ -46,20 +52,38 @@ blackbox-proxy/
     # blackbox-proxy.target-base-url: http://localhost:8080 (padrão, sobrescrevível)
   src/test/java/.../blackboxproxy/
     ReverseProxyIntegrationTest.java
+scripts/
+  blackbox-proxy.sh                # novo -- ver abaixo
 ```
 
 - Raiz `pom.xml` — acrescenta `<module>blackbox-proxy</module>`.
+- `DeviceHeaderStore`: cinco campos opcionais (`secChUa`, `secChUaPlatform`,
+  `secChUaPlatformVersion`, `secChUaMobile`, `userAgent`), mesmo tratamento pros cinco (`null` =
+  não sobrescreve aquele header).
 - `ReverseProxyController`: um único método (`@RequestMapping(value = "/**", method = {GET,
   POST, PUT, PATCH, DELETE})`) recebe `HttpServletRequest`, monta a chamada de saída (método +
   caminho + query string + corpo + headers de entrada menos os hop-by-hop) via `RestClient`,
-  sobrescreve os quatro `Sec-CH-UA*` com o que `DeviceHeaderStore` tiver configurado (pulando os
-  que estiverem `null`), executa, e devolve `ResponseEntity` com status/corpo/headers da
-  resposta real (`Set-Cookie` incluso).
+  sobrescreve os cinco headers com o que `DeviceHeaderStore` tiver configurado (pulando os que
+  estiverem `null`), executa, e devolve `ResponseEntity` com status/corpo/headers da resposta
+  real (`Set-Cookie` incluso).
+- `scripts/blackbox-proxy.sh` (novo, mesmo estilo de `scripts/blackbox-clock-offset.sh`) —
+  três opções, todas com padrão, nenhuma obrigatória:
+  ```
+  ./scripts/blackbox-proxy.sh [--target-url http://localhost] [--target-port 8080] [--proxy-port 8090]
+  ```
+  Monta `TARGET_BASE_URL="${target-url}:${target-port}"` e roda
+  `SERVER_PORT="$proxy_port" BLACKBOX_PROXY_TARGET_BASE_URL="$TARGET_BASE_URL" \
+  mvn -pl blackbox-proxy -am spring-boot:run` (relaxed binding do Spring Boot já resolve as
+  duas variáveis de ambiente pras propriedades `server.port`/`blackbox-proxy.target-base-url`,
+  sem precisar de `-D`/`--spring-boot.run.arguments`). Rodar o script de novo, com portas
+  diferentes, sobe outra instância independente — cada processo Maven é isolado por natureza,
+  nenhuma mudança extra necessária no código pra suportar isso.
 - `README.md` (raiz, modificado) — nova entrada na tabela de módulos, e um parágrafo em
-  "Ambiente de testes blackbox" explicando o fluxo: subir `app/`, subir `blackbox-proxy/`
-  (`mvn -pl blackbox-proxy -am spring-boot:run`), configurar o dispositivo uma vez
+  "Ambiente de testes blackbox" explicando o fluxo: subir `app/`, subir uma instância do proxy
+  (`./scripts/blackbox-proxy.sh`), configurar o dispositivo uma vez
   (`POST http://localhost:8090/blackbox/proxy/headers`), abrir
-  `http://localhost:8090/api/swagger-ui.html` em vez do endereço direto do `app/`.
+  `http://localhost:8090/api/swagger-ui.html` em vez do endereço direto do `app/` — e, pra mais
+  de um dispositivo ao mesmo tempo, rodar o script de novo com `--proxy-port` diferente.
 
 ## Riscos e trade-offs
 
@@ -71,7 +95,10 @@ blackbox-proxy/
 - **Encaminhar corpo binário/grande sem streaming** (lê tudo em memória via `RestClient` antes
   de reenviar) — aceitável pro volume de teste manual; viraria problema real só num cenário de
   upload grande, que não existe hoje no contrato.
-- **Nenhuma validação do formato dos valores de `Sec-CH-UA*` recebidos em
-  `POST /blackbox/proxy/headers`** — se vier um valor mal formado, o proxy manda do jeito que
-  recebeu, e `DeviceLabelResolver` do lado do `app/` que decide o que fazer com isso (já tem
-  fallback pra `"unknown-device"`); não duplicar essa validação aqui.
+- **Nenhuma validação do formato dos valores recebidos em `POST /blackbox/proxy/headers`** — se
+  vier um `Sec-CH-UA*`/`User-Agent` mal formado, o proxy manda do jeito que recebeu, e
+  `DeviceLabelResolver` do lado do `app/` que decide o que fazer com isso (já tem fallback pra
+  `"unknown-device"`); não duplicar essa validação aqui.
+- **`scripts/blackbox-proxy.sh` não confere se a porta pedida já está em uso** — rodar duas
+  instâncias com o mesmo `--proxy-port` por engano falha só quando o Spring Boot tentar subir
+  (erro de bind de porta já claro o bastante); não vale a pena checar antes.

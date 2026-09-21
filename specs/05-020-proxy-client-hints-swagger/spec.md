@@ -8,12 +8,15 @@
 
 Novo módulo Maven, `blackbox-proxy/` — uma aplicação Spring Boot separada, numa porta própria,
 que funciona como proxy reverso transparente na frente do `app/`: encaminha qualquer requisição
-para a API real, mas sempre com os headers `Sec-CH-UA*` que estiverem configurados no momento
-(navegador não consegue mandar esses headers de jeito nenhum — ver spec 05-009/motivação
-abaixo). Um endpoint próprio e único, `POST /blackbox/proxy/headers`, só recebe os valores de
-Client Hints a usar dali em diante — configurar isso uma vez, e o resto do Swagger UI (qualquer
-rota, não só login/registro) continua funcionando exatamente como sempre, sem montar nada à mão
-a cada chamada.
+para a API real, mas sempre com os headers `Sec-CH-UA*`/`User-Agent` que estiverem configurados
+no momento (navegador não consegue mandar `Sec-*` de jeito nenhum, e alguns testes precisam
+também de um `User-Agent` próprio — ver spec 05-009/motivação abaixo). Um endpoint próprio e
+único, `POST /blackbox/proxy/headers`, só recebe os valores a usar dali em diante — configurar
+isso uma vez, e o resto do Swagger UI (qualquer rota, não só login/registro) continua
+funcionando exatamente como sempre, sem montar nada à mão a cada chamada. Um script novo
+(`scripts/blackbox-proxy.sh`) deixa a porta do proxy e a URL/porta de destino sobrescrevíveis,
+pra quem quiser rodar mais de uma instância (um dispositivo simulado por instância) em vez de
+reconfigurar a mesma instância a cada troca de dispositivo.
 
 ## Motivação
 
@@ -43,16 +46,16 @@ restante do andaime `blackbox`, specs 05-014/05-018). Coberto por teste de integ
   `email-lambda/` — parent/BOM próprio, agregado pelo `pom.xml` da raiz), rodando numa porta
   própria (padrão `8090`, distinta da porta `8080` do `app/`).
 - `POST /blackbox/proxy/headers` — recebe `secChUa`, `secChUaPlatform`,
-  `secChUaPlatformVersion`, `secChUaMobile` (todos opcionais; campo ausente/`null` limpa aquele
-  header, deixando de sobrescrevê-lo nas próximas chamadas) e guarda como configuração corrente
-  do processo (em memória — não persiste, não é multiusuário, é ferramenta de teste manual de
-  uma pessoa por vez). `204` de resposta.
+  `secChUaPlatformVersion`, `secChUaMobile` e `userAgent` (todos opcionais; campo ausente/`null`
+  limpa aquele header, deixando de sobrescrevê-lo nas próximas chamadas) e guarda como
+  configuração corrente do processo (em memória — não persiste, não é multiusuário, é
+  ferramenta de teste manual de uma pessoa por vez). `204` de resposta.
 - Qualquer outra requisição (qualquer método, qualquer caminho — incluindo os arquivos estáticos
   do Swagger UI do próprio `app/`, já que o proxy encaminha tudo) é repassada pra API real
   (endereço configurável, padrão `http://localhost:8080`), preservando caminho, query string,
-  método, corpo e todos os headers originais — exceto os quatro `Sec-CH-UA*`, que são
-  sobrescritos (ou adicionados) com o que estiver configurado no momento; os que não foram
-  configurados não são tocados.
+  método, corpo e todos os headers originais — exceto os cinco (`Sec-CH-UA*` e `User-Agent`),
+  que são sobrescritos (ou adicionados) com o que estiver configurado no momento; os que não
+  foram configurados não são tocados.
 - Resposta da API real é repassada de volta sem alteração — status, corpo e headers (`Set-
   Cookie` incluso, essencial pra sessão de login continuar funcionando através do proxy).
 - Resultado prático: apontar o navegador pro Swagger UI através do proxy
@@ -61,6 +64,12 @@ restante do andaime `blackbox`, specs 05-014/05-018). Coberto por teste de integ
   passar pelo proxy — `docs/openapi.yaml` já declara `servers: [{url: /api}]` (caminho relativo),
   então o Swagger UI carregado do proxy já chama de volta o próprio proxy sem nenhuma
   configuração extra.
+- Novo script `scripts/blackbox-proxy.sh`, com três parâmetros sobrescrevíveis (todos com
+  padrão, nenhum obrigatório): URL de destino (padrão `http://localhost`), porta de destino
+  (padrão `8080`) e porta do próprio proxy (padrão `8090`) — rodar o script de novo com valores
+  diferentes sobe outra instância independente, permitindo simular vários dispositivos ao mesmo
+  tempo (um por instância/porta), cada um configurado uma vez via `POST /blackbox/proxy/
+  headers` na sua própria porta.
 
 ## Requisitos não-funcionais
 
@@ -79,15 +88,14 @@ restante do andaime `blackbox`, specs 05-014/05-018). Coberto por teste de integ
 
 - Qualquer mudança em `app/` — o proxy fica inteiramente fora dele, como aplicação separada;
   nenhuma mudança em `LoginController`/`SecurityConfig`/`docs/openapi.yaml`.
-- Multiplexar mais de um "dispositivo" configurado ao mesmo tempo (ex. duas abas testando dois
-  dispositivos em paralelo) — só existe uma configuração corrente por vez, sobrescrita a cada
-  `POST /blackbox/proxy/headers`. Pra dois dispositivos ao mesmo tempo, seriam necessárias duas
-  instâncias do proxy em portas diferentes — não resolvido aqui.
-- Qualquer coisa além de `Sec-CH-UA*` — o proxy não modifica nenhum outro header/corpo da
-  requisição.
+- Uma única instância nunca guarda mais de uma configuração de dispositivo ao mesmo tempo — cada
+  `POST /blackbox/proxy/headers` sobrescreve a anterior naquela instância. Simular vários
+  dispositivos em paralelo é resolvido rodando várias instâncias (`scripts/blackbox-proxy.sh`
+  com portas diferentes), não guardando várias configurações numa instância só.
+- Qualquer coisa além dos cinco headers (`Sec-CH-UA*`, `User-Agent`) — o proxy não modifica
+  nenhum outro header/corpo da requisição.
 
 ## Decisões em aberto
 
-- Rodar o `blackbox-proxy/` via `mvn -pl blackbox-proxy -am spring-boot:run` (só documentado no
-  README) ou acrescentar como serviço opcional em `docker-compose.blackbox.yml` — recomendação
-  em `plan.md`, mas fica como decisão aberta até a implementação (impacto pequeno, reversível).
+Nenhuma — rodar via `scripts/blackbox-proxy.sh` (não entra em `docker-compose.yml`/
+`docker-compose.blackbox.yml` nesta v1) decidido em conversa; detalhamento em `plan.md`.
