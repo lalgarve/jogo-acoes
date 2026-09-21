@@ -30,8 +30,8 @@ qualquer forma, então a pergunta fica irrelevante na prática.
 | Pergunta | Decisão | Status | Raciocínio |
 |---|---|---|---|
 | Aplicação separada ou endpoint dentro do `app/`? | Aplicação Spring Boot separada (`blackbox-proxy/`), porta própria | resolvida | Pedido explícito do usuário — corrige a primeira tentativa desta spec (endpoint dentro do `app/`, JSON por chamada). |
-| Como configurar os headers | Endpoint de controle próprio, `POST /blackbox/proxy/headers`, guarda em memória (não persiste) — nada a ver com o corpo/headers das chamadas efetivamente proxiadas | resolvida | Desacopla "escolher o dispositivo" de "usar a API" — configura uma vez, usa o Swagger UI normalmente depois, que era exatamente o problema da primeira tentativa. |
-| Como o proxy decide o que encaminhar | Regra única: tudo que não é `POST /blackbox/proxy/headers` é encaminhado pra API real, sem lista de rotas permitidas | resolvida | Diferente da primeira tentativa (que restringia a duas rotas por cautela de superfície), aqui a transparência total é o requisito — o usuário quer navegar o Swagger inteiro através do proxy, não só duas operações. |
+| Como configurar/conferir os headers | Endpoint de controle próprio, `/blackbox/proxy/headers`, com dois métodos: `POST` escreve (substitui por inteiro), `GET` só lê a configuração corrente — guarda em memória, nada a ver com o corpo/headers das chamadas efetivamente proxiadas | resolvida | Desacopla "escolher o dispositivo" de "usar a API" — configura uma vez, usa o Swagger UI normalmente depois, que era exatamente o problema da primeira tentativa. Dois métodos (não só `POST`) porque leitura e escrita são operações com contratos diferentes (`GET` sem corpo/idempotente, `POST` com corpo/substitui estado) — pedido explícito do usuário. |
+| Como o proxy decide o que encaminhar | Regra única: tudo que não é `/blackbox/proxy/headers` (nem `GET` nem `POST`) é encaminhado pra API real, sem lista de rotas permitidas | resolvida | Diferente da primeira tentativa (que restringia a duas rotas por cautela de superfície), aqui a transparência total é o requisito — o usuário quer navegar o Swagger inteiro através do proxy, não só duas operações. |
 | Framework/mecanismo de proxy | `@RestController` com `@RequestMapping("/**")` capturando todo método, usando `RestClient` (Spring 6.1+, já disponível via `spring-boot-starter-web`, sem dependência nova) pra montar a chamada de saída | resolvida | Mais simples que adotar Spring Cloud Gateway (WebFlux/Netty, paradigma reativo diferente do resto do projeto) só pra um proxy de poucas linhas; Gateway fica registrado aqui como alternativa se o proxy algum dia precisar crescer (roteamento por regra, retries, etc.), não escolhida agora. |
 | Headers hop-by-hop / `Content-Length` / `Host` | Nunca repassados como vieram — `RestClient` recalcula `Content-Length`, e `Connection`/`Transfer-Encoding`/`Keep-Alive`/`Host` são descartados da requisição de entrada antes de montar a de saída | resolvida | Erro clássico de proxy escrito à mão — copiar esses headers cegamente quebra a conexão (tamanho errado, `Host` da porta errada). Registrado aqui pra não esquecer na implementação. |
 | Onde/como rodar | Script `scripts/blackbox-proxy.sh` chamando `mvn -pl blackbox-proxy -am spring-boot:run` — não entra em `docker-compose.yml`/`docker-compose.blackbox.yml` nesta v1 | resolvida (era decisão em aberto em `spec.md`) | Ferramenta de uso manual e ocasional (testar rótulo de dispositivo), não parte do pipeline automático — colocar em Docker Compose acrescentaria complexidade de rede (hostname de container vs. `localhost`) sem necessidade agora; documentado como possível próximo passo, não feito. |
@@ -46,7 +46,7 @@ blackbox-proxy/
   src/main/java/.../blackboxproxy/
     BlackboxProxyApplication.java  # @SpringBootApplication
     DeviceHeaderStore.java         # estado em memória (AtomicReference), guarda os 5 valores atuais
-    DeviceHeaderController.java    # POST /blackbox/proxy/headers -> DeviceHeaderStore
+    DeviceHeaderController.java    # GET/POST /blackbox/proxy/headers -> lê/escreve DeviceHeaderStore
     ReverseProxyController.java    # @RequestMapping("/**") todo método -> encaminha pra TARGET_BASE_URL
   src/main/resources/application.yml
     # server.port: 8090 (padrão)
@@ -63,7 +63,10 @@ scripts/
   header removido da chamada de saída, nunca repassa o que o navegador mandou. `set(...)`
   substitui os cinco campos por inteiro a cada chamada (não faz merge com o estado anterior —
   reflete a decisão de `spec.md` de que cada `POST /blackbox/proxy/headers` descreve o
-  dispositivo completo, do zero).
+  dispositivo completo, do zero); `get()` devolve o estado corrente, sem efeito colateral, pro
+  `GET`.
+- `DeviceHeaderController`: mesmo record (`DeviceHeaders`, os cinco campos) como corpo do `POST`
+  e corpo da resposta do `GET` — um schema só pros dois métodos, sem duplicar campo.
 - `ReverseProxyController`: um único método (`@RequestMapping(value = "/**", method = {GET,
   POST, PUT, PATCH, DELETE})`) recebe `HttpServletRequest`, monta a chamada de saída (método +
   caminho + query string + corpo) via `RestClient`, copiando os headers de entrada **exceto** os

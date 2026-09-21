@@ -13,10 +13,10 @@ da configuração corrente do proxy, nunca do navegador — configurado com um v
 valor; em branco (estado inicial, ou explicitamente limpo), sai sem o header, mesmo que o
 navegador tenha mandado algo (navegador não consegue mandar `Sec-*` de jeito nenhum, e alguns
 testes precisam também de controlar o `User-Agent` — ver spec 05-009/motivação abaixo). Um
-endpoint próprio e
-único, `POST /blackbox/proxy/headers`, só recebe os valores a usar dali em diante — configurar
-isso uma vez, e o resto do Swagger UI (qualquer rota, não só login/registro) continua
-funcionando exatamente como sempre, sem montar nada à mão a cada chamada. Um script novo
+endpoint próprio, `/blackbox/proxy/headers`, com dois métodos — `POST` escreve a configuração,
+`GET` devolve a corrente — configurar isso uma vez (e conferir com o `GET` sempre que precisar),
+e o resto do Swagger UI (qualquer rota, não só login/registro) continua funcionando exatamente
+como sempre, sem montar nada à mão a cada chamada. Um script novo
 (`scripts/blackbox-proxy.sh`) deixa a porta do proxy e a URL/porta de destino sobrescrevíveis,
 pra quem quiser rodar mais de uma instância (um dispositivo simulado por instância) em vez de
 reconfigurar a mesma instância a cada troca de dispositivo.
@@ -48,13 +48,17 @@ restante do andaime `blackbox`, specs 05-014/05-018). Coberto por teste de integ
 - Novo módulo `blackbox-proxy/` (Spring Boot, projeto Maven independente, mesmo padrão de
   `email-lambda/` — parent/BOM próprio, agregado pelo `pom.xml` da raiz), rodando numa porta
   própria (padrão `8090`, distinta da porta `8080` do `app/`).
-- `POST /blackbox/proxy/headers` — recebe `secChUa`, `secChUaPlatform`,
+- `POST /blackbox/proxy/headers` (escrita) — recebe `secChUa`, `secChUaPlatform`,
   `secChUaPlatformVersion`, `secChUaMobile` e `userAgent` (todos opcionais) e **substitui por
   inteiro** a configuração corrente do processo (em memória — não persiste, não é multiusuário,
   é ferramenta de teste manual de uma pessoa por vez): campo presente com valor = esse valor;
   campo ausente/`null` = em branco. Não é um merge com a chamada anterior — cada `POST` descreve
   o dispositivo completo, do zero. Estado inicial (antes de qualquer `POST`) já é "tudo em
   branco". `204` de resposta.
+- `GET /blackbox/proxy/headers` (leitura) — devolve a configuração corrente (os cinco campos,
+  cada um com o valor atual ou `null`) — pra conferir o que está configurado sem precisar
+  lembrar o último `POST` mandado, especialmente útil com várias instâncias (uma por
+  dispositivo) ao mesmo tempo.
 - Qualquer outra requisição (qualquer método, qualquer caminho — incluindo os arquivos estáticos
   do Swagger UI do próprio `app/`, já que o proxy encaminha tudo) é repassada pra API real
   (endereço configurável, padrão `http://localhost:8080`), preservando caminho, query string,
