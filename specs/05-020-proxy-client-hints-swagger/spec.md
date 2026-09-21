@@ -1,6 +1,6 @@
 # Spec: Proxy reverso de Client Hints para testar pelo Swagger UI
 
-**Status:** em implementação
+**Status:** implementado
 **Issue:** [#76](https://github.com/lalgarve/jogo-acoes/issues/76)
 **Iteração:** iteration-5
 
@@ -64,12 +64,15 @@ restante do andaime `blackbox`, specs 05-014/05-018). Coberto por teste de integ
   (endereço configurável, padrão `http://localhost:8080`), preservando caminho, query string,
   método e corpo — mas os cinco headers (`Sec-CH-UA*` e `User-Agent`) da chamada de saída vêm
   **sempre** da configuração corrente, nunca do que o navegador mandou: configurado com um valor
-  → sai com esse valor; em branco (ou nunca configurado) → **removido** da chamada de saída,
-  mesmo que o navegador tenha mandado um valor de verdade (o `User-Agent` real do navegador, ou
-  um `Sec-CH-UA` que ele já tenha negociado via `Accept-CH` numa chamada anterior à mesma
-  origem). "Em branco" nunca quer dizer "deixa o navegador preencher" — quer dizer que a API real
-  recebe a chamada sem esse header, do jeito que teria vindo dum cliente que nunca manda esses
-  hints.
+  → sai com esse valor; em branco (ou nunca configurado) → **removido** da chamada de saída
+  (confirmado no `Sec-CH-UA*`; para `User-Agent` especificamente, "removido" significa que o
+  navegador nunca aparece — o cliente HTTP de saída ainda preenche um valor próprio dele mesmo,
+  não existe "sem nenhum User-Agent" via API pública da JDK, ver "Riscos e trade-offs" em
+  `plan.md`), mesmo que o navegador tenha mandado um valor de verdade (o `User-Agent` real do
+  navegador, ou um `Sec-CH-UA` que ele já tenha negociado via `Accept-CH` numa chamada anterior à
+  mesma origem). "Em branco" nunca quer dizer "deixa o navegador preencher" — quer dizer que a
+  API real recebe a chamada sem esse header vindo do navegador, do jeito que teria vindo dum
+  cliente que nunca manda esses hints.
 - Resposta da API real é repassada de volta sem alteração — status, corpo e headers (`Set-
   Cookie` incluso, essencial pra sessão de login continuar funcionando através do proxy).
 - Resultado prático: apontar o navegador pro Swagger UI através do proxy

@@ -110,3 +110,14 @@ scripts/
 - **`scripts/blackbox-proxy.sh` não confere se a porta pedida já está em uso** — rodar duas
   instâncias com o mesmo `--proxy-port` por engano falha só quando o Spring Boot tentar subir
   (erro de bind de porta já claro o bastante); não vale a pena checar antes.
+- **`User-Agent` em branco não sai literalmente ausente** (achado na implementação, confirmado
+  por teste): diferente de `Sec-CH-UA*` (headers HTTP comuns, plenamente removíveis pelo
+  `RestClient`/`java.net.http.HttpClient` de saída), o `User-Agent` é um dos poucos headers que
+  o próprio `java.net.http.HttpClient` da JDK sempre preenche com um valor próprio
+  (`"Java-http-client/<versão>"`) quando a aplicação não define um — não existe API pública pra
+  suprimir isso por completo, mesma limitação prática que navegadores têm com esse header
+  específico. A garantia que continua valendo (e é a que importa): o valor real de quem chamou o
+  proxy nunca vaza — só nunca é *ausência total*, quando em branco vira o `User-Agent` do
+  próprio processo Java, não `"unknown-device"` direto. `DeviceLabelResolverTest` já cobre esse
+  caminho: `User-Agent` presente (mesmo que genérico) vira rótulo a partir dele, não o fallback
+  final.
