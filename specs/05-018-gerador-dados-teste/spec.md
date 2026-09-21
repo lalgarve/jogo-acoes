@@ -41,11 +41,13 @@ nem mudança de comportamento de negócio (mesmo padrão das specs 05-014/05-015
   05-014/05-016), uma vez por execução.
 - Cria competições de um catálogo fixo (ver `plan.md`) com nome prefixado por `[seed]`, e
   jogadores pelos três fluxos possíveis (entrada pública, convite privado, jogador já
-  registrado) com e-mails determinísticos no formato da spec 05-016
-  (`success+seed-<qualificador>@simulator.amazonses.com`, sem UUID) — determinístico para que
-  reexecutar não duplique.
-- Reexecutar não duplica: antes de criar uma competição ou jogador do catálogo, o script
-  confirma que ainda não existe (ver `plan.md` — mecanismo revisado para usar a spec 05-017).
+  registrado) com e-mails no formato da spec 05-016 (`success+seed-<qualificador>@
+  simulator.amazonses.com`) — o qualificador identifica de qual competição/posição do catálogo
+  veio cada jogador, para facilitar inspecionar os dados gerados (Swagger UI, `psql`).
+- Roda uma vez, contra um ambiente `blackbox` recém-subido (banco vazio além do administrador
+  semeado): não verifica se cada item do catálogo já existe antes de criar. Rodar de novo sobre
+  dados já criados duplica — não é bug desta v1, é fora de escopo (ver "Fora de escopo");
+  recomeçar é `docker compose down -v` + subir de novo.
 - Recebe um parâmetro obrigatório de deslocamento de relógio (dias no passado) e roda o
   catálogo inteiro numa única execução, contra o relógio já deslocado por esse valor — o script
   não sobe nem derruba o app, só assume que já está rodando com aquele relógio (ver README).
@@ -97,13 +99,11 @@ nem mudança de comportamento de negócio (mesmo padrão das specs 05-014/05-015
   sucesso.
 - Limpeza da massa gerada — não há API para apagar; `docker compose down -v` recria o banco do
   zero (o administrador é semeado de novo ao subir).
+- Reexecução segura/idempotência — v1 é de uso único, contra ambiente recém-subido (ver
+  "Requisitos funcionais"); rodar de novo duplica o catálogo, e não é objetivo desta spec evitar
+  isso.
 
 ## Decisões em aberto
 
-- **Ordem de implementação em relação à spec 05-017** ("Administrador lista as competições que
-  criou") — o mecanismo de idempotência desenhado em `plan.md` depende do campo `created` que
-  a 05-017 introduz. Implementar esta spec antes da 05-017 estar mesclada exige um mecanismo
-  de idempotência provisório (manifesto local, com o risco de perdê-lo já registrado); depois,
-  o mecanismo provisório seria descartado. Recomendação: esperar a 05-017.
 - Quantos jogadores no perfil `volume` — 200 é um palpite inicial; cada jogador novo custa três
   chamadas de API mais uma leitura de e-mail.
