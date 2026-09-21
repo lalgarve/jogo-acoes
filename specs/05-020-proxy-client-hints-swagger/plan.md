@@ -1,85 +1,77 @@
-# Plan: Proxy de Client Hints para testar rótulo de dispositivo pelo Swagger UI
+# Plan: Proxy reverso de Client Hints para testar pelo Swagger UI
 
 Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 
 ## Contexto técnico
 
-`Sec-CH-UA*` são proibidos pro Fetch/XHR de uma página (Fetch Standard, "forbidden request-
-header name": qualquer nome começando com `Sec-` ou `Proxy-`) — verificado contra a spec, não só
-lembrado. Confirmado também que `LoginController.consumeLoginLink`/`completeRegistration`
-(`app/src/main/java/dev/leilaalgarve/jogoacoes/login/LoginController.java:48-64`) nem chegam a
-ler os parâmetros `secCHUA*` que recebem — só existem na assinatura pra aparecer no contrato;
-quem lê os headers de verdade é `LoginLinkSessionService`, direto do `HttpServletRequest` da
-chamada. Ou seja, o que importa pro rótulo final é o header HTTP bruto que chega na requisição
-de fato — daí o proxy precisar fazer uma chamada de saída de verdade com esses headers, não só
-repassar um valor de parâmetro.
+`Sec-CH-UA*` são "forbidden request-header names" pro Fetch Standard (qualquer nome começando
+com `Sec-`/`Proxy-`) — nenhum script de página, de nenhum Swagger UI, em nenhum navegador,
+consegue mandá-los. Confirmado também que `LoginController` (spec 05-009) nem lê os parâmetros
+que recebe — quem lê o header de verdade é `LoginLinkSessionService`, direto do
+`HttpServletRequest` — então o que importa é o header HTTP bruto que chega na chamada de saída
+do proxy, não um valor de parâmetro/corpo.
 
-`spring-boot-starter-web` (Spring Boot 4.1.0) já traz `RestClient` (Spring Framework 6.1+) sem
-dependência nova — usado para a chamada de saída.
+`docs/openapi.yaml` declara `servers: [{url: /api}]` (`docs/openapi.yaml:10-11`) — caminho
+relativo, não um host fixo. Isso é o que permite o truque de "só aponte o Swagger UI pro proxy":
+o Swagger UI, carregado a partir do endereço do proxy, já chama de volta o próprio proxy (mesma
+origem de onde foi carregado) sem precisar reconfigurar nada no contrato.
 
-`BlackboxController` (`app/src/main/java/dev/leilaalgarve/jogoacoes/blackbox/`) é o precedente
-direto: `@RestController` + `@Profile("blackbox")`, rota fora de `docs/openapi.yaml`, permitAll
-via `BlackboxSecurityConfigContributor` (também `@Profile("blackbox")`), testado por
-`@SpringBootTest` (`BlackboxProfileIntegrationTest`), sem `.feature` Cucumber — mesmo molde
-seguido aqui.
+`app/` já é um módulo Spring Boot completo, `email-lambda/` é o segundo módulo (Quarkus) — o
+`pom.xml` da raiz só agrega, cada módulo mantém seu próprio parent/BOM (`README.md`, seção
+"Módulos"). `blackbox-proxy/` seria o terceiro, mesmo padrão de agregação.
 
 ## Decisões de arquitetura
 
 | Pergunta | Decisão | Status | Raciocínio |
 |---|---|---|---|
-| Uma operação genérica (path+método arbitrários) ou uma operação de domínio (token+ação)? | Domínio: `{token, action, name?, secChUa*}` — `action` só `"consume"`\|`"register"` | resolvida | "Uma só operação" pedida é mais simples e segura como algo específico pro problema (testar rótulo de dispositivo) do que um proxy HTTP genérico — reduz a superfície mesmo confinado ao perfil `blackbox`. |
-| Cliente HTTP de saída | `RestClient` (Spring 6.1+, já disponível) | resolvida | Nenhuma dependência nova; API fluente, mais simples que `RestTemplate` pra montar headers dinamicamente. |
-| Base URL da chamada de saída | Loopback pra própria aplicação: `http://localhost:${server.port}${server.servlet.context-path}` | resolvida | O proxy só precisa falar com a própria API rodando no mesmo processo/host — nunca um destino externo. |
-| Onde aparece no Swagger UI | Segundo grupo do springdoc (`springdoc.swagger-ui.urls`), só configurado em `application-blackbox.yml` — um mini-contrato próprio (`docs/openapi-blackbox.yaml`, novo arquivo, não gerado/escaneado) com só esta operação | resolvida | `docs/openapi.yaml` continua sendo só o contrato de produto (mesma regra já seguida por `GET /blackbox/last-email`); springdoc já suporta múltiplos grupos como dropdown na mesma página `swagger-ui.html`, sem precisar de uma segunda instância/porta. |
-| Cookie de entrada/saída | Repassa `Cookie` da requisição recebida (se houver) pra chamada de saída (`RestClient` não segue cookies sozinho); repassa `Set-Cookie` da resposta de volta na resposta do proxy | resolvida | Sem isso, o "login" feito através do proxy não deixaria a sessão realmente estabelecida no navegador de quem está testando pelo Swagger UI. |
-| Superfície restrita | Só monta `GET /login-links/{token}` (consume) ou `POST /login-links/{token}/registration` (register) — nunca um caminho vindo do corpo da requisição | resolvida | Evita virar um relay HTTP genérico (SSRF-like) mesmo estando limitado ao perfil `blackbox` — mesmo cuidado já registrado no javadoc de `BlackboxController` sobre a superfície que abre. |
+| Aplicação separada ou endpoint dentro do `app/`? | Aplicação Spring Boot separada (`blackbox-proxy/`), porta própria | resolvida | Pedido explícito do usuário — corrige a primeira tentativa desta spec (endpoint dentro do `app/`, JSON por chamada). |
+| Como configurar os headers | Endpoint de controle próprio, `POST /blackbox/proxy/headers`, guarda em memória (não persiste) — nada a ver com o corpo/headers das chamadas efetivamente proxiadas | resolvida | Desacopla "escolher o dispositivo" de "usar a API" — configura uma vez, usa o Swagger UI normalmente depois, que era exatamente o problema da primeira tentativa. |
+| Como o proxy decide o que encaminhar | Regra única: tudo que não é `POST /blackbox/proxy/headers` é encaminhado pra API real, sem lista de rotas permitidas | resolvida | Diferente da primeira tentativa (que restringia a duas rotas por cautela de superfície), aqui a transparência total é o requisito — o usuário quer navegar o Swagger inteiro através do proxy, não só duas operações. |
+| Framework/mecanismo de proxy | `@RestController` com `@RequestMapping("/**")` capturando todo método, usando `RestClient` (Spring 6.1+, já disponível via `spring-boot-starter-web`, sem dependência nova) pra montar a chamada de saída | resolvida | Mais simples que adotar Spring Cloud Gateway (WebFlux/Netty, paradigma reativo diferente do resto do projeto) só pra um proxy de poucas linhas; Gateway fica registrado aqui como alternativa se o proxy algum dia precisar crescer (roteamento por regra, retries, etc.), não escolhida agora. |
+| Headers hop-by-hop / `Content-Length` / `Host` | Nunca repassados como vieram — `RestClient` recalcula `Content-Length`, e `Connection`/`Transfer-Encoding`/`Keep-Alive`/`Host` são descartados da requisição de entrada antes de montar a de saída | resolvida | Erro clássico de proxy escrito à mão — copiar esses headers cegamente quebra a conexão (tamanho errado, `Host` da porta errada). Registrado aqui pra não esquecer na implementação. |
+| Onde/como rodar | `mvn -pl blackbox-proxy -am spring-boot:run`, documentado no README — não entra em `docker-compose.yml`/`docker-compose.blackbox.yml` nesta v1 | resolvida (era decisão em aberto em `spec.md`) | Ferramenta de uso manual e ocasional (testar rótulo de dispositivo), não parte do pipeline automático — colocar em Docker Compose acrescentaria complexidade de rede (hostname de container vs. `localhost`) sem necessidade agora; documentado como possível próximo passo, não feito. |
 
 ## Estrutura de módulos/pacotes
 
-- `app/src/main/java/dev/leilaalgarve/jogoacoes/blackbox/DeviceHeaderProxyController.java`
-  (novo) — `@RestController @Profile("blackbox")`, `POST /blackbox/device-header-proxy`,
-  recebe `DeviceHeaderProxyRequest` (record: `token`, `action`, `name` opcional, `secChUa`,
-  `secChUaPlatform`, `secChUaPlatformVersion`, `secChUaMobile`, todos `String` opcionais exceto
-  `token`/`action`), monta a chamada de saída via `RestClient`, devolve `ResponseEntity<String>`
-  com o corpo bruto da resposta real e `Set-Cookie` repassado.
-- `app/src/main/java/dev/leilaalgarve/jogoacoes/blackbox/BlackboxSecurityConfigContributor.java`
-  (modificado) — acrescenta `/blackbox/device-header-proxy` à lista de `permitAll()`.
-- `docs/openapi-blackbox.yaml` (novo) — mini-contrato com só a operação
-  `POST /blackbox/device-header-proxy`, schema do corpo acima; nunca lido pelo cliente Python
-  gerado (spec 05-015 só gera a partir de `docs/openapi.yaml`) nem pelo build do `app/`
-  (`app/pom.xml` só copia `docs/openapi.yaml` pra `static/`) — só serve pro springdoc mostrar via
-  Swagger UI.
-- `app/src/main/resources/application-blackbox.yml` (modificado) — acrescenta:
-  ```yaml
-  springdoc:
-    swagger-ui:
-      urls:
-        - name: "Jogo de Ações API"
-          url: ${server.servlet.context-path}/openapi.yaml
-        - name: "Blackbox: proxy de Client Hints"
-          url: ${server.servlet.context-path}/openapi-blackbox.yaml
-  ```
-  (`docs/openapi-blackbox.yaml` copiado pro classpath do mesmo jeito que `docs/openapi.yaml` já
-  é, via `app/pom.xml` — mesmo plugin/execução, arquivo a mais.)
-- `app/src/test/java/dev/leilaalgarve/jogoacoes/blackbox/DeviceHeaderProxyIntegrationTest.java`
-  (novo) — `@SpringBootTest` com o perfil `blackbox` ativo (mesmo padrão de
-  `BlackboxProfileIntegrationTest`): chama o proxy com `action: "consume"` e Client Hints de um
-  perfil "Windows desktop" contra um link de login válido, confere que a sessão resultante
-  (consultável via `GET /sessions`, spec 05-010) tem `deviceLabel` batendo com o que
-  `DeviceLabelResolverTest` já calibrou pros mesmos valores — prova que o header realmente saiu
-  no lugar certo, não só que o proxy devolveu 200.
+```
+blackbox-proxy/
+  pom.xml                          # parent próprio (spring-boot-starter-parent), spring-boot-starter-web só
+  src/main/java/.../blackboxproxy/
+    BlackboxProxyApplication.java  # @SpringBootApplication
+    DeviceHeaderStore.java         # estado em memória (AtomicReference), guarda os 4 valores atuais
+    DeviceHeaderController.java    # POST /blackbox/proxy/headers -> DeviceHeaderStore
+    ReverseProxyController.java    # @RequestMapping("/**") todo método -> encaminha pra TARGET_BASE_URL
+  src/main/resources/application.yml
+    # server.port: 8090 (padrão)
+    # blackbox-proxy.target-base-url: http://localhost:8080 (padrão, sobrescrevível)
+  src/test/java/.../blackboxproxy/
+    ReverseProxyIntegrationTest.java
+```
+
+- Raiz `pom.xml` — acrescenta `<module>blackbox-proxy</module>`.
+- `ReverseProxyController`: um único método (`@RequestMapping(value = "/**", method = {GET,
+  POST, PUT, PATCH, DELETE})`) recebe `HttpServletRequest`, monta a chamada de saída (método +
+  caminho + query string + corpo + headers de entrada menos os hop-by-hop) via `RestClient`,
+  sobrescreve os quatro `Sec-CH-UA*` com o que `DeviceHeaderStore` tiver configurado (pulando os
+  que estiverem `null`), executa, e devolve `ResponseEntity` com status/corpo/headers da
+  resposta real (`Set-Cookie` incluso).
+- `README.md` (raiz, modificado) — nova entrada na tabela de módulos, e um parágrafo em
+  "Ambiente de testes blackbox" explicando o fluxo: subir `app/`, subir `blackbox-proxy/`
+  (`mvn -pl blackbox-proxy -am spring-boot:run`), configurar o dispositivo uma vez
+  (`POST http://localhost:8090/blackbox/proxy/headers`), abrir
+  `http://localhost:8090/api/swagger-ui.html` em vez do endereço direto do `app/`.
 
 ## Riscos e trade-offs
 
-- **Chamada de saída é HTTP de verdade, não um dispatch interno do Spring** (`RestClient` contra
-  `localhost:<porta>`, não `MockMvc`/dispatcher direto): mais simples de implementar e mais
-  fiel ao que um navegador faria, ao custo de uma volta de rede a mais (loopback, latência
-  irrelevante) — aceitável por ser só ferramenta de teste manual, não caminho de produção.
-- **Corpo da resposta repassado como `String` bruto, sem tipar** (`ResponseEntity<String>`, não
-  `ResponseEntity<LoginResult>`): mais simples, e o Swagger UI mostra o JSON de qualquer jeito;
-  perde validação de schema da resposta, aceitável porque o objetivo é ver o `deviceLabel`
-  resultante em `GET /sessions` depois, não validar o formato de `LoginResult` em si (já coberto
-  em outro lugar).
-- **Segundo grupo do springdoc só em `blackbox`**: se algum dia outro perfil precisar de um
-  Swagger UI com múltiplos grupos por outro motivo, essa config vira ponto de atenção pra não
-  duplicar — não é um problema hoje, só registrado.
+- **Proxy sem restrição de rota é um relay HTTP completo pra API real** — diferente da primeira
+  tentativa (restrita a duas rotas), aqui é intencional: é exatamente o que dá a transparência
+  pedida. Contido pelo mesmo argumento de `BlackboxController`/`BlackboxDataSeeder`: nunca sobe
+  fora de um ambiente de teste descartável, nunca em Docker Compose nesta v1, nunca com
+  credenciais reais por trás.
+- **Encaminhar corpo binário/grande sem streaming** (lê tudo em memória via `RestClient` antes
+  de reenviar) — aceitável pro volume de teste manual; viraria problema real só num cenário de
+  upload grande, que não existe hoje no contrato.
+- **Nenhuma validação do formato dos valores de `Sec-CH-UA*` recebidos em
+  `POST /blackbox/proxy/headers`** — se vier um valor mal formado, o proxy manda do jeito que
+  recebeu, e `DeviceLabelResolver` do lado do `app/` que decide o que fazer com isso (já tem
+  fallback pra `"unknown-device"`); não duplicar essa validação aqui.
