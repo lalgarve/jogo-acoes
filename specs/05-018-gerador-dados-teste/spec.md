@@ -46,9 +46,19 @@ nem mudança de comportamento de negócio (mesmo padrão das specs 05-014/05-015
   reexecutar não duplique.
 - Reexecutar não duplica: antes de criar uma competição ou jogador do catálogo, o script
   confirma que ainda não existe (ver `plan.md` — mecanismo revisado para usar a spec 05-017).
-- Recebe um parâmetro de deslocamento de relógio e roda só a fatia do catálogo cujo relógio
-  bate com esse deslocamento — o script não sobe nem derruba o app, só assume que já está
-  rodando com aquele relógio (ver README).
+- Recebe um parâmetro obrigatório de deslocamento de relógio (dias no passado) e roda o
+  catálogo inteiro numa única execução, contra o relógio já deslocado por esse valor — o script
+  não sobe nem derruba o app, só assume que já está rodando com aquele relógio (ver README).
+  Nenhuma competição do catálogo nasce no relógio presente (offset 0): rodar a suíte de testes
+  já produz dados no presente organicamente, então o único propósito deste gerador é preencher
+  o passado — quem quiser dados "de hoje" já os tem de sobra sem precisar deste script.
+- Dentro dessa única execução, cada competição do catálogo tem sua própria `durationDays`
+  (curta ou longa) que, combinada com o deslocamento de relógio escolhido, decide se ela
+  aparece "terminada por data" ou "em andamento" — não é preciso rodar o script mais de uma vez
+  nem reiniciar o app com relógios diferentes para cobrir os dois estados.
+- Catálogo inclui jogadores nomeados registrados em exatamente 1, 2, 3 e 4 competições
+  diferentes cada — essencial para exercitar `GET /competitions/mine` com mais de um item por
+  grupo (ver `plan.md` para a composição exata).
 - Cada objeto nasce de uma fábrica com dados válidos por padrão, e uma variação sobrescreve um
   campo por vez — o padrão Object Mother já usado por `CompetitionMother`/`UserMother`
   (`memory/constitution.md`).
@@ -80,8 +90,8 @@ nem mudança de comportamento de negócio (mesmo padrão das specs 05-014/05-015
 - Cotações de ações (`STOCK`, `PRICE_QUOTE`) — não existem no DER atual (roadmap, iterações
   8–10).
 - Escrita direta no PostgreSQL — a v1 usa só HTTP, por isso não cobre os dois itens acima.
-- Automatizar o relógio no passado — subir o app em cada fase continua manual, como o
-  `README.md` já descreve; um `Clock` injetável é a alternativa que o `README.md` já registra
+- Automatizar o relógio no passado — subir o app com o relógio deslocado continua manual, como
+  o `README.md` já descreve; um `Clock` injetável é a alternativa que o `README.md` já registra
   e continua não implementada.
 - Endereços `bounce`/`complaint`/similares do simulador do SES (spec 05-016) — só casos de
   sucesso.
