@@ -8,6 +8,7 @@ confirming). Each one talks to the real API via the generated client (`docs/open
 import datetime
 
 from common.blackbox_fixtures import last_email
+from common.device_profiles import DeviceProfile, WINDOWS_DESKTOP
 from jogo_acoes_client import Client
 from jogo_acoes_client.api.competitions import create_competition, decide_invite_email_timing
 from jogo_acoes_client.api.entry_requests import request_or_confirm_entry
@@ -90,25 +91,40 @@ def create_private_competition(
     return competition
 
 
-def _consume_and_register(base_url: str, link: str, name: str) -> Client:
+def _consume_and_register(base_url: str, link: str, name: str, device: DeviceProfile) -> Client:
     client = new_client(base_url)
     token = _token_from_link(link)
 
-    still_needs_registration = consume_login_link.sync_detailed(token=token, client=client)
+    still_needs_registration = consume_login_link.sync_detailed(
+        token=token,
+        client=client,
+        sec_ch_ua=device.sec_ch_ua,
+        sec_ch_ua_platform=device.sec_ch_ua_platform,
+        sec_ch_ua_platform_version=device.sec_ch_ua_platform_version,
+        sec_ch_ua_mobile=device.sec_ch_ua_mobile,
+    )
     if still_needs_registration.status_code != 202:
         raise RuntimeError(
             f"expected a brand new player at {link!r}, got {still_needs_registration.status_code}"
         )
 
     registration = complete_registration.sync_detailed(
-        token=token, client=client, body=factories.registration_request(name)
+        token=token,
+        client=client,
+        body=factories.registration_request(name),
+        sec_ch_ua=device.sec_ch_ua,
+        sec_ch_ua_platform=device.sec_ch_ua_platform,
+        sec_ch_ua_platform_version=device.sec_ch_ua_platform_version,
+        sec_ch_ua_mobile=device.sec_ch_ua_mobile,
     )
     if registration.status_code != 200:
         raise RuntimeError(f"registration failed for {link!r}: {registration.status_code} {registration.content!r}")
     return client
 
 
-def public_entry_new_player(base_url: str, competition_id: int, email: str, name: str) -> Client:
+def public_entry_new_player(
+    base_url: str, competition_id: int, email: str, name: str, device: DeviceProfile = WINDOWS_DESKTOP
+) -> Client:
     """A brand new player enters a PUBLIC competition: request entry, read the link, register."""
     client = new_client(base_url)
     response = request_or_confirm_entry.sync_detailed(
@@ -118,19 +134,21 @@ def public_entry_new_player(base_url: str, competition_id: int, email: str, name
         raise RuntimeError(f"public entry request failed for {email}: {response.status_code} {response.content!r}")
 
     link = last_email(base_url, email).link
-    return _consume_and_register(base_url, link, name)
+    return _consume_and_register(base_url, link, name, device)
 
 
-def complete_invited_registration(base_url: str, email: str, name: str) -> Client:
+def complete_invited_registration(
+    base_url: str, email: str, name: str, device: DeviceProfile = WINDOWS_DESKTOP
+) -> Client:
     """A newly-invited (private competition) player follows their invite link and registers --
     same completion mechanics as a public entrant, but there's no entry-request first: the
     invite already created their participation.
     """
     link = last_email(base_url, email).link
-    return _consume_and_register(base_url, link, name)
+    return _consume_and_register(base_url, link, name, device)
 
 
-def login_existing_player(base_url: str, email: str) -> Client:
+def login_existing_player(base_url: str, email: str, device: DeviceProfile = WINDOWS_DESKTOP) -> Client:
     """An already-registered player logs in via a fresh magic link."""
     client = new_client(base_url)
     response = request_login_link.sync_detailed(client=client, body=factories.login_link_request(email))
@@ -138,7 +156,14 @@ def login_existing_player(base_url: str, email: str) -> Client:
         raise RuntimeError(f"login request failed for {email}: {response.status_code} {response.content!r}")
 
     link = last_email(base_url, email).link
-    login_result = consume_login_link.sync(client=client, token=_token_from_link(link))
+    login_result = consume_login_link.sync(
+        client=client,
+        token=_token_from_link(link),
+        sec_ch_ua=device.sec_ch_ua,
+        sec_ch_ua_platform=device.sec_ch_ua_platform,
+        sec_ch_ua_platform_version=device.sec_ch_ua_platform_version,
+        sec_ch_ua_mobile=device.sec_ch_ua_mobile,
+    )
     if login_result is None:
         raise RuntimeError(f"expected {email} to already be a registered player")
     return client

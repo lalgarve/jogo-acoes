@@ -4,6 +4,7 @@ import uuid
 from behave import given, when, then
 
 from common.blackbox_fixtures import ADMIN_EMAIL, last_email_link
+from common.device_profiles import WINDOWS_DESKTOP
 from environment import new_client
 
 from jogo_acoes_client.api.competitions import create_competition
@@ -36,7 +37,14 @@ def step_admin_logs_in(context, email):
     assert response.status_code == 202, response.content
 
     link = last_email_link(context.api_base_url, email)
-    login_result = consume_login_link.sync(client=context.admin_client, token=_token_from_link(link))
+    login_result = consume_login_link.sync(
+        client=context.admin_client,
+        token=_token_from_link(link),
+        sec_ch_ua=WINDOWS_DESKTOP.sec_ch_ua,
+        sec_ch_ua_platform=WINDOWS_DESKTOP.sec_ch_ua_platform,
+        sec_ch_ua_platform_version=WINDOWS_DESKTOP.sec_ch_ua_platform_version,
+        sec_ch_ua_mobile=WINDOWS_DESKTOP.sec_ch_ua_mobile,
+    )
     assert login_result is not None, "admin login link should already be registered"
 
 
@@ -84,13 +92,24 @@ def step_registration_link_sent(context):
 def step_player_registers(context):
     token = _token_from_link(context.registration_link)
 
-    still_needs_registration = consume_login_link.sync_detailed(token=token, client=context.player_client)
+    still_needs_registration = consume_login_link.sync_detailed(
+        token=token,
+        client=context.player_client,
+        sec_ch_ua=WINDOWS_DESKTOP.sec_ch_ua,
+        sec_ch_ua_platform=WINDOWS_DESKTOP.sec_ch_ua_platform,
+        sec_ch_ua_platform_version=WINDOWS_DESKTOP.sec_ch_ua_platform_version,
+        sec_ch_ua_mobile=WINDOWS_DESKTOP.sec_ch_ua_mobile,
+    )
     assert still_needs_registration.status_code == 202, "expected a brand new player here"
 
     context.last_response = complete_registration.sync_detailed(
         token=token,
         client=context.player_client,
         body=CompleteRegistrationBody(name="Blackbox Test Player"),
+        sec_ch_ua=WINDOWS_DESKTOP.sec_ch_ua,
+        sec_ch_ua_platform=WINDOWS_DESKTOP.sec_ch_ua_platform,
+        sec_ch_ua_platform_version=WINDOWS_DESKTOP.sec_ch_ua_platform_version,
+        sec_ch_ua_mobile=WINDOWS_DESKTOP.sec_ch_ua_mobile,
     )
     assert context.last_response.status_code == 200, context.last_response.content
 

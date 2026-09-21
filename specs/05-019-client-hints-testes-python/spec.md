@@ -1,6 +1,6 @@
 # Spec: Client Hints (Sec-CH-UA) nos testes Python do ambiente blackbox
 
-**Status:** em implementação
+**Status:** implementado
 **Issue:** [#75](https://github.com/lalgarve/jogo-acoes/issues/75)
 **Iteração:** iteration-5
 
