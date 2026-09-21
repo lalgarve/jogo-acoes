@@ -1,7 +1,7 @@
 # Spec: Proxy reverso de Client Hints para testar pelo Swagger UI
 
-**Status:** rascunho
-**Issue:** —
+**Status:** em implementação
+**Issue:** [#76](https://github.com/lalgarve/jogo-acoes/issues/76)
 **Iteração:** iteration-5
 
 ## Resumo
