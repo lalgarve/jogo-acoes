@@ -8,9 +8,12 @@
 
 Novo módulo Maven, `blackbox-proxy/` — uma aplicação Spring Boot separada, numa porta própria,
 que funciona como proxy reverso transparente na frente do `app/`: encaminha qualquer requisição
-para a API real, mas sempre com os headers `Sec-CH-UA*`/`User-Agent` que estiverem configurados
-no momento (navegador não consegue mandar `Sec-*` de jeito nenhum, e alguns testes precisam
-também de um `User-Agent` próprio — ver spec 05-009/motivação abaixo). Um endpoint próprio e
+para a API real, mas os cinco headers `Sec-CH-UA*`/`User-Agent` da chamada de saída vêm sempre
+da configuração corrente do proxy, nunca do navegador — configurado com um valor, sai com esse
+valor; em branco (estado inicial, ou explicitamente limpo), sai sem o header, mesmo que o
+navegador tenha mandado algo (navegador não consegue mandar `Sec-*` de jeito nenhum, e alguns
+testes precisam também de controlar o `User-Agent` — ver spec 05-009/motivação abaixo). Um
+endpoint próprio e
 único, `POST /blackbox/proxy/headers`, só recebe os valores a usar dali em diante — configurar
 isso uma vez, e o resto do Swagger UI (qualquer rota, não só login/registro) continua
 funcionando exatamente como sempre, sem montar nada à mão a cada chamada. Um script novo
@@ -46,16 +49,23 @@ restante do andaime `blackbox`, specs 05-014/05-018). Coberto por teste de integ
   `email-lambda/` — parent/BOM próprio, agregado pelo `pom.xml` da raiz), rodando numa porta
   própria (padrão `8090`, distinta da porta `8080` do `app/`).
 - `POST /blackbox/proxy/headers` — recebe `secChUa`, `secChUaPlatform`,
-  `secChUaPlatformVersion`, `secChUaMobile` e `userAgent` (todos opcionais; campo ausente/`null`
-  limpa aquele header, deixando de sobrescrevê-lo nas próximas chamadas) e guarda como
-  configuração corrente do processo (em memória — não persiste, não é multiusuário, é
-  ferramenta de teste manual de uma pessoa por vez). `204` de resposta.
+  `secChUaPlatformVersion`, `secChUaMobile` e `userAgent` (todos opcionais) e **substitui por
+  inteiro** a configuração corrente do processo (em memória — não persiste, não é multiusuário,
+  é ferramenta de teste manual de uma pessoa por vez): campo presente com valor = esse valor;
+  campo ausente/`null` = em branco. Não é um merge com a chamada anterior — cada `POST` descreve
+  o dispositivo completo, do zero. Estado inicial (antes de qualquer `POST`) já é "tudo em
+  branco". `204` de resposta.
 - Qualquer outra requisição (qualquer método, qualquer caminho — incluindo os arquivos estáticos
   do Swagger UI do próprio `app/`, já que o proxy encaminha tudo) é repassada pra API real
   (endereço configurável, padrão `http://localhost:8080`), preservando caminho, query string,
-  método, corpo e todos os headers originais — exceto os cinco (`Sec-CH-UA*` e `User-Agent`),
-  que são sobrescritos (ou adicionados) com o que estiver configurado no momento; os que não
-  foram configurados não são tocados.
+  método e corpo — mas os cinco headers (`Sec-CH-UA*` e `User-Agent`) da chamada de saída vêm
+  **sempre** da configuração corrente, nunca do que o navegador mandou: configurado com um valor
+  → sai com esse valor; em branco (ou nunca configurado) → **removido** da chamada de saída,
+  mesmo que o navegador tenha mandado um valor de verdade (o `User-Agent` real do navegador, ou
+  um `Sec-CH-UA` que ele já tenha negociado via `Accept-CH` numa chamada anterior à mesma
+  origem). "Em branco" nunca quer dizer "deixa o navegador preencher" — quer dizer que a API real
+  recebe a chamada sem esse header, do jeito que teria vindo dum cliente que nunca manda esses
+  hints.
 - Resposta da API real é repassada de volta sem alteração — status, corpo e headers (`Set-
   Cookie` incluso, essencial pra sessão de login continuar funcionando através do proxy).
 - Resultado prático: apontar o navegador pro Swagger UI através do proxy

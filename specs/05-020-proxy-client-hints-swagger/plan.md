@@ -36,6 +36,7 @@ qualquer forma, então a pergunta fica irrelevante na prática.
 | Headers hop-by-hop / `Content-Length` / `Host` | Nunca repassados como vieram — `RestClient` recalcula `Content-Length`, e `Connection`/`Transfer-Encoding`/`Keep-Alive`/`Host` são descartados da requisição de entrada antes de montar a de saída | resolvida | Erro clássico de proxy escrito à mão — copiar esses headers cegamente quebra a conexão (tamanho errado, `Host` da porta errada). Registrado aqui pra não esquecer na implementação. |
 | Onde/como rodar | Script `scripts/blackbox-proxy.sh` chamando `mvn -pl blackbox-proxy -am spring-boot:run` — não entra em `docker-compose.yml`/`docker-compose.blackbox.yml` nesta v1 | resolvida (era decisão em aberto em `spec.md`) | Ferramenta de uso manual e ocasional (testar rótulo de dispositivo), não parte do pipeline automático — colocar em Docker Compose acrescentaria complexidade de rede (hostname de container vs. `localhost`) sem necessidade agora; documentado como possível próximo passo, não feito. |
 | Como suportar vários dispositivos ao mesmo tempo | Não dentro de uma instância (uma configuração corrente só) — várias instâncias, cada uma sua porta, via `scripts/blackbox-proxy.sh` com `--proxy-port`/`--target-url`/`--target-port` sobrescritos | resolvida | Pedido explícito do usuário ("se o usuário quiser rodar 4 instâncias, tudo bem"); mais simples que dar à mesma instância um conceito de "sessão"/"aba" pra guardar mais de uma configuração — cada instância já é isolada (seu próprio `DeviceHeaderStore` em memória) de graça. |
+| O que "não configurado" significa na chamada de saída | Header **removido**, nunca "deixa passar o que o navegador mandou" — e cada `POST /blackbox/proxy/headers` substitui a configuração inteira (sem merge com a chamada anterior) | resolvida | Correção de um desenho anterior desta spec, que dizia "os que não foram configurados não são tocados" — na prática isso deixaria vazar o `Sec-CH-UA` que o próprio navegador já tivesse negociado via `Accept-CH`, ou o `User-Agent` real, exatamente o oposto de "testar em branco" (feedback do usuário). Sem esse cuidado, não dá pra testar de propósito o fallback de `DeviceLabelResolver` pra `"unknown-device"`. |
 
 ## Estrutura de módulos/pacotes
 
@@ -58,14 +59,18 @@ scripts/
 
 - Raiz `pom.xml` — acrescenta `<module>blackbox-proxy</module>`.
 - `DeviceHeaderStore`: cinco campos opcionais (`secChUa`, `secChUaPlatform`,
-  `secChUaPlatformVersion`, `secChUaMobile`, `userAgent`), mesmo tratamento pros cinco (`null` =
-  não sobrescreve aquele header).
+  `secChUaPlatformVersion`, `secChUaMobile`, `userAgent`), mesmo tratamento pros cinco — `null` =
+  header removido da chamada de saída, nunca repassa o que o navegador mandou. `set(...)`
+  substitui os cinco campos por inteiro a cada chamada (não faz merge com o estado anterior —
+  reflete a decisão de `spec.md` de que cada `POST /blackbox/proxy/headers` descreve o
+  dispositivo completo, do zero).
 - `ReverseProxyController`: um único método (`@RequestMapping(value = "/**", method = {GET,
   POST, PUT, PATCH, DELETE})`) recebe `HttpServletRequest`, monta a chamada de saída (método +
-  caminho + query string + corpo + headers de entrada menos os hop-by-hop) via `RestClient`,
-  sobrescreve os cinco headers com o que `DeviceHeaderStore` tiver configurado (pulando os que
-  estiverem `null`), executa, e devolve `ResponseEntity` com status/corpo/headers da resposta
-  real (`Set-Cookie` incluso).
+  caminho + query string + corpo) via `RestClient`, copiando os headers de entrada **exceto** os
+  cinco controlados pelo proxy e os hop-by-hop — nunca copia-e-depois-sobrescreve, pra não
+  arriscar um valor do navegador vazar por um esquecimento de ordem; os cinco são adicionados
+  separadamente, só os que `DeviceHeaderStore` tiver com valor não-`null`. Executa e devolve
+  `ResponseEntity` com status/corpo/headers da resposta real (`Set-Cookie` incluso).
 - `scripts/blackbox-proxy.sh` (novo, mesmo estilo de `scripts/blackbox-clock-offset.sh`) —
   três opções, todas com padrão, nenhuma obrigatória:
   ```
