@@ -22,7 +22,7 @@ link válido por 7 dias, sessão HTTP por 30 dias (`application.yml`).
 | Competição em andamento ou terminada por data | Sim, com o relógio no passado | `startDate` exige "depois de hoje", e "hoje" é o relógio do app |
 | Participação EMAIL_NOT_SENT | Sim | privada criada com `later` |
 | Participação EMAIL_SENT | Sim | convite com `now`, ou pedido de entrada pública aguardando o link |
-| Participação LINK_CLICKED | Não | o enum existe, nada grava esse status |
+| Participação LINK_CLICKED | Não | bug confirmado: `CompetitionLinkHandler.consume()` nunca grava esse status ao clicar no link, só ao completar o registro (ver `spec.md`) |
 | Participação IN_COMPETITION | Sim | registro pelo link, ou confirmação de quem já tem sessão |
 | Usuário com papel PLAYER | Sim | só nasce ao completar o registro de um link de competição |
 | Administrador além do semeado | Não | não há API; `BlackboxDataSeeder` semeia só `success+admin@simulator.amazonses.com` |

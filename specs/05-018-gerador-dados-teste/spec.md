@@ -87,8 +87,12 @@ nem mudança de comportamento de negócio (mesmo padrão das specs 05-014/05-015
 - Estados que a API não tem como produzir hoje: status `CLOSED` de competição (nenhum código
   do `app/` grava esse valor — só é lido), participação `LINK_CLICKED` (o enum existe, nada
   grava) e um segundo administrador (não há via de API; `BlackboxDataSeeder` semeia só um).
-  `LINK_CLICKED` nunca ser gravado parece lacuna do produto, não desta spec — candidato a
-  Issue própria, não resolvido aqui.
+  `LINK_CLICKED` nunca ser gravado é bug confirmado, não desta spec: a progressão pretendida é
+  `EMAIL_NOT_SENT → EMAIL_SENT → LINK_CLICKED → IN_COMPETITION` (já documentada nas notas de
+  iteração), mas `CompetitionLinkHandler.consume()` trata o clique como passagem direta para o
+  formulário de inscrição, sem gravar o status — quando o jogador clica no link mas ainda não
+  completou o cadastro, a participação continua `EMAIL_SENT`. Candidato a Issue própria de
+  correção, não resolvido aqui.
 - Cotações de ações (`STOCK`, `PRICE_QUOTE`) — não existem no DER atual (roadmap, iterações
   8–10).
 - Escrita direta no PostgreSQL — a v1 usa só HTTP, por isso não cobre os dois itens acima.
