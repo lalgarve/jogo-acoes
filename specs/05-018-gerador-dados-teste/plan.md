@@ -54,7 +54,7 @@ só o último e-mail de cada endereço — o script sempre lê o link logo após
 | Catálogo de competições | 11 competições (`C1`–`C11`) cobrindo os estados alcançáveis, cada uma marcada com o deslocamento de relógio necessário; ver tabela abaixo | resolvida | Cobre a tabela de estados por HTTP sem repetir código de teste — mesma lista de qualquer forma precisaria existir num `.feature`/roteiro manual. |
 | **Relógio presente (offset 0)** | Nunca usado — toda competição do catálogo nasce com o relógio do app em algum deslocamento no passado | resolvida | Dados do dia real já nascem organicamente toda vez que a própria suíte (`behave`/`pytest`) roda, contra o relógio verdadeiro — o gerador existe para cobrir o que a suíte sozinha não cobre: o passado. Repetir isso no presente seria massa duplicada e, pior, indistinguível da massa que os próprios testes geram. `--clock-offset-days` não tem valor padrão e rejeita `0`/positivos (ver "Estrutura de módulos/pacotes"). |
 | **Um único deslocamento de relógio, não uma fase por estado** | Todo o catálogo (`C1`–`C11`, jogadores multi-competição) roda com o **mesmo** `--clock-offset-days` — o que diferencia "em andamento" de "terminada por data" é a `durationDays` de cada competição relativa a esse único deslocamento, não deslocamentos diferentes | resolvida | Com um só relógio, `startDate` = deslocamento + 1 dia é fixo para todas; uma `durationDays` curta (ex. 10) termina antes de hoje, uma longa (ex. 60) ainda não — dispensa subir o app mais de uma vez e dispensa qualquer raciocínio sobre ordem entre fases (a versão anterior deste plano tinha três deslocamentos — `−60`/`−30`/`hoje` — só por não ter pensado em variar a duração em vez do relógio). |
-| Perfis | `minimal` (`C1`, `C2`, `C4`), `standard` (`C1`–`C11` + jogadores multi-competição), `volume` (`standard` + uma pública com N jogadores) — todos com o mesmo deslocamento de relógio numa única execução | resolvida | Cobre do teste rápido no Swagger UI até listas longas para filtro, sem forçar todo mundo a gerar a massa completa. |
+| Perfis | `minimal` (`C1`, `C2`, `C4`), `standard` (`C1`–`C11` + jogadores multi-competição), `volume` (`standard` + uma pública com 200 jogadores) — todos com o mesmo deslocamento de relógio numa única execução | resolvida | Cobre do teste rápido no Swagger UI até listas longas para filtro, sem forçar todo mundo a gerar a massa completa. 200 é grande o bastante para exercitar paginação/filtro de verdade na spec 05-015, sem tornar a execução (sequencial, ~4 chamadas HTTP por jogador) demorada demais para uso manual. |
 | **Jogadores multi-competição** | Quatro jogadores nomeados (`M1`–`M4`), registrados em exatamente 1, 2, 3 e 4 competições cada, cruzando os grupos `participating`/`pendingConfirmation` de `GET /competitions/mine`; ver tabela abaixo | resolvida | Todo jogador do catálogo original é distinto por competição — nenhum cenário hoje exercita a listagem de um jogador com mais de um item. Essencial para os cenários de listagem/filtro da spec 05-015 (e para qualquer QA manual da tela "minhas competições"). |
 | **Idempotência/reexecução** | Nenhuma — v1 roda uma vez, contra um `blackbox` recém-subido, e cria tudo direto, sem checar antes se já existe | resolvida | A ideia original (handout) tinha um manifesto local para permitir reexecução segura; descartada porque o uso real é rodar uma vez contra ambiente vazio, não uma pipeline que roda repetidamente. Sem essa exigência, some também a dependência da spec 05-017 (que só entraria para permitir checar "já criei essa competição?" antes de recriar) — 05-017 continua útil por si mesma (administrador listar o que criou), mas deixa de ser pré-requisito desta spec. |
 | Nomes de jogador | Lista fixa de nomes (`Object Mother`), ciclada por posição — não sorteada, exceto no perfil `volume` | resolvida | Determinismo por posição é mais simples de depurar que aleatoriedade sem motivo; `volume` é o único caso com volume grande o bastante para gerar nomes repetitivos, por isso sorteia com `--seed`. |
@@ -63,7 +63,7 @@ só o último e-mail de cada endereço — o script sempre lê o link logo após
 | Estrutura/local do código | Dentro de `blackbox-tests/` (`seed/`), reaproveitando o cliente gerado e o `pyproject.toml` já existentes | resolvida | Mesmo raciocínio da spec 05-015 — projeto Python independente, sem duplicar setup. `features/mailbox.py` e a constante do e-mail do administrador (`blackbox-tests/features/steps/public_competition_entry_steps.py`) movem para um módulo compartilhado que tanto `seed/` quanto `behave` importam (ver "Estrutura de módulos/pacotes"). |
 
 Catálogo (perfil `standard`; `minimal` = só `C1`, `C2`, `C4`; `volume` = tudo isso mais uma
-pública com N jogadores). Todas as linhas rodam com o **mesmo** `--clock-offset-days` — o
+pública com 200 jogadores). Todas as linhas rodam com o **mesmo** `--clock-offset-days` — o
 exemplo abaixo usa `−15` dias; `startDate` de toda competição é sempre "o dia seguinte ao
 relógio deslocado" (aqui, dia `−14`). O que muda entre "em andamento" e "terminada por data" é
 só a `durationDays`:
@@ -113,6 +113,8 @@ ver "Fora de escopo" em `spec.md`), então mesmo `C10` ("terminada por data") ap
 
 ```
 blackbox-tests/
+  common/
+    blackbox_fixtures.py   # ADMIN_EMAIL + leitura de GET /blackbox/last-email (link e sentAt)
   seed/
     __main__.py     # CLI
     profiles.py     # perfis como dados (C1 a C11 e contagens)
@@ -123,9 +125,11 @@ blackbox-tests/
 ```
 
 `blackbox-tests/features/mailbox.py` e a constante do e-mail do administrador (hoje duplicada
-em `features/steps/public_competition_entry_steps.py`) movem para um módulo compartilhado
-(nome exato a definir no PR) que tanto `seed/` quanto os passos de `behave` importam — evita
-duas fontes de verdade para o mesmo endereço.
+em `features/steps/public_competition_entry_steps.py`) movem para `common/blackbox_fixtures.py`
+— módulo compartilhado que tanto `seed/` quanto os passos de `behave` importam, evitando duas
+fontes de verdade para o mesmo endereço. Ganha também uma função que devolve o `sentAt` do
+último e-mail (hoje `features/mailbox.py` só expõe o `link`), necessária para a checagem de
+relógio descrita acima.
 
 Interface de linha de comando — uma execução só cobre o catálogo inteiro do perfil escolhido:
 
@@ -158,6 +162,6 @@ python -m seed --profile minimal --clock-offset-days -15 --dry-run
   `−11` e `−59` mantém a separação; fora dessa faixa (ex. `−5`) `C10` deixaria de estar
   "terminada", e um deslocamento muito profundo (ex. `−100`) faria até `C9`/`C11` acabarem.
   Não há checagem automática disso — documentado aqui, não validado pelo script nesta v1.
-- **Perfil `volume` (N jogadores)**: cada jogador custa três chamadas de API mais uma leitura
-  de e-mail — para N grande, a execução é sequencial (ver "Requisitos não-funcionais") e pode
-  demorar; não paralelizado nesta v1.
+- **Perfil `volume` (200 jogadores)**: cada jogador custa três chamadas de API mais uma leitura
+  de e-mail — ~800 chamadas HTTP, sequenciais (ver "Requisitos não-funcionais"), somadas às do
+  resto do catálogo `standard`; pode demorar alguns minutos, não paralelizado nesta v1.

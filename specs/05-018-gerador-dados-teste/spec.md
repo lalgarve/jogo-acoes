@@ -113,5 +113,5 @@ nem mudança de comportamento de negócio (mesmo padrão das specs 05-014/05-015
 
 ## Decisões em aberto
 
-- Quantos jogadores no perfil `volume` — 200 é um palpite inicial; cada jogador novo custa três
-  chamadas de API mais uma leitura de e-mail.
+Nenhuma — o perfil `volume` usa 200 jogadores numa única competição pública, decidido em
+conversa (ver `plan.md` para o raciocínio de custo).
