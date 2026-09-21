@@ -23,8 +23,9 @@ O sistema não tem — e não é objetivo desta spec criar — nenhuma via de es
 tudo passa pela API real, exatamente como um cliente de verdade veria. Isso significa aceitar
 os limites do que a API hoje consegue produzir (ver "Fora de escopo") e usar o mecanismo de
 relógio no passado já documentado no `README.md` (seção "Gerando dados de teste com uma data
-no passado") para os estados que dependem de tempo decorrido — o próprio README já registra que
-isso é manual, sem automação no repositório, e este script não muda isso.
+no passado", `scripts/blackbox-clock-offset.sh`) para os estados que dependem de tempo
+decorrido — subir o app com aquele script continua um passo manual, separado deste gerador (ver
+"Requisitos funcionais").
 
 ## Cenários (comportamento esperado)
 
@@ -91,14 +92,17 @@ nem mudança de comportamento de negócio (mesmo padrão das specs 05-014/05-015
   `EMAIL_NOT_SENT → EMAIL_SENT → LINK_CLICKED → IN_COMPETITION` (já documentada nas notas de
   iteração), mas `CompetitionLinkHandler.consume()` trata o clique como passagem direta para o
   formulário de inscrição, sem gravar o status — quando o jogador clica no link mas ainda não
-  completou o cadastro, a participação continua `EMAIL_SENT`. Candidato a Issue própria de
-  correção, não resolvido aqui.
+  completou o cadastro, a participação continua `EMAIL_SENT`. Bug, não lacuna desta spec —
+  correção em Issue própria: [#73](https://github.com/lalgarve/jogo-acoes/issues/73).
 - Cotações de ações (`STOCK`, `PRICE_QUOTE`) — não existem no DER atual (roadmap, iterações
   8–10).
 - Escrita direta no PostgreSQL — a v1 usa só HTTP, por isso não cobre os dois itens acima.
-- Automatizar o relógio no passado — subir o app com o relógio deslocado continua manual, como
-  o `README.md` já descreve; um `Clock` injetável é a alternativa que o `README.md` já registra
-  e continua não implementada.
+- Subir o app com o relógio deslocado — automatizado por `scripts/blackbox-clock-offset.sh`
+  (`README.md`), mas continua um passo manual e separado, fora deste gerador (ver "Requisitos
+  funcionais"): o gerador não sobe/derruba containers. Um `Clock` injetável (bean configurável
+  por propriedade) foi considerado e descartado como último recurso — risco de algum call site
+  de `now()` ficar de fora e misturar hora real com hora deslocada silenciosamente; ver
+  `README.md` para o raciocínio completo.
 - Endereços `bounce`/`complaint`/similares do simulador do SES (spec 05-016) — só casos de
   sucesso.
 - Limpeza da massa gerada — não há API para apagar; `docker compose down -v` recria o banco do
