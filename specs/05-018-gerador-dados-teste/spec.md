@@ -1,7 +1,7 @@
 # Spec: Gerador de dados de teste do ambiente blackbox
 
-**Status:** rascunho
-**Issue:** —
+**Status:** implementado
+**Issue:** [#74](https://github.com/lalgarve/jogo-acoes/issues/74)
 **Iteração:** iteration-5
 
 ## Resumo

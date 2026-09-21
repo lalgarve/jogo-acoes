@@ -3,8 +3,8 @@ import uuid
 
 from behave import given, when, then
 
+from common.blackbox_fixtures import ADMIN_EMAIL, last_email_link
 from environment import new_client
-from mailbox import last_email_link
 
 from jogo_acoes_client.api.competitions import create_competition
 from jogo_acoes_client.api.entry_requests import request_or_confirm_entry
@@ -18,9 +18,6 @@ from jogo_acoes_client.models import (
     EntryRequest,
     RequestLoginLinkBody,
 )
-
-ADMIN_EMAIL = "success+admin@simulator.amazonses.com"
-
 
 def _token_from_link(link: str) -> str:
     # last_email_link returns a path like "/login-links/<token>" or
