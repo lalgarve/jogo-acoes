@@ -40,7 +40,7 @@ Hoje:
 | Nome/valor da fila no `email-lambda` | Nova propriedade `email.queue-name=${EMAIL_QUEUE_NAME:jogo-acoes-email-commands}` em `application.properties`, mesmo valor default que `app` já usa | resolvida | Mesma convenção de sincronizar o nome "à mão" entre os dois lados, já usada em `docker/localstack/init/01-create-queue.sh` (comentário: "Name kept in sync by hand with EMAIL_QUEUE_NAME's default in app/..."). |
 | SES habilitado no `localstack` do `docker-compose.yml` (base, não a sobreposição) | Muda `SERVICES: sqs` para `SERVICES: sqs,ses` no arquivo base | resolvida | Emulação de SES é inerte para quem não usa `email-lambda` (nada mais no projeto chama SES) — mesmo espírito "presente mas inofensivo" do agente JaCoCo. Colocar na sobreposição exigiria montar um segundo diretório de init scripts no mesmo caminho de container que o `docker-compose.yml` base já monta (`/etc/localstack/init/ready.d`), o que o Compose não mescla de forma limpa entre arquivos — mudar só o valor de uma variável de ambiente já existente é mais simples e não altera nenhum comportamento hoje observável. |
 | Verificação do remetente no LocalStack | Novo script `docker/localstack/init/02-verify-ses-sender.sh` (mesmo diretório/mecanismo do `01-create-queue.sh`, roda uma vez quando o LocalStack fica pronto): `awslocal ses verify-email-identity --email-address no-reply@jogo-acoes.example` | resolvida | Resolve, no ambiente `docker-compose`, o mesmo problema que `EmailSendHandlerTest` já resolve dentro do teste (LocalStack aplica a mesma regra do SES real de exigir remetente verificado) — sem isso, a primeira mensagem processada pelo poller falharia com `MessageRejectedException`. Endereço mantido em sincronia à mão com `email.sender-address` em `email-lambda/src/main/resources/application.properties`, mesma convenção já usada para o nome da fila. |
-| Imagem Docker do `email-lambda` | Novo `email-lambda/Dockerfile`, multi-stage, mesmo padrão do `Dockerfile` da raiz: builda só `-pl email-lambda -am package -DskipTests` (modo JVM/*fast-jar*, não nativo), copia `target/quarkus-app/` para a imagem final, `ENTRYPOINT java -jar quarkus-run.jar` | resolvida | Modo nativo é manual/fora de CI por decisão já tomada (Iteração 4) — replicar isso aqui evita builds de vários minutos num fluxo pensado para ser rápido de subir/derrubar em dev. |
+| Imagem Docker do `email-lambda` | Novo `email-lambda/Dockerfile`, multi-stage, builda só `-pl email-lambda -am package -DskipTests` (modo JVM, não nativo), copia o jar empacotado + `lib/` para a imagem final, `ENTRYPOINT java -jar app.jar` | resolvida (corrigida na implementação — ver "Riscos e trade-offs") | Modo nativo é manual/fora de CI por decisão já tomada (Iteração 4) — replicar isso aqui evita builds de vários minutos num fluxo pensado para ser rápido de subir/derrubar em dev. |
 | Nome/formato da sobreposição do `docker-compose` | `docker-compose.email-lambda.yml`, mesmo padrão de nomenclatura de `docker-compose.blackbox.yml` — comando `docker compose -f docker-compose.yml -f docker-compose.email-lambda.yml up` | resolvida | Consistência com a spec 05-014, que já estabeleceu esse padrão de sobreposição opcional. |
 | Confirmar que uma mensagem foi processada, em dev | Nenhum mecanismo novo — a confirmação vem dos logs do container `email-lambda` (`docker compose logs -f email-lambda`) e do fato de a mensagem sumir da fila (`awslocal sqs get-queue-attributes --queue-url ... --attribute-names ApproximateNumberOfMessages`, documentado no `README.md`) | resolvida | Suficiente para o objetivo desta spec (ver o pipeline funcionar); uma ferramenta de inspeção visual da fila é maior que o necessário aqui — ver "Fora de escopo" em `spec.md`. |
 
@@ -95,4 +95,15 @@ Hoje:
   configurado (igual `quarkus-amazon-ses` já faz para SES). Nenhum teste hoje usa `SqsClient`,
   então isso não deveria mudar nada observável — mas vale confirmar rodando a suíte
   (`mvn -pl email-lambda -am test`) depois de adicionar a dependência, exatamente para checar
+  esse efeito colateral.
+- **Achado na implementação: `email-lambda` empacota como *legacy thin jar*, não *fast-jar*.**
+  O desenho original deste `plan.md` assumia `target/quarkus-app/` (mesmo layout do `Dockerfile`
+  do `app/`) — na prática, `mvn package` deste módulo produz
+  `target/email-lambda-*-runner.jar` + `target/lib/*.jar`, com o `Class-Path` do manifest
+  apontando pra `lib/...` relativo ao jar. `Dockerfile` ajustado para copiar os dois pro mesmo
+  diretório na imagem final (`app.jar` + `lib/`), preservando esse `Class-Path` relativo.
+  Confirmado rodando `java -jar app.jar` fora de qualquer container, a partir do jar+`lib/`
+  empacotados de verdade: sobe limpo e encerra limpo em `SIGTERM`, sem depender do daemon
+  Docker (indisponível neste ambiente de implementação, mesma limitação já registrada nas specs
+  anteriores) — ver detalhe em `tasks.md`, T010
   esse efeito colateral.

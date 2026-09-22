@@ -67,6 +67,15 @@
       <groupId>io.quarkiverse.amazonservices</groupId>
       <artifactId>quarkus-amazon-ses</artifactId>
     </dependency>
+    <!-- CDI-managed SqsClient (spec 05-021): lets EmailQueuePoller receive/delete messages
+         from the same queue app/ publishes to, so this module can be exercised as a live
+         process in docker-compose dev, not just inside its own tests. Same Dev Services
+         mechanism as quarkus-amazon-ses above: auto-starts LocalStack for @QuarkusTest when
+         no endpoint-override is configured. -->
+    <dependency>
+      <groupId>io.quarkiverse.amazonservices</groupId>
+      <artifactId>quarkus-amazon-sqs</artifactId>
+    </dependency>
     <!-- The SES client needs an HTTP transport on the classpath; the extension defaults to
          this one (sync URL Connection client) rather than Apache/Netty. Found by actually
          running the build in this session: boot failed with NoClassDefFoundError without
@@ -88,6 +97,17 @@
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>3.27.7</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Same mocking library already used across app/'s tests (there, transitively via
+         spring-boot-starter-test; this module has no such BOM, so pinned explicitly).
+         Version matches what app/'s Spring Boot BOM currently resolves, for consistency.
+         Lets EmailQueuePollerTest exercise the SQS receive/handle/delete logic against a mock
+         SqsClient, without needing LocalStack/Docker. -->
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <version>5.23.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

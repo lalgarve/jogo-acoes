@@ -16,13 +16,15 @@ services:
       timeout: 5s
       retries: 10
 
-  # Fake SQS for the docker profile (docs/context/iteracao-4.md, decisão 3 / "Produtor: EmailSender
+  # Fake SQS+SES for the docker profile (docs/context/iteracao-4.md, decisão 3 / "Produtor: EmailSender
   # real"): lets SqsEmailSender publish to a real queue in docker-compose/CI without needing
-  # an actual AWS account. The init script creates the queue application-docker.yml expects.
+  # an actual AWS account. The init scripts create the queue application-docker.yml expects and
+  # verify the sender identity SES requires. SES emulation is inert unless something actually
+  # calls it (only email-lambda/ does, spec 05-021) -- harmless for everyone else.
   localstack:
     image: localstack/localstack:4
     environment:
-      SERVICES: sqs
+      SERVICES: sqs,ses
     ports:
       - "4566:4566"
     volumes:
