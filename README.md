@@ -52,7 +52,7 @@ dos três — cada módulo mantém seu próprio *parent*/BOM):
 | Módulo | Framework | O quê |
 |---|---|---|
 | `app/` | Spring Boot | O sistema principal (API, persistência, regras de negócio) |
-| `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES |
+| `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES — ver "Pipeline de e-mail ponta a ponta em desenvolvimento" abaixo pra rodar como processo vivo localmente |
 | `blackbox-proxy/` | Spring Boot | Proxy reverso de teste (spec 05-020) — ver "Ambiente de testes blackbox" abaixo |
 
 `mvn verify` na raiz builda os três. Pra rodar só um: `mvn -pl app -am verify`,
@@ -205,6 +205,42 @@ resto do Swagger UI (qualquer rota, não só login/registro) continua funcionand
 sempre, sem precisar montar nada à mão a cada chamada. Pra mais de um dispositivo ao mesmo
 tempo, roda o script de novo com `--proxy-port` diferente — cada instância guarda sua própria
 configuração, independente.
+
+## Pipeline de e-mail ponta a ponta em desenvolvimento
+
+`email-lambda/` existe e é testado (`EmailSendHandlerTest`), mas por padrão nunca roda como
+processo vivo fora dos seus próprios testes — `docker-compose.yml` não sobe esse módulo, então
+qualquer mensagem publicada por `app/` na fila (`SqsEmailSender`) fica lá parada para sempre. A
+sobreposição `docker-compose.email-lambda.yml` (spec 05-021) fecha esse pipeline pra uma sessão
+normal de desenvolvimento:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.email-lambda.yml up
+```
+
+Isso sobe `email-lambda` como um processo a mais, consumindo a mesma fila que `app/` já publica
+(*long polling*, mesmo handler que a Lambda real usaria — `EmailQueuePoller` só é um jeito
+alternativo de invocá-lo, desligado por padrão e só ligado por esta sobreposição) e chamando o
+SES simulado do LocalStack (que a sobreposição também habilita, junto com SQS). Não depende de
+conta AWS real — isso continua bloqueado — nem muda nada sobre o artefato de implantação
+verdadeiro (build nativo), que nunca ativa esse modo.
+
+Pra confirmar que uma mensagem foi processada:
+
+```
+docker compose logs -f email-lambda
+```
+
+Ou, direto na fila (deve zerar depois que `email-lambda` processa o que estava pendente):
+
+```
+docker compose exec localstack awslocal sqs get-queue-attributes \
+  --queue-url http://localhost:4566/000000000000/jogo-acoes-email-commands \
+  --attribute-names ApproximateNumberOfMessages
+```
+
+Sem essa sobreposição, `docker compose up` continua se comportando exatamente como antes —
+`email-lambda` não sobe, mensagens continuam só se acumulando na fila.
 
 ## Licença
 

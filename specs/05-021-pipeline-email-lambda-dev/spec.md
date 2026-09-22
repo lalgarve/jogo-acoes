@@ -1,6 +1,6 @@
 # Spec: Pipeline de e-mail ponta a ponta em desenvolvimento (`email-lambda` como consumidor vivo)
 
-**Status:** rascunho
+**Status:** implementado
 **Issue:** [#78](https://github.com/lalgarve/jogo-acoes/issues/78)
 **Iteração:** iteration-5
 

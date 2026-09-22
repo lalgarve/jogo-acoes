@@ -67,6 +67,15 @@
       <groupId>io.quarkiverse.amazonservices</groupId>
       <artifactId>quarkus-amazon-ses</artifactId>
     </dependency>
+    <!-- CDI-managed SqsClient (spec 05-021): lets EmailQueuePoller receive/delete messages
+         from the same queue app/ publishes to, so this module can be exercised as a live
+         process in docker-compose dev, not just inside its own tests. Same Dev Services
+         mechanism as quarkus-amazon-ses above: auto-starts LocalStack for @QuarkusTest when
+         no endpoint-override is configured. -->
+    <dependency>
+      <groupId>io.quarkiverse.amazonservices</groupId>
+      <artifactId>quarkus-amazon-sqs</artifactId>
+    </dependency>
     <!-- The SES client needs an HTTP transport on the classpath; the extension defaults to
          this one (sync URL Connection client) rather than Apache/Netty. Found by actually
          running the build in this session: boot failed with NoClassDefFoundError without

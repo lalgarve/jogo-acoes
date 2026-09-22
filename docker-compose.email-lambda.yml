@@ -1,0 +1,29 @@
+# Spec 05-021 -- overlay, never used alone: `docker compose -f docker-compose.yml -f
+# docker-compose.email-lambda.yml up`. Adds email-lambda as a live process consuming the same
+# queue app/ already publishes to in the base docker-compose.yml, closing the
+# app -> queue -> email-lambda -> simulated SES pipeline for a normal dev session. Without this
+# overlay, email-lambda never runs and messages just accumulate in the queue -- unchanged
+# behavior for anyone not using this file, same spirit as docker-compose.blackbox.yml (spec
+# 05-014).
+services:
+  email-lambda:
+    build:
+      context: .
+      dockerfile: email-lambda/Dockerfile
+    depends_on:
+      localstack:
+        condition: service_healthy
+    environment:
+      EMAIL_DEV_POLLER_ENABLED: "true"
+      # LocalStack is reached by its compose network hostname here, not localhost (same
+      # reasoning as app's SPRING_CLOUD_AWS_SQS_ENDPOINT override in docker-compose.yml).
+      QUARKUS_SQS_ENDPOINT_OVERRIDE: http://localstack:4566
+      QUARKUS_SQS_AWS_REGION: us-east-1
+      QUARKUS_SQS_AWS_CREDENTIALS_TYPE: static
+      QUARKUS_SQS_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID: test
+      QUARKUS_SQS_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY: test
+      QUARKUS_SES_ENDPOINT_OVERRIDE: http://localstack:4566
+      QUARKUS_SES_AWS_REGION: us-east-1
+      QUARKUS_SES_AWS_CREDENTIALS_TYPE: static
+      QUARKUS_SES_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID: test
+      QUARKUS_SES_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY: test
