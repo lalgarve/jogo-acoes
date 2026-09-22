@@ -1,0 +1,8 @@
+# Spec 05-020 -- both overridable by environment variable (Spring Boot relaxed binding:
+# SERVER_PORT / BLACKBOX_PROXY_TARGET_BASE_URL), which is how scripts/blackbox-proxy.sh lets
+# more than one instance run at once, each pointed at its own ports.
+server:
+  port: 8090
+
+blackbox-proxy:
+  target-base-url: http://localhost:8080

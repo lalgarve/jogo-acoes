@@ -73,6 +73,27 @@ pytest
 ## O que NÃO está no cliente gerado
 
 `GET /blackbox/last-email` (spec 05-014) não está em `docs/openapi.yaml` de propósito — é
-andaime de teste do ambiente `blackbox`, não contrato de produto. `features/mailbox.py`
+andaime de teste do ambiente `blackbox`, não contrato de produto. `common/blackbox_fixtures.py`
 encapsula essa chamada via `httpx` direto, usada tanto pelos passos de `behave` quanto pelos
-testes `pytest` — o cliente gerado continua refletindo só a API real do sistema.
+testes `pytest` e pelo gerador de dados (`seed/`, abaixo) — o cliente gerado continua refletindo
+só a API real do sistema.
+
+## Gerador de dados de teste (spec 05-018)
+
+`seed/` popula o ambiente `blackbox` com um catálogo fixo de competições/participações e
+jogadores multi-competição — massa repetível para teste manual e para os cenários de
+listagem/filtro desta suíte. Detalhes completos em
+[`specs/05-018-gerador-dados-teste/`](../specs/05-018-gerador-dados-teste/).
+
+Roda uma vez, contra um ambiente recém-subido, com o relógio já deslocado para o passado — só
+esse relógio deslocado permite que o catálogo cubra tanto competições "em andamento" quanto
+"terminadas por data":
+
+```
+../scripts/blackbox-clock-offset.sh -15
+python -m seed --profile standard --clock-offset-days -15
+```
+
+`--profile` aceita `minimal` (catálogo mínimo), `standard` (catálogo completo + jogadores
+multi-competição, padrão) ou `volume` (`standard` + uma competição pública com 200 jogadores).
+`--dry-run` imprime o plano sem chamar a API.

@@ -17,7 +17,9 @@ build-backend = "setuptools.build_meta"
 py-modules = []
 
 [tool.pytest.ini_options]
-# "features" (not "features/steps") so tests can `from mailbox import ...` -- same module,
-# same import spelling behave itself uses when loading step definitions.
-pythonpath = ["features"]
+# "features" (not "features/steps") so tests can `from environment import ...` -- same module,
+# same import spelling behave itself uses when loading step definitions. "." (this directory)
+# so tests can `from common.blackbox_fixtures import ...` / `from seed... import ...` (spec
+# 05-018) -- behave already resolves those without help, since it runs from here too.
+pythonpath = ["features", "."]
 

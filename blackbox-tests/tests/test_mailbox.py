@@ -8,7 +8,7 @@ import uuid
 
 import pytest
 
-from mailbox import NoEmailSentError, last_email_link
+from common.blackbox_fixtures import NoEmailSentError, last_email_link
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8080/api")
 

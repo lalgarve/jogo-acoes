@@ -47,15 +47,16 @@ Detalhes de cada etapa estão em [`docs/roadmap.md`](docs/roadmap.md).
 ## Módulos
 
 Reator Maven multi-módulo (`pom.xml` na raiz é só um agregador, não é *parent* de nenhum
-dos dois — cada módulo mantém seu próprio *parent*/BOM):
+dos três — cada módulo mantém seu próprio *parent*/BOM):
 
 | Módulo | Framework | O quê |
 |---|---|---|
 | `app/` | Spring Boot | O sistema principal (API, persistência, regras de negócio) |
 | `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES |
+| `blackbox-proxy/` | Spring Boot | Proxy reverso de teste (spec 05-020) — ver "Ambiente de testes blackbox" abaixo |
 
-`mvn verify` na raiz builda os dois. Pra rodar só um: `mvn -pl app -am verify` ou
-`mvn -pl email-lambda -am verify`.
+`mvn verify` na raiz builda os três. Pra rodar só um: `mvn -pl app -am verify`,
+`mvn -pl email-lambda -am verify` ou `mvn -pl blackbox-proxy -am verify`.
 
 ## Ambientes
 
@@ -152,17 +153,58 @@ abaixo está automatizado neste repositório:
   exemplo, sobrescrevendo o `entrypoint` do serviço `app` na hora de subir (sem alterar nenhum
   arquivo do repositório):
   ```
-  docker compose -f docker-compose.yml -f docker-compose.blackbox.yml run --rm \
+  ./scripts/blackbox-clock-offset.sh -30
+  ```
+  Automatiza exatamente este comando (script idempotente, sem tocar em nada versionado):
+  ```
+  docker compose -f docker-compose.yml -f docker-compose.blackbox.yml run --rm --service-ports \
     -e FAKETIME_OFFSET="-30 days" \
     --entrypoint "sh -c 'apt-get update -qq && apt-get install -y -qq faketime && faketime \"\$FAKETIME_OFFSET\" java -jar app.jar'" \
     app
   ```
+  `--service-ports` é obrigatório aqui — sem ele, `docker compose run` não publica as portas
+  do serviço (`8080`, e `6300` se a sobreposição `blackbox` estiver ativa), e nada rodando no
+  host consegue alcançar `localhost:8080`.
 
-Se algum dia isso não for mais suficiente (ex.: precisar que o "agora" avance de forma
-controlada durante o teste, não só fique fixo no passado), a alternativa considerada foi
-injetar um `Clock` de verdade (bean configurável por propriedade, com uma implementação real
-para produção e uma deslocada em dias para teste) — mudança de código real, ainda não feita
-porque a opção acima resolve o caso de uso atual (gerar dados) sem tocar em nada versionado.
+Um `Clock` injetável (bean configurável por propriedade, com uma implementação real para
+produção e uma deslocada em dias para teste) foi considerado e descartado como **último
+recurso**, não como próxima etapa: teria que ser lido em todo lugar que hoje chama
+`LocalDate.now()`/`LocalDateTime.now()` diretamente, e um único ponto esquecido (código novo,
+uma biblioteca, um cantinho não migrado) misturaria hora real com hora deslocada de forma
+silenciosa — um bug sutil e difícil de notar. Deslocar o relógio que o processo `app` inteiro
+enxerga (as duas opções acima) não tem esse risco: todo `now()` vê o mesmo deslocamento, sem
+precisar manter nenhum código sincronizado com isso.
+
+### Testando rótulo de dispositivo (Client Hints) pelo Swagger UI
+
+`consumeLoginLink`/`completeRegistration` (spec 05-009) montam o rótulo de dispositivo mostrado
+em `GET /sessions` a partir dos headers `Sec-CH-UA*`, e o Swagger UI do próprio `app/` mostra um
+campo pra preenchê-los — mas nenhum navegador deixa uma página mandar um header começando com
+`Sec-` de propósito (é assim que ele impede que a página falsifique esses hints), então o valor
+digitado nunca chega no servidor.
+
+`blackbox-proxy/` (spec 05-020, `mvn -pl blackbox-proxy -am verify`) resolve isso: é um proxy
+reverso, aplicação separada numa porta própria, que fica na frente do `app/` e sempre aplica os
+headers configurados nele — de servidor pra servidor, sem a restrição que só vale pra scripts de
+página.
+
+```
+./scripts/blackbox-proxy.sh
+```
+
+Configura o dispositivo simulado uma vez:
+
+```
+curl -X POST http://localhost:8090/blackbox/proxy/headers \
+  -H "Content-Type: application/json" \
+  -d '{"secChUa": "\"Chromium\";v=\"131\"", "secChUaPlatform": "\"Windows\"", "secChUaPlatformVersion": "\"15.0.0\"", "secChUaMobile": "?0"}'
+```
+
+E abre `http://localhost:8090/api/swagger-ui.html` em vez do endereço direto do `app/` — o
+resto do Swagger UI (qualquer rota, não só login/registro) continua funcionando exatamente como
+sempre, sem precisar montar nada à mão a cada chamada. Pra mais de um dispositivo ao mesmo
+tempo, roda o script de novo com `--proxy-port` diferente — cada instância guarda sua própria
+configuração, independente.
 
 ## Licença
 
