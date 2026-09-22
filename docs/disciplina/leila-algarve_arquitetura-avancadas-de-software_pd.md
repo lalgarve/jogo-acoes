@@ -32,7 +32,37 @@ Um jogo de simulação de investimentos em bolsa: administradores criam competi�
 * envio de emails usando uma fila SQS para determinar os dados e o template  
 * uso do DynamoDB para evitar o envio de emails duplicados
 
- 
+# Conceitos 
+
+O desenvolvimento foi pensado de forma que se assemelhasse a um projeto empresarial. Procuramos conceitos e metodologias modernas, usando como base o que aprendemos durante o curso, mas não nos limitando apenas a elas. Primeiro determinados as iterações, com o resumo dos requisitos de cada, criando um roadmap. Esse roadmap serve como guia, podendo ser repensado ao longo do tempo. Depois veio a especificação. Escolhemos BDD por gerar uma especificação executável, que pode ser entendida pelo cliente e equipe de teste. Ao mesmo tempo, a estruturação torna a comunicação com a IA mais clara. 
+
+Mesmo usando uma metodologia nova, com uma sintaxe nova, ao usar BDD (Behavior Driven Developmente), na hora de definir os passos usados pelo Gerkin, percebemos ao fim da Iteração 1 que alguns cerários do Gerkin possuiam os mesmos passos setando os campos válidos. Para cada teste que verificava valor inválido de um dos campos. Isso parecia desrespeitar o princípio de reuso. Buscando soluções,  resolvemos o problema uma fábrica (ObjectMother) e builder - o builder foi criado pela geração do código a partir do arquivo openaapi.yaml.
+
+O cenário abaixo, do arquivo `create_competition.feature`, mostra o problema ao fim da Iteração 1. Para testar apenas o nome vazio, o cenário precisa repetir os passos que preenchem todos os outros campos com valores válidos, os mesmos passos de todos os outros cenários de campo inválido:
+
+```gherkin
+Scenario: Administrator tries to create a competition without a name
+  Given they choose the public competition option
+  And leave the competition name empty
+  And define the start date
+  And define the duration
+  And define the buy brokerage fee
+  And define the sell brokerage fee
+  When they click the "create" button
+  Then the system rejects the competition creation and shows an error message about the missing name
+```
+
+Na Iteração 3, o mesmo cenário ficou apenas com o que o distingue dos demais. Os valores válidos dos outros campos passaram a vir da fábrica `CompetitionMother`, que devolve um `CompetitionCreateRequest` já preenchido, e o passo sobrescreve somente o campo em teste:
+
+```gherkin
+Scenario: Administrator tries to create a competition without a name
+  Given they choose the public competition option
+  And leave the competition name empty
+  When they click the "create" button
+  Then the system rejects the competition creation and shows an error message about the missing name
+```
+
+
 
 # **Status do projeto**
 
