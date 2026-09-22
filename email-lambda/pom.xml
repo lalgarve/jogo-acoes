@@ -99,6 +99,17 @@
       <version>3.27.7</version>
       <scope>test</scope>
     </dependency>
+    <!-- Same mocking library already used across app/'s tests (there, transitively via
+         spring-boot-starter-test; this module has no such BOM, so pinned explicitly).
+         Version matches what app/'s Spring Boot BOM currently resolves, for consistency.
+         Lets EmailQueuePollerTest exercise the SQS receive/handle/delete logic against a mock
+         SqsClient, without needing LocalStack/Docker. -->
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <version>5.23.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

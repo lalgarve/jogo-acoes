@@ -78,24 +78,27 @@ public class EmailQueuePoller {
 
     private void poll(String queueUrl) {
         while (!Thread.currentThread().isInterrupted()) {
-            List<Message> messages;
             try {
-                ReceiveMessageResponse response = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
-                        .queueUrl(queueUrl)
-                        .waitTimeSeconds(WAIT_TIME_SECONDS)
-                        .maxNumberOfMessages(MAX_MESSAGES_PER_POLL)
-                        .build());
-                messages = response.messages();
+                pollOnce(queueUrl);
             } catch (RuntimeException e) {
                 if (Thread.currentThread().isInterrupted()) {
                     return;
                 }
                 LOG.warn("Failed to receive from the e-mail queue, retrying", e);
-                continue;
             }
-            for (Message message : messages) {
-                handleOne(queueUrl, message);
-            }
+        }
+    }
+
+    // Package-private (not private) so EmailQueuePollerTest can exercise a single receive/
+    // handle/delete cycle directly, without needing to run/interrupt the actual polling thread.
+    void pollOnce(String queueUrl) {
+        ReceiveMessageResponse response = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
+                .queueUrl(queueUrl)
+                .waitTimeSeconds(WAIT_TIME_SECONDS)
+                .maxNumberOfMessages(MAX_MESSAGES_PER_POLL)
+                .build());
+        for (Message message : response.messages()) {
+            handleOne(queueUrl, message);
         }
     }
 

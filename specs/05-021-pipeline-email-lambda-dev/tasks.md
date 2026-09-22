@@ -57,6 +57,22 @@ validar sem Docker:
   a sintaxe/resolução das duas sobreposições juntas sem precisar do daemon; retornou sem erro.
 - `mvn -pl app -am test` verde (155/155) — T011, confirma que nada em `app/src` foi tocado.
 
+Achado adicional, depois da implementação inicial: `mvn -pl email-lambda -am test` só provava que
+o módulo compila/sobe — a lógica do `EmailQueuePoller` (receber da fila, chamar o handler, só
+apagar em caso de sucesso) nunca era exercitada por nenhum teste automatizado, já que
+`EmailSendHandlerTest` cobre só o handler em si e pula inteiro sem Docker. Corrigido com
+`EmailQueuePollerTest.java` (novo, `dev.leilaalgarve.jogoacoes.email.lambda`): mocka `SqsClient`
+e `EmailSendHandler` (Mockito, mesma versão já resolvida em `app/` via BOM do Spring Boot,
+`5.23.0`, fixada explicitamente no `pom.xml` deste módulo por não ter esse BOM) e exercita
+`pollOnce` (extraído do loop infinito original, package-private, só para isso) direto — sem
+LocalStack, sem Docker, sem rede. Cinco casos: mensagem processada com sucesso é apagada;
+mensagem cuja `handler.handleRequest` lança exceção não é apagada; fila vazia não chama nada;
+o corpo da mensagem chega intacto no `SQSEvent` passado ao handler; duas mensagens na mesma
+leitura, uma falhando e outra não, cada uma tratada independentemente (a que falha não bloqueia
+nem contamina a que funciona). Confirmado que o teste pega bug de verdade: quebrado
+propositalmente (apagar a mensagem mesmo quando o handler lança exceção) e rodado de novo —
+2 dos 5 casos falham (`BUILD FAILURE`); desfeito e voltou a passar.
+
 Achado durante a implementação (T005): o módulo empacota como *legacy thin jar*
 (`email-lambda-*-runner.jar` + `target/lib/*.jar`, `Class-Path` no manifest apontando pra
 `lib/...` relativo), não como o layout *fast-jar* (`target/quarkus-app/`) que o `Dockerfile`
