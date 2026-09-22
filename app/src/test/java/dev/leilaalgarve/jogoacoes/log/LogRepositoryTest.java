@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
 import static org.assertj.core.api.Assertions.assertThat;
 
 // Without this, @DataJpaTest swaps in an embedded H2 database regardless of the active
@@ -41,8 +42,8 @@ class LogRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        user1 = userRepository.save(newUser("alice@example.com"));
-        user2 = userRepository.save(newUser("bob@example.com"));
+        user1 = userRepository.save(newUser(fixed("alice")));
+        user2 = userRepository.save(newUser(fixed("bob")));
 
         log1CompetitionUser1Day1 = logRepository.save(
                 newLog(1L, user1, LogType.COMPETITION_CREATED, LocalDateTime.parse("2026-08-01T10:00:00")));

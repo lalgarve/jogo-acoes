@@ -52,7 +52,7 @@ class EmailSendHandlerTest {
     @Test
     void sendsAWellFormedMessageWithoutError() throws Exception {
         SQSEvent event = eventWith(new EmailMessage("1", UUID.randomUUID().toString(),
-                "player@example.com", "Assunto de teste", "<p>Corpo de teste</p>"));
+                "success+player@simulator.amazonses.com", "Assunto de teste", "<p>Corpo de teste</p>"));
 
         try {
             sesClient.verifyEmailIdentity(VerifyEmailIdentityRequest.builder().emailAddress(senderAddress).build());

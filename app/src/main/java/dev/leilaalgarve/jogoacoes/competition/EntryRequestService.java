@@ -3,7 +3,7 @@ package dev.leilaalgarve.jogoacoes.competition;
 import dev.leilaalgarve.jogoacoes.log.AuditLogService;
 
 import dev.leilaalgarve.jogoacoes.api.model.EntryRequest;
-import dev.leilaalgarve.jogoacoes.captcha.CaptchaService;
+import dev.leilaalgarve.jogoacoes.captcha.CaptchaVerifier;
 import dev.leilaalgarve.jogoacoes.competition.Competition;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionType;
 import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
@@ -39,12 +39,12 @@ public class EntryRequestService {
     private final LinkService linkService;
     private final UserRepository userRepository;
     private final EmailSender emailSender;
-    private final CaptchaService captchaService;
+    private final CaptchaVerifier captchaService;
     private final AuditLogService auditLogService;
 
     public EntryRequestService(CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
                                 LinkService linkService, UserRepository userRepository,
-                                EmailSender emailSender, CaptchaService captchaService, AuditLogService auditLogService) {
+                                EmailSender emailSender, CaptchaVerifier captchaService, AuditLogService auditLogService) {
         this.competitionRepository = competitionRepository;
         this.participationRepository = participationRepository;
         this.linkService = linkService;

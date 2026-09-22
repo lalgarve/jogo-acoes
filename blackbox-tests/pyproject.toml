@@ -1,0 +1,25 @@
+[project]
+name = "jogo-acoes-blackbox-tests"
+version = "0.1.0"
+description = "Blackbox test suite (behave + pytest) for the jogo-acoes API, spec 05-015 -- exercises the API only from outside, over HTTP, against the contract in docs/openapi.yaml."
+requires-python = ">=3.11"
+dependencies = [
+    "behave>=1.2.6",
+    "pytest>=8.0",
+    "httpx>=0.27",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = []
+
+[tool.pytest.ini_options]
+# "features" (not "features/steps") so tests can `from environment import ...` -- same module,
+# same import spelling behave itself uses when loading step definitions. "." (this directory)
+# so tests can `from common.blackbox_fixtures import ...` / `from seed... import ...` (spec
+# 05-018) -- behave already resolves those without help, since it runs from here too.
+pythonpath = ["features", "."]
+

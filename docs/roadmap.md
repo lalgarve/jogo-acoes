@@ -308,3 +308,20 @@ tempo).
 - Motor de síntese/geração de sinal em Rust compilado para WebAssembly (parte pesada).
 - Integração com Web Audio API no front (reprodução, controle estéreo).
 - Validação com usuários/leitores de tela.
+
+## Versão 2 — Criadores de competição além do administrador
+
+**Não é uma iteração deste roadmap** — só depois de tudo acima, numa próxima versão do
+sistema. Registrado aqui como ideia, não como escopo decidido.
+
+Hoje `ADMINISTRATOR` acumula dois papéis que coincidem por não existir ainda um terceiro:
+"superusuário, vê/modifica qualquer competição" e "quem cria competições". `POST
+/competitions` exige `hasRole("ADMINISTRATOR")` diretamente — nenhuma outra regra de acesso
+existe porque nunca precisou. Uma versão futura com outros usuários criando competições (com
+limite e provavelmente cobrança) precisa separar os dois: um papel de criador, distinto do
+administrador, com algum conceito de cota/plano — e `ADMINISTRATOR` continua enxergando/
+alterando tudo, como hoje.
+
+`Competition.creator` (`creator_id`) e `GET /competitions/mine`'s campo `created` (spec 05-017)
+já foram desenhados sem amarrar a papel — a consulta roda para qualquer usuário logado, sem
+checagem de `ADMINISTRATOR` — então essa parte não deve precisar mudar quando isso acontecer.

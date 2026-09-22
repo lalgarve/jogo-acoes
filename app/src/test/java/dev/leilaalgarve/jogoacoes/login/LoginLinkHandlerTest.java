@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
@@ -32,7 +33,7 @@ class LoginLinkHandlerTest {
         when(userRoleRepository.findByUser_Id(1L)).thenReturn(List.of(userRoleWithRole(RoleName.PLAYER)));
         LoginLinkHandler handler = new LoginLinkHandler(userRoleRepository);
 
-        LinkOutcome outcome = handler.consume(new LinkPayload(1L, "player@example.com", Map.of()));
+        LinkOutcome outcome = handler.consume(new LinkPayload(1L, fixed("player"), Map.of()));
 
         assertThat(outcome.isPending()).isFalse();
         assertThat(outcome.userId()).isEqualTo(1L);
@@ -44,7 +45,7 @@ class LoginLinkHandlerTest {
         when(userRoleRepository.findByUser_Id(2L)).thenReturn(List.of(userRoleWithRole(RoleName.ADMINISTRATOR)));
         LoginLinkHandler handler = new LoginLinkHandler(userRoleRepository);
 
-        LinkOutcome outcome = handler.consume(new LinkPayload(2L, "admin@example.com", Map.of()));
+        LinkOutcome outcome = handler.consume(new LinkPayload(2L, fixed("admin"), Map.of()));
 
         assertThat(outcome.redirectData()).containsEntry("redirectTo", "/admin");
     }
@@ -56,7 +57,7 @@ class LoginLinkHandlerTest {
 
         // payload targets user 1 (a plain player), but user 2 (an administrator) is already
         // authenticated on this device -- the redirect must reflect user 2, per login.feature.
-        LinkOutcome outcome = handler.alreadyAuthenticated(2L, new LinkPayload(1L, "player@example.com", Map.of()));
+        LinkOutcome outcome = handler.alreadyAuthenticated(2L, new LinkPayload(1L, fixed("player"), Map.of()));
 
         assertThat(outcome.userId()).isEqualTo(2L);
         assertThat(outcome.redirectData()).containsEntry("redirectTo", "/admin");
@@ -66,7 +67,7 @@ class LoginLinkHandlerTest {
     void consumeHonorsAnAlreadyValidatedReturnToOverTheRoleBasedDefault() {
         LoginLinkHandler handler = new LoginLinkHandler(userRoleRepository);
 
-        LinkOutcome outcome = handler.consume(new LinkPayload(1L, "player@example.com", Map.of("returnTo", "/competitions/42")));
+        LinkOutcome outcome = handler.consume(new LinkPayload(1L, fixed("player"), Map.of("returnTo", "/competitions/42")));
 
         assertThat(outcome.redirectData()).containsEntry("redirectTo", "/competitions/42");
     }
@@ -75,7 +76,7 @@ class LoginLinkHandlerTest {
     void consumeRejectsAPayloadWithoutAUserId() {
         LoginLinkHandler handler = new LoginLinkHandler(userRoleRepository);
 
-        assertThatThrownBy(() -> handler.consume(new LinkPayload(null, "someone@example.com", Map.of())))
+        assertThatThrownBy(() -> handler.consume(new LinkPayload(null, fixed("someone"), Map.of())))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

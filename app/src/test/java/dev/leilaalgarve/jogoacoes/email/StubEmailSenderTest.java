@@ -12,6 +12,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
 import java.util.UUID;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -42,17 +43,17 @@ class StubEmailSenderTest {
     @Test
     void recordsTheSendWithTheAssociatedUser() {
         emailSender = newStubEmailSender();
-        User user = userRepository.save(newUser("alice@example.com"));
+        User user = userRepository.save(newUser(fixed("alice")));
         long before = sentEmailRepository.count();
         String link = "https://jogo-acoes.example/login/" + UUID.randomUUID();
 
-        emailSender.send(new EmailRequest(user.getId(), "alice@example.com", user.getName(), null, null,
+        emailSender.send(new EmailRequest(user.getId(), fixed("alice"), user.getName(), null, null,
                 link, EmailTemplate.LOGIN_LINK));
 
         assertThat(sentEmailRepository.count()).isEqualTo(before + 1);
         SentEmail sent = sentEmailRepository.findByLink(link).orElseThrow();
         assertThat(sent.getUser().getId()).isEqualTo(user.getId());
-        assertThat(sent.getEmail()).isEqualTo("alice@example.com");
+        assertThat(sent.getEmail()).isEqualTo(fixed("alice"));
         assertThat(sent.getLink()).isEqualTo(link);
         assertThat(sent.getTemplate()).isEqualTo(EmailTemplate.LOGIN_LINK);
         assertThat(sent.getSentAt()).isNotNull();
@@ -64,7 +65,7 @@ class StubEmailSenderTest {
         long before = sentEmailRepository.count();
         String link = "https://jogo-acoes.example/entry/" + UUID.randomUUID();
 
-        emailSender.send(new EmailRequest(null, "bob@example.com", null, "Copa Jogo de Ações", null,
+        emailSender.send(new EmailRequest(null, fixed("bob"), null, "Copa Jogo de Ações", null,
                 link, EmailTemplate.REGISTRATION_LINK));
 
         assertThat(sentEmailRepository.count()).isEqualTo(before + 1);
@@ -80,7 +81,7 @@ class StubEmailSenderTest {
         // Long.MAX_VALUE, not a low fixed ID like 999L: this shared H2 database accumulates
         // rows across the whole test run (see class-level note above), so a low ID could
         // eventually collide with a real user once enough tests have run before this one.
-        assertThatThrownBy(() -> emailSender.send(new EmailRequest(Long.MAX_VALUE, "carol@example.com", null,
+        assertThatThrownBy(() -> emailSender.send(new EmailRequest(Long.MAX_VALUE, fixed("carol"), null,
                 "Copa Jogo de Ações", null, "https://jogo-acoes.example/invite/qqq", EmailTemplate.INVITE)))
                 .isInstanceOf(IllegalArgumentException.class);
     }

@@ -47,15 +47,16 @@ Detalhes de cada etapa estão em [`docs/roadmap.md`](docs/roadmap.md).
 ## Módulos
 
 Reator Maven multi-módulo (`pom.xml` na raiz é só um agregador, não é *parent* de nenhum
-dos dois — cada módulo mantém seu próprio *parent*/BOM):
+dos três — cada módulo mantém seu próprio *parent*/BOM):
 
 | Módulo | Framework | O quê |
 |---|---|---|
 | `app/` | Spring Boot | O sistema principal (API, persistência, regras de negócio) |
 | `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES |
+| `blackbox-proxy/` | Spring Boot | Proxy reverso de teste (spec 05-020) — ver "Ambiente de testes blackbox" abaixo |
 
-`mvn verify` na raiz builda os dois. Pra rodar só um: `mvn -pl app -am verify` ou
-`mvn -pl email-lambda -am verify`.
+`mvn verify` na raiz builda os três. Pra rodar só um: `mvn -pl app -am verify`,
+`mvn -pl email-lambda -am verify` ou `mvn -pl blackbox-proxy -am verify`.
 
 ## Ambientes
 
@@ -67,6 +68,7 @@ nenhum for definido). Cada um tem seu arquivo `application-<nome>.yml` em
 |---|---|---|
 | `sandbox` (padrão) | H2 embarcado, migrations em `db/migration-h2` | Rodar/testar sem precisar de Docker nem Postgres instalado |
 | `docker` | PostgreSQL real em containers | Localmente via `docker-compose up`, ou CI |
+| `docker,blackbox` | PostgreSQL real em containers | Testes de caixa-preta (Swagger UI, Selenium futuro, suíte Python) — ver "Ambiente de testes blackbox" abaixo |
 | `staging` | PostgreSQL real, gerido por outra equipe | Pré-produção |
 | `production` | PostgreSQL real, gerido por outra equipe | Produção |
 
@@ -79,6 +81,130 @@ Para rodar localmente com Postgres real:
 ```
 docker-compose up
 ```
+
+## Ambiente de testes blackbox
+
+`blackbox` (spec 05-014) é um perfil empilhado sobre `docker` — nunca usado sozinho — pensado
+para exercitar a API só por fora (Swagger UI, Selenium no futuro, ou a
+[suíte de testes Python](blackbox-tests/README.md), spec 05-015), sem as duas coisas que
+normalmente exigem um cliente completo:
+
+- **Captcha sempre aceito** — não existe ainda um frontend que resolva o desafio ALTCHA de
+  verdade, então qualquer `captchaToken` (incluindo vazio) é aceito. Só neste perfil: qualquer
+  outro (`sandbox`, `docker` sozinho, `staging`, `production`) continua exigindo um captcha
+  resolvido de verdade.
+- **Administrador já semeado** — como só um administrador pode criar competições e não existe
+  via de API para criar um, a aplicação garante, de forma idempotente ao subir, um administrador
+  com e-mail `success+admin@simulator.amazonses.com` (simulador de caixa de entrada do Amazon
+  SES, spec 05-016). Não há senha em lugar nenhum do sistema — login é sempre
+  por link mágico.
+- **Leitura do link de um e-mail por HTTP** — `POST /login-requests` nunca devolve o link no
+  corpo (deliberado, pra não revelar se o e-mail existe), e por padrão o link só é visível de
+  dentro do processo Java. `GET /blackbox/last-email?email={endereço}` devolve o link mais
+  recente enviado a um endereço (`404` se nada foi enviado ainda) — só existe neste perfil, e
+  não faz parte do contrato (`docs/openapi.yaml`): é andaime de teste, não API de produto. Não é
+  uma caixa postal completa (só o último e-mail por endereço, sem histórico) — suficiente para
+  destravar um fluxo que depende de clicar num link.
+
+Para subir:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up
+```
+
+### Com ou sem cobertura JaCoCo da aplicação exercitada externamente
+
+A suíte JUnit/Cucumber (`mvn test`/`mvn verify`) já gera seu próprio relatório JaCoCo em
+`target/site/jacoco/` — isso não muda. O ambiente `blackbox` mede um tipo diferente de
+cobertura: a da **aplicação rodando de verdade**, enquanto é exercitada de fora (Swagger UI ou a
+suíte Python), via o agente de execução do JaCoCo anexado ao processo `java -jar app.jar` —
+mecanismo diferente do `jacoco-maven-plugin` (que só instrumenta JVMs que o próprio Maven
+lança), sempre disponível na imagem mas inerte fora deste perfil.
+
+- **Com JaCoCo** (o comando acima já ativa o agente, `docker-compose.blackbox.yml` inclui
+  `JAVA_TOOL_OPTIONS` com `-javaagent`): depois de exercitar a aplicação, gere o relatório:
+  ```
+  ./scripts/blackbox-coverage.sh
+  ```
+  Abre `target/site/jacoco-blackbox/index.html` — diretório próprio, nunca sobrescreve nem se
+  mistura com `target/site/jacoco/` (suíte Java).
+- **Sem JaCoCo**: `docker compose up` normal (sem `-f docker-compose.blackbox.yml`) — a imagem
+  tem o agente embutido, mas ele nunca é ativado fora da sobreposição `blackbox`.
+
+### Gerando dados de teste com uma data no passado
+
+Às vezes é útil gerar dados de teste como se a aplicação estivesse rodando numa data passada
+(ex.: uma competição que já começou/terminou há semanas, e-mails "enviados" há um tempo). Hoje
+não existe um `Clock` injetável no código — datas vêm direto de `LocalDate.now()`/
+`LocalDateTime.now()` — então a forma mais simples de conseguir isso é mudar o relógio que a
+JVM enxerga, sem tocar em código. Como nenhuma migration usa `NOW()`/`CURRENT_TIMESTAMP` do
+lado do Postgres (toda timestamp é calculada em Java antes de persistir), basta mexer no
+relógio do container `app` — o `db` não importa.
+
+Isso é feito manualmente, por fora, quando for gerar os dados — nenhum dos dois caminhos
+abaixo está automatizado neste repositório:
+
+- **Mudar o relógio do host** (mais simples, só em host/VM descartável dedicado a isso):
+  containers Linux normalmente compartilham o relógio do host (sem *time namespace* próprio),
+  então `sudo date -s "-30 days"` antes do `docker compose up` já muda o que a JVM enxerga em
+  `Instant.now()`/`System.currentTimeMillis()`. Lembrar de voltar o relógio do host depois —
+  isso afeta tudo que roda ali, TLS incluído.
+- **Escopado só ao container `app`**, sem mexer no host: `libfaketime` (`LD_PRELOAD`) — por
+  exemplo, sobrescrevendo o `entrypoint` do serviço `app` na hora de subir (sem alterar nenhum
+  arquivo do repositório):
+  ```
+  ./scripts/blackbox-clock-offset.sh -30
+  ```
+  Automatiza exatamente este comando (script idempotente, sem tocar em nada versionado):
+  ```
+  docker compose -f docker-compose.yml -f docker-compose.blackbox.yml run --rm --service-ports \
+    -e FAKETIME_OFFSET="-30 days" \
+    --entrypoint "sh -c 'apt-get update -qq && apt-get install -y -qq faketime && faketime \"\$FAKETIME_OFFSET\" java -jar app.jar'" \
+    app
+  ```
+  `--service-ports` é obrigatório aqui — sem ele, `docker compose run` não publica as portas
+  do serviço (`8080`, e `6300` se a sobreposição `blackbox` estiver ativa), e nada rodando no
+  host consegue alcançar `localhost:8080`.
+
+Um `Clock` injetável (bean configurável por propriedade, com uma implementação real para
+produção e uma deslocada em dias para teste) foi considerado e descartado como **último
+recurso**, não como próxima etapa: teria que ser lido em todo lugar que hoje chama
+`LocalDate.now()`/`LocalDateTime.now()` diretamente, e um único ponto esquecido (código novo,
+uma biblioteca, um cantinho não migrado) misturaria hora real com hora deslocada de forma
+silenciosa — um bug sutil e difícil de notar. Deslocar o relógio que o processo `app` inteiro
+enxerga (as duas opções acima) não tem esse risco: todo `now()` vê o mesmo deslocamento, sem
+precisar manter nenhum código sincronizado com isso.
+
+### Testando rótulo de dispositivo (Client Hints) pelo Swagger UI
+
+`consumeLoginLink`/`completeRegistration` (spec 05-009) montam o rótulo de dispositivo mostrado
+em `GET /sessions` a partir dos headers `Sec-CH-UA*`, e o Swagger UI do próprio `app/` mostra um
+campo pra preenchê-los — mas nenhum navegador deixa uma página mandar um header começando com
+`Sec-` de propósito (é assim que ele impede que a página falsifique esses hints), então o valor
+digitado nunca chega no servidor.
+
+`blackbox-proxy/` (spec 05-020, `mvn -pl blackbox-proxy -am verify`) resolve isso: é um proxy
+reverso, aplicação separada numa porta própria, que fica na frente do `app/` e sempre aplica os
+headers configurados nele — de servidor pra servidor, sem a restrição que só vale pra scripts de
+página.
+
+```
+./scripts/blackbox-proxy.sh
+```
+
+Configura o dispositivo simulado uma vez:
+
+```
+curl -X POST http://localhost:8090/blackbox/proxy/headers \
+  -H "Content-Type: application/json" \
+  -d '{"secChUa": "\"Chromium\";v=\"131\"", "secChUaPlatform": "\"Windows\"", "secChUaPlatformVersion": "\"15.0.0\"", "secChUaMobile": "?0"}'
+```
+
+E abre `http://localhost:8090/api/swagger-ui.html` em vez do endereço direto do `app/` — o
+resto do Swagger UI (qualquer rota, não só login/registro) continua funcionando exatamente como
+sempre, sem precisar montar nada à mão a cada chamada. Pra mais de um dispositivo ao mesmo
+tempo, roda o script de novo com `--proxy-port` diferente — cada instância guarda sua própria
+configuração, independente.
 
 ## Licença
 

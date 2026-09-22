@@ -4,7 +4,7 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import dev.leilaalgarve.jogoacoes.api.model.EntryRequest;
-import dev.leilaalgarve.jogoacoes.captcha.CaptchaService;
+import dev.leilaalgarve.jogoacoes.captcha.AltchaCaptchaVerifier;
 import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
@@ -19,8 +19,8 @@ import io.restassured.specification.RequestSpecification;
 import org.altcha.altcha.v2.Altcha;
 
 import java.util.List;
-import java.util.UUID;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class RequestCompetitionEntrySteps {
@@ -29,12 +29,12 @@ public class RequestCompetitionEntrySteps {
     private final UserMother userMother;
     private final LoginHelper loginHelper;
     private final CompetitionFixtures competitionFixtures;
-    private final CaptchaService captchaService;
+    private final AltchaCaptchaVerifier captchaService;
     private final ParticipationRepository participationRepository;
     private final SentEmailRepository sentEmailRepository;
 
     public RequestCompetitionEntrySteps(ScenarioWorld world, UserMother userMother, LoginHelper loginHelper,
-                                         CompetitionFixtures competitionFixtures, CaptchaService captchaService,
+                                         CompetitionFixtures competitionFixtures, AltchaCaptchaVerifier captchaService,
                                          ParticipationRepository participationRepository, SentEmailRepository sentEmailRepository) {
         this.world = world;
         this.userMother = userMother;
@@ -73,7 +73,7 @@ public class RequestCompetitionEntrySteps {
     public void entered_a_valid_e_mail() {
         String email = world.getCurrentUser() != null
                 ? world.getCurrentUser().getEmail()
-                : "player-" + UUID.randomUUID() + "@example.com";
+                : unique("player");
         world.setCandidateEmail(email);
     }
 
@@ -142,7 +142,7 @@ public class RequestCompetitionEntrySteps {
     public void the_player_already_requested_entry_into_a_public_competition() {
         world.setCurrentUser(null);
         world.setTargetCompetition(competitionFixtures.publicCompetition());
-        world.setCandidateEmail("player-" + UUID.randomUUID() + "@example.com");
+        world.setCandidateEmail(unique("player"));
         submitEntryRequest(new EntryRequest().email(world.getCandidateEmail()).captchaToken(validCaptchaToken()));
         assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
     }

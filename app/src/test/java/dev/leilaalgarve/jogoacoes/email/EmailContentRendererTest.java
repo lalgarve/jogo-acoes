@@ -8,6 +8,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 
+import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -21,7 +22,7 @@ class EmailContentRendererTest {
 
     @Test
     void selectsInviteForAnAdminInviteWithNoAccount() {
-        RenderedEmail email = renderer.render(new EmailRequest(null, "bob@example.com", null, "Copa Verão",
+        RenderedEmail email = renderer.render(new EmailRequest(null, fixed("bob"), null, "Copa Verão",
                 RequestType.INVITE, "https://jogo-acoes.example/login-links/abc", EmailTemplate.INVITE));
 
         assertThat(email.subject()).isEqualTo("Convite para competir em Copa Verão");
@@ -30,7 +31,7 @@ class EmailContentRendererTest {
 
     @Test
     void selectsRegistrationLinkForASpontaneousRequestWithNoAccount() {
-        RenderedEmail email = renderer.render(new EmailRequest(null, "bob@example.com", null, "Copa Verão",
+        RenderedEmail email = renderer.render(new EmailRequest(null, fixed("bob"), null, "Copa Verão",
                 RequestType.REQUEST, "https://jogo-acoes.example/login-links/abc", EmailTemplate.REGISTRATION_LINK));
 
         assertThat(email.subject()).isEqualTo("Finalize seu cadastro em Copa Verão");
@@ -38,7 +39,7 @@ class EmailContentRendererTest {
 
     @Test
     void selectsStandaloneLoginLinkWhenThereIsNoCompetition() {
-        RenderedEmail email = renderer.render(new EmailRequest(1L, "alice@example.com", "Alice", null, null,
+        RenderedEmail email = renderer.render(new EmailRequest(1L, fixed("alice"), "Alice", null, null,
                 "https://jogo-acoes.example/login-links/abc", EmailTemplate.LOGIN_LINK));
 
         assertThat(email.subject()).isEqualTo("Seu link de acesso");
@@ -47,7 +48,7 @@ class EmailContentRendererTest {
 
     @Test
     void selectsLoginLinkInviteWhenAnAlreadyRegisteredPlayerIsInvited() {
-        RenderedEmail email = renderer.render(new EmailRequest(1L, "alice@example.com", "Alice", "Copa Verão",
+        RenderedEmail email = renderer.render(new EmailRequest(1L, fixed("alice"), "Alice", "Copa Verão",
                 RequestType.INVITE, "https://jogo-acoes.example/login-links/abc", EmailTemplate.LOGIN_LINK));
 
         assertThat(email.subject()).isEqualTo("Convite para competir em Copa Verão");
@@ -56,7 +57,7 @@ class EmailContentRendererTest {
 
     @Test
     void selectsLoginLinkRequestWhenAnAlreadyRegisteredPlayerRequestsEntry() {
-        RenderedEmail email = renderer.render(new EmailRequest(1L, "alice@example.com", "Alice", "Copa Verão",
+        RenderedEmail email = renderer.render(new EmailRequest(1L, fixed("alice"), "Alice", "Copa Verão",
                 RequestType.REQUEST, "https://jogo-acoes.example/login-links/abc", EmailTemplate.LOGIN_LINK));
 
         assertThat(email.subject()).isEqualTo("Acesse Copa Verão");

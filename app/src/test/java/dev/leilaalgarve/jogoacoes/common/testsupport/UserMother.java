@@ -11,7 +11,6 @@ import dev.leilaalgarve.jogoacoes.login.UserRoleRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * Persists test users with a role already assigned, so step definitions don't repeat the
@@ -42,7 +41,7 @@ public class UserMother {
     private User registeredUserWithRole(String emailLocalPart, String roleName) {
         User user = new User();
         user.setName(emailLocalPart + " test user");
-        user.setEmail(emailLocalPart + "-" + UUID.randomUUID() + "@example.com");
+        user.setEmail(TestEmails.unique(emailLocalPart));
         user.setRegistered(true);
         user = userRepository.save(user);
 
