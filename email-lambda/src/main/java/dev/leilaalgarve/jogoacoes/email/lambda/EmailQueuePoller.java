@@ -114,6 +114,15 @@ public class EmailQueuePoller {
         }
     }
 
+    // Deliberately partial: only `body` is populated. Every other real AWS field on
+    // SQSMessage (messageId, receiptHandle inside the event itself, attributes,
+    // messageAttributes, eventSourceARN, awsRegion...) is left null/default. Safe today
+    // because EmailSendHandler only reads the body (docs/context/iteracao-4.md, decision 1: the
+    // handler is deliberately domain-blind, the message already carries everything it needs).
+    // Would silently break if any future code path needs SQS's own messageId specifically --
+    // the planned idempotency check (iteracao-4.md, decision 8) keys on EmailMessage's own
+    // correlationId instead, which lives inside `body` and survives here untouched, so that
+    // plan is not affected by this gap.
     private SQSEvent toSqsEvent(Message message) {
         SQSEvent.SQSMessage sqsMessage = new SQSEvent.SQSMessage();
         sqsMessage.setBody(message.body());
