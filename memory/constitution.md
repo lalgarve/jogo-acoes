@@ -360,6 +360,31 @@ asserção, em vez de só confiar que o método foi chamado.
 
 Não executar testes no merge que gerem cobrança por uso de API de inteligência artifical (Gemini).
 
+## Código de teste/dev nunca dentro da aplicação
+
+Nenhum código que existe só para testar ou simular (endpoint de teste, seed de dados, poller de
+desenvolvimento, verificador de captcha sempre-aceita, etc.) entra nos módulos de produção
+(`app/`, `email-lambda/`, ou qualquer futuro serviço real) — mesmo atrás de profile/flag
+condicional, não importa se funciona, não importa se a alternativa (módulo/aplicação separada)
+exigir mais código. Sempre um módulo/aplicação à parte (mesmo padrão já usado em
+`blackbox-proxy/`, spec 05-020), nunca misturado ao artefato de produção.
+
+**Por quê**: misturar as duas coisas parece inofensivo no começo (mais rápido de escrever, tudo
+num lugar só), mas com o tempo fica cada vez mais confuso separar o que é produto do que é
+andaime de teste — e aumenta o risco real de um `@ConditionalOnProperty` mal configurado, uma
+variável de ambiente esquecida, ou uma migration futura deixarem código/rota de teste ativos em
+produção. Vale mesmo que a solução com módulo separado precise duplicar código, expor uma API só
+pra receber configuração (como `blackbox-proxy/` faz), ou qualquer outra complicação a mais — o
+isolamento físico (artefato de deploy diferente) é o que garante que não vaza, não só a intenção
+de mantê-lo desligado.
+
+**Débito reconhecido, correção planejada**: `app/` (pacote `blackbox/` —
+`BlackboxController`/`BlackboxDataSeeder`/`BlackboxSecurityConfigContributor`, spec 05-014) e
+`email-lambda/` (`EmailQueuePoller`, spec 05-021) violam essa regra hoje — escritos antes dela
+existir. Correção registrada na [Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84),
+planejada para a Etapa 2 (Separação e Comunicação entre Serviços) do enunciado da disciplina,
+não nesta iteração.
+
 ## Dados de teste: Object Mother + Test Data Builder - Projetos de Software
 
 Fábricas de dados de teste ("Mother") retornam um objeto/builder já pré-preenchido com

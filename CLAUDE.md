@@ -59,3 +59,8 @@ Boot, multi-módulo Maven:
   checklist da Issue ou Issues próprias.
 - Testes: preferir dependência real a mock/fake sempre que der (ver seção "Testes" da
   constitution).
+- Código de teste/dev nunca dentro de um módulo de produção (`app/`, `email-lambda/`) — mesmo
+  atrás de profile/flag, mesmo que funcione, mesmo que a alternativa exija mais código. Sempre
+  um módulo/aplicação separada (padrão `blackbox-proxy/`). Débito reconhecido hoje em `app/`
+  (pacote `blackbox/`) e `email-lambda/` (`EmailQueuePoller`) — correção rastreada na
+  [Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84), Etapa 2, não nesta iteração.
