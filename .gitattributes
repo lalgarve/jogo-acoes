@@ -1,1 +1,6 @@
 * text=auto eol=crlf
+
+# Shell scripts run inside Linux containers (LocalStack init, blackbox-proxy) or WSL --
+# CRLF breaks their shebang/set -e line and corrupts values read from the script (spec: found
+# via docker/localstack/init/*.sh failing with "invalid option" / stray \r in a queue name).
+*.sh text eol=lf

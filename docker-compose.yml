@@ -24,7 +24,10 @@ services:
   localstack:
     image: localstack/localstack:4
     environment:
-      SERVICES: sqs,ses
+      # s3 isn't used directly, but /_aws/ses (reading sent messages for manual/blackbox
+      # checks) fails with "Service 's3' is not enabled" against this LocalStack version
+      # without it -- undocumented, found by hitting the endpoint.
+      SERVICES: sqs,ses,s3
     ports:
       - "4566:4566"
     volumes:
