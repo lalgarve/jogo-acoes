@@ -25,6 +25,16 @@ exatamente como um `git commit -m` em português vazaria. Antes de chamar qualqu
 Issue/PR (criar ou editar) ou `git commit`, escrever o texto em inglês primeiro — não
 escrever em português e "lembrar de traduzir depois".
 
+## Nunca começar a implementar sem pedido explícito
+
+Já aconteceu: uma sessão discutindo o desenho de uma correção, corrigida pelo usuário no meio
+da conversa, assumiu que tinha entendido tudo certo, julgou a solução simples, e começou a
+implementar sozinha — sem ninguém ter pedido isso. Discutir/decidir não é sinal verde pra
+código. Só implementa quando pedirem explicitamente ("pode implementar", "começa a
+implementação"), mesmo com desenho técnico claro na conversa, mesmo se a mudança parecer óbvia
+— "parecer simples" é julgamento da sessão, não permissão de quem pediu. Detalhe completo:
+`memory/constitution.md` → "Nunca começar a implementar sem pedido explícito".
+
 ## O projeto
 
 Simulação de investimentos em bolsa por competição: administradores criam competições,
@@ -61,6 +71,7 @@ Boot, multi-módulo Maven:
   constitution).
 - Código de teste/dev nunca dentro de um módulo de produção (`app/`, `email-lambda/`) — mesmo
   atrás de profile/flag, mesmo que funcione, mesmo que a alternativa exija mais código. Sempre
-  um módulo/aplicação separada (padrão `blackbox-proxy/`). Débito reconhecido hoje em `app/`
-  (pacote `blackbox/`) e `email-lambda/` (`EmailQueuePoller`) — correção rastreada na
+  um módulo/aplicação separada (padrão `blackbox-proxy/`). `email-lambda/` já corrigido
+  (`EmailQueuePoller` removido — LocalStack dispara o Lambda nativamente, ver Issue #87).
+  Débito ainda aberto em `app/` (pacote `blackbox/`) — rastreado na
   [Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84), Etapa 2, não nesta iteração.

@@ -93,6 +93,23 @@ Os `.feature` Gherkin continuam vivendo em `app/src/test/resources/features` (co
 aceite, executável) — o spec-kit não substitui isso. O `spec.md` de uma feature referencia o(s)
 arquivo(s) `.feature` correspondentes em vez de duplicar os cenários em prosa.
 
+## Nunca começar a implementar sem pedido explícito
+
+Discutir como resolver uma Issue/problema — mesmo que a sessão tenha entendido errado o pedido
+inicial e sido corrigida no meio da conversa, e mesmo que, depois da correção, julgue a solução
+óbvia ou pequena — não é sinal verde pra escrever código. Só começa a implementação quando a
+pessoa pedir isso explicitamente (ex.: "pode implementar", "começa a implementação", "pode
+codar"). Vale mesmo com um desenho técnico já claro na conversa, e não importa quão simples a
+mudança pareça — "simples" é julgamento da sessão, não permissão de quem pediu.
+
+**Por quê**: discussão/decisão técnica (o que `spec.md`/`plan.md` existem pra registrar) e
+implementação são passos distintos de propósito — pular direto pro código sem confirmação tira
+da pessoa a chance de corrigir o rumo antes que vire trabalho a desfazer, especialmente quando
+ainda não foi commitado. Aconteceu na prática: uma sessão discutindo o desenho de uma correção,
+corrigida pelo usuário no meio da conversa sobre o que realmente precisava mudar, assumiu que
+agora tinha entendido tudo certo, julgou a solução simples, e começou a implementar sozinha —
+sem que ninguém tivesse pedido isso.
+
 ## Commits semânticos
 
 Formato da primeira linha:
