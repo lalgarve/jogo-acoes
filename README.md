@@ -180,13 +180,35 @@ precisar manter nenhum código sincronizado com isso.
 `consumeLoginLink`/`completeRegistration` (spec 05-009) montam o rótulo de dispositivo mostrado
 em `GET /sessions` a partir dos headers `Sec-CH-UA*`, e o Swagger UI do próprio `app/` mostra um
 campo pra preenchê-los — mas nenhum navegador deixa uma página mandar um header começando com
-`Sec-` de propósito (é assim que ele impede que a página falsifique esses hints), então o valor
-digitado nunca chega no servidor.
+`Sec-` de propósito (é assim que ele impede que a página falsifique esses hints), então clicar
+em "Execute" nunca manda o valor digitado.
 
-`blackbox-proxy/` (spec 05-020, `mvn -pl blackbox-proxy -am verify`) resolve isso: é um proxy
-reverso, aplicação separada numa porta própria, que fica na frente do `app/` e sempre aplica os
-headers configurados nele — de servidor pra servidor, sem a restrição que só vale pra scripts de
-página.
+**Forma usada atualmente**: preencher os campos `Sec-CH-UA*` normalmente no "Try it out" do
+Swagger UI e copiar o comando `curl` que ele já monta ao lado (com os headers preenchidos
+certinho) — rodar esse `curl` direto no terminal em vez de clicar "Execute" contorna a
+restrição, já que ela só existe pra scripts de página, não pra um cliente HTTP de linha de
+comando:
+
+```
+curl -X 'GET' \
+  'http://localhost:8080/api/login-links/{token}' \
+  -H 'accept: */*' \
+  -H 'Sec-CH-UA: "Chromium";v="131"' \
+  -H 'Sec-CH-UA-Platform: "Windows"' \
+  -H 'Sec-CH-UA-Platform-Version: "15.0.0"' \
+  -H 'Sec-CH-UA-Mobile: ?0'
+```
+
+(exemplo — o Swagger UI gera o comando exato pra rota e valores preenchidos no momento; o
+cookie de sessão, se precisar, pode ser copiado das ferramentas de desenvolvedor do navegador)
+
+**Alternativa disponível, deixada de lado por enquanto**: `blackbox-proxy/` (spec 05-020,
+`mvn -pl blackbox-proxy -am verify`) — um proxy reverso, aplicação separada numa porta própria,
+que fica na frente do `app/` e aplica os headers configurados nele em toda chamada, permitindo
+clicar "Execute" direto no navegador sem copiar nenhum `curl`. Mais conveniente pra quem for
+testar bastante variação de dispositivo, mas exige manter mais um processo no ar — o `curl`
+copiado do Swagger UI resolve o mesmo problema sem essa complicação extra, por isso é a forma
+usada por padrão hoje.
 
 ```
 ./scripts/blackbox-proxy.sh
