@@ -84,7 +84,7 @@ principal), não uma estimativa.
 | Documentação da API via OpenAPI/Swagger | Atendido — contrato estático (`docs/openapi.yaml`) e UI interativa rodando junto da aplicação (`/api/swagger-ui/index.html`, spec 05-009); ver [caderno de testes](caderno-de-testes.md), Caso 5 |
 | Organização de pacotes por domínio/funcionalidade, não por camada técnica | Atendido — pacotes reorganizados por domínio (`login/`, `link/`, `competition/`, `log/`, `email/`, `captcha/`, `common/`), specs 05-001/05-002 |
 | README com módulos, dependência entre eles e candidato a serviço independente | Parcial — a informação existe implicitamente, mas não está escrita no README nesse formato |
-| Tag `etapa-1` | **Não atendido** — no repositório existem apenas as tags referentes às iterações planejadas |
+| Tag `etapa-1` | Atendido — [tag `etapa-1`](https://github.com/lalgarve/jogo-acoes/tree/etapa-1), criada no fim da Iteração 5 quando a Etapa 2 começou de fato (commit das últimas correções do pipeline de e-mail testadas manualmente) |
 
 ### Etapa 2 — Separação e Comunicação entre Serviços
 
