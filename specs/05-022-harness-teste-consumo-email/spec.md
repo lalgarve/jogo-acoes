@@ -1,9 +1,8 @@
 # Spec: Harness Spring Boot de testes para o pipeline de e-mail
 
-**Status:** rascunho
-**Issue:** ainda não criada
-**Iteração:** iteration-5 (escrita agora; escopo de implementação adiado — ver "Decisões em
-aberto")
+**Status:** descartada — ver "Por que esta spec foi descartada" no final do arquivo
+**Issue:** conteúdo incorporado à [Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84)
+**Iteração:** iteration-5
 
 ## Resumo
 
@@ -98,3 +97,20 @@ specs 05-014/05-020/05-021).
 4. Se este harness deve já nascer preparado para publicar mensagens sintéticas de bounce/
    complaint (mesmo sem consumidor do outro lado ainda) ou se isso fica inteiramente fora até
    uma spec futura — ver "Fora de escopo".
+
+## Por que esta spec foi descartada
+
+A investigação da Issue #87 (`investigacao-issue-87.md`, nesta pasta) resolveu a decisão em
+aberto 1 de um jeito que elimina a premissa inteira desta spec: o LocalStack já reproduz o
+mecanismo real de disparo (*event source mapping* SQS→Lambda), então não existe mais nenhuma
+aplicação de teste pra especificar — o que sobra é configuração de infraestrutura (deploy da
+função + event source mapping no `docker-compose.yml`/scripts de init), pequeno o suficiente
+pra caber dentro da própria [Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84), que
+já rastreava a remoção do `EmailQueuePoller`.
+
+As decisões em aberto 2-4 acima (onde registrar o que foi observado, nome de módulo, simulação
+de bounce/complaint) foram movidas para lá, onde ainda fazem sentido ser respondidas — não como
+decisão de uma aplicação nova, mas como parte de como a Issue #84 é implementada.
+
+Este arquivo e `investigacao-issue-87.md` ficam como registro histórico do raciocínio e da
+verificação técnica que levou a essa mudança de direção — não apagados, mesmo descartados.
