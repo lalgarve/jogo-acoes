@@ -262,6 +262,18 @@ Ou lendo o e-mail simulado que o SES do LocalStack guardou:
 curl http://localhost:4566/_aws/ses
 ```
 
+Ou, pra não ler JSON cru, `docker compose up` também sobe uma interface web sobre esses mesmos
+dados ([`ses-viewer`](https://github.com/veertech/localstack-aws-ses-email-viewer), Issue
+[#88](https://github.com/lalgarve/jogo-acoes/issues/88) — lista, renderiza e exporta (`.eml`) os
+e-mails enviados):
+
+```
+http://localhost:3005
+```
+
+Ferramenta de conveniência só de dev, mesmo espírito do `adminer` — nunca entra em
+`staging`/`production`, nunca é exigida por `mvn test`/CI.
+
 ## Licença
 
 Este projeto está licenciado sob a GNU General Public License v3.0 (ou, a seu critério,

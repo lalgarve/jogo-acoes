@@ -71,6 +71,19 @@ services:
     ports:
       - "8081:8080"
 
+  # Web UI over LocalStack's SES message store (Issue #88) -- same underlying data as
+  # `GET /_aws/ses`, but rendered/browsable instead of raw JSON. Pure convenience, same
+  # confinement as adminer above: never required for `mvn test`/CI, never in staging/production.
+  # No published image, so building straight from the upstream repo (git build context).
+  ses-viewer:
+    build: https://github.com/veertech/localstack-aws-ses-email-viewer.git
+    depends_on:
+      - localstack
+    environment:
+      LOCALSTACK_HOST: http://localstack:4566
+    ports:
+      - "3005:3005"
+
   app:
     build: .
     depends_on:
