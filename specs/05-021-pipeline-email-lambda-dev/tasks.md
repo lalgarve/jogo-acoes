@@ -27,6 +27,46 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue-épico
 | ~~T010~~ | Verificação manual de ponta a ponta: `docker compose -f docker-compose.yml -f docker-compose.email-lambda.yml up`, disparar um fluxo que publique na fila (ex.: pedido de login avulso via Swagger UI/`app`), confirmar nos logs de `email-lambda` que a mensagem foi consumida e removida da fila, sem erro de remetente não verificado | T004, T006, T007, T008, T009 | | #78 |
 | ~~T011~~ | Rodar a suíte completa do módulo `app` (`mvn -pl app -am test`) — confirmar verde, nenhum teste existente alterado; esta spec não toca `app/src` | — | [P] | #78 |
 
+## Revisão (Issue #84/#87) — remoção do `EmailQueuePoller`
+
+Ver "Revisão (Issues #84/#87)" em `spec.md`. Tarefas novas, tocam só `email-lambda/` e
+`docker-compose.yml`/`docker/localstack/init/`:
+
+| ID | Descrição | Depende de | Paralelizável | Issue |
+|---|---|---|---|---|
+| ~~T012~~ | Remover `EmailQueuePoller.java` e `EmailQueuePollerTest.java`; remover `email.dev-poller.enabled`/`email.queue-name` de `application.properties`; remover as dependências `quarkus-amazon-sqs`/`mockito-junit-jupiter` de `pom.xml` (não usadas por mais nada no módulo) | — | | #84 |
+| ~~T013~~ | `docker-compose.yml`: `SERVICES` de `sqs,ses,s3` para `sqs,ses,s3,lambda`; montar `/var/run/docker.sock` no `localstack` (executor "docker" precisa subir um container irmão pra rodar a função); novo serviço `email-lambda-builder` (imagem `maven:3.9-eclipse-temurin-21`, builda `-pl email-lambda -am package -DskipTests`, sai); `localstack` ganha `depends_on: email-lambda-builder: condition: service_completed_successfully` | T012 | | #84 |
+| ~~T014~~ | `docker/localstack/init/03-deploy-email-lambda.sh` — `create-function` a partir do `function.zip` já buildado (montado do host), espera ficar `Active`, resolve o ARN da fila e `create-event-source-mapping` | T013 | | #84 |
+| ~~T015~~ | Remover `docker-compose.email-lambda.yml` e `email-lambda/Dockerfile` — nenhum dos dois é mais referenciado (deploy passa a ser dentro do LocalStack, não um container próprio) | T013, T014 | | #84 |
+| ~~T016~~ | Atualizar `README.md` — seção "Pipeline de e-mail ponta a ponta em desenvolvimento": `docker compose up` sozinho já sobe/builda/liga tudo, sem sobreposição separada | T015 | | #84 |
+| ~~T017~~ | Rodar `mvn -pl email-lambda -am test` — confirmar verde sem o `EmailQueuePoller`/sua dependência | T012 | [P] | #84 |
+| ~~T018~~ | `docker compose config -q` contra o `docker-compose.yml` revisado — validar sintaxe sem precisar do daemon | T013 | [P] | #84 |
+
+## T013/T014/T018 — registro da verificação
+
+Mesma limitação de sempre: sem daemon Docker disponível neste ambiente de implementação, não
+dava pra rodar `docker compose up` de verdade e confirmar o *event source mapping* funcionando
+contra as mudanças novas especificamente (isso já foi confirmado uma vez, à parte, na
+investigação da Issue #87 — mas contra uma configuração montada à mão, não contra este
+`docker-compose.yml`/script exatamente como ficaram aqui). Validado o que dava:
+
+- `docker compose config -q` — sintaxe do `docker-compose.yml` revisado (serviço
+  `email-lambda-builder`, `depends_on: condition: service_completed_successfully`, volumes
+  novos) resolve sem erro, antes e depois de remover `docker-compose.email-lambda.yml`.
+- `sh -n docker/localstack/init/03-deploy-email-lambda.sh` — sintaxe do script válida.
+- `mvn -pl email-lambda -am package -DskipTests` — `function.zip` continua sendo gerado
+  corretamente sem a dependência `quarkus-amazon-sqs` removida (13.4 MB, um pouco menor que
+  antes).
+- `mvn -pl email-lambda -am test` verde (2/2) e `mvn -pl app -am test` verde (155/155) depois
+  da remoção do `EmailQueuePoller`.
+
+Falta confirmar, com Docker de verdade, que: o `email-lambda-builder` termina antes do
+`localstack` iniciar (ordem do `depends_on`); o mount de `/var/run/docker.sock` realmente deixa
+o executor "docker" do LocalStack subir a função (a investigação da Issue #87 documentou isso
+como requisito, mas não chegou a testar a falha exata sem o mount, já que ele já estava incluído
+de saída); e o script `03-deploy-email-lambda.sh` roda sem erro na ordem certa depois de
+`01-create-queue.sh`/`02-verify-ses-sender.sh`.
+
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
 - Cada linha vira um item de checklist na Issue-épico da feature, ou uma Issue própria quando

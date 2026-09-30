@@ -230,30 +230,25 @@ configuração, independente.
 
 ## Pipeline de e-mail ponta a ponta em desenvolvimento
 
-`email-lambda/` existe e é testado (`EmailSendHandlerTest`), mas por padrão nunca roda como
-processo vivo fora dos seus próprios testes — `docker-compose.yml` não sobe esse módulo, então
-qualquer mensagem publicada por `app/` na fila (`SqsEmailSender`) fica lá parada para sempre. A
-sobreposição `docker-compose.email-lambda.yml` (spec 05-021) fecha esse pipeline pra uma sessão
-normal de desenvolvimento:
+`email-lambda/` existe e é testado (`EmailSendHandlerTest`), mas nunca é implantado numa conta
+AWS real (isso continua bloqueado). `docker compose up` sozinho já fecha o pipeline completo pra
+uma sessão normal de desenvolvimento — nada de sobreposição separada:
 
 ```
-docker compose -f docker-compose.yml -f docker-compose.email-lambda.yml up
+docker compose up
 ```
 
-Isso sobe `email-lambda` como um processo a mais, consumindo a mesma fila que `app/` já publica
-(*long polling*, mesmo handler que a Lambda real usaria — `EmailQueuePoller` só é um jeito
-alternativo de invocá-lo, desligado por padrão e só ligado por esta sobreposição) e chamando o
-SES simulado do LocalStack (que a sobreposição também habilita, junto com SQS). Não depende de
-conta AWS real — isso continua bloqueado — nem muda nada sobre o artefato de implantação
-verdadeiro (build nativo), que nunca ativa esse modo.
+Por baixo, três coisas acontecem em ordem: o serviço `email-lambda-builder` builda o artefato
+real do módulo (`function.zip`) e sai; o LocalStack sobe só depois disso (`depends_on:
+condition: service_completed_successfully`) com o serviço `lambda` habilitado; e um script de
+inicialização faz o deploy desse artefato como uma função Lambda de verdade dentro do
+LocalStack, com um *event source mapping* real ligado na mesma fila que `app/` já publica
+(`SqsEmailSender`) — o mesmo mecanismo de disparo que a AWS real usaria em produção, sem
+nenhum consumidor customizado no meio (verificado de ponta a ponta, ver Issue
+[#87](https://github.com/lalgarve/jogo-acoes/issues/87)).
 
-Pra confirmar que uma mensagem foi processada:
-
-```
-docker compose logs -f email-lambda
-```
-
-Ou, direto na fila (deve zerar depois que `email-lambda` processa o que estava pendente):
+Pra confirmar que uma mensagem foi processada, direto na fila (deve zerar depois que a função
+processa o que estava pendente):
 
 ```
 docker compose exec localstack awslocal sqs get-queue-attributes \
@@ -261,8 +256,11 @@ docker compose exec localstack awslocal sqs get-queue-attributes \
   --attribute-names ApproximateNumberOfMessages
 ```
 
-Sem essa sobreposição, `docker compose up` continua se comportando exatamente como antes —
-`email-lambda` não sobe, mensagens continuam só se acumulando na fila.
+Ou lendo o e-mail simulado que o SES do LocalStack guardou:
+
+```
+curl http://localhost:4566/_aws/ses
+```
 
 ## Licença
 

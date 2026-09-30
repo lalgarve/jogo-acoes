@@ -1,7 +1,8 @@
 # Spec: Pipeline de e-mail ponta a ponta em desenvolvimento (`email-lambda` como consumidor vivo)
 
-**Status:** implementado
-**Issue:** [#78](https://github.com/lalgarve/jogo-acoes/issues/78)
+**Status:** implementado — **revisado**, ver "Revisão (Issues #84/#87)" no final do arquivo
+**Issue:** [#78](https://github.com/lalgarve/jogo-acoes/issues/78); revisão rastreada na
+[Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84)
 **Iteração:** iteration-5
 
 ## Resumo
@@ -95,3 +96,22 @@ novo nem mudança de comportamento de negócio (mesmo padrão das specs 05-006/0
 Nenhuma — mecanismo do poller de desenvolvimento, propriedades de configuração do
 `quarkus-amazon-sqs`/`quarkus-amazon-ses`, verificação do remetente no LocalStack e estrutura
 da sobreposição do `docker-compose` resolvidos em `plan.md`.
+
+## Revisão (Issues #84/#87)
+
+A investigação da [Issue #87](https://github.com/lalgarve/jogo-acoes/issues/87)
+(`specs/05-022-harness-teste-consumo-email/investigacao-issue-87.md`) verificou, contra o
+LocalStack de verdade, que o mecanismo real de disparo de produção — *event source mapping*
+SQS→Lambda — funciona sem nenhum código customizado, deployando o artefato real do
+`email-lambda`. Isso remove a premissa em que o `EmailQueuePoller` (e todo o desenho original
+desta spec) se apoiava: que sem conta AWS real não haveria como ter esse gatilho localmente.
+
+A [Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84) (nova regra da constitution —
+código de teste/dev nunca dentro da aplicação) já pedia a remoção do `EmailQueuePoller` do
+artefato de produção do `email-lambda`; com esse achado, a correção deixa de ser "mover o
+poller pra outro módulo" e passa a ser "remover o poller inteiramente, substituindo por
+configuração de infraestrutura" — sem nenhuma aplicação nova no lugar. Isso invalida partes do
+"Resumo"/"Requisitos funcionais"/`plan.md` originais desta spec (que descreviam
+`EmailQueuePoller` como a peça central) — mantidos abaixo como registro histórico de como a
+spec 05-021 foi originalmente implementada, não como o estado atual do código. O estado atual
+está descrito na Issue #84.

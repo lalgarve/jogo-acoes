@@ -2,6 +2,11 @@
 
 Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 
+**Revisado (Issues #84/#87)**: as decisões abaixo descrevem o desenho original
+(`EmailQueuePoller`), mantidas como registro histórico. O estado atual — poller removido,
+LocalStack fazendo o *event source mapping* de verdade — está descrito em "Revisão
+(Issues #84/#87)" em `spec.md` e nas tarefas T012+ de `tasks.md`.
+
 ## Contexto técnico
 
 Hoje:
