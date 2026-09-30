@@ -83,13 +83,14 @@ specs 05-014/05-020/05-021).
 
 ## Decisões em aberto
 
-1. **Como o harness invoca o `email-lambda`**: chamando a API do serviço `lambda` do
-   LocalStack diretamente (harness consome a fila via `@SqsListener` e faz um `Invoke` por
-   mensagem), ou configurando um *event source mapping* real SQS→Lambda dentro do próprio
-   LocalStack (o harness nem precisaria consumir a fila ele mesmo — só faria o "deploy" da
-   função e leria o resultado depois)? Muda bastante o desenho; fica pra `plan.md`, com
-   verificação de que o LocalStack (edição usada neste projeto) realmente suporta a opção
-   escolhida antes de comprometer com ela.
+1. ~~**Como o harness invoca o `email-lambda`**~~ — **Resolvida (Issue #87,
+   `investigacao-issue-87.md` nesta pasta).** Nenhuma das duas opções listadas originalmente:
+   o LocalStack (community, versão já fixada no `docker-compose.yml`) suporta de verdade o
+   *event source mapping* nativo SQS→Lambda, verificado ponta a ponta com o artefato real do
+   `email-lambda`. O harness não precisa consumir a fila nem invocar a função — é
+   infraestrutura (deploy da função + event source mapping, uma vez), não uma aplicação nova.
+   Isso muda o resumo/motivação desta spec (ver `investigacao-issue-87.md`) e o escopo da
+   Issue #84.
 2. **Onde/como fica o registro do que foi observado**: em memória (mais simples, mesmo
    espírito de `DeviceHeaderStore` em `blackbox-proxy/`) ou numa tabela própria (sobrevive a
    consultas mais elaboradas, mas exige um banco)?
