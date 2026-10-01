@@ -1,7 +1,7 @@
 # Spec: Serviço de E-mail — cadastro de templates
 
 **Status:** rascunho
-**Issue:** —
+**Issue:** [#93](https://github.com/lalgarve/jogo-acoes/issues/93)
 **Iteração:** iteration-5
 
 ## Resumo
