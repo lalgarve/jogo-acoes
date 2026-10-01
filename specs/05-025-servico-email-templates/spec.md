@@ -6,8 +6,8 @@
 
 ## Resumo
 
-Novo módulo `email-service` (sugestão de nome, a confirmar), no mesmo reator Maven de `app`/
-`email-lambda`, expõe uma API REST protegida por API-KEY para que clientes (a começar por
+Novo módulo `email-service`, no mesmo reator Maven de `app`/`email-lambda`, expõe uma API REST
+protegida por API-KEY para que clientes (a começar por
 `jogo-acoes`) cadastrem os templates de e-mail que vão usar. Ao cadastrar/atualizar um
 template, o serviço sincroniza com o Amazon SES (`CreateTemplate`/`UpdateTemplate`) — é essa
 chamada que valida de verdade a sintaxe contra a AWS. O cliente também pode pedir uma
@@ -29,11 +29,14 @@ sintaticamente aceito pelo SES antes do primeiro envio real.
 
 ## Cenários (comportamento esperado)
 
-Módulo novo, sem precedente de framework de teste de aceite próprio ainda — ver "Decisões em
-aberto" abaixo sobre Gherkin/Cucumber (mesmo padrão de `app/src/test/resources/features`) vs.
-um teste de contrato mais simples. Cenários concretos ficam para depois dessa decisão, em vez de
-rascunhados em prosa aqui (mesma regra de `templates/spec-template.md`: este arquivo não é lugar
-para isso).
+**Decidido:** Gherkin/Cucumber, mesmo padrão de `app/src/test/resources/features` — e API-first
+via OpenAPI, contrato escrito antes de qualquer controller (mesma convenção já usada em
+`docs/openapi.yaml` para `app/`, ver `memory/constitution.md`, "Documentação viva por feature").
+
+- Contrato: [`docs/openapi-email-service.yaml`](../../docs/openapi-email-service.yaml) — rotas
+  `GET/POST /templates`, `GET/PUT /templates/{name}`, `POST /templates/{name}/preview`.
+- `.feature` Gherkin: ainda não escrito — próximo passo antes do código de implementação (fica
+  em `email-service/src/test/resources/features/`, mesma convenção de `app/`).
 
 ## Requisitos funcionais
 
@@ -90,13 +93,15 @@ para isso).
 
 ## Decisões em aberto
 
-- Nome definitivo do módulo (`email-service` é a sugestão desta sessão) e nomes exatos dos
-  endpoints — confirmar antes de `plan.md`.
-- Framework de cenário de aceite para este módulo novo: Gherkin/Cucumber (mesmo padrão de
-  `app/`) ou um teste de contrato mais simples (RestAssured/MockMvc)? Precisa ser decidido antes
-  de escrever os cenários concretos desta feature.
+Resolvidas nesta sessão (registradas aqui, detalhamento técnico em `plan.md`):
+
+- ~~Nome do módulo~~ — `email-service`, confirmado.
+- ~~Esquema de namespacing do template no SES~~ — `<cliente>__<nome>`, confirmado.
+- ~~Framework de cenário de aceite~~ — Gherkin/Cucumber + API-first via OpenAPI, confirmado (ver
+  "Cenários" acima).
+
+Ainda em aberto:
+
 - Onde a validação real de API-KEY vai morar quando existir: biblioteca externa (projeto hoje
   chamado `deployo-api-key`, nome a trocar) consumida por este serviço, ou implementação própria
   aqui? Fica para a spec que substituir o esqueleto atual.
-- Esquema de namespacing do nome do template no SES (`<cliente>__<nome>` é a sugestão desta
-  sessão) — confirmar que é aceitável.
