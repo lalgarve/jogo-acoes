@@ -16,22 +16,58 @@ services:
       timeout: 5s
       retries: 10
 
-  # Fake SQS+SES for the docker profile (docs/context/iteracao-4.md, decisão 3 / "Produtor: EmailSender
-  # real"): lets SqsEmailSender publish to a real queue in docker-compose/CI without needing
-  # an actual AWS account. The init scripts create the queue application-docker.yml expects and
-  # verify the sender identity SES requires. SES emulation is inert unless something actually
-  # calls it (only email-lambda/ does, spec 05-021) -- harmless for everyone else.
+  # Builds email-lambda's real deployable artifact (function.zip) directly against this repo's
+  # source (bind-mounted, not a Docker image build) -- one-shot, exits 0, never stays up.
+  # localstack (below) deploys that artifact as a real Lambda function and wires a real SQS
+  # event source mapping to it (Issue #87 -- verified this genuinely works, no custom consumer
+  # code needed; see specs/05-022-harness-teste-consumo-email/investigacao-issue-87.md), so it
+  # has to exist before localstack's init scripts run.
+  email-lambda-builder:
+    image: maven:3.9-eclipse-temurin-21
+    working_dir: /build
+    volumes:
+      - .:/build
+      - maven_cache:/root/.m2
+    # This image's default user is root, so the reactor build leaves email-lambda/target owned
+    # by root on the bind-mounted host repo. CI's own `mvn -pl email-lambda -am test` step runs
+    # afterwards as the unprivileged runner user against that same path and fails with
+    # "Operation not permitted" trying to overwrite those root-owned files -- a chmod alone
+    # doesn't fix this, since Maven's resource copy also tries to carry over file attributes,
+    # which requires owning the file (root still does). So: hand off only the one artifact that
+    # needs to survive (function.zip, below) via a separate directory, and discard the rest of
+    # this root-owned target/ before the container exits, instead of leaving it for the later
+    # non-root build to collide with.
+    command: >
+      sh -c "mvn -B -pl email-lambda -am package -DskipTests &&
+             mkdir -p email-lambda/dist &&
+             cp email-lambda/target/function.zip email-lambda/dist/ &&
+             rm -rf email-lambda/target"
+
+  # Fake SQS+SES+Lambda for the docker profile (docs/context/iteracao-4.md, decisão 3 /
+  # "Produtor: EmailSender real"): lets SqsEmailSender publish to a real queue in
+  # docker-compose/CI without needing an actual AWS account. The init scripts create the queue
+  # application-docker.yml expects, verify the sender identity SES requires, and deploy
+  # email-lambda as a real Lambda function wired to that queue via a real event source mapping
+  # -- the same trigger mechanism production would use, just running here instead of on AWS.
   localstack:
     image: localstack/localstack:4
+    depends_on:
+      email-lambda-builder:
+        condition: service_completed_successfully
     environment:
       # s3 isn't used directly, but /_aws/ses (reading sent messages for manual/blackbox
       # checks) fails with "Service 's3' is not enabled" against this LocalStack version
-      # without it -- undocumented, found by hitting the endpoint.
-      SERVICES: sqs,ses,s3
+      # without it -- undocumented, found by hitting the endpoint. lambda is what actually
+      # runs email-lambda's function.zip.
+      SERVICES: sqs,ses,s3,lambda
     ports:
       - "4566:4566"
     volumes:
       - ./docker/localstack/init:/etc/localstack/init/ready.d:ro
+      - ./email-lambda/dist:/tmp/email-lambda-target:ro
+      # LocalStack's default ("docker") Lambda executor runs each function in a sibling
+      # container, so it needs the host's Docker socket to create one.
+      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "awslocal", "sqs", "list-queues"]
       interval: 5s
@@ -47,6 +83,19 @@ services:
       - db
     ports:
       - "8081:8080"
+
+  # Web UI over LocalStack's SES message store (Issue #88) -- same underlying data as
+  # `GET /_aws/ses`, but rendered/browsable instead of raw JSON. Pure convenience, same
+  # confinement as adminer above: never required for `mvn test`/CI, never in staging/production.
+  # No published image, so building straight from the upstream repo (git build context).
+  ses-viewer:
+    build: https://github.com/veertech/localstack-aws-ses-email-viewer.git
+    depends_on:
+      - localstack
+    environment:
+      LOCALSTACK_HOST: http://localstack:4566
+    ports:
+      - "3005:3005"
 
   app:
     build: .
@@ -70,3 +119,6 @@ services:
 
 volumes:
   db_data:
+  # Caches email-lambda-builder's dependency downloads across `docker compose up` runs --
+  # without this, every run re-downloads the whole Maven reactor's dependencies from scratch.
+  maven_cache:
