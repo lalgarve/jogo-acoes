@@ -1,0 +1,267 @@
+openapi: 3.0.3
+info:
+  title: Serviço de E-mail — Templates
+  version: "0.1.0"
+  description: >
+    API-first draft da primeira feature do Serviço de E-mail
+    (specs/05-025-servico-email-templates, Iteração 5) — cadastro de templates, sincronizados
+    com o Amazon SES (CreateTemplate/UpdateTemplate, validação real de sintaxe) e
+    pré-visualizáveis (TestRenderTemplate) sem enviar e-mail nenhum. Escrito antes de qualquer
+    controller — a implementação do módulo `email-service` segue este contrato.
+
+    Autenticação por API-KEY é um esqueleto nesta fase (ver spec.md, "Fora de escopo"/"Decisões
+    em aberto"): qualquer valor não vazio de `X-API-Key` é aceito, e a própria string da chave
+    identifica o cliente dono dos templates — sem validação de formato/hash/expiração/revogação
+    ainda.
+servers:
+  - url: /api
+
+tags:
+  - name: templates
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /templates:
+    get:
+      tags: [templates]
+      operationId: listTemplates
+      summary: List the calling client's own templates
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmailTemplate'
+        '401':
+          description: Missing or invalid X-API-Key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: [templates]
+      operationId: createTemplate
+      summary: Register a new template and sync it to SES (CreateTemplate)
+      description: >
+        Fails with 409 if a template with this name already exists for the calling client, or
+        with 422 if SES rejects the template (CreateTemplate call) — e.g. invalid Handlebars
+        syntax. The SES error message is passed through in the response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailTemplateCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplate'
+        '401':
+          description: Missing or invalid X-API-Key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: A template with this name already exists for this client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: SES rejected the template -- message carries the reason SES returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /templates/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+        description: >
+          Template name, unique per client. Not the same as the namespaced name registered on
+          SES (`<client>__<name>`) -- that namespacing is an internal implementation detail.
+    get:
+      tags: [templates]
+      operationId: getTemplate
+      summary: Get one of the calling client's own templates
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplate'
+        '401':
+          description: Missing or invalid X-API-Key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No template with this name for this client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [templates]
+      operationId: updateTemplate
+      summary: Update an existing template and re-sync it to SES (UpdateTemplate)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailTemplateUpdateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplate'
+        '401':
+          description: Missing or invalid X-API-Key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No template with this name for this client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: SES rejected the updated template -- message carries the reason SES returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /templates/{name}/preview:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [templates]
+      operationId: previewTemplate
+      summary: >
+        Render a registered template with sample data via SES TestRenderTemplate -- never sends
+        an email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplatePreviewRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplatePreviewResponse'
+        '401':
+          description: Missing or invalid X-API-Key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No template with this name for this client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: >
+            SES could not render the template with the given variables (e.g. a variable
+            referenced by the template is missing) -- message carries the reason SES returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: >
+        Esqueleto nesta fase (spec 05-025): qualquer valor não vazio é aceito, e a própria
+        string da chave identifica o cliente dono dos templates. Validação de verdade
+        (formato/hash/expiração/revogação) fica para uma spec futura.
+
+  schemas:
+    EmailTemplate:
+      type: object
+      properties:
+        name: { type: string, description: "Nome do template, único por cliente" }
+        subject: { type: string }
+        body: { type: string, description: "Sintaxe Handlebars do SES" }
+        variablesSchema:
+          type: object
+          nullable: true
+          description: >
+            JSON Schema das variáveis esperadas -- só armazenado nesta spec, não validado (ver
+            spec.md, "Fora de escopo")
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    EmailTemplateCreateRequest:
+      type: object
+      required: [name, subject, body]
+      properties:
+        name: { type: string }
+        subject: { type: string }
+        body: { type: string }
+        variablesSchema:
+          type: object
+          nullable: true
+
+    EmailTemplateUpdateRequest:
+      type: object
+      required: [subject, body]
+      properties:
+        subject: { type: string }
+        body: { type: string }
+        variablesSchema:
+          type: object
+          nullable: true
+
+    TemplatePreviewRequest:
+      type: object
+      required: [variables]
+      properties:
+        variables:
+          type: object
+          description: >
+            Dados de exemplo para renderizar o template (equivalente ao TemplateData do
+            SendTemplatedEmail)
+
+    TemplatePreviewResponse:
+      type: object
+      properties:
+        subject: { type: string, description: "Assunto já renderizado" }
+        body: { type: string, description: "Corpo já renderizado" }
+
+    Error:
+      type: object
+      properties:
+        message: { type: string }
