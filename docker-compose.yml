@@ -30,11 +30,18 @@ services:
       - maven_cache:/root/.m2
     # This image's default user is root, so the reactor build leaves email-lambda/target owned
     # by root on the bind-mounted host repo. CI's own `mvn -pl email-lambda -am test` step runs
-    # afterwards as the unprivileged runner user and fails trying to overwrite those files
-    # ("Operation not permitted") unless we hand ownership back here.
+    # afterwards as the unprivileged runner user against that same path and fails with
+    # "Operation not permitted" trying to overwrite those root-owned files -- a chmod alone
+    # doesn't fix this, since Maven's resource copy also tries to carry over file attributes,
+    # which requires owning the file (root still does). So: hand off only the one artifact that
+    # needs to survive (function.zip, below) via a separate directory, and discard the rest of
+    # this root-owned target/ before the container exits, instead of leaving it for the later
+    # non-root build to collide with.
     command: >
       sh -c "mvn -B -pl email-lambda -am package -DskipTests &&
-             chmod -R a+rwX email-lambda/target"
+             mkdir -p email-lambda/dist &&
+             cp email-lambda/target/function.zip email-lambda/dist/ &&
+             rm -rf email-lambda/target"
 
   # Fake SQS+SES+Lambda for the docker profile (docs/context/iteracao-4.md, decisão 3 /
   # "Produtor: EmailSender real"): lets SqsEmailSender publish to a real queue in
@@ -57,7 +64,7 @@ services:
       - "4566:4566"
     volumes:
       - ./docker/localstack/init:/etc/localstack/init/ready.d:ro
-      - ./email-lambda/target:/tmp/email-lambda-target:ro
+      - ./email-lambda/dist:/tmp/email-lambda-target:ro
       # LocalStack's default ("docker") Lambda executor runs each function in a sibling
       # container, so it needs the host's Docker socket to create one.
       - /var/run/docker.sock:/var/run/docker.sock

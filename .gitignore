@@ -1,5 +1,10 @@
 target/
 *.class
+
+# email-lambda-builder's output handoff to localstack (docker-compose.yml) -- deliberately not
+# email-lambda/target itself, so the root-owned build inside that container never shares a
+# directory with the host/CI's own (non-root) `mvn test` against email-lambda.
+email-lambda/dist/
 .idea/
 *.iml
 .vscode/
