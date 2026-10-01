@@ -35,8 +35,10 @@ via OpenAPI, contrato escrito antes de qualquer controller (mesma convenção j�
 
 - Contrato: [`docs/openapi-email-service.yaml`](../../docs/openapi-email-service.yaml) — rotas
   `GET/POST /templates`, `GET/PUT /templates/{name}`, `POST /templates/{name}/preview`.
-- `.feature` Gherkin: ainda não escrito — próximo passo antes do código de implementação (fica
-  em `email-service/src/test/resources/features/`, mesma convenção de `app/`).
+- `.feature` Gherkin:
+  [`email-service/src/test/resources/features/register_templates.feature`](../../email-service/src/test/resources/features/register_templates.feature)
+  (mesma convenção de `app/`) — 5 Rules (cadastro, atualização, preview, isolamento por
+  cliente, exigência de API-KEY), 19 Scenarios.
 
 ## Requisitos funcionais
 
