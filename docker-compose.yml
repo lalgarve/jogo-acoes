@@ -28,7 +28,13 @@ services:
     volumes:
       - .:/build
       - maven_cache:/root/.m2
-    command: mvn -B -pl email-lambda -am package -DskipTests
+    # This image's default user is root, so the reactor build leaves email-lambda/target owned
+    # by root on the bind-mounted host repo. CI's own `mvn -pl email-lambda -am test` step runs
+    # afterwards as the unprivileged runner user and fails trying to overwrite those files
+    # ("Operation not permitted") unless we hand ownership back here.
+    command: >
+      sh -c "mvn -B -pl email-lambda -am package -DskipTests &&
+             chmod -R a+rwX email-lambda/target"
 
   # Fake SQS+SES+Lambda for the docker profile (docs/context/iteracao-4.md, decisão 3 /
   # "Produtor: EmailSender real"): lets SqsEmailSender publish to a real queue in
