@@ -36,6 +36,9 @@ De `login/`, sem mudança de conteúdo (só `package` e imports de quem os usa):
 - `UserRole.java`
 - `UserRoleId.java`
 - `UserRoleRepository.java`
+- `UserProvisioningService.java` (achado pós-escrita deste `plan.md`: criado pela spec 05-026,
+  implementada depois — não expõe endpoint, só cria usuário/papel, mesmo destino do resto deste
+  grupo)
 
 ### `app/src/main/java/dev/leilaalgarve/jogoacoes/loginsession/` (novo)
 
@@ -65,7 +68,7 @@ De `login/`:
 
 ### Resultado: `login/` deixa de existir
 
-As 19 classes acima são exatamente o conteúdo de `login/` hoje — depois do mapeamento, o
+As 20 classes acima são exatamente o conteúdo de `login/` hoje — depois do mapeamento, o
 diretório fica vazio e é apagado junto com o pacote.
 
 ### Impacto em `link/` (não listado em `spec.md`, mas afetado)
@@ -112,7 +115,9 @@ considerar completo):
 - `blackbox/BlackboxDataSeeder.java` — se a spec 05-026 (bootstrap do administrador) ainda não
   tiver sido implementada quando esta spec for, o import de `login.*` também precisa virar
   `user.*`; se 05-026 já estiver implementada, `BlackboxDataSeeder` já não existe mais e este
-  item não se aplica.
+  item não se aplica (confirmado: já implementada, PR #101).
+- `bootstrap/AdministratorBootstrap.java` — importa `login.UserProvisioningService` (spec 05-026)
+  → passa a importar `user.UserProvisioningService`.
 - Qualquer classe de `app/src/test/java/` fora de `login/`/`link/` que importe `User`/`Role`/
   `UserRole*`/`LoginSession`/`LoginSessionRepository` (ex. `common/testsupport/UserMother.java`,
   `common/testsupport/LoginLinkFixtures.java`) — confirmar e atualizar.
@@ -139,7 +144,7 @@ escrever de verdade.) Registrar como item novo em `ArchitectureTest`, não uma c
 
 ## Abordagem de execução
 
-Mudança mecânica (mover arquivo + trocar `package`/imports), mas com superfície grande (19
+Mudança mecânica (mover arquivo + trocar `package`/imports), mas com superfície grande (20
 arquivos principais + ~10 arquivos de teste + N call sites externos). Ordem sugerida pra manter
 o build compilável em cada passo, em vez de uma mudança gigante de uma vez:
 
