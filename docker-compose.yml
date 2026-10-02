@@ -117,8 +117,48 @@ services:
     ports:
       - "8080:8080"
 
+  # email-service's own Postgres (spec 05-025, plan.md "Banco de dados dedicado") -- a separate
+  # container, not a second database in `db` above: real infrastructure isolation, same
+  # reasoning already applied to deployo-api-key's own Postgres.
+  db-email-service:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: email_service
+      POSTGRES_USER: email_service_admin
+      POSTGRES_PASSWORD: email_service_admin
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_email_service_data:/var/lib/postgresql/data
+      - ./docker/postgres-email-service/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U email_service_admin -d email_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Serviço de E-mail (spec 05-025) -- cadastro de templates sincronizado com o SES. API-KEY
+  # válida é um esqueleto nesta spec (ver email-service/src/main/java/.../auth/); qualquer
+  # valor não vazio de X-API-Key é aceito.
+  email-service:
+    build:
+      context: .
+      dockerfile: email-service/Dockerfile
+    depends_on:
+      - db-email-service
+      - localstack
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-email-service:5432/email_service
+      SPRING_DATASOURCE_USERNAME: email_service_admin
+      SPRING_DATASOURCE_PASSWORD: email_service_admin
+      SPRING_CLOUD_AWS_SES_ENDPOINT: http://localstack:4566
+    ports:
+      - "8082:8080"
+
 volumes:
   db_data:
+  db_email_service_data:
   # Caches email-lambda-builder's dependency downloads across `docker compose up` runs --
   # without this, every run re-downloads the whole Maven reactor's dependencies from scratch.
   maven_cache:

@@ -1,0 +1,25 @@
+server:
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: email-service
+  profiles:
+    default: sandbox
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  cloud:
+    aws:
+      # spring-cloud-aws-starter-ses autoconfigures a SesClient bean unconditionally -- without
+      # a resolvable region that bean fails to construct at all, breaking every context that
+      # boots this module, even one that never actually calls SES (same reasoning as
+      # app/src/main/resources/application.yml's region.static for SQS).
+      region:
+        static: ${AWS_REGION:us-east-1}
+
+logging:
+  level:
+    dev.leilaalgarve.jogoacoes.emailservice: DEBUG

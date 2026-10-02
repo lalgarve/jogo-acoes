@@ -11,15 +11,17 @@
   <name>jogo-acoes-parent</name>
   <description>
     Reactor aggregator only -- not a shared Maven parent. `app` (Spring Boot),
-    `email-lambda` (Quarkus) and `blackbox-proxy` (Spring Boot, spec 05-020) each need their own
-    framework's parent/BOM for plugin/dependency management, and Maven doesn't support
-    inheriting from two parents at once. This POM just lets `mvn` build all three from the
-    repository root; each module's own pom.xml is otherwise independent.
+    `email-lambda` (Quarkus), `blackbox-proxy` (Spring Boot, spec 05-020) and `email-service`
+    (Spring Boot, spec 05-025) each need their own framework's parent/BOM for plugin/dependency
+    management, and Maven doesn't support inheriting from two parents at once. This POM just
+    lets `mvn` build all four from the repository root; each module's own pom.xml is otherwise
+    independent.
   </description>
 
   <modules>
     <module>app</module>
     <module>email-lambda</module>
     <module>blackbox-proxy</module>
+    <module>email-service</module>
   </modules>
 </project>

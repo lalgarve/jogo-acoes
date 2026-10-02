@@ -1,0 +1,18 @@
+# Same rule as app/src/main/resources/application-production.yml: a separate team owns the
+# schema and runs migrations by hand; this app only ever holds the limited
+# email_service_app role. No default url/password: both must be provided by that team.
+# No spring.cloud.aws.ses.endpoint override here -- falls back to the real AWS default
+# credentials/endpoint chain (blocked today on there being no real AWS account yet, same as
+# app's own staging/production profiles).
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME:email_service_app}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: false
+
+logging:
+  level:
+    dev.leilaalgarve.jogoacoes.emailservice: INFO

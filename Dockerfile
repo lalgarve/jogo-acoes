@@ -5,10 +5,12 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY pom.xml .
 COPY app/pom.xml app/pom.xml
-# The reactor pom.xml lists email-lambda and blackbox-proxy as modules too -- Maven needs to
-# read their pom.xml even though -pl app below only builds/packages the app module.
+# The reactor pom.xml lists email-lambda, blackbox-proxy and email-service as modules too --
+# Maven needs to read their pom.xml even though -pl app below only builds/packages the app
+# module.
 COPY email-lambda/pom.xml email-lambda/pom.xml
 COPY blackbox-proxy/pom.xml blackbox-proxy/pom.xml
+COPY email-service/pom.xml email-service/pom.xml
 RUN mvn -B -pl app -am dependency:go-offline
 # app/pom.xml's openapi-generator-maven-plugin and maven-resources-plugin both read
 # ../docs/openapi.yaml (relative to the app module) during `package` -- without this, the
