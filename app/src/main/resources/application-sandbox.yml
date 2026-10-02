@@ -12,3 +12,8 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration-h2
+
+# Session decision (2026-10-02) -- see application-docker.yml's ADMIN_EMAIL for the full
+# reasoning: a default here too, so sandbox (no Docker needed) also bootstraps an administrator
+# without requiring ADMIN_EMAIL to be set by hand. staging/production don't get this default.
+ADMIN_EMAIL: success+admin@simulator.amazonses.com

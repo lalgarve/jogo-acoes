@@ -324,11 +324,46 @@ Docker.)
 
 ## Validação manual (antes de fechar a parte do `email-lambda`/admin da Issue #84)
 
-1. `docker compose up` (sem sobreposição) — confirmar que nenhum administrador é criado (sem
-   `ADMIN_EMAIL`) e que o e-mail de teste continua saindo com o remetente de sempre.
+1. `docker compose up` (sem sobreposição), banco limpo — confirmar que o administrador é criado
+   automaticamente com `success+admin@simulator.amazonses.com` (valor padrão do profile `docker`,
+   decisão de sessão abaixo) mesmo sem `ADMIN_EMAIL` setada, e que o e-mail de teste continua
+   saindo com o remetente de sempre. **Validado duas vezes nesta sessão (2026-10-02), banco limpo
+   via `docker volume rm jogoacoes_db_data` nas duas**: antes da decisão abaixo, sem a variável e
+   sem padrão de profile, `app_user` ficava em 0 linhas (comportamento antigo, intencional até
+   ali); depois de aplicar o padrão de profile, o log confirma
+   `Bootstrapped the first administrator: success+admin@simulator.amazonses.com` e o login via
+   link mágico chega em `/admin`.
 2. `docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up` — confirmar que o
    administrador semeado aparece e consegue logar (mesmo fluxo já validado nas Issues
    #84/#87/#88 desta sessão, agora passando pelo `AdministratorBootstrap` em vez do
-   `BlackboxDataSeeder`).
+   `BlackboxDataSeeder`). **Validado nesta sessão.**
 3. Reiniciar o `app` com `ADMIN_EMAIL` apontando pra outro endereço depois do primeiro bootstrap
-   já ter rodado — confirmar que **nenhum segundo administrador** é criado.
+   já ter rodado — confirmar que **nenhum segundo administrador** é criado. **Validado nesta
+   sessão** (via `docker compose run --rm -e ADMIN_EMAIL=... app`).
+
+## Decisão de sessão (2026-10-02): valor padrão de `ADMIN_EMAIL` em `docker`/`sandbox`
+
+Depois da validação acima (item 1) mostrar que um `docker compose up` simples não cria
+administrador nenhum, achado reavaliado: exigir configuração explícita faz sentido em
+`staging`/`production` (onde um e-mail errado criaria um administrador inacessível e
+permanente, dado que o bootstrap só cria o *primeiro*), mas não em ambiente de
+desenvolvimento/teste, onde não ter um administrador de jeito nenhum sem passar uma variável a
+mais é só fricção.
+
+**Decisão**: `application-docker.yml` e `application-sandbox.yml` ganham
+
+```yaml
+ADMIN_EMAIL: success+admin@simulator.amazonses.com
+```
+
+Mesma chave que `AdministratorBootstrap` já lê (`@Value("${ADMIN_EMAIL:}")`) — precedência
+padrão do Spring Boot garante que uma variável de ambiente `ADMIN_EMAIL` real (produção, ou o
+`docker-compose.blackbox.yml` que já a define) continua vencendo esse padrão; ele só se aplica
+quando nada mais a define. Nenhuma mudança em `AdministratorBootstrap.java` — a lógica já lê
+"ambiente" de forma genérica, só o `application-{profile}.yml` ganha um valor a mais.
+`staging`/`production` não ganham essa chave — comportamento inalterado lá.
+
+**Validado nesta sessão**, depois do Docker ficar livre: banco limpo (`docker volume rm
+jogoacoes_db_data`), `docker compose up` sem sobreposição, imagem reconstruída — log confirma
+`Bootstrapped the first administrator: success+admin@simulator.amazonses.com`, e o login via link
+mágico chega em `/admin` normalmente.

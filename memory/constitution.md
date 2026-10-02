@@ -395,13 +395,6 @@ pra receber configuração (como `blackbox-proxy/` faz), ou qualquer outra compl
 isolamento físico (artefato de deploy diferente) é o que garante que não vaza, não só a intenção
 de mantê-lo desligado.
 
-**Débito reconhecido, correção planejada**: `app/` (pacote `blackbox/` —
-`BlackboxController`/`BlackboxDataSeeder`/`BlackboxSecurityConfigContributor`, spec 05-014) e
-`email-lambda/` (`EmailQueuePoller`, spec 05-021) violam essa regra hoje — escritos antes dela
-existir. Correção registrada na [Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84),
-planejada para a Etapa 2 (Separação e Comunicação entre Serviços) do enunciado da disciplina,
-não nesta iteração.
-
 ## Dados de teste: Object Mother + Test Data Builder - Projetos de Software
 
 Fábricas de dados de teste ("Mother") retornam um objeto/builder já pré-preenchido com

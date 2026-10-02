@@ -72,6 +72,6 @@ Boot, multi-módulo Maven:
 - Código de teste/dev nunca dentro de um módulo de produção (`app/`, `email-lambda/`) — mesmo
   atrás de profile/flag, mesmo que funcione, mesmo que a alternativa exija mais código. Sempre
   um módulo/aplicação separada (padrão `blackbox-proxy/`). `email-lambda/` já corrigido
-  (`EmailQueuePoller` removido — LocalStack dispara o Lambda nativamente, ver Issue #87).
-  Débito ainda aberto em `app/` (pacote `blackbox/`) — rastreado na
-  [Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84), Etapa 2, não nesta iteração.
+  (`EmailQueuePoller` removido — LocalStack dispara o Lambda nativamente, ver Issue #87); `app/`
+  (pacote `blackbox/`) também corrigido ([Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84),
+  specs 05-023/05-026).
