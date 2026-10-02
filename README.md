@@ -54,9 +54,11 @@ dos três — cada módulo mantém seu próprio *parent*/BOM):
 | `app/` | Spring Boot | O sistema principal (API, persistência, regras de negócio) |
 | `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES — ver "Pipeline de e-mail ponta a ponta em desenvolvimento" abaixo pra rodar como processo vivo localmente |
 | `blackbox-proxy/` | Spring Boot | Proxy reverso de teste (spec 05-020) — ver "Ambiente de testes blackbox" abaixo |
+| `email-service/` | Spring Boot | Serviço de E-mail (spec 05-025) — cadastro de templates sincronizado com o SES; ver "Cadastro de templates do Serviço de E-mail" abaixo |
 
-`mvn verify` na raiz builda os três. Pra rodar só um: `mvn -pl app -am verify`,
-`mvn -pl email-lambda -am verify` ou `mvn -pl blackbox-proxy -am verify`.
+`mvn verify` na raiz builda os quatro. Pra rodar só um: `mvn -pl app -am verify`,
+`mvn -pl email-lambda -am verify`, `mvn -pl blackbox-proxy -am verify` ou
+`mvn -pl email-service -am verify`.
 
 ## Ambientes
 
@@ -273,6 +275,40 @@ http://localhost:3005
 
 Ferramenta de conveniência só de dev, mesmo espírito do `adminer` — nunca entra em
 `staging`/`production`, nunca é exigida por `mvn test`/CI.
+
+## Cadastro de templates do Serviço de E-mail
+
+Primeira feature do Serviço de E-mail (spec
+[05-025](specs/05-025-servico-email-templates/spec.md), Issue
+[#93](https://github.com/lalgarve/jogo-acoes/issues/93)): cadastro de templates, sincronizado
+de verdade com o SES (`CreateTemplate`/`UpdateTemplate` — é essa chamada que valida a sintaxe) e
+uma pré-visualização (`TestRenderTemplate`) sem enviar e-mail nenhum. Sobe junto com
+`docker compose up`, num container/banco próprios (`db-email-service`), reaproveitando o mesmo
+LocalStack de `email-lambda`.
+
+**A validação da API-KEY é um esqueleto nesta spec**: qualquer valor não vazio do header
+`X-API-Key` é aceito, e o próprio valor vira o identificador do cliente dono dos templates — sem
+checar formato/hash/expiração/revogação ainda (decisão em aberto registrada em `spec.md`).
+
+Cadastrar um template:
+
+```
+curl -X POST http://localhost:8082/api/templates \
+  -H "X-API-Key: jogo-acoes-dev" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "welcome", "subject": "Bem-vindo!", "body": "Olá {{name}}, bem-vindo!"}'
+```
+
+Pré-visualizar (não envia e-mail, só devolve o texto renderizado):
+
+```
+curl -X POST http://localhost:8082/api/templates/welcome/preview \
+  -H "X-API-Key: jogo-acoes-dev" \
+  -H "Content-Type: application/json" \
+  -d '{"variables": {"name": "Ada"}}'
+```
+
+Contrato completo: [`docs/openapi-email-service.yaml`](docs/openapi-email-service.yaml).
 
 ## Licença
 

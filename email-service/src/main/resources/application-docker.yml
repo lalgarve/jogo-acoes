@@ -1,0 +1,22 @@
+# Real PostgreSQL in its own container (db-email-service, docker-compose.yml) -- own
+# database/roles, never shared with app's db (plan.md, "Banco de dados"). This service owns
+# its schema here and runs Flyway itself (admin role). See
+# docker/postgres-email-service/init/01-roles.sql.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/email_service}
+    username: ${SPRING_DATASOURCE_USERNAME:email_service_admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:email_service_admin}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  cloud:
+    aws:
+      # LocalStack (docker-compose.yml service, SES already enabled there for email-lambda) --
+      # fake credentials, same reasoning as app/src/main/resources/application-docker.yml.
+      credentials:
+        access-key: test
+        secret-key: test
+      ses:
+        endpoint: ${SPRING_CLOUD_AWS_SES_ENDPOINT:http://localhost:4566}
