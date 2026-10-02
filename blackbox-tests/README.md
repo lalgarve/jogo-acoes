@@ -22,8 +22,8 @@ Sem ele:
 - Todo passo que dependa de um administrador (ex.: criar uma competição) trava — não existe via
   de API para criar um administrador, só a semeadura automática desse perfil.
 - Todo passo que dependa de clicar num link (login, registro, confirmação de convite — a
-  maioria dos fluxos do sistema) trava — sem `GET /blackbox/last-email`, não há como ler o link
-  enviado por e-mail de fora do processo Java.
+  maioria dos fluxos do sistema) trava — sem o LocalStack rodando (`docker compose up`), esta
+  suíte não tem como ler o link enviado por e-mail (ver `common/blackbox_fixtures.py`).
 - Os passos que testam o caminho "sem resolver o desafio ALTCHA de verdade" falham — em
   qualquer outro perfil, um `captchaToken` vazio/inválido é rejeitado de propósito.
 
@@ -72,11 +72,10 @@ pytest
 
 ## O que NÃO está no cliente gerado
 
-`GET /blackbox/last-email` (spec 05-014) não está em `docs/openapi.yaml` de propósito — é
-andaime de teste do ambiente `blackbox`, não contrato de produto. `common/blackbox_fixtures.py`
-encapsula essa chamada via `httpx` direto, usada tanto pelos passos de `behave` quanto pelos
-testes `pytest` e pelo gerador de dados (`seed/`, abaixo) — o cliente gerado continua refletindo
-só a API real do sistema.
+A leitura do link de um e-mail não passa pelo cliente gerado nem por nenhuma rota de `app/`
+(spec 05-023) — `common/blackbox_fixtures.py` lê direto o `GET /_aws/ses` do LocalStack via
+`httpx`, usada tanto pelos passos de `behave` quanto pelos testes `pytest` e pelo gerador de
+dados (`seed/`, abaixo) — o cliente gerado continua refletindo só a API real do sistema.
 
 ## Gerador de dados de teste (spec 05-018)
 

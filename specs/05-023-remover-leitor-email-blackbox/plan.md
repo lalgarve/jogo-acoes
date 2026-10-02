@@ -71,12 +71,20 @@ collide (every address is already unique per test -- spec 05-016).
 import datetime
 import os
 import re
+import time
 
 import httpx
 
 ADMIN_EMAIL = "success+admin@simulator.amazonses.com"
 
 LOCALSTACK_URL = os.environ.get("LOCALSTACK_URL", "http://localhost:4566")
+
+# The real pipeline (app -> SQS -> Lambda event source mapping -> SES) is asynchronous --
+# measured delivery delay ranges from under a second up to ~4s (worse on the Lambda's first,
+# "cold" invocation). A single immediate read races this and fails almost every time, so
+# `last_email` polls instead of reading once.
+_POLL_INTERVAL_SECONDS = 0.3
+_POLL_TIMEOUT_SECONDS = 10
 
 # Every template that sends a link embeds it as <a href="...login-links...">. Matches whether
 # the href is a relative path or a full absolute URL (Issue #92 tracks fixing which one it is).
@@ -101,6 +109,10 @@ def last_email(email: str) -> LastEmail:
     the seeder, spec 05-018, to confirm the app is really running with the clock offset it was
     told about).
 
+    Polls LocalStack's SES store for up to ``_POLL_TIMEOUT_SECONDS`` before giving up -- the
+    pipeline that actually delivers the e-mail is asynchronous, so it rarely shows up from the
+    very first read.
+
     Deletes the message from LocalStack's SES store before returning -- reading an e-mail
     consumes it, so a long test session doesn't accumulate messages forever. Safe under
     concurrent test runs: every address is already unique per test/scenario (spec 05-016), so
@@ -108,17 +120,26 @@ def last_email(email: str) -> LastEmail:
     test -- unlike a blanket `DELETE /_aws/ses` (no filter), which would also wipe out messages
     other tests haven't read yet.
 
-    Raises ``NoEmailSentError`` if nothing has been sent to that address yet.
+    Raises ``NoEmailSentError`` if nothing has been sent to that address by the time the poll
+    times out.
     """
-    response = httpx.get(f"{LOCALSTACK_URL}/_aws/ses")
-    response.raise_for_status()
-    # LocalStack's own ?email= filter matches the *sender*, not the recipient (this project's
-    # sender is always the same address), so recipient filtering happens here instead.
-    matches = [
-        message
-        for message in response.json()["messages"]
-        if email in message["Destination"]["ToAddresses"]
-    ]
+    deadline = time.monotonic() + _POLL_TIMEOUT_SECONDS
+    matches = []
+    while True:
+        response = httpx.get(f"{LOCALSTACK_URL}/_aws/ses")
+        response.raise_for_status()
+        # LocalStack's own ?email= filter matches the *sender*, not the recipient (this
+        # project's sender is always the same address), so recipient filtering happens here
+        # instead.
+        matches = [
+            message
+            for message in response.json()["messages"]
+            if email in message["Destination"]["ToAddresses"]
+        ]
+        if matches or time.monotonic() >= deadline:
+            break
+        time.sleep(_POLL_INTERVAL_SECONDS)
+
     if not matches:
         raise NoEmailSentError(f"No e-mail sent to {email} yet")
 
@@ -207,3 +228,11 @@ Repetir, contra o ambiente real (mesmo `docker compose up` já validado nas Issu
 1. Rodar `blackbox-tests` (`behave`/`pytest`) contra o `docker compose up` de verdade e confirmar
    que os cenários que dependem de `last_email_link` continuam passando.
 2. Confirmar que `mvn -pl app -am test` continua verde sem as duas classes apagadas.
+
+**Achado durante esta validação (T015)**: a primeira versão de `last_email` lia `/_aws/ses` uma
+única vez, imediatamente após o `POST /login-requests` retornar 202. Contra o ambiente real isso
+falha quase sempre -- o envio de verdade atravessa app → fila SQS → Lambda (event source
+mapping) → SES, um caminho assíncrono medido entre 0.67s e 4.25s (pior caso na primeira invocação
+"fria" do Lambda). A correção foi um loop de poll (acima, `_POLL_INTERVAL_SECONDS`/
+`_POLL_TIMEOUT_SECONDS`), não antecipado neste plano original porque o mecanismo anterior (leitura
+via `app`/banco) era síncrono.

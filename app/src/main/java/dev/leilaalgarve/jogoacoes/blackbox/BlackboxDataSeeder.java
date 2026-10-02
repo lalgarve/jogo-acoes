@@ -24,8 +24,7 @@ import java.time.LocalDateTime;
  * suite. There's no password anywhere in this system -- login is always via magic link.
  *
  * {@code @Profile("blackbox")} keeps this from ever running outside the blackbox environment,
- * structurally (not just by leaving {@code captcha.verifier} at its default) -- the same
- * guarantee applied to {@link dev.leilaalgarve.jogoacoes.blackbox.BlackboxController}.
+ * structurally (not just by leaving {@code captcha.verifier} at its default).
  */
 @Component
 @Profile("blackbox")

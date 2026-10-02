@@ -62,9 +62,9 @@ def player_name(competition_code: str, index: int) -> str:
     return f"Seed {competition_code} Jogador {index}"
 
 
-def verify_clock(base_url: str, offset_days: int, checked_email: str) -> None:
+def verify_clock(offset_days: int, checked_email: str) -> None:
     expected_date = datetime.date.today() + datetime.timedelta(days=offset_days)
-    sent = last_email(base_url, checked_email)
+    sent = last_email(checked_email)
     if sent.sent_at.date() != expected_date:
         raise RuntimeError(
             f"app clock mismatch: expected the app's 'today' to be {expected_date} "
@@ -133,7 +133,7 @@ def seed_catalog_players(
             flows.complete_invited_registration(base_url, email, name)
 
         if not clock_checked:
-            verify_clock(base_url, clock_offset_days, email)
+            verify_clock(clock_offset_days, email)
             clock_checked = True
     return spec.confirmed_count, clock_checked
 
