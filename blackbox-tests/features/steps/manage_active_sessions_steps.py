@@ -56,7 +56,7 @@ def step_registered_player_logged_in(context):
     admin_client = new_client(context)
     admin_response = request_login_link.sync_detailed(client=admin_client, body=RequestLoginLinkBody(email=ADMIN_EMAIL))
     assert admin_response.status_code == 202, admin_response.content
-    admin_link = last_email_link(context.api_base_url, ADMIN_EMAIL)
+    admin_link = last_email_link(ADMIN_EMAIL)
     _consume_login_link_expect_registered(admin_client, _token_from_link(admin_link), WINDOWS_DESKTOP)
 
     competition = create_competition.sync(
@@ -79,7 +79,7 @@ def step_registered_player_logged_in(context):
     )
     assert entry_response.status_code == 202, entry_response.content
 
-    registration_link = last_email_link(context.api_base_url, context.player_email)
+    registration_link = last_email_link(context.player_email)
     token = _token_from_link(registration_link)
     _consume_login_link_expect_new_player(context.player_client, token, WINDOWS_DESKTOP)
 
@@ -103,7 +103,7 @@ def step_log_in_on_second_device(context):
     )
     assert response.status_code == 202, response.content
 
-    link = last_email_link(context.api_base_url, context.player_email)
+    link = last_email_link(context.player_email)
     _consume_login_link_expect_registered(context.second_device_client, _token_from_link(link), ANDROID_MOBILE)
 
 

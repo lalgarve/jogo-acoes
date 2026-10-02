@@ -36,7 +36,7 @@ def step_admin_logs_in(context, email):
     )
     assert response.status_code == 202, response.content
 
-    link = last_email_link(context.api_base_url, email)
+    link = last_email_link(email)
     login_result = consume_login_link.sync(
         client=context.admin_client,
         token=_token_from_link(link),
@@ -84,7 +84,7 @@ def step_request_is_accepted(context):
 
 @then("a registration link is sent to the player's e-mail")
 def step_registration_link_sent(context):
-    context.registration_link = last_email_link(context.api_base_url, context.player_email)
+    context.registration_link = last_email_link(context.player_email)
     assert "/login-links/" in context.registration_link
 
 

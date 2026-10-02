@@ -35,7 +35,7 @@ def admin_login(base_url: str, admin_email: str) -> Client:
     if response.status_code != 202:
         raise RuntimeError(f"admin login request failed: {response.status_code} {response.content!r}")
 
-    link = last_email(base_url, admin_email).link
+    link = last_email(admin_email).link
     login_result = consume_login_link.sync(client=client, token=_token_from_link(link))
     if login_result is None:
         raise RuntimeError("admin login link should already be a registered account")
@@ -133,7 +133,7 @@ def public_entry_new_player(
     if response.status_code != 202:
         raise RuntimeError(f"public entry request failed for {email}: {response.status_code} {response.content!r}")
 
-    link = last_email(base_url, email).link
+    link = last_email(email).link
     return _consume_and_register(base_url, link, name, device)
 
 
@@ -144,7 +144,7 @@ def complete_invited_registration(
     same completion mechanics as a public entrant, but there's no entry-request first: the
     invite already created their participation.
     """
-    link = last_email(base_url, email).link
+    link = last_email(email).link
     return _consume_and_register(base_url, link, name, device)
 
 
@@ -155,7 +155,7 @@ def login_existing_player(base_url: str, email: str, device: DeviceProfile = WIN
     if response.status_code != 202:
         raise RuntimeError(f"login request failed for {email}: {response.status_code} {response.content!r}")
 
-    link = last_email(base_url, email).link
+    link = last_email(email).link
     login_result = consume_login_link.sync(
         client=client,
         token=_token_from_link(link),

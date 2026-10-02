@@ -1,38 +1,32 @@
 package dev.leilaalgarve.jogoacoes.blackbox;
 
 import dev.leilaalgarve.jogoacoes.captcha.CaptchaVerifier;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
-import dev.leilaalgarve.jogoacoes.email.SentEmail;
-import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
 import dev.leilaalgarve.jogoacoes.login.RoleName;
 import dev.leilaalgarve.jogoacoes.login.UserRepository;
 import dev.leilaalgarve.jogoacoes.login.UserRoleRepository;
-import io.restassured.RestAssured;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.LocalDateTime;
-
-import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Spec 05-014: proves the three blackbox-only mechanisms actually work together, activating the
+ * Spec 05-014: proves the blackbox-only mechanisms actually work together, activating the
  * real profile instead of just trusting the wiring reads correctly -- same spirit as {@link
  * dev.leilaalgarve.jogoacoes.common.logging.ProductionProfileSuppressesLoggingAspectsTest}
  * activating {@code production}. Never runs under any other profile ({@code
  * ArchitectureTest}/{@code OpenApiRoutesConsistencyTest}/{@code OpenApiRolesConsistencyTest}
  * cover that these mechanisms stay invisible elsewhere).
+ *
+ * <p>Used to also cover {@code GET /blackbox/last-email} -- removed along with
+ * {@code BlackboxController} (spec 05-023): reading a sent e-mail's link is only ever needed by
+ * the Python blackbox suite, which now reads LocalStack's own SES message store directly
+ * (`common/blackbox_fixtures.py`), no Java code involved.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("blackbox")
 class BlackboxProfileIntegrationTest {
-
-    @Value("${local.server.port}")
-    private int port;
 
     @Autowired
     private CaptchaVerifier captchaVerifier;
@@ -45,9 +39,6 @@ class BlackboxProfileIntegrationTest {
 
     @Autowired
     private UserRoleRepository userRoleRepository;
-
-    @Autowired
-    private SentEmailRepository sentEmailRepository;
 
     @Test
     void captchaIsAlwaysAccepted() {
@@ -66,33 +57,5 @@ class BlackboxProfileIntegrationTest {
         blackboxDataSeeder.run(null);
 
         assertThat(userRepository.count()).isEqualTo(usersBefore);
-    }
-
-    @Test
-    void lastEmailReturnsTheMostRecentLinkSentToAnAddress() {
-        String email = unique("blackbox-test");
-        saveSentEmail(email, "https://jogo-acoes.example/older", LocalDateTime.now().minusMinutes(5));
-        saveSentEmail(email, "https://jogo-acoes.example/newer", LocalDateTime.now());
-
-        RestAssured.given().port(port).basePath("/api")
-                .when().get("/blackbox/last-email?email={email}", email)
-                .then().statusCode(200)
-                .body("link", org.hamcrest.Matchers.equalTo("https://jogo-acoes.example/newer"));
-    }
-
-    @Test
-    void lastEmailReturnsNotFoundWhenNothingWasSentToTheAddress() {
-        RestAssured.given().port(port).basePath("/api")
-                .when().get("/blackbox/last-email?email={email}", unique("never-sent"))
-                .then().statusCode(404);
-    }
-
-    private void saveSentEmail(String email, String link, LocalDateTime sentAt) {
-        SentEmail sentEmail = new SentEmail();
-        sentEmail.setEmail(email);
-        sentEmail.setLink(link);
-        sentEmail.setTemplate(EmailTemplate.LOGIN_LINK);
-        sentEmail.setSentAt(sentAt);
-        sentEmailRepository.save(sentEmail);
     }
 }

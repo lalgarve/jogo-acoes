@@ -100,13 +100,12 @@ normalmente exigem um cliente completo:
   com e-mail `success+admin@simulator.amazonses.com` (simulador de caixa de entrada do Amazon
   SES, spec 05-016). Não há senha em lugar nenhum do sistema — login é sempre
   por link mágico.
-- **Leitura do link de um e-mail por HTTP** — `POST /login-requests` nunca devolve o link no
-  corpo (deliberado, pra não revelar se o e-mail existe), e por padrão o link só é visível de
-  dentro do processo Java. `GET /blackbox/last-email?email={endereço}` devolve o link mais
-  recente enviado a um endereço (`404` se nada foi enviado ainda) — só existe neste perfil, e
-  não faz parte do contrato (`docs/openapi.yaml`): é andaime de teste, não API de produto. Não é
-  uma caixa postal completa (só o último e-mail por endereço, sem histórico) — suficiente para
-  destravar um fluxo que depende de clicar num link.
+- **Leitura do link de um e-mail** — `POST /login-requests` nunca devolve o link no corpo
+  (deliberado, pra não revelar se o e-mail existe). Não há endpoint de `app/` pra isso (spec
+  05-023 removeu o que existia antes): a [suíte Python](blackbox-tests/README.md) lê o link
+  direto do LocalStack (`GET http://localhost:4566/_aws/ses`, mesmo mecanismo da seção
+  ["Pipeline de e-mail ponta a ponta em desenvolvimento"](#pipeline-de-e-mail-ponta-a-ponta-em-desenvolvimento)
+  abaixo), sem nenhum código Java no meio.
 
 Para subir:
 
