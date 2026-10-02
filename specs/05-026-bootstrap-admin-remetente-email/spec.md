@@ -67,20 +67,32 @@ resolve os dois problemas desta spec.
   `CompetitionLinkHandler.complete()`, achado nesta sessão) e não deveria crescer uma terceira
   cópia.
 - Roda em **todo profile** — nada de `@Profile("blackbox")` nem qualquer outro profile.
-- Lê `ADMIN_EMAIL` do ambiente. Sem valor padrão — se não estiver setada, não faz nada (mesmo
-  comportamento de hoje em staging/production: nenhum admin criado).
+- Lê `ADMIN_EMAIL` do ambiente. Em `staging`/`production`, sem valor padrão — se não estiver
+  setada, não faz nada (mesmo comportamento de hoje: nenhum admin criado automaticamente; exigir
+  configuração explícita evita criar, sem ninguém pedir, um administrador cujo e-mail nenhum
+  operador controla — o que bloquearia pra sempre a criação do administrador de verdade depois,
+  já que o bootstrap só cria o primeiro).
+- **Decisão de sessão (2026-10-02)**: nos profiles `docker` e `sandbox` (ambientes de
+  desenvolvimento/teste, nunca staging/production), `ADMIN_EMAIL` ganha um valor padrão —
+  `success+admin@simulator.amazonses.com` — definido no arquivo de propriedades do próprio
+  profile (`application-docker.yml`/`application-sandbox.yml`), não hardcoded no Java. O admin
+  passa a ser criado automaticamente num `docker compose up` simples, sem precisar da
+  sobreposição `blackbox` nem de configurar nada à mão — mesmo endereço que `blackbox` já usa,
+  então nenhum comportamento muda pra quem já definia a variável. O risco de "admin fantasma"
+  citado acima não se aplica aqui: `success+admin@simulator.amazonses.com` é o mailbox simulado
+  do próprio SES (spec 05-016), sempre alcançável em dev/teste.
 - Se já existe pelo menos um usuário com papel `ADMINISTRATOR`, não faz nada — idempotente,
   inclusive entre restarts (mesmo espírito do Postgres: o bootstrap só importa enquanto o estado
   inicial, "nenhum admin", ainda é verdade; diferente do `BlackboxDataSeeder` antigo, que
   checava por aquele e-mail específico).
-- Se não existe nenhum administrador e `ADMIN_EMAIL` está setada, pede ao serviço de `login/`
-  pra criar um usuário com esse e-mail e o papel `ADMINISTRATOR`. Sem senha em lugar nenhum
-  (login continua só por link mágico).
-- `docker-compose.blackbox.yml` passa a setar `ADMIN_EMAIL=success+admin@simulator.amazonses.com`
-  como variável de ambiente do serviço `app` (mesmo lugar que já configura
-  `SPRING_PROFILES_ACTIVE`) — a criação do admin deixa de depender do profile `blackbox` em si,
-  só da variável estar setada. `docker-compose.yml` base não define `ADMIN_EMAIL` — comportamento
-  inalterado pra quem só usa `docker compose up` sem a sobreposição.
+- Se não existe nenhum administrador e `ADMIN_EMAIL` está setada (ou tem valor padrão no profile),
+  pede ao serviço de `login/` pra criar um usuário com esse e-mail e o papel `ADMINISTRATOR`. Sem
+  senha em lugar nenhum (login continua só por link mágico).
+- `docker-compose.blackbox.yml` continua setando `ADMIN_EMAIL=success+admin@simulator.amazonses.com`
+  explicitamente como variável de ambiente do serviço `app` — redundante com o valor padrão do
+  profile `docker` agora, mas inofensivo (mesmo endereço) e mantém a configuração do overlay
+  auto-contida. `docker-compose.yml` base não define `ADMIN_EMAIL` — o padrão vem do profile, não
+  do compose.
 
 ### Serviço de criação de usuário com papéis (`login/`, por enquanto)
 

@@ -60,6 +60,7 @@ services:
       # without it -- undocumented, found by hitting the endpoint. lambda is what actually
       # runs email-lambda's function.zip.
       SERVICES: sqs,ses,s3,lambda
+      EMAIL_SENDER_ADDRESS: no-reply@jogo-acoes.example
     ports:
       - "4566:4566"
     volumes:

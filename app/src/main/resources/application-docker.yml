@@ -39,3 +39,13 @@ spring:
 
 email:
   sender: sqs
+
+# Session decision (2026-10-02): a plain `docker compose up`, with no admin-related
+# configuration at all, should still bootstrap an administrator -- requiring ADMIN_EMAIL to be
+# set by hand (AdministratorBootstrap's behavior without this) is only worth the friction in
+# staging/production, where a typo would create a permanent, inaccessible administrator (the
+# bootstrap never creates a second one). success+admin@simulator.amazonses.com is SES's own
+# mailbox simulator (spec 05-016) -- always reachable in dev/test, so there's no such risk here.
+# A real ADMIN_EMAIL env var (docker-compose.blackbox.yml already sets one) still wins over this
+# default -- standard Spring Boot property precedence.
+ADMIN_EMAIL: success+admin@simulator.amazonses.com
