@@ -151,8 +151,11 @@ API está disponível na versão do projeto.
 O pacote gerado `api` não tem repositório, e `common/logging/RepositoryLoggingAspect` intercepta
 repositórios por pointcut (string), sem dependência de bytecode — nenhum dos dois dispara a regra.
 
-**Ordem**: a regra entra por último. Escrita antes, ela documenta as violações (útil para conferir
-o inventário: ela deve listar exatamente os 18 itens), mas deixa o build vermelho até o fim.
+**Ordem: a regra vem primeiro** (pedido da Leila, 2026-10-03). Escrita antes de qualquer
+correção, ela tem que falhar listando exatamente os 18 itens do inventário. Isso prova que a regra
+funciona: uma regra que já nasce verde não mostra que pega alguma coisa. Cada correção seguinte
+tira itens da lista, e o build fica verde quando o último sai. A regra e as correções vão na mesma
+PR, que só é mesclada verde; os commits intermediários ficam vermelhos de propósito.
 
 ## Estrutura de módulos/pacotes
 
