@@ -2,10 +2,7 @@ package dev.leilaalgarve.jogoacoes.loginsession;
 
 import dev.leilaalgarve.jogoacoes.api.SessionsApi;
 import dev.leilaalgarve.jogoacoes.api.model.Session;
-import dev.leilaalgarve.jogoacoes.user.User;
-import dev.leilaalgarve.jogoacoes.user.UserRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.ZoneOffset;
@@ -15,16 +12,16 @@ import java.util.List;
 public class SessionsController implements SessionsApi {
 
     private final SessionsService sessionsService;
-    private final UserRepository userRepository;
+    private final CurrentUserService currentUserService;
 
-    public SessionsController(SessionsService sessionsService, UserRepository userRepository) {
+    public SessionsController(SessionsService sessionsService, CurrentUserService currentUserService) {
         this.sessionsService = sessionsService;
-        this.userRepository = userRepository;
+        this.currentUserService = currentUserService;
     }
 
     @Override
     public ResponseEntity<List<Session>> listActiveSessions() {
-        List<Session> sessions = sessionsService.listActive(currentUser().getId()).stream()
+        List<Session> sessions = sessionsService.listActive(currentUserService.currentUser().getId()).stream()
                 .map(this::toApiModel)
                 .toList();
         return ResponseEntity.ok(sessions);
@@ -32,15 +29,10 @@ public class SessionsController implements SessionsApi {
 
     @Override
     public ResponseEntity<Void> revokeSession(Long sessionId) {
-        boolean revoked = sessionsService.revoke(sessionId, currentUser().getId());
+        boolean revoked = sessionsService.revoke(sessionId, currentUserService.currentUser().getId());
         return revoked ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
-    private User currentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + email));
-    }
 
     private Session toApiModel(LoginSession session) {
         return new Session()

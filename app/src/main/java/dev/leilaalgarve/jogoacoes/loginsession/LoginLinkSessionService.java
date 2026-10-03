@@ -1,16 +1,12 @@
 package dev.leilaalgarve.jogoacoes.loginsession;
 
 import dev.leilaalgarve.jogoacoes.link.LinkRecord;
-import dev.leilaalgarve.jogoacoes.link.LinkRecordRepository;
 import dev.leilaalgarve.jogoacoes.link.LinkSessionService;
 import dev.leilaalgarve.jogoacoes.user.User;
-import dev.leilaalgarve.jogoacoes.user.UserRepository;
-import dev.leilaalgarve.jogoacoes.user.UserRole;
-import dev.leilaalgarve.jogoacoes.user.UserRoleRepository;
+import dev.leilaalgarve.jogoacoes.user.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -28,8 +24,8 @@ import java.util.Optional;
  * The `loginsession` side of the session-establishment abstraction `link` depends on (see
  * {@link LinkSessionService}): identical mechanics regardless of which {@code LinkHandler}
  * authenticated the user, but it needs {@code User}/roles to build an {@code Authentication} —
- * so it lives here, not in `link`, and is allowed to depend back on `link`'s
- * {@code LoginSession}/{@code LoginSessionRepository}.
+ * so it lives here, not in `link`, and is allowed to depend back on `link` -- through its
+ * service/interface types only, never its repository (spec 05-029).
  *
  * <p>Device identity is never compared explicitly -- there's no frontend yet to carry a device
  * id, and it turns out not to be needed: "is this device already authenticated" (checked one
@@ -42,24 +38,22 @@ import java.util.Optional;
 @Component
 public class LoginLinkSessionService implements LinkSessionService {
 
-    private final UserRepository userRepository;
-    private final UserRoleRepository userRoleRepository;
+    private final UserService userService;
+    private final CurrentUserService currentUserService;
     private final LoginSessionRepository loginSessionRepository;
-    private final LinkRecordRepository linkRecordRepository;
     private final SecurityContextRepository securityContextRepository;
     private final HttpServletRequest request;
     private final HttpServletResponse response;
     private final int maxDevicesPerUser;
 
-    public LoginLinkSessionService(UserRepository userRepository, UserRoleRepository userRoleRepository,
-                                    LoginSessionRepository loginSessionRepository, LinkRecordRepository linkRecordRepository,
+    public LoginLinkSessionService(UserService userService, CurrentUserService currentUserService,
+                                    LoginSessionRepository loginSessionRepository,
                                     SecurityContextRepository securityContextRepository,
                                     HttpServletRequest request, HttpServletResponse response,
                                     @Value("${login.max-devices-per-user}") int maxDevicesPerUser) {
-        this.userRepository = userRepository;
-        this.userRoleRepository = userRoleRepository;
+        this.userService = userService;
+        this.currentUserService = currentUserService;
         this.loginSessionRepository = loginSessionRepository;
-        this.linkRecordRepository = linkRecordRepository;
         this.securityContextRepository = securityContextRepository;
         this.request = request;
         this.response = response;
@@ -68,25 +62,17 @@ public class LoginLinkSessionService implements LinkSessionService {
 
     @Override
     public Optional<Long> currentAuthenticatedUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
-            return Optional.empty();
-        }
-        return userRepository.findByEmail(auth.getName()).map(User::getId);
+        return currentUserService.currentUserId();
     }
 
     @Override
-    public void establish(Long userId, String token) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
-        LinkRecord linkRecord = linkRecordRepository.findByToken(token)
-                .orElseThrow(() -> new IllegalStateException("Link record not found for token: " + token));
+    public void establish(Long userId, LinkRecord linkRecord) {
+        User user = userService.getById(userId);
 
         enforceDeviceLimit(user);
 
-        List<UserRole> roles = userRoleRepository.findByUser_Id(user.getId());
-        List<GrantedAuthority> authorities = roles.stream()
-                .map(userRole -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + userRole.getRole().getName()))
+        List<GrantedAuthority> authorities = userService.roleNamesOf(user.getId()).stream()
+                .map(roleName -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + roleName))
                 .toList();
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(user.getEmail(), null, authorities);

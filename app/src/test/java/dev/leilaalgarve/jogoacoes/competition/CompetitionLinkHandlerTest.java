@@ -8,6 +8,7 @@ import dev.leilaalgarve.jogoacoes.user.Role;
 import dev.leilaalgarve.jogoacoes.user.RoleName;
 import dev.leilaalgarve.jogoacoes.user.RoleRepository;
 import dev.leilaalgarve.jogoacoes.user.User;
+import dev.leilaalgarve.jogoacoes.user.UserProvisioningService;
 import dev.leilaalgarve.jogoacoes.user.UserRepository;
 import dev.leilaalgarve.jogoacoes.user.UserRoleRepository;
 import org.junit.jupiter.api.Test;
@@ -44,7 +45,8 @@ class CompetitionLinkHandlerTest {
     private AuditLogService auditLogService;
 
     private CompetitionLinkHandler handler() {
-        return new CompetitionLinkHandler(participationRepository, userRepository, roleRepository, userRoleRepository, auditLogService);
+        return new CompetitionLinkHandler(participationRepository,
+                new UserProvisioningService(userRepository, roleRepository, userRoleRepository), auditLogService);
     }
 
     @Test

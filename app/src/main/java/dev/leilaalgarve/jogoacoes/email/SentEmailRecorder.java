@@ -2,8 +2,7 @@ package dev.leilaalgarve.jogoacoes.email;
 
 import dev.leilaalgarve.jogoacoes.email.SentEmail;
 import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
-import dev.leilaalgarve.jogoacoes.user.User;
-import dev.leilaalgarve.jogoacoes.user.UserRepository;
+import dev.leilaalgarve.jogoacoes.user.UserService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -16,19 +15,17 @@ import java.time.LocalDateTime;
 class SentEmailRecorder {
 
     private final SentEmailRepository sentEmailRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
 
-    SentEmailRecorder(SentEmailRepository sentEmailRepository, UserRepository userRepository) {
+    SentEmailRecorder(SentEmailRepository sentEmailRepository, UserService userService) {
         this.sentEmailRepository = sentEmailRepository;
-        this.userRepository = userRepository;
+        this.userService = userService;
     }
 
     SentEmail record(EmailRequest request) {
         SentEmail sentEmail = new SentEmail();
         if (request.userId() != null) {
-            User user = userRepository.findById(request.userId())
-                    .orElseThrow(() -> new IllegalArgumentException("No such user: " + request.userId()));
-            sentEmail.setUser(user);
+            sentEmail.setUser(userService.getById(request.userId()));
         }
         sentEmail.setEmail(request.email());
         sentEmail.setLink(request.link());

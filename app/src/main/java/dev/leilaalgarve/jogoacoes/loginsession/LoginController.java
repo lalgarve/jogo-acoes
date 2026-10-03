@@ -14,7 +14,7 @@ import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import dev.leilaalgarve.jogoacoes.log.AuditLogService;
 import dev.leilaalgarve.jogoacoes.log.LogType;
 import dev.leilaalgarve.jogoacoes.user.User;
-import dev.leilaalgarve.jogoacoes.user.UserRepository;
+import dev.leilaalgarve.jogoacoes.user.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,14 +35,14 @@ import java.util.Map;
 public class LoginController implements LoginApi {
 
     private final LinkService linkService;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final EmailSender emailSender;
     private final AuditLogService auditLogService;
 
-    public LoginController(LinkService linkService, UserRepository userRepository, EmailSender emailSender,
+    public LoginController(LinkService linkService, UserService userService, EmailSender emailSender,
                             AuditLogService auditLogService) {
         this.linkService = linkService;
-        this.userRepository = userRepository;
+        this.userService = userService;
         this.emailSender = emailSender;
         this.auditLogService = auditLogService;
     }
@@ -68,7 +68,7 @@ public class LoginController implements LoginApi {
     @Override
     public ResponseEntity<Void> requestLoginLink(RequestLoginLinkRequest requestLoginLinkRequest) {
         String email = requestLoginLinkRequest.getEmail();
-        User user = userRepository.findByEmail(email).orElse(null);
+        User user = userService.findByEmail(email).orElse(null);
         if (user == null) {
             return ResponseEntity.status(202).build(); // Don't reveal whether the address is known.
         }

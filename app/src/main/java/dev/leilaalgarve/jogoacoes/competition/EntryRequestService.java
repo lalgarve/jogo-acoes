@@ -20,9 +20,9 @@ import dev.leilaalgarve.jogoacoes.link.LinkService;
 import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import dev.leilaalgarve.jogoacoes.log.AuditLogService;
 import dev.leilaalgarve.jogoacoes.log.LogType;
+import dev.leilaalgarve.jogoacoes.loginsession.CurrentUserService;
 import dev.leilaalgarve.jogoacoes.user.User;
-import dev.leilaalgarve.jogoacoes.user.UserRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
+import dev.leilaalgarve.jogoacoes.user.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,18 +36,20 @@ public class EntryRequestService {
     private final CompetitionRepository competitionRepository;
     private final ParticipationRepository participationRepository;
     private final LinkService linkService;
-    private final UserRepository userRepository;
+    private final UserService userService;
+    private final CurrentUserService currentUserService;
     private final EmailSender emailSender;
     private final CaptchaVerifier captchaService;
     private final AuditLogService auditLogService;
 
     public EntryRequestService(CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
-                                LinkService linkService, UserRepository userRepository,
+                                LinkService linkService, UserService userService, CurrentUserService currentUserService,
                                 EmailSender emailSender, CaptchaVerifier captchaService, AuditLogService auditLogService) {
         this.competitionRepository = competitionRepository;
         this.participationRepository = participationRepository;
         this.linkService = linkService;
-        this.userRepository = userRepository;
+        this.userService = userService;
+        this.currentUserService = currentUserService;
         this.emailSender = emailSender;
         this.captchaService = captchaService;
         this.auditLogService = auditLogService;
@@ -57,7 +59,7 @@ public class EntryRequestService {
     @Transactional
     public Participation confirmEntry(Long competitionId) {
         Competition competition = findCompetition(competitionId);
-        User user = currentUser();
+        User user = currentUserService.currentUser();
 
         Participation participation = participationRepository.findByCompetition_IdAndUser_Id(competitionId, user.getId())
                 .orElse(null);
@@ -99,7 +101,7 @@ public class EntryRequestService {
             throw new CaptchaInvalidException("Failed captcha");
         }
 
-        Optional<User> existingUser = userRepository.findByEmail(email);
+        Optional<User> existingUser = userService.findByEmail(email);
         EmailTemplate template = existingUser.filter(User::isRegistered).isPresent()
                 ? EmailTemplate.LOGIN_LINK
                 : EmailTemplate.REGISTRATION_LINK;
@@ -141,9 +143,4 @@ public class EntryRequestService {
                 .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
     }
 
-    private User currentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + email));
-    }
 }

@@ -19,9 +19,9 @@ import dev.leilaalgarve.jogoacoes.link.LinkService;
 import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import dev.leilaalgarve.jogoacoes.log.AuditLogService;
 import dev.leilaalgarve.jogoacoes.log.LogType;
+import dev.leilaalgarve.jogoacoes.loginsession.CurrentUserService;
 import dev.leilaalgarve.jogoacoes.user.User;
-import dev.leilaalgarve.jogoacoes.user.UserRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
+import dev.leilaalgarve.jogoacoes.user.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,17 +36,19 @@ public class CompetitionService {
     private final CompetitionRepository competitionRepository;
     private final ParticipationRepository participationRepository;
     private final LinkService linkService;
-    private final UserRepository userRepository;
+    private final UserService userService;
+    private final CurrentUserService currentUserService;
     private final EmailSender emailSender;
     private final AuditLogService auditLogService;
 
     public CompetitionService(CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
-                               LinkService linkService, UserRepository userRepository, EmailSender emailSender,
-                               AuditLogService auditLogService) {
+                               LinkService linkService, UserService userService, CurrentUserService currentUserService,
+                               EmailSender emailSender, AuditLogService auditLogService) {
         this.competitionRepository = competitionRepository;
         this.participationRepository = participationRepository;
         this.linkService = linkService;
-        this.userRepository = userRepository;
+        this.userService = userService;
+        this.currentUserService = currentUserService;
         this.emailSender = emailSender;
         this.auditLogService = auditLogService;
     }
@@ -64,7 +66,7 @@ public class CompetitionService {
         competition.setRecurring(Boolean.TRUE.equals(request.getRecurring()));
         competition.setBuyFee(BigDecimal.valueOf(request.getBuyFee()));
         competition.setSellFee(BigDecimal.valueOf(request.getSellFee()));
-        User creator = currentUser();
+        User creator = currentUserService.currentUser();
         competition.setCreator(creator);
         competition.setStatus(type == CompetitionType.PUBLIC ? CompetitionStatus.OPEN : CompetitionStatus.AWAITING_INVITES);
         competition = competitionRepository.save(competition);
@@ -79,7 +81,7 @@ public class CompetitionService {
                 // The invited e-mail may already have a registered User from a previous,
                 // unrelated competition -- link it now so decideInviteEmailTiming knows to
                 // send a login link instead of an invite asking them to create an account.
-                participation.setUser(userRepository.findByEmail(email).filter(User::isRegistered).orElse(null));
+                participation.setUser(userService.findRegisteredByEmail(email).orElse(null));
                 participation.setStatus(ParticipationStatus.EMAIL_NOT_SENT);
                 participation.setRequestType(RequestType.INVITE);
                 participationRepository.save(participation);
@@ -100,7 +102,7 @@ public class CompetitionService {
             return;
         }
 
-        User admin = currentUser();
+        User admin = currentUserService.currentUser();
         List<Participation> pending = participationRepository.findByCompetition_IdAndStatus(competitionId, ParticipationStatus.EMAIL_NOT_SENT);
         for (Participation participation : pending) {
             User user = participation.getUser();
@@ -151,9 +153,4 @@ public class CompetitionService {
         }
     }
 
-    private User currentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + email));
-    }
 }

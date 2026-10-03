@@ -16,7 +16,8 @@ public interface LinkSessionService {
 
     /**
      * Establishes a session for this user on the current request/device, tied to the link
-     * (by token) that authenticated them.
+     * that authenticated them. Takes the already-loaded record rather than its token, so the
+     * implementation never has to reach into `link`'s repository (spec 05-029).
      */
-    void establish(Long userId, String token);
+    void establish(Long userId, LinkRecord linkRecord);
 }
