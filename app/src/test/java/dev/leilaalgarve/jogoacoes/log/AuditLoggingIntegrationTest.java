@@ -48,9 +48,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * competition creation, participation status changes and login link issuance -- rather than
  * just testing AuditLogService in isolation (see AuditLogServiceTest).
  *
- * @Transactional rolls each test back -- tests/application.yml points at a named in-memory
- * H2 instance shared by every test class in the same Surefire run (not a fresh one per
- * class), so without a rollback these services' real writes (audit logs, stub-sent e-mails)
+ * @Transactional rolls each test back -- src/test/resources/application.yml points at the same
+ * real PostgreSQL database shared by every test class in the same Surefire run (not a fresh one
+ * per class), so without a rollback these services' real writes (audit logs, stub-sent e-mails)
  * would leak into unrelated tests asserting exact row counts (e.g. StubEmailSenderTest).
  */
 @SpringBootTest
@@ -133,10 +133,16 @@ class AuditLoggingIntegrationTest {
 
         competitionService.decideInviteEmailTiming(competition.getId(), DecideInviteEmailTimingRequest.TimingEnum.NOW);
 
+        // LOG is insert-only and shared by every test class against the same real PostgreSQL in
+        // the same Maven run (Issue #41) -- another test could leave behind a row of the same
+        // type/message substring, so this asserts "at least these 2 happened" (what the
+        // invite-sending actually produces), not "exactly 2 rows of this type exist in the
+        // whole table", which isn't this test's concern anyway.
         List<Log> logs = logRepository.findAll();
-        assertThat(logs).filteredOn(log -> log.getLogType() == LogType.LOGIN_LINK_ISSUED).hasSize(2);
+        assertThat(logs).filteredOn(log -> log.getLogType() == LogType.LOGIN_LINK_ISSUED)
+                .hasSizeGreaterThanOrEqualTo(2);
         assertThat(logs).filteredOn(log -> log.getLogType() == LogType.PARTICIPATION_STATUS_CHANGED
-                && log.getMessage().contains("EMAIL_SENT")).hasSize(2);
+                && log.getMessage().contains("EMAIL_SENT")).hasSizeGreaterThanOrEqualTo(2);
     }
 
     @Test
@@ -162,11 +168,19 @@ class AuditLoggingIntegrationTest {
 
         loginController.requestLoginLink(new RequestLoginLinkRequest().email(user.getEmail()));
 
+        // anySatisfy evaluates its lambda against every row, including other tests' leaked
+        // LOGIN_LINK_ISSUED logs with no user (e.g. an unregistered invite) -- AssertJ only
+        // treats an AssertionError as "this element doesn't satisfy, try the next one", so a raw
+        // NullPointerException from log.getUser().getId() on one of those would abort the whole
+        // test instead. Filter null users out before asserting (Issue #41 -- same shared-table
+        // exposure, different failure shape).
         List<Log> logs = logRepository.findAll();
-        assertThat(logs).anySatisfy(log -> {
-            assertThat(log.getLogType()).isEqualTo(LogType.LOGIN_LINK_ISSUED);
-            assertThat(log.getUser().getId()).isEqualTo(user.getId());
-        });
+        assertThat(logs)
+                .filteredOn(log -> log.getUser() != null)
+                .anySatisfy(log -> {
+                    assertThat(log.getLogType()).isEqualTo(LogType.LOGIN_LINK_ISSUED);
+                    assertThat(log.getUser().getId()).isEqualTo(user.getId());
+                });
     }
 
     @Test

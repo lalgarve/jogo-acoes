@@ -10,5 +10,6 @@ import org.junit.platform.suite.api.Suite;
 @IncludeEngines("cucumber")
 @SelectPackages("features")
 @ConfigurationParameter(key = Constants.GLUE_PROPERTY_NAME, value = "dev.leilaalgarve.jogoacoes.emailservice")
+@ConfigurationParameter(key = Constants.FILTER_TAGS_PROPERTY_NAME, value = "not @requires-real-ses")
 public class RunCucumberTest {
 }

@@ -13,6 +13,7 @@ Feature: Register e-mail templates
       Then the template is created
       And the template is synced to SES
 
+    @requires-real-ses
     Scenario: Client registers a template with invalid syntax
       When they register a template named "broken" with an invalid Handlebars body
       Then the system rejects the registration with the reason SES returned
@@ -38,6 +39,7 @@ Feature: Register e-mail templates
       When they try to update a template named "missing"
       Then the system shows an error that the template does not exist
 
+    @requires-real-ses
     Scenario: Client registers a template, then updates it with invalid syntax
       Given they already registered a template named "welcome"
       When they update the template named "welcome" with an invalid Handlebars body

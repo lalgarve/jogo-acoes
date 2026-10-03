@@ -6,7 +6,7 @@ spring:
   application:
     name: email-service
   profiles:
-    default: sandbox
+    default: docker
   jpa:
     open-in-view: false
     hibernate:

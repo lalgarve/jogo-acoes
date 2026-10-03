@@ -15,10 +15,11 @@ import org.springframework.data.domain.PageRequest;
 import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 
-// Without this, @DataJpaTest swaps in an embedded H2 database regardless of the active
-// profile, but flyway.locations still points at the Postgres-specific migrations (with
-// GRANT/REVOKE) -- those fail against H2. Keep using whatever datasource the active
-// profile configures (H2 in sandbox, real Postgres in docker/CI).
+// Guards against @DataJpaTest's default behavior of swapping in an embedded database --
+// not that one is even on the classpath to swap in (specs/05-028-testes-exigem-docker-real/
+// plan.md: no H2 dependency anywhere in this project), but explicit is cheaper than relying on
+// that absence. flyway.locations points at the Postgres-specific migrations (GRANT/REVOKE),
+// which only work against the real PostgreSQL this is meant to keep using.
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DataJpaTest
 class AuditLogServiceTest {
@@ -32,11 +33,11 @@ class AuditLogServiceTest {
     private AuditLogService auditLogService;
 
     // LOG is insert-only (no UPDATE/DELETE grant in production, see memory/constitution.md)
-    // and, in the H2 sandbox profile, lives in one fixed named in-memory database shared by
-    // every test class in the same Maven run -- Cucumber's @SpringBootTest scenarios hit real
-    // HTTP endpoints and commit for real, unlike this @DataJpaTest's own rolled-back
-    // transaction. So the table can already hold rows from other tests by the time these run;
-    // assertions below isolate this test's own row instead of assuming the table starts empty.
+    // and lives in the same real PostgreSQL database shared by every test class in the same
+    // Maven run -- Cucumber's @SpringBootTest scenarios hit real HTTP endpoints and commit for
+    // real, unlike this @DataJpaTest's own rolled-back transaction. So the table can already
+    // hold rows from other tests by the time these run; assertions below isolate this test's
+    // own row instead of assuming the table starts empty.
     @Test
     void recordsAnEntryWithTheActingUser() {
         auditLogService = new AuditLogService(logRepository);

@@ -93,6 +93,11 @@ public class RegisterTemplatesSteps {
         world.setLastResponse(preview(name, Map.of("name", "Ada")));
     }
 
+    @When("they try to preview a template named {string}")
+    public void they_try_to_preview_a_template(String name) {
+        world.setLastResponse(preview(name, Map.of("name", "Ada")));
+    }
+
     @When("they list their templates")
     public void they_list_their_templates() {
         world.setLastResponse(world.request().when().get("/templates"));
@@ -106,6 +111,11 @@ public class RegisterTemplatesSteps {
     @When("a request is made with an empty API key")
     public void a_request_is_made_with_an_empty_api_key() {
         world.setLastResponse(world.requestWithApiKey("").when().get("/templates"));
+    }
+
+    @When("they try to update the template named {string}")
+    public void they_try_to_update_the_template_named(String name) {
+        world.setLastResponse(update(name, "Subject", VALID_BODY));
     }
 
     @Then("the template is created")
@@ -195,6 +205,16 @@ public class RegisterTemplatesSteps {
         assertThat(templates).hasSize(1);
         assertThat(templates.get(0).get("name")).isEqualTo(name);
     }
+
+    @Then("the system rejects the request as unauthorized")
+    public void the_system_rejects_the_request_as_unauthorized() {
+        assertThat(world.getLastResponse().statusCode()).isEqualTo(401);
+        assertThat(world.getLastResponse().jsonPath().getString("message"))
+            .isEqualTo("Missing or invalid X-API-Key");
+    }
+
+
+
 
     private void rememberCurrentContent(String name) {
         Response current = world.request().when().get("/templates/{name}", name);

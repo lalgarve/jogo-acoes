@@ -39,8 +39,9 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 | Formato da resposta do `TestRenderTemplate` | AWS devolve `RenderedTemplate` como **uma string MIME crua** (cabeçalhos `Date`/`Message-ID`/`Subject`/`MIME-Version`/`Content-Type` + corpo) — não como `{subject, body}` já separados. Parsear com Jakarta Mail (`jakarta.mail:jakarta.mail-api` + `org.eclipse.angus:angus-mail` como implementação, versões exatas a confirmar contra o Maven Central na implementação) construindo um `MimeMessage` a partir do texto e lendo `getSubject()`/o conteúdo — não regex manual (cabeçalho pode vir com *folding*/codificação `quoted-printable` para caracteres não-ASCII) | resolvida | Verificado via documentação oficial da AWS nesta sessão (não suposto) — formato muda a implementação do endpoint de preview, mas não o contrato já escrito em `docs/openapi-email-service.yaml` (`TemplatePreviewResponse` continua `{subject, body}`; o parsing fica inteiramente dentro do serviço). |
 | Identificação do cliente (esqueleto de API-KEY) | `ApiKeyAuthenticationFilter` (`jakarta.servlet.Filter`) rejeita com 401 header ausente/vazio; um bean `@RequestScope` (`ClientIdentityResolver`) lê `X-API-Key` direto e devolve seu valor bruto como id do cliente | resolvida | Isola a resolução de identidade num único ponto de troca (spec.md, "Requisitos não-funcionais") — quando a validação real existir, só essa classe muda. |
 | Framework de teste de aceite | Gherkin/Cucumber + Spring (`@SpringBootTest(webEnvironment=RANDOM_PORT)` + RestAssured), mesmo padrão de `app` (`CucumberSpringConfiguration`) | resolvida (sessão anterior) | Ver `spec.md`, "Cenários". |
-| SES real ou mock nos testes de aceite | **Real**, via Testcontainers LocalStack (módulo `org.testcontainers:localstack`), não um `SesClient` mockado | resolvida | Diferente de `app` (que usa `StubEmailSender` no perfil de teste padrão): aqui a chamada ao SES **é** o comportamento sendo testado (validação de sintaxe, preview) — mockar o `SesClient` testaria só que o código chama um método, não que o template é de fato válido. Constitution, seção "Testes": preferir dependência real a mock sempre que der — aqui dá, e é o próprio ponto da feature. |
-| Banco nos testes de aceite | H2 (`db/migration-h2`), mesmo padrão dual de `app`/`deployo-api-key` | resolvida | Persistência não é o que esta feature testa de verdade; H2 mantém a suíte rápida sem perder cobertura do que importa (SES real). |
+| Serviço SES nos testes de aceite padrão | LocalStack já iniciado pelo `docker-compose.yml`; a suíte chama sua API real, sem mock e sem Testcontainers. A rejeição de sintaxe inválida especificamente pelo Amazon SES não é simulada pelo LocalStack e está adiada para a Issue #104 (Iteração 6). | resolvida para a suíte padrão; validação AWS adiada | LocalStack exercita o fluxo de integração e preview sem credenciais AWS. Os dois cenários que dependem de validação de sintaxe pela AWS usam `@requires-real-ses` e ficam fora da execução padrão até serem validados contra SES real. |
+| Banco nos testes de aceite | PostgreSQL dedicado `db-email-service`, iniciado pelo `docker-compose.yml`; sem H2 | resolvida (spec 05-028) | Segue a decisão da spec 05-028 de usar PostgreSQL real também nos testes. A suíte requer o serviço Compose previamente iniciado e não cria containers por conta própria. |
+| Inicialização de infraestrutura nos testes | `db-email-service` e `localstack` pré-iniciados via Docker Compose; nenhum Testcontainers | resolvida (spec 05-028) | Mantém o mesmo mecanismo de infraestrutura usada pelo serviço e evita que a suíte tente descobrir/acessar Docker pelo cliente Java de Testcontainers. |
 | `docker-compose.yml`: LocalStack dedicado ou reaproveitar o existente? | Reaproveita o serviço `localstack` já existente (SES já habilitado via `SERVICES=...,ses,...`) | resolvida | Um único LocalStack serve `email-lambda` e `email-service` sem conflito — nomes de template são namespaced por cliente, nomes de fila/lambda não colidem com nada que `email-service` usa. |
 
 ## Estrutura de módulos/pacotes
@@ -65,12 +66,12 @@ email-service/
   src/main/resources/
     application.yml / application-docker.yml / application-production.yml
     db/migration/V1__create_email_template_table.sql
-    db/migration-h2/V1__create_email_template_table.sql
+    (sem migration H2; testes e execução Docker usam db/migration no PostgreSQL)
   src/test/java/dev/leilaalgarve/jogoacoes/emailservice/
     CucumberSpringConfiguration.java
     template/steps/RegisterTemplatesSteps.java
   src/test/resources/
-    application.yml (perfil de teste, H2 + Testcontainers LocalStack)
+    application.yml (PostgreSQL `localhost:5433` + LocalStack `localhost:4566` via Compose)
     features/register_templates.feature (já escrito)
 ```
 
