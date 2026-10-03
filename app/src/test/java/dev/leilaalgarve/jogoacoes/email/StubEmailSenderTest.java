@@ -16,10 +16,11 @@ import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-// Without this, @DataJpaTest swaps in an embedded H2 database regardless of the active
-// profile, but flyway.locations still points at the Postgres-specific migrations (with
-// GRANT/REVOKE) -- those fail against H2. Keep using whatever datasource the active
-// profile configures (H2 in sandbox, real Postgres in docker/CI).
+// Guards against @DataJpaTest's default behavior of swapping in an embedded database --
+// not that one is even on the classpath to swap in (specs/05-028-testes-exigem-docker-real/
+// plan.md: no H2 dependency anywhere in this project), but explicit is cheaper than relying on
+// that absence. flyway.locations points at the Postgres-specific migrations (GRANT/REVOKE),
+// which only work against the real PostgreSQL this is meant to keep using.
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DataJpaTest
 class StubEmailSenderTest {
@@ -33,9 +34,9 @@ class StubEmailSenderTest {
     private EmailSender emailSender;
 
     // sent_email is insert-only (no UPDATE/DELETE grant in production, see
-    // memory/constitution.md) and, in the H2 sandbox profile, lives in one fixed named
-    // in-memory database (jdbc:h2:mem:jogo_acoes) shared by every test class in the same
-    // Maven run -- Cucumber's @SpringBootTest scenarios hit real HTTP endpoints and commit
+    // memory/constitution.md) and lives in the same real PostgreSQL database shared by every
+    // test class in the same Maven run (and across runs -- specs/05-028-testes-exigem-docker-
+    // real/plan.md) -- Cucumber's @SpringBootTest scenarios hit real HTTP endpoints and commit
     // for real, unlike this @DataJpaTest's own rolled-back transaction. So the table can
     // already hold rows from other tests by the time these run; assertions below look up the
     // exact row this test created (by its own unique link) and check the count grew by
@@ -78,7 +79,7 @@ class StubEmailSenderTest {
     void rejectsAnUnknownUserId() {
         emailSender = newStubEmailSender();
 
-        // Long.MAX_VALUE, not a low fixed ID like 999L: this shared H2 database accumulates
+        // Long.MAX_VALUE, not a low fixed ID like 999L: this shared database accumulates
         // rows across the whole test run (see class-level note above), so a low ID could
         // eventually collide with a real user once enough tests have run before this one.
         assertThatThrownBy(() -> emailSender.send(new EmailRequest(Long.MAX_VALUE, fixed("carol"), null,

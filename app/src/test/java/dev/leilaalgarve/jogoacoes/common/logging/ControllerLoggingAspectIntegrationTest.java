@@ -39,6 +39,10 @@ class ControllerLoggingAspectIntegrationTest {
         competitionsController.listPublicCompetitions();
 
         assertThat(output).contains("--> CompetitionsController.listPublicCompetitions()");
-        assertThat(output).containsPattern("<-- CompetitionsController\\.listPublicCompetitions returned .*\\+\\[1]");
+        // \d+, not a hardcoded 1: real PUBLIC/OPEN competitions already exist from other test
+        // classes against the same shared PostgreSQL in the same Maven run (Issue #41), so the
+        // exact remainder count isn't this test's own -- only that the list got truncated at all
+        // (first element shown, "+[N]" for the rest) is.
+        assertThat(output).containsPattern("<-- CompetitionsController\\.listPublicCompetitions returned .*\\+\\[\\d+]");
     }
 }

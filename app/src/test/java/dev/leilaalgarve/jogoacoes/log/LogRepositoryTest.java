@@ -18,10 +18,11 @@ import java.time.LocalDateTime;
 import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
 import static org.assertj.core.api.Assertions.assertThat;
 
-// Without this, @DataJpaTest swaps in an embedded H2 database regardless of the active
-// profile, but flyway.locations still points at the Postgres-specific migrations (with
-// GRANT/REVOKE) -- those fail against H2. Keep using whatever datasource the active
-// profile configures (H2 in sandbox, real Postgres in docker/CI).
+// Guards against @DataJpaTest's default behavior of swapping in an embedded database --
+// not that one is even on the classpath to swap in (specs/05-028-testes-exigem-docker-real/
+// plan.md: no H2 dependency anywhere in this project), but explicit is cheaper than relying on
+// that absence. flyway.locations points at the Postgres-specific migrations (GRANT/REVOKE),
+// which only work against the real PostgreSQL this is meant to keep using.
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DataJpaTest
 class LogRepositoryTest {
@@ -55,19 +56,29 @@ class LogRepositoryTest {
                 newLog(4L, null, LogType.PARTICIPATION_STATUS_CHANGED, LocalDateTime.parse("2026-08-04T10:00:00")));
     }
 
+    // No filter / log-type-only filter below can't scope to this test's own rows the way
+    // filtersByUser/combinesLogTypeAndUserFilters do -- LOG is insert-only and shared by every
+    // test class against the same real PostgreSQL in the same Maven run (specs/05-028-testes-
+    // exigem-docker-real/plan.md; see also Issue #41), so another test's committed row of the
+    // same type can legitimately also match. Assert containment (this test's own four rows are
+    // in there), not exact membership (only these four rows exist).
     @Test
     void returnsEverythingWhenNoFilterIsGiven() {
-        Page<Log> result = logRepository.findFiltered(null, null, null, null, PageRequest.of(0, 10));
+        Page<Log> result = logRepository.findFiltered(
+            null, null, null, null, PageRequest.of(0, Integer.MAX_VALUE));
 
-        assertThat(result.getContent()).containsExactlyInAnyOrder(
-                log1CompetitionUser1Day1, log2LoginLinkUser1Day2, log3CompetitionUser2Day3, log4ParticipationNoUserDay4);
+        assertThat(result.getContent()).extracting(Log::getId).contains(
+            log1CompetitionUser1Day1.getId(), log2LoginLinkUser1Day2.getId(),
+            log3CompetitionUser2Day3.getId(), log4ParticipationNoUserDay4.getId());
     }
 
     @Test
     void filtersByLogType() {
-        Page<Log> result = logRepository.findFiltered(LogType.COMPETITION_CREATED, null, null, null, PageRequest.of(0, 10));
+        Page<Log> result = logRepository.findFiltered(
+            LogType.COMPETITION_CREATED, null, null, null, PageRequest.of(0, Integer.MAX_VALUE));
 
-        assertThat(result.getContent()).containsExactlyInAnyOrder(log1CompetitionUser1Day1, log3CompetitionUser2Day3);
+        assertThat(result.getContent()).extracting(Log::getId)
+            .contains(log1CompetitionUser1Day1.getId(), log3CompetitionUser2Day3.getId());
     }
 
     @Test

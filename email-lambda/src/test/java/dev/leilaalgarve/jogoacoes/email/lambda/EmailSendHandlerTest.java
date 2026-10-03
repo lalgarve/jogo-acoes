@@ -19,10 +19,11 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 /**
  * Exercises the handler against the LocalStack SES container Dev Services starts
  * automatically for @QuarkusTest (docs/context/iteracao-4.md, decision 3) -- requires Docker.
- * sendsAWellFormedMessageWithoutError degrades to SKIPPED (not failed) without Docker, the
- * same way app's tests fully pass in the H2-backed sandbox profile rather than needing
- * Postgres -- there's no H2-equivalent fake for SES, so "skip gracefully" is this module's
- * version of that. Confirmed by actually running this in the sandbox this session: without
+ * sendsAWellFormedMessageWithoutError degrades to SKIPPED (not failed) without Docker -- unlike
+ * Postgres (always real, available in every environment including this sandbox natively; see
+ * specs/05-028-testes-exigem-docker-real/plan.md), there's no equivalent fake/native stand-in
+ * for SES here, so "skip gracefully" is this module's way of handling that gap. Confirmed by
+ * actually running this in the sandbox this session: without
  * Docker, this test is reported skipped and rejectsAMalformedMessage (which never reaches
  * the SES client) still passes, so `mvn test` exits 0 -- it does not just fail outright.
  *

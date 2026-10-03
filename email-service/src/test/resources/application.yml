@@ -4,24 +4,32 @@ server:
 
 spring:
   datasource:
-    url: jdbc:h2:mem:email_service;MODE=PostgreSQL
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    # Real PostgreSQL (docker-compose.yml's `db-email-service` service), not H2 -- see
+    # specs/05-028-testes-exigem-docker-real/plan.md. Tests require
+    # `docker compose up -d db-email-service` beforehand; there is no in-memory fallback.
+    url: jdbc:postgresql://localhost:5433/email_service
+    username: email_service_admin
+    password: email_service_admin
+    driver-class-name: org.postgresql.Driver
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
   flyway:
     enabled: true
-    locations: classpath:db/migration-h2
+    locations: classpath:db/migration
   cloud:
     aws:
-      # Replaced by @DynamicPropertySource once the Testcontainers LocalStack SES endpoint is
-      # known (see EmailServiceLocalStackConfiguration) -- the static region fallback here only
-      # matters for any context that boots without that configuration applied.
+      credentials:
+        access-key: test
+        secret-key: test
       region:
         static: us-east-1
+      ses:
+        # Real LocalStack (docker-compose.yml's `localstack` service), not Testcontainers -- see
+        # specs/05-028-testes-exigem-docker-real/plan.md. Tests require
+        # `docker compose up -d localstack` beforehand.
+        endpoint: http://localhost:4566
 
 logging:
   level:

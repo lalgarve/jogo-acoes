@@ -1,6 +1,6 @@
 # Spec: Serviço de E-mail — cadastro de templates
 
-**Status:** rascunho
+**Status:** implementada — 12 dos 14 cenários validados nesta sessão; os dois cenários que dependem da rejeição de sintaxe inválida pelo SES real estão adiados para a Iteração 6 ([Issue #104](https://github.com/lalgarve/jogo-acoes/issues/104)).
 **Issue:** [#93](https://github.com/lalgarve/jogo-acoes/issues/93)
 **Iteração:** iteration-5
 
@@ -38,7 +38,9 @@ via OpenAPI, contrato escrito antes de qualquer controller (mesma convenção j�
 - `.feature` Gherkin:
   [`email-service/src/test/resources/features/register_templates.feature`](../../email-service/src/test/resources/features/register_templates.feature)
   (mesma convenção de `app/`) — 5 Rules (cadastro, atualização, preview, isolamento por
-  cliente, exigência de API-KEY), 19 Scenarios.
+  cliente, exigência de API-KEY), 14 Scenarios. Os dois cenários de sintaxe Handlebars inválida
+  estão marcados `@requires-real-ses` e excluídos da execução padrão; sua validação com Amazon
+  SES real está acompanhada na [Issue #104](https://github.com/lalgarve/jogo-acoes/issues/104).
 
 ## Requisitos funcionais
 
@@ -93,7 +95,7 @@ via OpenAPI, contrato escrito antes de qualquer controller (mesma convenção j�
 - Validar `variables_schema` (JSON Schema) contra os dados enviados numa pré-visualização — fica
   para quando essa necessidade aparecer; nesta spec o schema é só armazenado, não verificado.
 
-## Decisões em aberto
+## Decisões resolvidas e adiadas
 
 Resolvidas nesta sessão (registradas aqui, detalhamento técnico em `plan.md`):
 
@@ -102,8 +104,5 @@ Resolvidas nesta sessão (registradas aqui, detalhamento técnico em `plan.md`):
 - ~~Framework de cenário de aceite~~ — Gherkin/Cucumber + API-first via OpenAPI, confirmado (ver
   "Cenários" acima).
 
-Ainda em aberto:
-
-- Onde a validação real de API-KEY vai morar quando existir: biblioteca externa (projeto hoje
-  chamado `deployo-api-key`, nome a trocar) consumida por este serviço, ou implementação própria
-  aqui? Fica para a spec que substituir o esqueleto atual.
+- A decisão de onde ficará a validação real de API-KEY (biblioteca externa ou implementação
+  própria) continua fora desta spec. Será tomada na spec que substituir o esqueleto atual.
