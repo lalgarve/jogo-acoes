@@ -28,13 +28,17 @@ não são tocados por nenhuma tarefa abaixo.
 | T013 | `docker-compose.blackbox.yml` — `ADMIN_EMAIL: success+admin@simulator.amazonses.com` no `environment:` do serviço `app` | T004 | [P] | #84 |
 | T014 | `memory/constitution.md` (seção "Débito reconhecido, correção planejada") — remover `BlackboxDataSeeder` (resolvido aqui) e `EmailQueuePoller` (já removido pela Issue #87, nota desatualizada) da lista; só `BlackboxController`/`BlackboxSecurityConfigContributor` continuam pendentes. Commit `decision` próprio, separado do resto desta spec | T006 | [P] | #84 |
 | T015 | `mvn -pl app -am test` e `mvn -pl email-lambda -am test` — confirmar tudo verde, incluindo os testes novos (T003, T005) e o `BlackboxProfileIntegrationTest` revisado (T007) | T003, T005, T007, T009 | | #84 |
-| T016 | Validação manual, com Docker: `docker compose up` (sem sobreposição) confirma nenhum admin criado; `docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up` confirma o admin semeado conseguindo logar; reiniciar com `ADMIN_EMAIL` diferente confirma que não cria um segundo admin | T012, T013, T015 | | #84 |
+| T016 | Validação manual, com Docker: `docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up` confirma o admin semeado conseguindo logar; reiniciar com `ADMIN_EMAIL` diferente confirma que não cria um segundo admin | T012, T013, T015 | | #84 |
+| T017 | `application-docker.yml`/`application-sandbox.yml` — `ADMIN_EMAIL: success+admin@simulator.amazonses.com` (decisão de sessão 2026-10-02, ver `plan.md`): `docker compose up` simples, sem sobreposição, passa a criar o admin automaticamente, em vez de não criar nenhum; `staging`/`production` continuam sem padrão | T004 | [P] | #84 |
+| T018 | Validação manual, com Docker, de T017: `docker compose up` (sem sobreposição), banco limpo, confirma o admin sendo criado automaticamente com o e-mail padrão do profile `docker` | T017 | | #84 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
-- T016 depende de Docker disponível no ambiente de implementação (mesma limitação já registrada
-  em specs anteriores) — se não estiver disponível, registrar explicitamente o que não pôde ser
-  verificado e validar o que der (T001–T015, que são só código/config, sem precisar de
-  `docker compose up`).
+- T016/T018 dependem de Docker disponível no ambiente de implementação (mesma limitação já
+  registrada em specs anteriores) — se não estiver disponível, registrar explicitamente o que não
+  pôde ser verificado e validar o que der (o resto das tarefas são só código/config, sem precisar
+  de `docker compose up`). **T018 validado nesta sessão** (banco limpo, `docker compose up` sem
+  sobreposição — administrador criado automaticamente, log `Bootstrapped the first administrator:
+  success+admin@simulator.amazonses.com`, login confirmado até `/admin`).
 - Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
   mesclado — não deixar a tabela dessincronizada do estado real.

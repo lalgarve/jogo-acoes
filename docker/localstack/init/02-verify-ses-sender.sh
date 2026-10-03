@@ -3,9 +3,8 @@
 # SES emulation enforces the same "sender must be a verified identity" rule real SES sandbox
 # mode does (found in EmailSendHandlerTest, docs/context/iteracao-4.md) -- without this, the
 # dev poller's (spec 05-021) first processed message fails with MessageRejectedException.
-# Address kept in sync by hand with email.sender-address in
-# email-lambda/src/main/resources/application.properties, same convention as
-# 01-create-queue.sh's queue name.
+# Address comes from EMAIL_SENDER_ADDRESS (spec 05-026), same variable email-lambda's
+# application.properties and 03-deploy-email-lambda.sh read -- no more hand-kept duplication.
 set -e
 
-awslocal ses verify-email-identity --email-address no-reply@jogo-acoes.example
+awslocal ses verify-email-identity --email-address "${EMAIL_SENDER_ADDRESS:?EMAIL_SENDER_ADDRESS not set}"

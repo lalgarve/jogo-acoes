@@ -64,17 +64,21 @@ class LogRepositoryTest {
     // in there), not exact membership (only these four rows exist).
     @Test
     void returnsEverythingWhenNoFilterIsGiven() {
-        Page<Log> result = logRepository.findFiltered(null, null, null, null, PageRequest.of(0, 10));
+        Page<Log> result = logRepository.findFiltered(
+            null, null, null, null, PageRequest.of(0, Integer.MAX_VALUE));
 
-        assertThat(result.getContent()).contains(
-                log1CompetitionUser1Day1, log2LoginLinkUser1Day2, log3CompetitionUser2Day3, log4ParticipationNoUserDay4);
+        assertThat(result.getContent()).extracting(Log::getId).contains(
+            log1CompetitionUser1Day1.getId(), log2LoginLinkUser1Day2.getId(),
+            log3CompetitionUser2Day3.getId(), log4ParticipationNoUserDay4.getId());
     }
 
     @Test
     void filtersByLogType() {
-        Page<Log> result = logRepository.findFiltered(LogType.COMPETITION_CREATED, null, null, null, PageRequest.of(0, 10));
+        Page<Log> result = logRepository.findFiltered(
+            LogType.COMPETITION_CREATED, null, null, null, PageRequest.of(0, Integer.MAX_VALUE));
 
-        assertThat(result.getContent()).contains(log1CompetitionUser1Day1, log3CompetitionUser2Day3);
+        assertThat(result.getContent()).extracting(Log::getId)
+            .contains(log1CompetitionUser1Day1.getId(), log3CompetitionUser2Day3.getId());
     }
 
     @Test

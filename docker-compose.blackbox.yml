@@ -9,6 +9,7 @@ services:
   app:
     environment:
       SPRING_PROFILES_ACTIVE: docker,blackbox
+      ADMIN_EMAIL: success+admin@simulator.amazonses.com
       JAVA_TOOL_OPTIONS: -javaagent:/app/jacocoagent.jar=output=tcpserver,address=*,port=6300,includes=dev.leilaalgarve.jogoacoes.*
     ports:
       - "6300:6300"
