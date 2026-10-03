@@ -1,6 +1,6 @@
 package dev.leilaalgarve.jogoacoes.competition;
 
-import dev.leilaalgarve.jogoacoes.login.SecurityConfigContributor;
+import dev.leilaalgarve.jogoacoes.loginsecurity.SecurityConfigContributor;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;

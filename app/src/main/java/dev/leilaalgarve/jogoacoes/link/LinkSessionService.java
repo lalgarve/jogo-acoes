@@ -5,9 +5,9 @@ import java.util.Optional;
 /**
  * Session-establishment mechanics (writing {@code SecurityContext}, enforcing the per-user
  * device limit, recording a session) are generic — identical regardless of which
- * {@link LinkHandler} produced the outcome — but they need {@code login}'s {@code User}/roles
+ * {@link LinkHandler} produced the outcome — but they need {@code user}'s {@code User}/roles
  * to build an {@code Authentication}. `link` depends only on this interface; the implementation
- * lives in `login`, which is allowed to depend back on `link` (never the other way around).
+ * lives in `loginsession`, which is allowed to depend back on `link` (never the other way around).
  */
 public interface LinkSessionService {
 

@@ -4,10 +4,10 @@ import dev.leilaalgarve.jogoacoes.competition.CompetitionLinkHandler;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
 import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import dev.leilaalgarve.jogoacoes.log.AuditLogService;
-import dev.leilaalgarve.jogoacoes.login.LoginLinkHandler;
-import dev.leilaalgarve.jogoacoes.login.RoleRepository;
-import dev.leilaalgarve.jogoacoes.login.UserRepository;
-import dev.leilaalgarve.jogoacoes.login.UserRoleRepository;
+import dev.leilaalgarve.jogoacoes.loginsession.LoginLinkHandler;
+import dev.leilaalgarve.jogoacoes.user.RoleRepository;
+import dev.leilaalgarve.jogoacoes.user.UserRepository;
+import dev.leilaalgarve.jogoacoes.user.UserRoleRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Requirement from spec 05-003: every LinkHandler implementation must declare a key that is
  * both non-null and unique. Exercised directly against LinkRouter's construction logic, with
- * the real handlers from `login`/`competition` -- no Spring context needed for this signal.
+ * the real handlers from `loginsession`/`competition` -- no Spring context needed for this signal.
  */
 @ExtendWith(MockitoExtension.class)
 class LinkRouterKeyUniquenessTest {

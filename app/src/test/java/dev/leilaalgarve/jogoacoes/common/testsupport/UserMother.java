@@ -1,13 +1,13 @@
 package dev.leilaalgarve.jogoacoes.common.testsupport;
 
-import dev.leilaalgarve.jogoacoes.login.Role;
-import dev.leilaalgarve.jogoacoes.login.RoleName;
-import dev.leilaalgarve.jogoacoes.login.User;
-import dev.leilaalgarve.jogoacoes.login.UserRole;
-import dev.leilaalgarve.jogoacoes.login.UserRoleId;
-import dev.leilaalgarve.jogoacoes.login.RoleRepository;
-import dev.leilaalgarve.jogoacoes.login.UserRepository;
-import dev.leilaalgarve.jogoacoes.login.UserRoleRepository;
+import dev.leilaalgarve.jogoacoes.user.Role;
+import dev.leilaalgarve.jogoacoes.user.RoleName;
+import dev.leilaalgarve.jogoacoes.user.RoleRepository;
+import dev.leilaalgarve.jogoacoes.user.User;
+import dev.leilaalgarve.jogoacoes.user.UserRepository;
+import dev.leilaalgarve.jogoacoes.user.UserRole;
+import dev.leilaalgarve.jogoacoes.user.UserRoleId;
+import dev.leilaalgarve.jogoacoes.user.UserRoleRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;

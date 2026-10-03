@@ -1,6 +1,6 @@
 package dev.leilaalgarve.jogoacoes.log;
 
-import dev.leilaalgarve.jogoacoes.login.User;
+import dev.leilaalgarve.jogoacoes.user.User;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

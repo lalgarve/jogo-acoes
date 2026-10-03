@@ -18,7 +18,7 @@ import java.util.UUID;
  * consumption/completion dispatches to whichever {@link LinkHandler} owns the record's service
  * key (via {@link LinkRouter}), then — for a non-pending outcome — marks the record used and
  * hands off to {@link LinkSessionService} to establish the actual session. Never imports a type
- * from `login`/`competition`.
+ * from `user`/`loginsession`/`competition`.
  */
 @Service
 public class LinkService {

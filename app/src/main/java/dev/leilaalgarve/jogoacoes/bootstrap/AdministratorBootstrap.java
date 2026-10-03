@@ -1,7 +1,7 @@
 package dev.leilaalgarve.jogoacoes.bootstrap;
 
-import dev.leilaalgarve.jogoacoes.login.RoleName;
-import dev.leilaalgarve.jogoacoes.login.UserProvisioningService;
+import dev.leilaalgarve.jogoacoes.user.RoleName;
+import dev.leilaalgarve.jogoacoes.user.UserProvisioningService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import jakarta.validation.constraints.Email;
