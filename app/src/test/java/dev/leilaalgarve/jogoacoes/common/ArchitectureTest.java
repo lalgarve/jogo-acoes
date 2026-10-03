@@ -1,5 +1,7 @@
 package dev.leilaalgarve.jogoacoes.common;
 
+import com.tngtech.archunit.core.domain.Dependency;
+import com.tngtech.archunit.core.domain.JavaAccess;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -10,7 +12,14 @@ import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import dev.leilaalgarve.jogoacoes.loginsecurity.SecurityConfigContributor;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.repository.Repository;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -60,6 +69,63 @@ class ArchitectureTest {
                 .should().dependOnClassesThat().resideInAnyPackage(
                         BASE_PACKAGE + ".loginsession..", BASE_PACKAGE + ".user..", BASE_PACKAGE + ".loginsecurity..")
                 .check(importedClasses);
+    }
+
+    /**
+     * Spec 05-029: modules talk to each other only through services -- a repository is an
+     * internal detail of the module that owns it. Production code only: test fixtures/steps
+     * deliberately use repositories from any module to arrange and assert real database state.
+     */
+    @Test
+    void repositoriesAreOnlyAccessedFromTheirOwnModule() {
+        JavaClasses importedClasses = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages(BASE_PACKAGE);
+
+        ArchRule rule = classes()
+                .that().areInterfaces()
+                .and().areAssignableTo(Repository.class)
+                .should(onlyBeAccessedFromTheirOwnModule());
+
+        rule.check(importedClasses);
+    }
+
+    private static ArchCondition<JavaClass> onlyBeAccessedFromTheirOwnModule() {
+        return new ArchCondition<>("only be accessed from their own module") {
+            @Override
+            public void check(JavaClass repository, ConditionEvents events) {
+                String owner = moduleOf(repository);
+                Set<JavaClass> origins = repository.getDirectDependenciesToSelf().stream()
+                        .map(Dependency::getOriginClass)
+                        .filter(origin -> !moduleOf(origin).equals(owner))
+                        .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(JavaClass::getName))));
+                for (JavaClass origin : origins) {
+                    // One violation per call site -- that's what has to change. Filtering the
+                    // origin's own accesses by target owner (instead of repository
+                    // .getAccessesToSelf()) also catches inherited methods like save/findById,
+                    // whose declaring class is Spring Data's, not this repository.
+                    List<JavaAccess<?>> calls = origin.getAccessesFromSelf().stream()
+                            .filter(access -> access.getTargetOwner().equals(repository))
+                            .sorted(Comparator.comparing(JavaAccess::getLineNumber))
+                            .toList();
+                    calls.forEach(call -> events.add(SimpleConditionEvent.violated(call, call.getDescription())));
+                    if (calls.isEmpty()) {
+                        events.add(SimpleConditionEvent.violated(origin, origin.getFullName() + " depends on "
+                                + repository.getFullName() + ", which belongs to module " + owner));
+                    }
+                }
+            }
+        };
+    }
+
+    /** First package segment below the base package: {@code competition.exception} is {@code competition}. */
+    private static String moduleOf(JavaClass javaClass) {
+        String relative = javaClass.getPackageName().substring(BASE_PACKAGE.length());
+        if (relative.startsWith(".")) {
+            relative = relative.substring(1);
+        }
+        int dot = relative.indexOf('.');
+        return dot < 0 ? relative : relative.substring(0, dot);
     }
 
     private static ArchCondition<JavaClass> haveASecurityConfigContributorInTheSamePackage(JavaClasses allClasses) {

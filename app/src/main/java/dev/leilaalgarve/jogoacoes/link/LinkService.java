@@ -100,7 +100,7 @@ public class LinkService {
         }
         record.setUsedAt(LocalDateTime.now());
         linkRecordRepository.save(record);
-        linkSessionService.establish(outcome.userId(), record.getToken());
+        linkSessionService.establish(outcome.userId(), record);
     }
 
     private LinkRecord findValidRecord(String token) {

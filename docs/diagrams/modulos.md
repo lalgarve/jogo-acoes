@@ -30,8 +30,10 @@ O sistema principal (`app/`) tem nove módulos hoje (o antigo `login` foi dividi
   templates físicos de `LOGIN_LINK`) — este último forma o único par de módulos mutuamente
   dependentes descrito no diagrama abaixo.
 - **`user`** — identidade (`User`/`Role`/`RoleName`/`UserRole`/`UserRoleId` e seus repositórios)
-  e `UserProvisioningService` (criação de usuário com papéis, usado pelo bootstrap do
-  administrador, spec 05-026). Módulo-base: não depende de nenhum outro módulo do domínio.
+  e os dois serviços pelos quais os outros módulos chegam a esses dados: `UserService` (leitura,
+  spec 05-029) e `UserProvisioningService` (criação de usuário com papéis, usado pelo bootstrap do
+  administrador, spec 05-026, e pela conclusão de cadastro em `competition`). Módulo-base: não
+  depende de nenhum outro módulo do domínio.
 - **`loginsecurity`** — `SecurityConfigContributor`, a interface que cada módulo com rotas HTTP
   implementa para declarar suas próprias regras de autorização, e `SecurityConfig`, que monta o
   `SecurityFilterChain` final agregando todos os contributors, mas nunca declara regra de rota de
@@ -40,13 +42,15 @@ O sistema principal (`app/`) tem nove módulos hoje (o antigo `login` foi dividi
   (`LoginController`), a implementação de `LinkHandler`/`LinkSessionService` que dá suporte a
   login (`LoginLinkHandler`/`LoginLinkSessionService`), a gestão de sessões ativas
   (`LoginSession`/`LoginSessionRepository`, movidas de `link`, e `SessionsController`/
-  `SessionsService`) e o apoio a Client Hints/redirecionamento (`AcceptChFilter`,
+  `SessionsService`), o "usuário logado nesta requisição" que os outros módulos consultam
+  (`CurrentUserService`, spec 05-029) e o apoio a Client Hints/redirecionamento (`AcceptChFilter`,
   `DeviceLabelResolver`, `ReturnToValidator`). Depende de `user`, `link`, `loginsecurity`, `email`
   e `log`; nenhum deles depende de volta.
 - **`competition`** — o maior módulo: competições, participações, convite, pedido de entrada,
   gerência de jogadores, e a implementação de `LinkHandler` para o link de competição
-  (`CompetitionLinkHandler`, que também é o único ponto do sistema que cria um `User` novo — na
-  conclusão do cadastro). Depende de `link`, `user`, `loginsecurity`, `email`, `captcha` e `log`.
+  (`CompetitionLinkHandler`, que na conclusão do cadastro cria o `User` novo via
+  `UserProvisioningService`). Depende de `link`, `user`, `loginsession` (só `CurrentUserService`),
+  `loginsecurity`, `email`, `captcha` e `log`.
 - **`common`** — não é um módulo de domínio, é a camada de tradução HTTP: um único
   `@RestControllerAdvice` (`ApiExceptionHandler`) que mapeia as exceções de negócio de
   `captcha`/`competition`/`link` para o formato `Error` do contrato OpenAPI. Por isso é o único
@@ -72,7 +76,14 @@ implementa, ou só a invoca através dela — nunca referencia a implementação
 de módulos é mutuamente dependente: `email`↔`competition`. Os pares `login`↔`email` e
 `login`↔`log` de antes da spec 05-027 desapareceram com a divisão — `email` e `log` dependem só de
 `user`, e quem usa `email`/`log` é `loginsession`. `ArchitectureTest` verifica que `user`,
-`loginsecurity` e `link` não dependem de `loginsession` nem uns dos outros.
+`loginsecurity` e `link` não dependem de `loginsession` nem uns dos outros, e (spec 05-029) que
+nenhum módulo acessa o repositório de outro: toda seta abaixo passa por serviço, interface,
+entidade ou enum, nunca por um `*Repository`.
+
+A seta `competition → loginsession` (spec 05-029) fecha um ciclo de três módulos,
+`competition → loginsession → email → competition`, que passa pelo mesmo `email → competition`
+(`RequestType`) do par mutuamente dependente acima. Não é ciclo novo entre pares, mas é por ali
+que ele se desfaz se um dia `RequestType` sair de `competition`.
 
 ```mermaid
 graph LR
@@ -81,11 +92,11 @@ graph LR
     competition -->|"LinkService, LinkPayload,<br/>LinkCreationResult, LinkOutcome"| link
     competition -.->|"implementa LinkHandler"| link
 
-    loginsession -->|"User, UserRepository,<br/>UserRoleRepository..."| user
+    loginsession -->|"User, UserService"| user
     loginsession -.->|"implementa<br/>SecurityConfigContributor"| loginsecurity
 
     loginsession -.->|"EmailSender"| email
-    email -->|"User, UserRepository"| user
+    email -->|"User, UserService"| user
 
     competition -.->|"EmailSender"| email
     email -->|"RequestType"| competition
@@ -95,7 +106,8 @@ graph LR
 
     competition -->|"AuditLogService, LogType"| log
 
-    competition -->|"User, Role, UserRole,<br/>UserRepository..."| user
+    competition -->|"User, RoleName, UserService,<br/>UserProvisioningService"| user
+    competition -->|"CurrentUserService"| loginsession
     competition -.->|"implementa<br/>SecurityConfigContributor"| loginsecurity
     common -.->|"implementa<br/>SecurityConfigContributor"| loginsecurity
 
@@ -162,7 +174,7 @@ classDiagram
     class LinkSessionService {
         <<interface>>
         +currentAuthenticatedUserId() Optional~Long~
-        +establish(Long, String)
+        +establish(Long, LinkRecord)
     }
     class LinkRouter {
         -Map~String,LinkHandler~ handlersByKey
@@ -255,7 +267,7 @@ sequenceDiagram
                 H-->>LiS: LinkOutcome (pending ou autenticado)
                 alt outcome não pending
                     LiS->>LRR: save(record com usedAt = now)
-                    LiS->>SS: establish(outcome.userId(), token)
+                    LiS->>SS: establish(outcome.userId(), record)
                 end
             end
         end
@@ -517,6 +529,13 @@ classDiagram
         +existsAnyWithRole(String) boolean
         +createUser(String, String, List~String~) User
     }
+    class UserService {
+        +findByEmail(String) Optional~User~
+        +findRegisteredByEmail(String) Optional~User~
+        +getById(Long) User
+        +roleNamesOf(Long) List~String~
+        +hasRole(Long, String) boolean
+    }
 
     UserRole --> UserRoleId : chave composta
     UserRole --> User
@@ -527,11 +546,14 @@ classDiagram
     UserProvisioningService --> UserRepository
     UserProvisioningService --> RoleRepository
     UserProvisioningService --> UserRoleRepository
+    UserService --> UserRepository
+    UserService --> UserRoleRepository
 ```
 
 Módulo-base: nenhuma classe daqui importa `link`, `loginsession`, `loginsecurity` ou qualquer
 outro módulo do domínio. É consumido por `loginsession`, `competition`, `email`, `log` e
-`bootstrap`.
+`bootstrap` — só através de `UserService`/`UserProvisioningService` e das entidades; os três
+repositórios são internos ao módulo (spec 05-029).
 
 ## Módulo `loginsecurity`
 
@@ -584,7 +606,12 @@ classDiagram
     }
     class LoginLinkSessionService {
         +currentAuthenticatedUserId() Optional~Long~
-        +establish(Long, String)
+        +establish(Long, LinkRecord)
+    }
+    class CurrentUserService {
+        +currentUser() User
+        +currentUserId() Optional~Long~
+        +currentUserIsAdministrator() boolean
     }
     class SessionsController {
         +listActiveSessions() ResponseEntity~List~Session~~
@@ -610,27 +637,30 @@ classDiagram
 
     LoginSession "0..*" --> "1" LinkRecord : módulo link
     LoginSessionRepository --> LoginSession
-    LoginController ..> UserRepository : usa (módulo user)
+    LoginController ..> UserService : usa (módulo user)
     LoginController ..> LinkService : usa (módulo link)
     LoginController ..> EmailSender : usa (módulo email)
     LoginController ..> ReturnToValidator : usa
     LoginLinkHandler ..|> LinkHandler : implementa (módulo link)
-    LoginLinkHandler ..> UserRoleRepository : usa (módulo user)
+    LoginLinkHandler ..> UserService : usa (módulo user)
     LoginLinkSessionService ..|> LinkSessionService : implementa (módulo link)
-    LoginLinkSessionService ..> UserRepository : usa (módulo user)
-    LoginLinkSessionService ..> UserRoleRepository : usa (módulo user)
-    LoginLinkSessionService ..> LinkRecordRepository : usa (módulo link)
+    LoginLinkSessionService ..> UserService : usa (módulo user)
+    LoginLinkSessionService --> CurrentUserService
     LoginLinkSessionService --> LoginSessionRepository
     LoginLinkSessionService ..> DeviceLabelResolver : usa
     SessionsController --> SessionsService
-    SessionsController ..> UserRepository : usa (módulo user)
+    SessionsController --> CurrentUserService
+    CurrentUserService ..> UserService : usa (módulo user)
     SessionsService --> LoginSessionRepository
     LoginSecurityConfigContributor ..|> SecurityConfigContributor : implementa (módulo loginsecurity)
 ```
 
-`LinkService`/`EmailSender`/`LinkRecordRepository`/`UserRepository`/`UserRoleRepository`
-pertencem aos módulos `link`/`email`/`user` — aparecem aqui só como o ponto de fronteira que
-`loginsession` atravessa (ver diagrama de dependências). `LoginLinkHandler` nunca sobrescreve
+`LinkService`/`EmailSender`/`UserService` pertencem aos módulos `link`/`email`/`user` — aparecem
+aqui só como o ponto de fronteira que `loginsession` atravessa (ver diagrama de dependências).
+`LoginLinkSessionService.establish` recebe o `LinkRecord` já carregado por `LinkService`, em vez
+do token, para não precisar ler `LinkRecordRepository` (spec 05-029). `CurrentUserService` é o
+único lugar que sabe que o nome da `Authentication` é o e-mail do usuário — `competition` também
+o usa. `LoginLinkHandler` nunca sobrescreve
 `complete()` (link de login é sempre uma única fase) — só `CompetitionLinkHandler` (módulo
 `competition`) o faz, para o registro em duas fases.
 
@@ -641,13 +671,13 @@ sequenceDiagram
     actor J as Jogador
     participant LC as LoginController
     participant LiS as LinkService<br/>(módulo link)
-    participant UR as UserRepository<br/>(módulo user)
+    participant US as UserService<br/>(módulo user)
     participant AL as AuditLogService<br/>(módulo log)
     participant ES as EmailSender<br/>(módulo email)
 
     J->>LC: POST /login-requests {email, returnTo?}
-    LC->>UR: findByEmail(email)
-    UR-->>LC: User (ou vazio)
+    LC->>US: findByEmail(email)
+    US-->>LC: User (ou vazio)
     alt e-mail desconhecido
         Note over LC: não revela se o e-mail existe -- retorna igual
         LC-->>J: 202 Accepted
@@ -668,14 +698,14 @@ sequenceDiagram
 sequenceDiagram
     participant LiS as LinkService<br/>(módulo link)
     participant H as LoginLinkHandler
-    participant URR as UserRoleRepository<br/>(módulo user)
+    participant US as UserService<br/>(módulo user)
 
     LiS->>H: consume(payload) / alreadyAuthenticated(userId, payload)
     alt payload.extra tem "returnTo" válido
         H->>H: usa returnTo como destino
     else sem returnTo
-        H->>URR: findByUser_Id(userId)
-        URR-->>H: papéis do usuário
+        H->>US: hasRole(userId, ADMINISTRATOR)
+        US-->>H: boolean
         H->>H: administrador? "/admin" : "/competitions/mine"
     end
     H-->>LiS: LinkOutcome.authenticated(userId, {redirectTo})
@@ -831,6 +861,14 @@ classDiagram
     PlayerManagementService ..> PlayerValidationException : lança
     CompetitionLinkHandler ..|> LinkHandler : implementa (módulo link)
     CompetitionLinkHandler --> ParticipationRepository
+    CompetitionLinkHandler ..> UserProvisioningService : usa (módulo user)
+    CompetitionService ..> UserService : usa (módulo user)
+    EntryRequestService ..> UserService : usa (módulo user)
+    PlayerManagementService ..> UserService : usa (módulo user)
+    CompetitionsController ..> CurrentUserService : usa (módulo loginsession)
+    CompetitionService ..> CurrentUserService : usa (módulo loginsession)
+    EntryRequestService ..> CurrentUserService : usa (módulo loginsession)
+    PlayerManagementService ..> CurrentUserService : usa (módulo loginsession)
     CompetitionSecurityConfigContributor ..|> SecurityConfigContributor : implementa (módulo loginsecurity)
     CompetitionsController --> CompetitionService
     CompetitionsController --> CompetitionViewService
@@ -840,9 +878,11 @@ classDiagram
     PlayersController ..> ParticipationMapper : usa
 ```
 
-`CompetitionLinkHandler` é o único ponto do sistema que cria um `User` (em `complete()`, na
-conclusão do registro) — todo o resto do módulo só lê usuários já existentes via
-`user.UserRepository`.
+`CompetitionLinkHandler` cria o `User` na conclusão do registro (`complete()`) via
+`user.UserProvisioningService` — o mesmo serviço do bootstrap do administrador. O resto do módulo
+só lê usuários já existentes via `user.UserService`, e descobre quem está logado via
+`loginsession.CurrentUserService` — nenhuma classe daqui toca um repositório de `user` (spec
+05-029).
 
 As 5 exceções (`CompetitionNotFoundException`, `CompetitionValidationException`,
 `EntryRequestValidationException`, `PlayerNotFoundException`, `PlayerValidationException`) moram
@@ -856,7 +896,7 @@ sequenceDiagram
     actor A as Administrador
     participant CC as CompetitionsController
     participant CS as CompetitionService
-    participant UR as UserRepository<br/>(módulo user)
+    participant US as UserService<br/>(módulo user)
     participant PR as ParticipationRepository
     participant AL as AuditLogService<br/>(módulo log)
     participant LiS as LinkService<br/>(módulo link)
@@ -868,7 +908,7 @@ sequenceDiagram
     CS->>CS: save(Competition, status=AWAITING_INVITES)
     CS->>AL: record(COMPETITION_CREATED)
     loop cada e-mail convidado
-        CS->>UR: findByEmail(email).filter(isRegistered)
+        CS->>US: findRegisteredByEmail(email)
         CS->>PR: save(Participation, status=EMAIL_NOT_SENT, requestType=INVITE)
         CS->>AL: record(PARTICIPATION_STATUS_CHANGED)
     end
@@ -898,7 +938,8 @@ sequenceDiagram
     participant ERC as EntryRequestsController
     participant ERS as EntryRequestService
     participant Cap as CaptchaService<br/>(módulo captcha)
-    participant UR as UserRepository<br/>(módulo user)
+    participant US as UserService<br/>(módulo user)
+    participant UPS as UserProvisioningService<br/>(módulo user)
     participant PR as ParticipationRepository
     participant LiS as LinkService<br/>(módulo link)
     participant H as CompetitionLinkHandler
@@ -906,7 +947,7 @@ sequenceDiagram
     J->>ERC: POST /competitions/{id}/entry-requests {email, captchaToken}
     ERC->>ERS: requestEntry(id, request)
     ERS->>Cap: verify(captchaToken)
-    ERS->>UR: findByEmail(email)
+    ERS->>US: findByEmail(email)
     ERS->>PR: cria/atualiza Participation (requestType=REQUEST, status=EMAIL_NOT_SENT)
     ERS->>LiS: create("competition-entry", LinkPayload{userId, email, extra={participationId}})
     ERS->>PR: save(status=EMAIL_SENT)
@@ -923,7 +964,7 @@ sequenceDiagram
         H-->>LiS: LinkOutcome.pending()
         Note over J,H: 2ª fase: POST .../registration {name}
         LiS->>H: complete(payload, {name})
-        H->>UR: save(new User{registered=true})
+        H->>UPS: createUser(email, name, [PLAYER])
         H->>PR: save(Participation{user, status=IN_COMPETITION, joinedAt})
         H-->>LiS: LinkOutcome.authenticated(user.id, redirectData)
     else payload.userId() != null (já tem conta)

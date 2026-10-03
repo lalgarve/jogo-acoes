@@ -6,8 +6,10 @@ import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import dev.leilaalgarve.jogoacoes.log.AuditLogService;
 import dev.leilaalgarve.jogoacoes.loginsession.LoginLinkHandler;
 import dev.leilaalgarve.jogoacoes.user.RoleRepository;
+import dev.leilaalgarve.jogoacoes.user.UserProvisioningService;
 import dev.leilaalgarve.jogoacoes.user.UserRepository;
 import dev.leilaalgarve.jogoacoes.user.UserRoleRepository;
+import dev.leilaalgarve.jogoacoes.user.UserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -43,9 +45,10 @@ class LinkRouterKeyUniquenessTest {
 
     @Test
     void everyRealHandlerHasANonNullUniqueKey() {
-        LoginLinkHandler loginLinkHandler = new LoginLinkHandler(userRoleRepository);
+        LoginLinkHandler loginLinkHandler = new LoginLinkHandler(new UserService(userRepository, userRoleRepository));
         CompetitionLinkHandler competitionLinkHandler = new CompetitionLinkHandler(
-                participationRepository, userRepository, roleRepository, userRoleRepository, auditLogService);
+                participationRepository, new UserProvisioningService(userRepository, roleRepository, userRoleRepository),
+                auditLogService);
 
         LinkRouter router = new LinkRouter(List.of(loginLinkHandler, competitionLinkHandler));
 

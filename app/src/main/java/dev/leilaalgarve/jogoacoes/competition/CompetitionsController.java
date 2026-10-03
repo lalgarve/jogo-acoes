@@ -9,12 +9,9 @@ import dev.leilaalgarve.jogoacoes.api.model.CompetitionSummary;
 import dev.leilaalgarve.jogoacoes.api.model.DecideInviteEmailTimingRequest;
 import dev.leilaalgarve.jogoacoes.api.model.MyCompetitions;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionService;
-import dev.leilaalgarve.jogoacoes.user.RoleName;
-import dev.leilaalgarve.jogoacoes.user.User;
-import dev.leilaalgarve.jogoacoes.user.UserRepository;
+import dev.leilaalgarve.jogoacoes.loginsession.CurrentUserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 
@@ -26,13 +23,13 @@ public class CompetitionsController implements CompetitionsApi, MyCompetitionsAp
 
     private final CompetitionService competitionService;
     private final CompetitionViewService competitionViewService;
-    private final UserRepository userRepository;
+    private final CurrentUserService currentUserService;
 
     public CompetitionsController(CompetitionService competitionService, CompetitionViewService competitionViewService,
-                                   UserRepository userRepository) {
+                                   CurrentUserService currentUserService) {
         this.competitionService = competitionService;
         this.competitionViewService = competitionViewService;
-        this.userRepository = userRepository;
+        this.currentUserService = currentUserService;
     }
 
     /** Both generated interfaces declare this default the same way (empty) -- resolves the diamond. */
@@ -60,26 +57,17 @@ public class CompetitionsController implements CompetitionsApi, MyCompetitionsAp
 
     @Override
     public ResponseEntity<MyCompetitions> listMyCompetitions() {
-        return ResponseEntity.ok(competitionViewService.listMyCompetitions(currentUser().getId()));
+        return ResponseEntity.ok(competitionViewService.listMyCompetitions(currentUserService.currentUser().getId()));
     }
 
     @Override
     public ResponseEntity<CompetitionDetail> getCompetitionDetail(Long competitionId) {
-        return competitionViewService.getCompetitionDetail(competitionId, currentUser().getId(), isAdministrator())
+        return competitionViewService.getCompetitionDetail(competitionId, currentUserService.currentUser().getId(),
+                        currentUserService.currentUserIsAdministrator())
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    private User currentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + email));
-    }
-
-    private boolean isAdministrator() {
-        return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_" + RoleName.ADMINISTRATOR));
-    }
 
     private static Competition toApiModel(dev.leilaalgarve.jogoacoes.competition.Competition competition) {
         return new Competition()

@@ -6,20 +6,15 @@ import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkInvalidException;
 import dev.leilaalgarve.jogoacoes.log.AuditLogService;
 import dev.leilaalgarve.jogoacoes.log.LogType;
-import dev.leilaalgarve.jogoacoes.user.Role;
 import dev.leilaalgarve.jogoacoes.user.RoleName;
-import dev.leilaalgarve.jogoacoes.user.RoleRepository;
 import dev.leilaalgarve.jogoacoes.user.User;
-import dev.leilaalgarve.jogoacoes.user.UserRepository;
-import dev.leilaalgarve.jogoacoes.user.UserRole;
-import dev.leilaalgarve.jogoacoes.user.UserRoleId;
-import dev.leilaalgarve.jogoacoes.user.UserRoleRepository;
+import dev.leilaalgarve.jogoacoes.user.UserProvisioningService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,18 +31,13 @@ public class CompetitionLinkHandler implements LinkHandler {
     public static final String PARTICIPATION_ID_EXTRA_KEY = "participationId";
 
     private final ParticipationRepository participationRepository;
-    private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
-    private final UserRoleRepository userRoleRepository;
+    private final UserProvisioningService userProvisioningService;
     private final AuditLogService auditLogService;
 
-    public CompetitionLinkHandler(ParticipationRepository participationRepository, UserRepository userRepository,
-                                   RoleRepository roleRepository, UserRoleRepository userRoleRepository,
-                                   AuditLogService auditLogService) {
+    public CompetitionLinkHandler(ParticipationRepository participationRepository,
+                                   UserProvisioningService userProvisioningService, AuditLogService auditLogService) {
         this.participationRepository = participationRepository;
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.userRoleRepository = userRoleRepository;
+        this.userProvisioningService = userProvisioningService;
         this.auditLogService = auditLogService;
     }
 
@@ -76,12 +66,7 @@ public class CompetitionLinkHandler implements LinkHandler {
     public LinkOutcome complete(LinkPayload payload, Map<String, String> extra) {
         Participation participation = participationFor(payload);
 
-        User user = new User();
-        user.setName(extra.get("name"));
-        user.setEmail(payload.email());
-        user.setRegistered(true);
-        user = userRepository.save(user);
-        assignRole(user, RoleName.PLAYER);
+        User user = userProvisioningService.createUser(payload.email(), extra.get("name"), List.of(RoleName.PLAYER));
 
         participation.setUser(user);
         participation.setStatus(ParticipationStatus.IN_COMPETITION);
@@ -124,16 +109,5 @@ public class CompetitionLinkHandler implements LinkHandler {
         Map<String, String> redirectData = new HashMap<>();
         redirectData.put("redirectTo", "/competitions/" + participation.getCompetition().getId());
         return LinkOutcome.authenticated(userId, redirectData);
-    }
-
-    private void assignRole(User user, String roleName) {
-        Role role = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new IllegalStateException("Role not seeded: " + roleName));
-        UserRole userRole = new UserRole();
-        userRole.setId(new UserRoleId(user.getId(), role.getId()));
-        userRole.setUser(user);
-        userRole.setRole(role);
-        userRole.setAssignedAt(LocalDateTime.now());
-        userRoleRepository.save(userRole);
     }
 }

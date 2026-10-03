@@ -17,9 +17,9 @@ import dev.leilaalgarve.jogoacoes.link.LinkService;
 import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import dev.leilaalgarve.jogoacoes.log.AuditLogService;
 import dev.leilaalgarve.jogoacoes.log.LogType;
+import dev.leilaalgarve.jogoacoes.loginsession.CurrentUserService;
 import dev.leilaalgarve.jogoacoes.user.User;
-import dev.leilaalgarve.jogoacoes.user.UserRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
+import dev.leilaalgarve.jogoacoes.user.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,17 +34,20 @@ public class PlayerManagementService {
     private final ParticipationRepository participationRepository;
     private final LinkService linkService;
     private final EmailSender emailSender;
-    private final UserRepository userRepository;
+    private final UserService userService;
+    private final CurrentUserService currentUserService;
     private final AuditLogService auditLogService;
 
     public PlayerManagementService(CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
                                     LinkService linkService, EmailSender emailSender,
-                                    UserRepository userRepository, AuditLogService auditLogService) {
+                                    UserService userService, CurrentUserService currentUserService,
+                                    AuditLogService auditLogService) {
         this.competitionRepository = competitionRepository;
         this.participationRepository = participationRepository;
         this.linkService = linkService;
         this.emailSender = emailSender;
-        this.userRepository = userRepository;
+        this.userService = userService;
+        this.currentUserService = currentUserService;
         this.auditLogService = auditLogService;
     }
 
@@ -67,7 +70,7 @@ public class PlayerManagementService {
             // The invited e-mail may already have a registered User from a previous,
             // unrelated competition -- link it now so sendInviteEmail/templateFor knows to
             // send a login link instead of an invite asking them to create an account.
-            participation.setUser(userRepository.findByEmail(email).filter(User::isRegistered).orElse(null));
+            participation.setUser(userService.findRegisteredByEmail(email).orElse(null));
             participation.setStatus(ParticipationStatus.EMAIL_NOT_SENT);
             participation.setRequestType(RequestType.INVITE);
             participation = participationRepository.save(participation);
@@ -94,7 +97,7 @@ public class PlayerManagementService {
         // first; a link clicked afterward just fails to resolve the participation, same as
         // any other invalid-link case.
         participationRepository.delete(participation);
-        auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participationId, currentUser(),
+        auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participationId, currentUserService.currentUser(),
                 "Participation for " + email + " removed from competition");
     }
 
@@ -116,7 +119,7 @@ public class PlayerManagementService {
         Map<String, String> extra = Map.of(CompetitionLinkHandler.PARTICIPATION_ID_EXTRA_KEY, String.valueOf(participation.getId()));
         LinkCreationResult created = linkService.create(CompetitionLinkHandler.KEY,
                 new LinkPayload(userId, participation.getEmail(), extra));
-        auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), currentUser(),
+        auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), currentUserService.currentUser(),
                 "Invite login link issued to " + participation.getEmail());
 
         emailSender.send(new EmailRequest(userId, participation.getEmail(),
@@ -128,7 +131,7 @@ public class PlayerManagementService {
         }
         participation.setStatus(ParticipationStatus.EMAIL_SENT);
         participationRepository.save(participation);
-        auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participation.getId(), currentUser(),
+        auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participation.getId(), currentUserService.currentUser(),
                 "Participation status changed to EMAIL_SENT");
     }
 
@@ -149,9 +152,4 @@ public class PlayerManagementService {
                 .orElseThrow(() -> new PlayerNotFoundException(competitionId, participationId));
     }
 
-    private User currentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + email));
-    }
 }

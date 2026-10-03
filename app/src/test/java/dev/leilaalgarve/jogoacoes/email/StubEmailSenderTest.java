@@ -5,6 +5,8 @@ import dev.leilaalgarve.jogoacoes.email.SentEmail;
 import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
 import dev.leilaalgarve.jogoacoes.user.User;
 import dev.leilaalgarve.jogoacoes.user.UserRepository;
+import dev.leilaalgarve.jogoacoes.user.UserRoleRepository;
+import dev.leilaalgarve.jogoacoes.user.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
@@ -30,6 +32,9 @@ class StubEmailSenderTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
 
     private EmailSender emailSender;
 
@@ -84,11 +89,12 @@ class StubEmailSenderTest {
         // eventually collide with a real user once enough tests have run before this one.
         assertThatThrownBy(() -> emailSender.send(new EmailRequest(Long.MAX_VALUE, fixed("carol"), null,
                 "Copa Jogo de Ações", null, "https://jogo-acoes.example/invite/qqq", EmailTemplate.INVITE)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalStateException.class);
     }
 
     private EmailSender newStubEmailSender() {
-        return new StubEmailSender(new SentEmailRecorder(sentEmailRepository, userRepository));
+        UserService userService = new UserService(userRepository, userRoleRepository);
+        return new StubEmailSender(new SentEmailRecorder(sentEmailRepository, userService));
     }
 
     private static User newUser(String email) {

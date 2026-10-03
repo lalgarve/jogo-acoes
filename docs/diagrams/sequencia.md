@@ -21,13 +21,13 @@ sequenceDiagram
     actor J as Jogador
     participant LC as LoginController<br/>(loginsession)
     participant LiS as LinkService<br/>(link)
-    participant UR as UserRepository<br/>(user)
+    participant US as UserService<br/>(user)
     participant AL as AuditLogService<br/>(log)
     participant ES as EmailSender<br/>(email)
 
     J->>LC: POST /login-requests {email}
-    LC->>UR: findByEmail(email)
-    UR-->>LC: User (ou vazio)
+    LC->>US: findByEmail(email)
+    US-->>LC: User (ou vazio)
     alt e-mail desconhecido
         Note over LC: não revela se o e-mail existe -- retorna igual
         LC-->>J: 202 Accepted
@@ -85,7 +85,7 @@ sequenceDiagram
                     LC-->>J: 202 Accepted
                 else outcome autenticado
                     LiS->>LRR: save(record com usedAt = now)
-                    LiS->>SS: establish(outcome.userId(), token)
+                    LiS->>SS: establish(outcome.userId(), record)
                     SS->>SS: enforceDeviceLimit(user)<br/>encerra a sessão mais antiga se no limite
                     SS->>SS: monta Authentication (roles) + salva SecurityContext
                     SS->>SS: save(LoginSession{userId, linkRecord, deviceId, createdAt})
@@ -98,7 +98,7 @@ sequenceDiagram
 ```
 
 `LoginLinkHandler.consume`/`alreadyAuthenticated` decidem o destino (`admin-page` ou
-`competitions-list`) consultando o papel do usuário (`UserRoleRepository`) — omitido do diagrama
+`competitions-list`) consultando o papel do usuário (`UserService.hasRole`) — omitido do diagrama
 por brevidade, é uma chamada só.
 
 ### 1c. Processo de login, módulo a módulo (spec 05-027)
@@ -117,16 +117,15 @@ sequenceDiagram
     participant LiR as LinkRouter<br/>(link)
     participant LLH as LoginLinkHandler<br/>(loginsession)
     participant LLSS as LoginLinkSessionService<br/>(loginsession)
-    participant UR as UserRepository<br/>(user)
-    participant URR as UserRoleRepository<br/>(user)
+    participant US as UserService<br/>(user)
 
     Note over LC: rota já liberada por<br/>LoginSecurityConfigContributor (loginsession)<br/>no SecurityFilterChain de SecurityConfig (loginsecurity)
 
     rect rgb(240,240,255)
-    Note over J,UR: Fase 1 — pedir o link
+    Note over J,US: Fase 1 — pedir o link
     J->>LC: POST /login-requests {email}
-    LC->>UR: findByEmail(email)
-    UR-->>LC: User
+    LC->>US: findByEmail(email)
+    US-->>LC: User
     LC->>LiS: invalidateActiveLinksFor(userId)
     LC->>LiS: create("login", LinkPayload)
     LiS-->>LC: LinkCreationResult{id, token}
@@ -134,7 +133,7 @@ sequenceDiagram
     end
 
     rect rgb(240,255,240)
-    Note over J,URR: Fase 2 — consumir o link
+    Note over J,US: Fase 2 — consumir o link
     J->>LC: GET /login-links/{token}
     LC->>LiS: consume(token)
     LiS->>LiR: handlerFor("login")
@@ -142,14 +141,14 @@ sequenceDiagram
     LiS->>LLSS: currentAuthenticatedUserId()
     LLSS-->>LiS: vazio (dispositivo novo)
     LiS->>LLH: consume(payload)
-    LLH->>URR: findByUser_Id(userId)
-    URR-->>LLH: List~UserRole~
+    LLH->>US: hasRole(userId, ADMINISTRATOR)
+    US-->>LLH: boolean
     LLH-->>LiS: LinkOutcome.authenticated(userId, redirectData)
-    LiS->>LLSS: establish(userId, token)
-    LLSS->>UR: findById(userId)
-    UR-->>LLSS: User
-    LLSS->>URR: findByUser_Id(userId)
-    URR-->>LLSS: List~UserRole~
+    LiS->>LLSS: establish(userId, linkRecord)
+    LLSS->>US: getById(userId)
+    US-->>LLSS: User
+    LLSS->>US: roleNamesOf(userId)
+    US-->>LLSS: List~String~
     Note over LLSS: monta Authentication,<br/>grava SecurityContext,<br/>salva LoginSession
     LiS-->>LC: LinkOutcome
     LC-->>J: 200 OK {redirectTo}
@@ -232,7 +231,7 @@ sequenceDiagram
     actor A as Administrador
     participant CC as CompetitionsController
     participant CS as CompetitionService
-    participant UR as UserRepository
+    participant US as UserService
     participant PR as ParticipationRepository
     participant AL as AuditLogService
     participant LiS as LinkService
@@ -244,8 +243,8 @@ sequenceDiagram
     CS->>CS: save(Competition, status=AWAITING_INVITES)
     CS->>AL: record(COMPETITION_CREATED)
     loop cada e-mail convidado
-        CS->>UR: findByEmail(email).filter(isRegistered)
-        UR-->>CS: User (ou vazio) -- já tem conta?
+        CS->>US: findRegisteredByEmail(email)
+        US-->>CS: User (ou vazio) -- já tem conta?
         CS->>PR: save(Participation, status=EMAIL_NOT_SENT, requestType=INVITE)
         CS->>AL: record(PARTICIPATION_STATUS_CHANGED)
     end
@@ -280,7 +279,7 @@ sequenceDiagram
     participant ERC as EntryRequestsController
     participant ERS as EntryRequestService
     participant Cap as CaptchaService
-    participant UR as UserRepository
+    participant US as UserService
     participant PR as ParticipationRepository
     participant LiS as LinkService
     participant AL as AuditLogService
@@ -290,8 +289,8 @@ sequenceDiagram
     ERC->>ERS: requestEntry(id, request)
     ERS->>Cap: verify(captchaToken)
     Cap-->>ERS: ok (ou CaptchaInvalidException)
-    ERS->>UR: findByEmail(email)
-    UR-->>ERS: User (ou vazio)
+    ERS->>US: findByEmail(email)
+    US-->>ERS: User (ou vazio)
     Note over ERS: template = REGISTRATION_LINK (sem conta)<br/>ou LOGIN_LINK (já registrado)
     ERS->>PR: find ou cria Participation (requestType=REQUEST)
     ERS->>PR: save(participation, status=EMAIL_NOT_SENT)
@@ -318,8 +317,7 @@ sequenceDiagram
     participant LiS as LinkService
     participant H as CompetitionLinkHandler
     participant PR as ParticipationRepository
-    participant UR as UserRepository
-    participant RR as RoleRepository /<br/>UserRoleRepository
+    participant UPS as UserProvisioningService
     participant AL as AuditLogService
     participant SS as LinkSessionService
 
@@ -342,12 +340,12 @@ sequenceDiagram
             J->>LC: POST /login-links/{token}/registration {name}
             LC->>LiS: complete(token, {name})
             LiS->>H: complete(payload, {name})
-            H->>UR: save(new User{name, email, registered=true})
-            H->>RR: assignRole(user, PLAYER)
+            H->>UPS: createUser(email, name, [PLAYER])
+            UPS-->>H: User{registered=true}
             H->>PR: save(Participation{user, status=IN_COMPETITION, joinedAt})
             H->>AL: record(PARTICIPATION_STATUS_CHANGED)
             H-->>LiS: LinkOutcome.authenticated(user.id, redirectData)
-            LiS->>SS: establish(user.id, token)
+            LiS->>SS: establish(user.id, record)
             Note over SS: mesmo mecanismo de sessão/limite<br/>de dispositivos da seção 1b
             LiS-->>LC: LinkOutcome{redirectTo=competition-page}
             LC-->>J: 200 + redireciona
