@@ -76,3 +76,31 @@ implementação vai rodar isso na própria máquina) — `mvn -pl email-service 
 deve passar; se algum cenário falhar, o SES real do LocalStack pode se comportar de forma
 sutilmente diferente do suposto em `INVALID_BODY`/`VALID_BODY` (`RegisterTemplatesSteps.java`),
 que não foram exercitados contra SES de verdade ainda.
+
+### Tentativa em 2026-10-02 — não foi possível rodar com Testcontainers
+
+Desta vez com Docker Desktop disponível e rodando na máquina (CLI e `docker info` respondendo
+normalmente), mas `mvn -pl email-service -am test` continuou falhando com o mesmo
+`IllegalStateException: Could not find a valid Docker environment` em **todas** as formas de
+acesso tentadas:
+
+- Named pipe do Windows, tanto o default do Testcontainers quanto apontando explicitamente pro
+  pipe do contexto `desktop-linux` (`npipe:////./pipe/dockerDesktopLinuxEngine`).
+- `DOCKER_HOST=tcp://localhost:2375` (após habilitar "Expose daemon on tcp://localhost:2375
+  without TLS" nas configurações do Docker Desktop) — `curl`/`docker version` nessa porta
+  respondem com dados reais, mas o cliente Java (`docker-java`, usado pelo Testcontainers)
+  recebe uma resposta vazia/placeholder (`BadRequestException Status 400` com um corpo de
+  `/info` com todos os campos zerados/vazios, só preenchendo
+  `Labels: com.docker.desktop.address=...`).
+- Dentro do WSL (Ubuntu), tanto o socket Unix default quanto `DOCKER_HOST=unix:///var/run/
+  docker.sock` explícito — mesmo resultado: `docker info` via CLI funciona normal, mas o
+  processo Java recebe o mesmo stub vazio.
+
+Ou seja, em 4 transportes diferentes (2 named pipes, 1 TCP, 1 Unix socket), a CLI oficial do
+Docker sempre recebe dados reais e o cliente Java do Testcontainers sempre recebe o mesmo corpo
+vazio — o padrão sugere alguma política do Docker Desktop restringindo acesso à API só pro
+binário oficial do `docker` (possivelmente "Enhanced Container Isolation"/Hardened Desktop ou
+equivalente), não um problema de qual socket/porta usar. Não foi investigado mais a fundo nessa
+sessão por falta de tempo — ver decisão em `specs/05-025-servico-email-templates/spec.md`
+(ou commit de decisão correspondente) sobre abandonar Testcontainers neste módulo em favor de
+apontar os testes para os serviços já subidos via `docker-compose.yml`.
