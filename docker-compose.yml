@@ -115,6 +115,11 @@ services:
       # directly on the runner, not inside this container) -- from inside the app container,
       # "localhost" is itself, so this overrides it to the compose network hostname.
       SPRING_CLOUD_AWS_SQS_ENDPOINT: http://localstack:4566
+      # Test API key for calling email-service as client "jogo-acoes" (spec 05-030) -- docker/
+      # sandbox only, versioned on purpose, not a secret. Matches the row restored by
+      # scripts/test-api-key.sh (docker/postgres-email-service/test-data/README.md). Nothing in
+      # app reads it yet: app doesn't call email-service so far.
+      EMAIL_SERVICE_API_KEY: dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU
     ports:
       - "8080:8080"
 
