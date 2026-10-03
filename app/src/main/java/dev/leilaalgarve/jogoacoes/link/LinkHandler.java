@@ -5,7 +5,7 @@ import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
 import java.util.Map;
 
 /**
- * Implemented by each consumer module (`login`, `competition`), never by `link` itself — that's
+ * Implemented by each consumer module (`loginsession`, `competition`), never by `link` itself — that's
  * what inverts the dependency the old direct {@code LoginLink}/{@code Participation} FK had.
  */
 public interface LinkHandler {

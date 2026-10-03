@@ -19,11 +19,11 @@ na seção 4b.
 ```mermaid
 sequenceDiagram
     actor J as Jogador
-    participant LC as LoginController
-    participant LiS as LinkService
-    participant UR as UserRepository
-    participant AL as AuditLogService
-    participant ES as EmailSender
+    participant LC as LoginController<br/>(loginsession)
+    participant LiS as LinkService<br/>(link)
+    participant UR as UserRepository<br/>(user)
+    participant AL as AuditLogService<br/>(log)
+    participant ES as EmailSender<br/>(email)
 
     J->>LC: POST /login-requests {email}
     LC->>UR: findByEmail(email)
@@ -47,12 +47,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor J as Jogador
-    participant LC as LoginController
-    participant LiS as LinkService
-    participant LRR as LinkRecordRepository
-    participant Router as LinkRouter
-    participant H as LinkHandler<br/>(LoginLinkHandler ou CompetitionLinkHandler)
-    participant SS as LinkSessionService<br/>(LoginLinkSessionService)
+    participant LC as LoginController<br/>(loginsession)
+    participant LiS as LinkService<br/>(link)
+    participant LRR as LinkRecordRepository<br/>(link)
+    participant Router as LinkRouter<br/>(link)
+    participant H as LinkHandler<br/>(LoginLinkHandler em loginsession<br/>ou CompetitionLinkHandler em competition)
+    participant SS as LinkSessionService<br/>(LoginLinkSessionService, loginsession)
 
     J->>LC: GET /login-links/{token}
     LC->>LiS: consume(token)
@@ -101,12 +101,67 @@ sequenceDiagram
 `competitions-list`) consultando o papel do usuário (`UserRoleRepository`) — omitido do diagrama
 por brevidade, é uma chamada só.
 
+### 1c. Processo de login, módulo a módulo (spec 05-027)
+
+Mesmo fluxo de 1a/1b para o caso mais comum (login avulso num dispositivo novo), mas com cada
+participante identificado pelo módulo onde mora depois da divisão de `login` em `user`,
+`loginsession` e `loginsecurity`. Nenhuma seta volta de `user`/`link` para `loginsession`: quem
+chama de volta (`LinkService` → `LoginLinkHandler`/`LoginLinkSessionService`) o faz só pelas
+interfaces `LinkHandler`/`LinkSessionService` que o próprio `link` declara.
+
+```mermaid
+sequenceDiagram
+    actor J as Jogador
+    participant LC as LoginController<br/>(loginsession)
+    participant LiS as LinkService<br/>(link)
+    participant LiR as LinkRouter<br/>(link)
+    participant LLH as LoginLinkHandler<br/>(loginsession)
+    participant LLSS as LoginLinkSessionService<br/>(loginsession)
+    participant UR as UserRepository<br/>(user)
+    participant URR as UserRoleRepository<br/>(user)
+
+    Note over LC: rota já liberada por<br/>LoginSecurityConfigContributor (loginsession)<br/>no SecurityFilterChain de SecurityConfig (loginsecurity)
+
+    rect rgb(240,240,255)
+    Note over J,UR: Fase 1 — pedir o link
+    J->>LC: POST /login-requests {email}
+    LC->>UR: findByEmail(email)
+    UR-->>LC: User
+    LC->>LiS: invalidateActiveLinksFor(userId)
+    LC->>LiS: create("login", LinkPayload)
+    LiS-->>LC: LinkCreationResult{id, token}
+    LC-->>J: 202 Accepted (e-mail disparado à parte)
+    end
+
+    rect rgb(240,255,240)
+    Note over J,URR: Fase 2 — consumir o link
+    J->>LC: GET /login-links/{token}
+    LC->>LiS: consume(token)
+    LiS->>LiR: handlerFor("login")
+    LiR-->>LiS: LoginLinkHandler
+    LiS->>LLSS: currentAuthenticatedUserId()
+    LLSS-->>LiS: vazio (dispositivo novo)
+    LiS->>LLH: consume(payload)
+    LLH->>URR: findByUser_Id(userId)
+    URR-->>LLH: List~UserRole~
+    LLH-->>LiS: LinkOutcome.authenticated(userId, redirectData)
+    LiS->>LLSS: establish(userId, token)
+    LLSS->>UR: findById(userId)
+    UR-->>LLSS: User
+    LLSS->>URR: findByUser_Id(userId)
+    URR-->>LLSS: List~UserRole~
+    Note over LLSS: monta Authentication,<br/>grava SecurityContext,<br/>salva LoginSession
+    LiS-->>LC: LinkOutcome
+    LC-->>J: 200 OK {redirectTo}
+    end
+```
+
 ## 2. Verificação de e-mail antes do cadastro
 
 > ⚠️ **Não implementado.** `EmailValidationService`/`MxRecordResolver`/`DisposableDomainRepository`/
 > `DisposableDomain`/`EmailRejectedException`/`DisposableDomainRefreshJob` não existem no código
 > atual (`app/src/main/java/`) nem há tabela `disposable_domain` em nenhuma migração Flyway —
-> conferido nesta sessão (2026-09-16) ao revisar o módulo `login` para a próxima spec. Esta seção
+> conferido nesta sessão (2026-09-16) ao revisar o módulo `login` (hoje dividido em `user`/`loginsession`/`loginsecurity`, spec 05-027) para a próxima spec. Esta seção
 > documenta um mecanismo que só existe aqui e em [`der.md`](der.md#notas-de-modelagem)/
 > [`classes.md`](classes.md#verificação-de-e-mail), nunca implementado. Mantido como está por ora
 > (fora do escopo desta revisão) — decidir depois se vira uma spec própria ou se a documentação é

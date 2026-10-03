@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 
 /**
  * Replaces {@code LoginLink}: `userId`/`email` are real columns (queryable/indexable), but
- * neither has a FK to another module's table anymore — `link` doesn't know what `login`'s
+ * neither has a FK to another module's table anymore — `link` doesn't know what `user`'s
  * `User` or `competition`'s `Participation` even are. Whatever a specific {@link LinkHandler}
  * needs beyond those two fields is serialized, opaque to this module, into {@link #extraJson}.
  */

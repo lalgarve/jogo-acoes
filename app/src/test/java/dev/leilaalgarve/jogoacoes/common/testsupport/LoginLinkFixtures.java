@@ -2,13 +2,13 @@ package dev.leilaalgarve.jogoacoes.common.testsupport;
 
 import dev.leilaalgarve.jogoacoes.competition.CompetitionLinkHandler;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
+import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
 import dev.leilaalgarve.jogoacoes.link.LinkRecord;
 import dev.leilaalgarve.jogoacoes.link.LinkRecordRepository;
-import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
-import dev.leilaalgarve.jogoacoes.login.LoginLinkHandler;
-import dev.leilaalgarve.jogoacoes.login.User;
+import dev.leilaalgarve.jogoacoes.loginsession.LoginLinkHandler;
+import dev.leilaalgarve.jogoacoes.user.User;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;

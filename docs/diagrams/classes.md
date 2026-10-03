@@ -138,8 +138,9 @@ string `ADMINISTRATOR`/`PLAYER`, evitando *magic strings* onde o código compara
 sem alterar código (comentário original em `RoleName.java`).
 
 `LinkRecord`/`LoginSession.userId` não têm relacionamento desenhado com `User` (nem
-`LinkRecord.extraJson` com `Participation`) — desde a spec 05-003, ambas vivem no módulo
-`link`, que não conhece `User`/`Participation` (módulos `login`/`competition`); ver
+`LinkRecord.extraJson` com `Participation`) — desde a spec 05-003, `LinkRecord` vive no módulo
+`link`, que não conhece `User`/`Participation` (módulos `user`/`competition`), e `LoginSession`
+(em `loginsession` desde a spec 05-027, antes também em `link`) manteve a mesma decisão; ver
 [`der.md`](der.md#notas-de-modelagem) para o raciocínio completo. `LinkRouter`/`LinkHandler`
 (o mecanismo que desacopla `link` dos seus consumidores) e os diagramas de acoplamento
 antes/depois vivem em `specs/05-003-desacoplamento-login-link/spec.md`, não aqui — este

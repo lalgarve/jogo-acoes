@@ -1,7 +1,7 @@
 package dev.leilaalgarve.jogoacoes.bootstrap;
 
-import dev.leilaalgarve.jogoacoes.login.RoleName;
-import dev.leilaalgarve.jogoacoes.login.UserProvisioningService;
+import dev.leilaalgarve.jogoacoes.user.RoleName;
+import dev.leilaalgarve.jogoacoes.user.UserProvisioningService;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;

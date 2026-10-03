@@ -1,25 +1,24 @@
 package dev.leilaalgarve.jogoacoes.competition;
 
-import dev.leilaalgarve.jogoacoes.log.AuditLogService;
-
 import dev.leilaalgarve.jogoacoes.competition.Competition;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
-import dev.leilaalgarve.jogoacoes.log.LogType;
-import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
-import dev.leilaalgarve.jogoacoes.link.LinkService;
-import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
+import dev.leilaalgarve.jogoacoes.competition.CompetitionRepository;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
+import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
-import dev.leilaalgarve.jogoacoes.login.User;
-import dev.leilaalgarve.jogoacoes.email.EmailRequest;
-import dev.leilaalgarve.jogoacoes.email.EmailSender;
-import dev.leilaalgarve.jogoacoes.competition.CompetitionRepository;
-import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
-import dev.leilaalgarve.jogoacoes.login.UserRepository;
 import dev.leilaalgarve.jogoacoes.competition.exception.CompetitionNotFoundException;
 import dev.leilaalgarve.jogoacoes.competition.exception.PlayerNotFoundException;
 import dev.leilaalgarve.jogoacoes.competition.exception.PlayerValidationException;
+import dev.leilaalgarve.jogoacoes.email.EmailRequest;
+import dev.leilaalgarve.jogoacoes.email.EmailSender;
+import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
+import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
+import dev.leilaalgarve.jogoacoes.link.LinkService;
+import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
+import dev.leilaalgarve.jogoacoes.log.AuditLogService;
+import dev.leilaalgarve.jogoacoes.log.LogType;
+import dev.leilaalgarve.jogoacoes.user.User;
+import dev.leilaalgarve.jogoacoes.user.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
