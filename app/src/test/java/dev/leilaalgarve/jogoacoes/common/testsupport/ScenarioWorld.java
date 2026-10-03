@@ -4,7 +4,7 @@ import io.cucumber.spring.ScenarioScope;
 import dev.leilaalgarve.jogoacoes.api.model.CompetitionCreateRequest;
 import dev.leilaalgarve.jogoacoes.competition.Competition;
 import dev.leilaalgarve.jogoacoes.link.LinkRecord;
-import dev.leilaalgarve.jogoacoes.login.User;
+import dev.leilaalgarve.jogoacoes.user.User;
 import io.restassured.RestAssured;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.config.SessionConfig;

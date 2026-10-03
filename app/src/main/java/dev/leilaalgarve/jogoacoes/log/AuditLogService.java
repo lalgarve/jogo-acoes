@@ -1,9 +1,9 @@
 package dev.leilaalgarve.jogoacoes.log;
 
 import dev.leilaalgarve.jogoacoes.log.Log;
-import dev.leilaalgarve.jogoacoes.log.LogType;
-import dev.leilaalgarve.jogoacoes.login.User;
 import dev.leilaalgarve.jogoacoes.log.LogRepository;
+import dev.leilaalgarve.jogoacoes.log.LogType;
+import dev.leilaalgarve.jogoacoes.user.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

@@ -1,10 +1,10 @@
 package dev.leilaalgarve.jogoacoes.common.testsupport;
 
-import dev.leilaalgarve.jogoacoes.link.LinkRecord;
-import dev.leilaalgarve.jogoacoes.login.LoginLinkHandler;
-import dev.leilaalgarve.jogoacoes.login.User;
-import dev.leilaalgarve.jogoacoes.link.LinkRecordRepository;
 import dev.leilaalgarve.jogoacoes.common.testsupport.ScenarioWorld;
+import dev.leilaalgarve.jogoacoes.link.LinkRecord;
+import dev.leilaalgarve.jogoacoes.link.LinkRecordRepository;
+import dev.leilaalgarve.jogoacoes.loginsession.LoginLinkHandler;
+import dev.leilaalgarve.jogoacoes.user.User;
 import io.restassured.response.Response;
 import org.springframework.stereotype.Component;
 

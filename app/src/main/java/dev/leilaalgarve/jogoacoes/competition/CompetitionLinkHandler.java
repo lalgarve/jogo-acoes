@@ -2,18 +2,18 @@ package dev.leilaalgarve.jogoacoes.competition;
 
 import dev.leilaalgarve.jogoacoes.link.LinkHandler;
 import dev.leilaalgarve.jogoacoes.link.LinkOutcome;
-import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkInvalidException;
 import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
+import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkInvalidException;
 import dev.leilaalgarve.jogoacoes.log.AuditLogService;
 import dev.leilaalgarve.jogoacoes.log.LogType;
-import dev.leilaalgarve.jogoacoes.login.Role;
-import dev.leilaalgarve.jogoacoes.login.RoleName;
-import dev.leilaalgarve.jogoacoes.login.RoleRepository;
-import dev.leilaalgarve.jogoacoes.login.User;
-import dev.leilaalgarve.jogoacoes.login.UserRepository;
-import dev.leilaalgarve.jogoacoes.login.UserRole;
-import dev.leilaalgarve.jogoacoes.login.UserRoleId;
-import dev.leilaalgarve.jogoacoes.login.UserRoleRepository;
+import dev.leilaalgarve.jogoacoes.user.Role;
+import dev.leilaalgarve.jogoacoes.user.RoleName;
+import dev.leilaalgarve.jogoacoes.user.RoleRepository;
+import dev.leilaalgarve.jogoacoes.user.User;
+import dev.leilaalgarve.jogoacoes.user.UserRepository;
+import dev.leilaalgarve.jogoacoes.user.UserRole;
+import dev.leilaalgarve.jogoacoes.user.UserRoleId;
+import dev.leilaalgarve.jogoacoes.user.UserRoleRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 

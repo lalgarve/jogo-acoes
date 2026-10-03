@@ -1,10 +1,9 @@
 package dev.leilaalgarve.jogoacoes.log;
 
-import dev.leilaalgarve.jogoacoes.login.UserRepository;
-
 import dev.leilaalgarve.jogoacoes.log.Log;
 import dev.leilaalgarve.jogoacoes.log.LogType;
-import dev.leilaalgarve.jogoacoes.login.User;
+import dev.leilaalgarve.jogoacoes.user.User;
+import dev.leilaalgarve.jogoacoes.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

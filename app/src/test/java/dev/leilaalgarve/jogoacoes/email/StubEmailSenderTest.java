@@ -2,9 +2,9 @@ package dev.leilaalgarve.jogoacoes.email;
 
 import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.email.SentEmail;
-import dev.leilaalgarve.jogoacoes.login.User;
 import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
-import dev.leilaalgarve.jogoacoes.login.UserRepository;
+import dev.leilaalgarve.jogoacoes.user.User;
+import dev.leilaalgarve.jogoacoes.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
