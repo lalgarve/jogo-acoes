@@ -53,7 +53,8 @@ public class UserService {
 `getById` lança `IllegalStateException` — é o que os dois chamadores já fazem hoje
 (`SentEmailRecorder` lança `IllegalArgumentException`; unificar em `IllegalStateException`, porque
 nos dois casos o id vem de dentro do sistema, não da entrada do usuário — id ausente é bug, não
-erro de entrada). Conferir na implementação que nenhum teste depende da classe exata da exceção.
+erro de entrada). Na implementação, um teste dependia da classe exata:
+`StubEmailSenderTest.rejectsAnUnknownUserId` esperava `IllegalArgumentException` e passou a esperar `IllegalStateException`.
 
 `roleNamesOf` devolve `List<String>`, não `List<UserRole>`: o chamador só precisa do nome, e
 `UserRole`/`Role` deixam de ser vistos fora de `user`.
@@ -150,6 +151,13 @@ API está disponível na versão do projeto.
 
 O pacote gerado `api` não tem repositório, e `common/logging/RepositoryLoggingAspect` intercepta
 repositórios por pointcut (string), sem dependência de bytecode — nenhum dos dois dispara a regra.
+
+**Achado na implementação (T002):** a primeira versão da condição usava
+`repository.getAccessesToSelf()` e deixou passar 4 dos 18 itens — chamadas a métodos herdados
+(`save`, `findById`), que o ArchUnit atribui à interface do Spring Data que os declara, não ao
+repositório do projeto. A versão final percorre os acessos de cada classe de origem filtrando por
+`getTargetOwner()`, que é o tipo usado na chamada. Foi exatamente o caso "regra com furo" que a
+T002 existe para pegar.
 
 **Ordem: a regra vem primeiro** (pedido da Leila, 2026-10-03). Escrita antes de qualquer
 correção, ela tem que falhar listando exatamente os 18 itens do inventário. Isso prova que a regra
