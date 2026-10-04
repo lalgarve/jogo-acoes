@@ -69,6 +69,9 @@ Boot, multi-módulo Maven:
   checklist da Issue ou Issues próprias.
 - Testes: preferir dependência real a mock/fake sempre que der (ver seção "Testes" da
   constitution).
+- Banco: cada serviço no próprio schema, nunca no `public`; migrations em
+  `db/migration-<serviço>` e histórico do Flyway em `<schema>_schema_history` (seção "Banco de
+  dados: um schema por serviço" da constitution, spec 05-032).
 - Código de teste/dev nunca dentro de um módulo de produção (`app/`, `email-lambda/`) — mesmo
   atrás de profile/flag, mesmo que funcione, mesmo que a alternativa exija mais código. Sempre
   um módulo/aplicação separada (padrão `blackbox-proxy/`). `email-lambda/` já corrigido

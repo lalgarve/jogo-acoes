@@ -68,21 +68,34 @@ nenhum for definido). Cada um tem seu arquivo `application-<nome>.yml` em
 
 | Perfil | Banco | Quando usar |
 |---|---|---|
-| `sandbox` (padrão) | H2 embarcado, migrations em `db/migration-h2` | Rodar/testar sem precisar de Docker nem Postgres instalado |
+| `sandbox` (padrão) | PostgreSQL instalado nativamente no ambiente | Rodar/testar sem Docker (sandbox da Claude) |
 | `docker` | PostgreSQL real em containers | Localmente via `docker-compose up`, ou CI |
 | `docker,blackbox` | PostgreSQL real em containers | Testes de caixa-preta (Swagger UI, Selenium futuro, suíte Python) — ver "Ambiente de testes blackbox" abaixo |
 | `staging` | PostgreSQL real, gerido por outra equipe | Pré-produção |
 | `production` | PostgreSQL real, gerido por outra equipe | Produção |
 
-`sandbox` e `docker` compartilham o mesmo modelo de dados, mas em pastas de migration
-separadas (`db/migration-h2` e `db/migration`) — a versão para H2 não tem os comandos
-`GRANT`/`REVOKE` de papéis de banco que só existem no Postgres real.
+Todos os perfis usam as mesmas migrations (`db/migration-jogo-acoes`) e o mesmo schema
+próprio do serviço (`jogo_acoes`; o `email-service` usa `email_service`) — nada fica no schema
+`public` (spec 05-032, seção "Banco de dados: um schema por serviço" de
+`memory/constitution.md`).
 
 Para rodar localmente com Postgres real:
 
 ```
-docker-compose up
+docker compose up
 ```
+
+**Ao atualizar de uma versão anterior à spec 05-032**, recrie os volumes uma vez:
+
+```
+docker compose down -v
+docker compose up
+```
+
+Os scripts de `docker/postgres*/init/` (que criam o schema, os papéis e o `search_path`) só rodam
+num volume novo. Num volume antigo as tabelas continuam no `public` e o Flyway recriaria tudo no
+schema novo, deixando as antigas órfãs. O sistema está em pré-produção, então não há dado a
+preservar (a chave de API de teste se restaura com `./scripts/test-api-key.sh restore`).
 
 ## Ambiente de testes blackbox
 

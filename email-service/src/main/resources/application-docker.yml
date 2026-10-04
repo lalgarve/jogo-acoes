@@ -10,7 +10,6 @@ spring:
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
-    locations: classpath:db/migration
   cloud:
     aws:
       # LocalStack (docker-compose.yml service, SES already enabled there for email-lambda) --

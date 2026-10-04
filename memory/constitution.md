@@ -362,6 +362,43 @@ topo explicando por que aquele ambiente existe, quem o opera e quais restriçõe
 (ex.: "este ambiente não roda migração de schema sozinho, uma equipe separada faz isso à
 mão").
 
+## Banco de dados: um schema por serviço
+
+Todo serviço ou biblioteca que é dono de tabelas usa nomes que dizem de quem elas são, nunca
+os padrões do banco ou da ferramenta de migração:
+
+- **Schema próprio**, com o nome do serviço, e **nunca o `public`** — nenhuma tabela,
+  sequência ou histórico de migração fica lá.
+- **Pasta de migrations própria**, `db/migration-<serviço>`, fora da pasta padrão
+  (`db/migration`). A pasta padrão não serve nem como pasta-mãe: a varredura do Flyway é
+  recursiva, então um subdiretório dela seria encontrado por quem ainda usa o padrão.
+- **Tabela de histórico própria**, `<schema>_schema_history`, dentro do próprio schema.
+- **O schema é definido pela aplicação**, não pela URL de conexão: a URL muda por ambiente e,
+  fora de `sandbox`/`docker`, costuma vir de fora (de quem opera o banco).
+
+**Por quê**: o objetivo é poder colocar todos os serviços numa única instância do banco, e até
+num único banco, quando for conveniente — no início, o custo de memória de subir várias
+instâncias pesa — sem que nenhum nome colida e sem que um serviço dependa de ter um banco só
+para si. Instâncias separadas continuam possíveis: juntar ou separar vira só uma troca de URL.
+Os padrões colidem assim que dois donos de tabelas se encontram: aconteceu de verdade com uma
+biblioteca que trazia a própria `db/migration/V1__...sql` e quebrou o Flyway do serviço que a
+usava (duas migrations `V1`); e dois Flyway no mesmo schema `public` dividem o mesmo histórico
+padrão ou dependem da ordem em que rodam (`baseline-on-migrate`).
+
+**Exemplo usado neste projeto** (spec `05-032-schema-proprio-por-servico`):
+
+| Dono | Schema | Migrations | Histórico do Flyway |
+|---|---|---|---|
+| `app` | `jogo_acoes` | `db/migration-jogo-acoes` | `jogo_acoes_schema_history` |
+| `email-service` | `email_service` | `db/migration-email-service` | `email_service_schema_history` |
+| CLI do `api-key` (outro repositório) | `api_key` | `db/migration-api-key` | `api_key_schema_history` |
+
+O schema vai em `spring.datasource.hikari.schema` (vira o `search_path` de toda conexão do pool,
+inclusive as do Flyway e do Spring Session JDBC), `spring.flyway.schemas`/`table`/`locations` e
+`spring.jpa.properties.hibernate.default_schema`, todos no `application.yml` comum. Um teste
+(`SchemaLayoutTest` em cada módulo) confere no banco real, depois do Flyway, que nada ficou no
+`public`.
+
 ## Testes: preferir real a fake sempre que der
 
 Sempre que uma dependência externa tiver como rodar localmente/de verdade em teste
