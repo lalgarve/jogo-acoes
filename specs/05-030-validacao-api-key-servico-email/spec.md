@@ -10,7 +10,7 @@ O Serviço de E-mail (`email-service`, spec
 [05-025](../05-025-servico-email-templates/spec.md)) deixa de aceitar qualquer valor não vazio
 em `X-API-Key` e passa a validar a chave de verdade com a biblioteca `api-key-validation` do
 projeto [`lalgarve/api-key`](https://github.com/lalgarve/api-key) (release
-[v1.0.0](https://github.com/lalgarve/api-key/releases/tag/v1.0.0), spec
+[v1.0.1](https://github.com/lalgarve/api-key/releases/tag/v1.0.1), spec
 [008-validate-api-key](https://github.com/lalgarve/api-key/blob/main/specs/008-validate-api-key/spec.md),
 Issue [lalgarve/api-key#23](https://github.com/lalgarve/api-key/issues/23)). O dono dos
 templates passa a ser o cliente para o qual a chave foi emitida (`--client` da CLI), não mais
@@ -83,7 +83,7 @@ O esqueleto tem dois problemas que só a validação real resolve:
 - Migrar templates já cadastrados com o dono antigo (texto bruto da chave): o sistema está em
   pré-produção (`memory/constitution.md`, "Status do sistema"), esses registros podem ser
   descartados.
-- Qualquer mudança no projeto `api-key` — a release v1.0.0 é usada como está.
+- Qualquer mudança no projeto `api-key` — a release v1.0.1 é usada como está.
 
 ## Decisões em aberto
 

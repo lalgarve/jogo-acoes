@@ -11,7 +11,7 @@ valores em `staging`/`production`: estão versionados de propósito, não são s
 | API-KEY (texto puro) | `dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU` |
 | Pepper do HMAC (`API_KEY_HMAC_PEPPER`) | `jogo-acoes-test-pepper-not-a-secret` |
 | Validade | sem expiração, não revogada |
-| Gerada com | CLI [`lalgarve/api-key` v1.0.0](https://github.com/lalgarve/api-key/releases/tag/v1.0.0) (`api-key-1.0.0.jar`, sha256 `45f62968…0f26d`), em 2026-10-03 |
+| Gerada com | CLI [`lalgarve/api-key` v1.0.0](https://github.com/lalgarve/api-key/releases/tag/v1.0.0) em 2026-10-03; schema atualizado para a [v1.0.1](https://github.com/lalgarve/api-key/releases/tag/v1.0.1) em 2026-10-04 (tabela de histórico renomeada, mesma chave) |
 
 A chave em texto puro só aparece uma vez, na saída do `generate`, e não dá para recuperá-la a
 partir do banco (só o hash HMAC-SHA256 fica gravado). Por isso o resultado da geração foi
@@ -25,7 +25,7 @@ outro pepper, a chave volta `NOT_FOUND`.
 Schema `api_key` do banco `email_service` (container `db-email-service`, porta 5433), separado
 do schema `public` onde ficam as tabelas do próprio Serviço de E-mail — ver `plan.md` da spec
 05-030, "Onde fica a tabela `api_keys`". O dump contém o schema inteiro: a tabela `api_keys`
-(uma linha) e o `flyway_schema_history` da CLI, para que a CLI reconheça o schema como já
+(uma linha) e o histórico do Flyway da CLI (`api_key_schema_history`, nome usado desde a 1.0.1), para que a CLI reconheça o schema como já
 migrado ao rodar de novo contra ele.
 
 ## Restaurar
@@ -49,7 +49,7 @@ export SPRING_DATASOURCE_URL='jdbc:postgresql://localhost:5433/email_service?cur
 export SPRING_DATASOURCE_USERNAME=email_service_admin
 export SPRING_DATASOURCE_PASSWORD=email_service_admin
 export SPRING_FLYWAY_SCHEMAS=api_key
-java -jar api-key-1.0.0.jar generate --client jogo-acoes
+java -jar api-key-1.0.1.jar generate --client jogo-acoes
 ./scripts/test-api-key.sh dump
 ```
 
