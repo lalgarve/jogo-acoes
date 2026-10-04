@@ -1,6 +1,10 @@
 # Same rule as staging: a separate team owns the schema and runs migrations by hand.
 # The app only ever holds the limited jogo_acoes_app role and never runs Flyway itself. No
 # default url/password: both must be provided by that team, never hardcoded in the repo.
+# Schema and Flyway history names come from application.yml (spec 05-032): tables in schema
+# `jogo_acoes` (never public), history in `jogo_acoes.jogo_acoes_schema_history`, scripts from
+# db/migration-jogo-acoes. The team applying migrations by hand creates the schema and grants
+# jogo_acoes_app USAGE on it plus SELECT/INSERT/UPDATE/DELETE on its tables and sequences.
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL}

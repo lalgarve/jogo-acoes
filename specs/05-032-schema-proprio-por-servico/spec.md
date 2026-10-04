@@ -1,6 +1,6 @@
 # Spec: Um schema próprio por serviço no PostgreSQL
 
-**Status:** rascunho
+**Status:** implementada
 **Issue:** [#111](https://github.com/lalgarve/jogo-acoes/issues/111)
 **Iteração:** iteration-5
 

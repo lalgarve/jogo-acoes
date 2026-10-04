@@ -12,19 +12,19 @@ checklist nela.
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | `app`: `common/SchemaLayoutTest` (`@SpringBootTest`, Postgres real) consultando `information_schema`/`pg_catalog` depois do Flyway: nenhuma tabela nem sequência no `public`; todas as tabelas das migrations no schema `jogo_acoes`; histórico `jogo_acoes.jogo_acoes_schema_history` existe e não existe `flyway_schema_history` em schema nenhum. Rodar e registrar a falha | — | [P] | #111 |
-| T002 | `email-service`: mesmo teste para o schema `email_service` e `email_service_schema_history`. Rodar e registrar a falha | — | [P] | #111 |
-| T003 | `memory/constitution.md`: nova seção "Banco de dados: um schema por serviço" — schema com o nome do serviço, nada no `public`, `db/migration-<serviço>`, histórico `<schema>_schema_history`, schema definido pela aplicação (não pela URL); motivos (rodar tudo numa instância só, o `V1` duplicado do `api-key-core` 1.0.0). Atualizar o resumo do `CLAUDE.md` se couber | — | [P] | #111 |
-| T004 | `app`: mover `src/main/resources/db/migration/` para `db/migration-jogo-acoes/` (`git mv`, conteúdo intacto); no `application.yml` comum e no `src/test/resources/application.yml`: `spring.datasource.hikari.schema`, `spring.flyway.schemas`, `spring.flyway.table`, `spring.flyway.locations`, `spring.jpa.properties.hibernate.default_schema`; remover `flyway.locations` de `application-docker.yml`/`application-sandbox.yml` | T001 | | #111 |
-| T005 | `docker/postgres/init/01-roles.sql`: `CREATE SCHEMA jogo_acoes AUTHORIZATION jogo_acoes_admin`; `USAGE` e `ALTER DEFAULT PRIVILEGES` do `jogo_acoes_app` nesse schema em vez do `public`; `ALTER ROLE ... SET search_path = jogo_acoes` para os dois papéis | T004 | [P] | #111 |
-| T006 | `email-service`: o mesmo do T004 com `db/migration-email-service/`, schema `email_service` e `email_service_schema_history` (cobre a T004 da spec 05-030 — se a 05-030 já tiver feito, só conferir) | T002 | [P] | #111 |
-| T007 | `docker/postgres-email-service/init/01-roles.sql`: o mesmo do T005 para `email_service`/`email_service_app` | T006 | [P] | #111 |
-| T008 | `application-staging.yml`/`application-production.yml` dos dois módulos: comentário com o schema e a tabela de histórico que a equipe do banco precisa criar/usar | T004, T006 | [P] | #111 |
-| T009 | `docker compose down -v` + `docker compose up -d --wait db db-email-service localstack`; `SPRING_PROFILES_ACTIVE=docker mvn -pl app -am verify` e `mvn -pl email-service -am verify` — T001/T002 verdes, `SpringSessionSmokeTest` e todas as suítes verdes a partir de bancos vazios | T005, T007 | | #111 |
-| T010 | Verificação "tudo num banco só": depois do T009, rodar a suíte do `email-service` com `SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/jogo_acoes` e o usuário admin do `app`, e conferir no `\dn`/`\dt *.*` os schemas `jogo_acoes` e `email_service` lado a lado, sem nada no `public`. Registrar o resultado aqui | T009 | | #111 |
-| T011 | Sandbox (Postgres nativo): `SPRING_PROFILES_ACTIVE=sandbox` subindo `app` e `email-service` sem erro de Flyway — confirma que `hikari.schema` basta sem o `search_path` no papel | T004, T006 | [P] | #111 |
-| T012 | `docs/disciplina/caderno-de-testes.md`: conferir que os `SELECT`s continuam rodando no Adminer sem prefixo (`search_path` do T005); se não, ajustar o texto (respeitando `docs/disciplina/CLAUDE.md`). README: nota de `docker compose down -v` ao atualizar | T005 | [P] | #111 |
-| T013 | `specs/05-030-validacao-api-key-servico-email/tasks.md`: T004 aponta para esta spec | T006 | [P] | #111 |
+| ~~T001~~ | `app`: `common/SchemaLayoutTest` (`@SpringBootTest`, Postgres real) consultando `information_schema`/`pg_catalog` depois do Flyway: nenhuma tabela nem sequência no `public`; todas as tabelas das migrations no schema `jogo_acoes`; histórico `jogo_acoes.jogo_acoes_schema_history` existe e não existe `flyway_schema_history` em schema nenhum. Rodar e registrar a falha | — | [P] | #111 |
+| ~~T002~~ | `email-service`: mesmo teste para o schema `email_service` e `email_service_schema_history`. Rodar e registrar a falha | — | [P] | #111 |
+| ~~T003~~ | `memory/constitution.md`: nova seção "Banco de dados: um schema por serviço" — schema com o nome do serviço, nada no `public`, `db/migration-<serviço>`, histórico `<schema>_schema_history`, schema definido pela aplicação (não pela URL); motivos (rodar tudo numa instância só, o `V1` duplicado do `api-key-core` 1.0.0). Atualizar o resumo do `CLAUDE.md` se couber | — | [P] | #111 |
+| ~~T004~~ | `app`: mover `src/main/resources/db/migration/` para `db/migration-jogo-acoes/` (`git mv`, conteúdo intacto); no `application.yml` comum e no `src/test/resources/application.yml`: `spring.datasource.hikari.schema`, `spring.flyway.schemas`, `spring.flyway.table`, `spring.flyway.locations`, `spring.jpa.properties.hibernate.default_schema`; remover `flyway.locations` de `application-docker.yml`/`application-sandbox.yml` | T001 | | #111 |
+| ~~T005~~ | `docker/postgres/init/01-roles.sql`: `CREATE SCHEMA jogo_acoes AUTHORIZATION jogo_acoes_admin`; `USAGE` e `ALTER DEFAULT PRIVILEGES` do `jogo_acoes_app` nesse schema em vez do `public`; `ALTER ROLE ... SET search_path = jogo_acoes` para os dois papéis | T004 | [P] | #111 |
+| ~~T006~~ | `email-service`: o mesmo do T004 com `db/migration-email-service/`, schema `email_service` e `email_service_schema_history` (cobre a T004 da spec 05-030 — se a 05-030 já tiver feito, só conferir) | T002 | [P] | #111 |
+| ~~T007~~ | `docker/postgres-email-service/init/01-roles.sql`: o mesmo do T005 para `email_service`/`email_service_app` | T006 | [P] | #111 |
+| ~~T008~~ | `application-staging.yml`/`application-production.yml` dos dois módulos: comentário com o schema e a tabela de histórico que a equipe do banco precisa criar/usar | T004, T006 | [P] | #111 |
+| ~~T009~~ | `docker compose down -v` + `docker compose up -d --wait db db-email-service localstack`; `SPRING_PROFILES_ACTIVE=docker mvn -pl app -am verify` e `mvn -pl email-service -am verify` — T001/T002 verdes, `SpringSessionSmokeTest` e todas as suítes verdes a partir de bancos vazios | T005, T007 | | #111 |
+| ~~T010~~ | Verificação "tudo num banco só": depois do T009, rodar a suíte do `email-service` com `SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/jogo_acoes` e o usuário admin do `app`, e conferir no `\dn`/`\dt *.*` os schemas `jogo_acoes` e `email_service` lado a lado, sem nada no `public`. Registrar o resultado aqui | T009 | | #111 |
+| ~~T011~~ | Sandbox (Postgres nativo): `SPRING_PROFILES_ACTIVE=sandbox` subindo `app` e `email-service` sem erro de Flyway — confirma que `hikari.schema` basta sem o `search_path` no papel | T004, T006 | [P] | #111 |
+| ~~T012~~ | `docs/disciplina/caderno-de-testes.md`: conferir que os `SELECT`s continuam rodando no Adminer sem prefixo (`search_path` do T005); se não, ajustar o texto (respeitando `docs/disciplina/CLAUDE.md`). README: nota de `docker compose down -v` ao atualizar | T005 | [P] | #111 |
+| ~~T013~~ | `specs/05-030-validacao-api-key-servico-email/tasks.md`: T004 aponta para esta spec | T006 | [P] | #111 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -35,3 +35,30 @@ checklist nela.
   `specs/05-028-testes-exigem-docker-real/tasks.md`).
 - Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
   mesclado — não deixar a tabela dessincronizada do estado real.
+
+## Resultado da verificação (2026-10-04)
+
+- **T001/T002 vermelhos antes da mudança**: 3/3 falhando em cada módulo (tabelas no `public`,
+  histórico `flyway_schema_history`), a partir de volumes novos.
+- **T009**: `docker compose down -v`, depois `db`, `db-email-service` e `localstack` subidos
+  com `--no-deps`. O `email-lambda-builder` não subiu porque o Docker Hub devolveu `429 Too Many
+  Requests` para `maven:3.9-eclipse-temurin-21`, então o `function.zip` foi gerado à mão com o
+  mesmo `mvn -pl email-lambda -am package -DskipTests` que o serviço roda. Com
+  `SPRING_PROFILES_ACTIVE=docker`, `mvn -pl app -am verify` deu 176 testes, 0 falhas, e
+  `mvn -pl email-service -am verify` deu 17 testes, 0 falhas. Os 2 pulados são os cenários
+  `@requires-real-ses`, filtrados como antes da mudança. `SchemaLayoutTest` e
+  `SpringSessionSmokeTest` ficaram verdes.
+- **T010**: a suíte do `email-service` rodou com `SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/jogo_acoes`
+  e o usuário `jogo_acoes_admin`, depois da suíte do `app` no mesmo banco: 17 testes, 0 falhas.
+  `\dn` mostra `jogo_acoes` e `email_service` lado a lado. Há 12 tabelas em `jogo_acoes` e 2
+  em `email_service`, nenhuma no `public`, e os históricos são
+  `jogo_acoes.jogo_acoes_schema_history` e `email_service.email_service_schema_history`.
+- **T011**: Postgres 16 nativo, com os papéis criados sem `search_path`, do jeito que o script
+  de setup do sandbox faz. Com `SPRING_PROFILES_ACTIVE=sandbox`, o `app` e o `email-service`
+  subiram (`Started ...`). O Flyway criou os schemas `jogo_acoes` (7 migrations) e
+  `email_service` (1 migration), sem nada no `public`. Como não há Postgres nativo na 5433, o
+  `email-service` usou a URL da 5432 (`/email_service`).
+- **T012**: com o `search_path` dos papéis (T005), `SELECT count(*) FROM login_session` e
+  `FROM app_user` rodam sem prefixo como `jogo_acoes_admin` e `jogo_acoes_app`. O caderno de
+  testes não precisou mudar. O README ganhou a nota de `docker compose down -v`.
+

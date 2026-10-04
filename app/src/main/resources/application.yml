@@ -3,6 +3,17 @@ server:
     context-path: /api
 
 spring:
+  # Own schema, never public (spec 05-032): every service can share one PostgreSQL instance --
+  # even one database -- without colliding. Set here, not in the URL, so it holds for every
+  # profile, staging/production included, where the URL comes from outside. hikari.schema
+  # becomes the connection's search_path (Flyway, Hibernate and Spring Session's own SQL).
+  datasource:
+    hikari:
+      schema: jogo_acoes
+  flyway:
+    schemas: jogo_acoes
+    table: jogo_acoes_schema_history
+    locations: classpath:db/migration-jogo-acoes
   application:
     name: jogo-acoes
   profiles:
@@ -11,6 +22,9 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: jogo_acoes
   session:
     store-type: jdbc
     timeout: 30d
