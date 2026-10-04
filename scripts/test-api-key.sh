@@ -9,8 +9,8 @@
 # values only (docker/sandbox) -- never used in staging/production. See
 # docker/postgres-email-service/test-data/README.md for the key and pepper this dump matches.
 #
-#   restore  drops and recreates the `api_key` schema from the saved dump (the `public` schema,
-#            email-service's own tables, is never touched)
+#   restore  drops and recreates the `api_key` schema from the saved dump (email-service's own
+#            tables, in their own schema, are never touched)
 #   dump     overwrites the saved dump with the current `api_key` schema -- only after
 #            deliberately generating a new test key
 #

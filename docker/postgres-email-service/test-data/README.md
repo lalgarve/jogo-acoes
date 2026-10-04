@@ -23,8 +23,8 @@ outro pepper, a chave volta `NOT_FOUND`.
 ## Onde os dados ficam
 
 Schema `api_key` do banco `email_service` (container `db-email-service`, porta 5433), separado
-do schema `public` onde ficam as tabelas do próprio Serviço de E-mail — ver `plan.md` da spec
-05-030, "Onde fica a tabela `api_keys`". O dump contém o schema inteiro: a tabela `api_keys`
+do schema das tabelas do próprio Serviço de E-mail — ver `plan.md` da spec 05-030, "Um schema
+por serviço, nunca o `public`". O dump contém o schema inteiro: a tabela `api_keys`
 (uma linha) e o histórico do Flyway da CLI (`api_key_schema_history`, nome usado desde a 1.0.1), para que a CLI reconheça o schema como já
 migrado ao rodar de novo contra ele.
 
@@ -36,7 +36,7 @@ Com o `db-email-service` de pé (`docker compose up -d --wait db-email-service`)
 ./scripts/test-api-key.sh restore
 ```
 
-Apaga e recria só o schema `api_key` — o schema `public` (templates) não é tocado. Pode rodar
+Apaga e recria só o schema `api_key` — as tabelas do Serviço de E-mail (templates) não são tocadas. Pode rodar
 quantas vezes quiser. Sem o container rodando, usa o `psql` local contra `localhost:5433`
 (sandbox); `--host`/`--port` mudam o destino.
 
@@ -54,5 +54,5 @@ java -jar api-key-1.0.1.jar generate --client jogo-acoes
 ```
 
 `currentSchema`/`SPRING_FLYWAY_SCHEMAS` fazem a CLI criar e migrar o schema `api_key` em vez do
-`public`. Depois do `dump`, atualizar a tabela acima e a variável `EMAIL_SERVICE_API_KEY` do
+`public`, que nenhum serviço usa. Depois do `dump`, atualizar a tabela acima e a variável `EMAIL_SERVICE_API_KEY` do
 serviço `app` em `docker-compose.yml`.
