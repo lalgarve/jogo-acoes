@@ -23,11 +23,13 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 
 | Pergunta | Decisão | Status | Raciocínio |
 |---|---|---|---|
-| Contrato HTTP | `POST /emails` → `202 { id, status: QUEUED }`; erros `400`/`401`/`404`/`422`/`503` | resolvida (este PR) | Envio é assíncrono por natureza (fila + Lambda); `202` deixa claro que a resposta não é entrega. `422` reservado para o anti-bounce (decisão em aberto em `spec.md`). |
+| Contrato HTTP | `POST /emails` → `202 { id, status: QUEUED }`; erros `400`/`401`/`404`/`409`/`503`. `GET/PUT /sender` para o remetente | resolvida | Envio é assíncrono por natureza (fila + Lambda); `202` deixa claro que a resposta não é entrega. `409` quando o cliente ainda não configurou o remetente — o pedido está certo, o estado do cliente é que não permite. |
+| Onde guardar o remetente | Tabela `client_sender` (`client_id` PK, `address`, `created_at`, `updated_at`) | resolvida | Um remetente por cliente (decisão de 2026-10-04); `client_id` é o mesmo identificador usado em `email_template`. |
+| Remetente como identidade verificada no SES | No `PUT /sender`, o serviço chama `VerifyEmailIdentity` do SES para o endereço; o envio não espera a verificação — se o endereço ainda não estiver verificado, o SES rejeita na Lambda | proposta — confirmar | O SES só envia de identidade verificada. `VerifyEmailIdentity` manda o e-mail de confirmação para o próprio endereço, e no LocalStack verifica na hora (o que já fazemos em `02-verify-ses-sender.sh`). Alternativas: exigir a verificação antes de aceitar envios (`GET /sender` com estado, `409` enquanto pendente) — mais seguro, mais uma chamada ao SES por envio ou um estado a sincronizar; ou verificar o **domínio** do cliente fora do serviço (DKIM), por quem opera a conta AWS — mais realista em produção, mas sai do controle do cliente. |
 | SESv1 ou SESv2 (`iteracao-5.md`, 3.2) | SESv1 `SendTemplatedEmail` | proposta — confirmar | O `SesClient` da Lambda e do `email-service` já é o v1, e os templates da 05-025 são criados com `CreateTemplate` do v1 — mesmo "espaço" de templates. Trocar para v2 exigiria migrar a 05-025 junto. |
-| Contrato da mensagem da fila | `schemaVersion: "2"`: `correlationId`, `recipientEmail`, `templateName` (nome no SES), `templateData` (objeto JSON) | resolvida (vem de `iteracao-5.md`, 3.2) | Mensagem pequena; a Lambda continua "burra" — repassa ao SES sem interpretar. |
+| Contrato da mensagem da fila | `schemaVersion: "2"`: `correlationId`, `senderAddress`, `recipientEmail`, `templateName` (nome no SES), `templateData` (objeto JSON) | resolvida (vem de `iteracao-5.md`, 3.2, mais o remetente por cliente) | Mensagem pequena; a Lambda continua "burra" — repassa ao SES sem interpretar. Em `"1"` o remetente continua sendo o fixo da Lambda (`email.sender-address`). |
 | Mesma fila ou fila nova | Mesma fila `jogo-acoes-email-commands`; a Lambda distingue pelo `schemaVersion` | proposta — confirmar | Evita uma segunda fila/DLQ/event source mapping. O nome da fila fica ligado ao `jogo-acoes`, mas o serviço já está no mesmo reator e no mesmo compose; renomear fica para quando houver outro cliente de verdade. |
-| Lambda e `schemaVersion` | `EmailMessage` ganha `templateName`/`templateData` opcionais; `"1"` → `SendEmail` (como hoje), `"2"` → `SendTemplatedEmail`; qualquer outro valor é rejeitado como mensagem malformada | proposta — confirmar | Um record só, sem hierarquia; o `app/` continua publicando `"1"` até a spec que o migrar. |
+| Lambda e `schemaVersion` | `EmailMessage` ganha `senderAddress`/`templateName`/`templateData` opcionais; `"1"` → `SendEmail` (como hoje), `"2"` → `SendTemplatedEmail`; qualquer outro valor é rejeitado como mensagem malformada | proposta — confirmar | Um record só, sem hierarquia; o `app/` continua publicando `"1"` até a spec que o migrar. |
 | Publicação na fila pelo `email-service` | `spring-cloud-aws-starter-sqs` + `SqsTemplate`, mesmo padrão de `SqsEmailSender`; `email.queue-name` por perfil | resolvida | Já usado e testado no `app/` contra LocalStack. |
 | Registro do envio | Tabela `email_send` (`id` UUID = `correlationId`, `client_id`, `template_id`, `recipient_email`, `created_at`), gravada antes de publicar | proposta — confirmar | Mesmo raciocínio da decisão 9 da Iteração 4 (`sent_email` no `app/`): o `id` gerado vira o `correlationId`, e a tabela é onde os eventos do SES (Iteração 6) vão ser associados. Sem `templateData` (pode ter dado pessoal). |
 | Falha ao publicar | Transação: grava `email_send`, publica; se a publicação falhar, rollback e `503` | proposta — confirmar | Não deixa registro de envio que nunca foi para a fila. O caso inverso (publicou e o commit falhou) gera um e-mail sem registro — aceito, raro. |
@@ -43,20 +45,27 @@ email-service/src/main/
   java/dev/leilaalgarve/jogoacoes/emailservice/
     send/
       EmailSendController.java     # implementa EmailsApi (gerada)
-      EmailSendService.java        # busca template do cliente, grava email_send, publica
+      EmailSendService.java        # busca template e remetente do cliente, grava email_send, publica
       EmailSend.java               # entidade
       EmailSendRepository.java
       EmailQueueMessage.java       # record do contrato schemaVersion "2"
       EmailQueuePublishException.java  # → 503
+      SenderNotConfiguredException.java  # → 409
+    sender/
+      SenderController.java        # implementa SenderApi (gerada)
+      SenderService.java           # grava client_sender; VerifyEmailIdentity (se confirmado)
+      ClientSender.java            # entidade
+      ClientSenderRepository.java
   resources/
-    db/migration/V2__create_email_send_table.sql
+    db/migration/V2__create_client_sender_table.sql
+    db/migration/V3__create_email_send_table.sql
 email-lambda/src/main/java/dev/leilaalgarve/jogoacoes/email/lambda/
   EmailMessage.java                # + templateName, templateData
   EmailSendHandler.java            # despacha por schemaVersion
 ```
 
 Se a spec 05-030 for implementada antes, as migrations do `email-service` estarão em
-`db/email-service/migration/` — a `V2` vai para lá.
+`db/email-service/migration/` — a `V2`/`V3` vão para lá.
 
 ## Riscos e trade-offs
 
@@ -70,4 +79,9 @@ Se a spec 05-030 for implementada antes, as migrations do `email-service` estar�
 - **LocalStack e `SendTemplatedEmail`**: o LocalStack aceita a chamada mas não renderiza de
   verdade nem rejeita variável faltando — mesma limitação que levou aos cenários
   `@requires-real-ses` da 05-025 (Issue #104). Cenários que dependem disso recebem a mesma tag.
-- **Repetição pelo cliente gera e-mail duplicado** (ver "Decisões em aberto" em `spec.md`).
+- **E-mail duplicado**: repetição do pedido pelo cliente e entrega repetida da fila podem gerar
+  dois e-mails iguais. Aceito até a Etapa 4, que trata idempotência (`spec.md`, "Fora de
+  escopo").
+- **Remetente não verificado**: se a proposta de verificação for confirmada, um envio feito
+  antes de o cliente confirmar o e-mail do SES é aceito com `202` e falha na Lambda. Fica visível
+  só no log da Lambda até existir a consulta de estado do envio (Iteração 6).

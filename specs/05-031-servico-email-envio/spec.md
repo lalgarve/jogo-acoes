@@ -8,7 +8,8 @@
 
 Um cliente do Serviço de E-mail (a começar por `jogo-acoes`) pede o envio de um e-mail a partir
 de um template que ele mesmo cadastrou (spec [05-025](../05-025-servico-email-templates/spec.md)),
-informando o destinatário e as variáveis do template. O serviço confere o pedido, publica uma
+informando o destinatário e as variáveis do template. Cada cliente tem um remetente fixo, que
+ele mesmo configura pelo menos uma vez antes do primeiro envio. O serviço confere o pedido, publica uma
 mensagem na fila SQS de envio e responde na hora; a Lambda de e-mail (`email-lambda`) entrega via
 SES `SendTemplatedEmail`, que renderiza o template no momento do envio.
 
@@ -25,12 +26,13 @@ do envio pelo `correlationId` como *message tag* do SES.
 
 ## Cenários (comportamento esperado)
 
-- Contrato: [`docs/openapi-email-service.yaml`](../../docs/openapi-email-service.yaml) — rota
-  `POST /emails` (tag `emails`).
+- Contrato: [`docs/openapi-email-service.yaml`](../../docs/openapi-email-service.yaml) — rotas
+  `POST /emails` (tag `emails`) e `GET/PUT /sender` (tag `sender`).
 - `.feature` Gherkin: `email-service/src/test/resources/features/send_email.feature` — a ser
-  escrito antes do código (ver `tasks.md`, T001). Rules previstas: envio aceito e enfileirado,
-  template inexistente/de outro cliente, pedido malformado, exigência de API-KEY, e a mensagem
-  consumida pela Lambda chegando ao SES como envio por template.
+  escrito antes do código (ver `tasks.md`, T001). Rules previstas: configuração do remetente,
+  envio sem remetente configurado, envio aceito e enfileirado, template inexistente/de outro
+  cliente, pedido malformado, exigência de API-KEY, e a mensagem consumida pela Lambda chegando
+  ao SES como envio por template, com o remetente do cliente.
 
 ## Requisitos funcionais
 
@@ -39,8 +41,14 @@ do envio pelo `correlationId` como *message tag* do SES.
 - O template é procurado entre os templates do próprio cliente que chamou (mesmo isolamento da
   05-025): um template de outro cliente responde `404`, igual a um inexistente.
 - Um destinatário por pedido.
+- **Remetente fixo por cliente.** `PUT /sender` define (ou troca) o endereço remetente do
+  cliente que chamou; `GET /sender` devolve o atual, ou `404` se nunca foi definido. Todo e-mail
+  do cliente sai com esse remetente; o pedido de envio não tem campo `from`.
+- Enquanto o cliente não definir o remetente, `POST /emails` responde `409` e nada é
+  enfileirado.
 - Pedido aceito: o serviço gera um `id` (UUID), publica na fila de envio uma mensagem
-  `schemaVersion: "2"` com `correlationId` = `id`, `recipientEmail`, `templateName` (o nome
+  `schemaVersion: "2"` com `correlationId` = `id`, `senderAddress` (o remetente do cliente),
+  `recipientEmail`, `templateName` (o nome
   namespaced no SES, `<cliente>__<nome>`) e `templateData`, e responde `202` com
   `{ id, status: "QUEUED" }`.
 - O `202` significa "enfileirado", não "entregue". Falha posterior de entrega (bounce,
@@ -50,7 +58,8 @@ do envio pelo `correlationId` como *message tag* do SES.
 - Toda rota exige `X-API-Key`, validada conforme a spec
   [05-030](../05-030-validacao-api-key-servico-email/spec.md); sem chave válida, `401`.
 - A Lambda de e-mail passa a aceitar a mensagem `schemaVersion: "2"` e envia por
-  `SendTemplatedEmail`, com o `correlationId` como *message tag*. Mensagens `schemaVersion: "1"`
+  `SendTemplatedEmail`, com `senderAddress` da mensagem como remetente e o `correlationId` como
+  *message tag*. Mensagens `schemaVersion: "1"`
   (as que o `app/` publica hoje, com `subject`/`body` já renderizados) continuam funcionando.
 
 ## Requisitos não-funcionais
@@ -67,22 +76,29 @@ do envio pelo `correlationId` como *message tag* do SES.
 - `app/` passar a enviar e-mail pelo Serviço de E-mail (cliente OpenFeign, migração dos 5
   templates Thymeleaf, destino do `SqsEmailSender`) — spec seguinte, ver
   `docs/context/iteracao-5.md`, seção 5.
-- Job Spring Batch de importação da lista de domínios descartáveis (Etapa 4) — spec própria.
+- Anti-bounce (checagem de MX e de domínio descartável) e o job Spring Batch que importa a
+  lista de domínios descartáveis — Etapa 4 (decidido em 2026-10-04). O contrato não reserva
+  resposta para isso; a spec da Etapa 4 acrescenta a sua.
+- Idempotência — tanto a repetição do pedido pelo cliente quanto a entrega repetida da fila
+  (SQS entrega "pelo menos uma vez", então a Lambda pode enviar o mesmo e-mail duas vezes) —
+  Etapa 4 (decidido em 2026-10-04).
 - Consulta do estado de um envio (`GET /emails/{id}`) e tratamento dos eventos
   `Delivery`/`Bounce`/`Complaint` do SES — dependem do *Configuration Set* e do tópico SNS da
   Iteração 6.
 - Vários destinatários, cópia/cópia oculta, anexos.
 - Validação de `templateData` contra o `variablesSchema` do template.
 
+## Decisões resolvidas
+
+Resolvidas em 2026-10-04 (Leila, na revisão do rascunho):
+
+- ~~Anti-bounce nesta spec ou na seguinte~~ — Etapa 4.
+- ~~Idempotência para repetição pelo cliente~~ — Etapa 4, junto com a entrega repetida pela
+  fila.
+- ~~Remetente~~ — fixo por cliente, configurado pelo próprio cliente pelo menos uma vez antes do
+  primeiro envio.
+
 ## Decisões em aberto
 
-- **Anti-bounce nesta spec ou na seguinte?** O roadmap coloca a checagem de MX/domínio
-  descartável dentro do envio, e o contrato já reserva o `422` para isso. Proposta: esta spec
-  entrega só o envio; a checagem entra numa spec própria junto com o job Spring Batch da lista
-  de domínios descartáveis, que é quem alimenta a checagem. Confirmar.
-- **Idempotência para repetição pelo cliente.** Um cliente que repete o pedido depois de um
-  timeout gera um segundo e-mail. Proposta: aceitar isso nesta spec (o `jogo-acoes` não repete
-  automaticamente) e registrar como risco; um header `Idempotency-Key` fica para quando houver
-  necessidade real. Confirmar.
-- **Remetente.** Hoje o remetente é fixo na Lambda (`email.sender-address`). Proposta: manter
-  fixo por ambiente, sem campo `from` no pedido. Confirmar.
+- Nenhuma de requisito. Como o endereço do cliente vira uma identidade verificada no SES é
+  decisão técnica, em `plan.md`.

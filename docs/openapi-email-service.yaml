@@ -10,8 +10,9 @@ info:
       com o Amazon SES (CreateTemplate/UpdateTemplate, validação real de sintaxe) e
       pré-visualizáveis (TestRenderTemplate) sem enviar e-mail nenhum.
     - Envio (specs/05-031-servico-email-envio): pedido de envio de um e-mail a partir de um
-      template já cadastrado; o serviço enfileira a mensagem na fila SQS de envio e a Lambda de
-      e-mail entrega via SES (SendTemplatedEmail). O endpoint responde assim que a mensagem é
+      template já cadastrado, com o remetente que o próprio cliente configurou; o serviço
+      enfileira a mensagem na fila SQS de envio e a Lambda de e-mail entrega via SES
+      (SendTemplatedEmail). O endpoint responde assim que a mensagem é
       enfileirada, não quando o e-mail é entregue.
 
     Autenticação: header `X-API-Key` em todas as rotas, validado conforme
@@ -25,6 +26,8 @@ tags:
     description: Cadastro e pré-visualização de templates (spec 05-025)
   - name: emails
     description: Envio de e-mail a partir de um template cadastrado (spec 05-031)
+  - name: sender
+    description: Endereço remetente do cliente (spec 05-031)
 
 security:
   - ApiKeyAuth: []
@@ -210,9 +213,9 @@ paths:
       operationId: sendEmail
       summary: Queue one email built from one of the calling client's own templates
       description: >
-        Looks up the template by name among the calling client's own templates, validates the
-        request and publishes one message to the SQS send queue (message contract
-        schemaVersion "2": templateName/templateData, rendered by SES at send time via
+        Looks up the template by name among the calling client's own templates and the
+        client's configured sender address (PUT /sender), validates the request and publishes one message to the SQS send queue (message contract
+        schemaVersion "2": senderAddress/templateName/templateData, rendered by SES at send time via
         SendTemplatedEmail). Responds 202 as soon as the message is queued -- delivery happens
         asynchronously in email-lambda, and a later delivery failure (bounce, complaint) is not
         reported back by this endpoint. The returned id travels with the message as its
@@ -250,12 +253,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '422':
+        '409':
           description: >
-            The request is well-formed but cannot be sent -- the recipient was rejected by the
-            anti-bounce check (domain without MX record, or disposable email domain). Which
-            checks run in this spec is an open decision (spec 05-031, "Decisões em aberto");
-            message carries the reason.
+            The calling client has not configured its sender address yet (PUT /sender) --
+            nothing was queued
           content:
             application/json:
               schema:
@@ -264,6 +265,64 @@ paths:
           description: >
             The message could not be published to the send queue -- nothing was sent, the
             client may retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sender:
+    get:
+      tags: [sender]
+      operationId: getSender
+      summary: Get the calling client's sender address
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sender'
+        '401':
+          description: Missing or invalid X-API-Key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: The calling client has not configured a sender address yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [sender]
+      operationId: setSender
+      summary: Set (or replace) the calling client's sender address
+      description: >
+        One sender address per client, used as the From of every email the client sends. Must
+        be set at least once before POST /emails accepts anything. How the address becomes a
+        verified SES identity is an open decision (spec 05-031, plan.md).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SenderRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sender'
+        '400':
+          description: Missing or syntactically invalid address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid X-API-Key
           content:
             application/json:
               schema:
@@ -373,3 +432,19 @@ components:
           type: string
           enum: [QUEUED]
           description: Único valor nesta spec -- a mensagem foi publicada na fila de envio
+
+    SenderRequest:
+      type: object
+      required: [address]
+      properties:
+        address:
+          type: string
+          format: email
+          description: Endereço usado como remetente (From) de todos os e-mails do cliente
+
+    Sender:
+      type: object
+      required: [address, updatedAt]
+      properties:
+        address: { type: string, format: email }
+        updatedAt: { type: string, format: date-time }
