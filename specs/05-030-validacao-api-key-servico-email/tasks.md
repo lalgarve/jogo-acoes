@@ -17,7 +17,7 @@ tarefas seguintes os deixam verdes.
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T000 | Confirmar as decisões "proposta — confirmar" de `plan.md` (distribuição da biblioteca; `orm.xml` vs. `currentSchema`, esta depois do T002) — commit `decision:` atualizando a tabela | — | | #108 |
+| T000 | ~~Distribuição da biblioteca~~ — resolvida (download da release com cache no `~/.m2`). Falta confirmar `orm.xml` vs. `search_path` com os dois schemas, a partir do resultado do T002 — commit `decision:` atualizando a tabela de `plan.md` | T002 | | #108 |
 | T001 | `email-service`: adicionar ArchUnit (escopo `test`) e `ArchitectureTest` com a regra: só o pacote `auth` (e `EmailServiceApplication`, pela configuração de varredura) depende de `dev.leilaalgarve.apikey..`; nenhuma classe fora de `auth` lê o header `X-API-Key` | — | [P] | #108 |
 | T002 | `email-service`: teste de verificação `ApiKeyIntegrationVerificationTest` (`@SpringBootTest`, Postgres real 5433, schema `api_key` restaurado por `scripts/test-api-key.sh restore`): o contexto sobe (Flyway do serviço sem conflito de versão, `ddl-auto: validate` aceita `api_key.api_keys`) e `ApiKeyValidator.validate` devolve `Valid("jogo-acoes")` para a chave de teste e `Invalid(NOT_FOUND)` para uma chave bem formada desconhecida. Rodar vermelho antes do T003 e registrar a falha | — | [P] | #108 |
 | T003 | `scripts/install-api-key-lib.sh` (baixa da release `v1.0.1` os jars de `api-key-core` e `api-key-validation` e o POM pai da tag, instala os três no `~/.m2` com `mvn install:install-file`, e não faz nada se já estiverem lá) e dependência `dev.leilaalgarve.apikey:api-key-validation:1.0.1` em `email-service/pom.xml` | T000 | | #108 |
