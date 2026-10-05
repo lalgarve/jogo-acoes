@@ -143,9 +143,10 @@ services:
       timeout: 5s
       retries: 10
 
-  # Serviço de E-mail (spec 05-025) -- cadastro de templates sincronizado com o SES. API-KEY
-  # válida é um esqueleto nesta spec (ver email-service/src/main/java/.../auth/); qualquer
-  # valor não vazio de X-API-Key é aceito.
+  # Serviço de E-mail (spec 05-025) -- cadastro de templates sincronizado com o SES. X-API-Key é
+  # validada de verdade com a biblioteca api-key (spec 05-030): só chaves emitidas pela CLI no
+  # schema api_key passam. A chave de teste (cliente jogo-acoes) vem do dump restaurado por
+  # scripts/test-api-key.sh restore -- ver docker/postgres-email-service/test-data/README.md.
   email-service:
     build:
       context: .
@@ -159,6 +160,9 @@ services:
       SPRING_DATASOURCE_USERNAME: email_service_admin
       SPRING_DATASOURCE_PASSWORD: email_service_admin
       SPRING_CLOUD_AWS_SES_ENDPOINT: http://localstack:4566
+      # Test pepper the test key was hashed with (same value as application-docker.yml); never a
+      # real secret.
+      API_KEY_HMAC_PEPPER: jogo-acoes-test-pepper-not-a-secret
     ports:
       - "8082:8080"
 
