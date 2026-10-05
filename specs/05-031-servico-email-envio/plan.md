@@ -32,7 +32,7 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 | Mesma fila ou fila nova | Mesma fila `jogo-acoes-email-commands` | resolvida (2026-10-05) | Evita uma segunda fila/DLQ/event source mapping. O nome da fila fica ligado ao `jogo-acoes`, mas o serviço já está no mesmo reator e no mesmo compose; renomear fica para quando houver outro cliente de verdade. |
 | `app/` enquanto não migra | O `SqsEmailSender` do `app/` (que publica `subject`/`body`) para de ser entregue assim que a Lambda nova entrar. A spec de migração do `app/` para o Serviço de E-mail é implementada logo em seguida, ou junto | resolvida (2026-10-05) | Consequência direta de a Lambda só aceitar template. Até a migração, os e-mails do `app/` (link mágico, convites) não saem em `docker`/CI — aceitável em pré-produção, mas quebra o fluxo de login de ponta a ponta nesse intervalo. |
 | Publicação na fila pelo `email-service` | `spring-cloud-aws-starter-sqs` + `SqsTemplate`, mesmo padrão de `SqsEmailSender`; `email.queue-name` por perfil | resolvida | Já usado e testado no `app/` contra LocalStack. |
-| Schema e Flyway | As tabelas novas ficam no schema próprio do `email-service`, nunca no `public`; migrations em `db/migration-email-service/` e histórico do Flyway com o nome do serviço, conforme a regra da [Issue #111](https://github.com/lalgarve/jogo-acoes/issues/111) | resolvida (2026-10-04) | Decisão da Leila na thread da 05-030: um schema por serviço, para poder rodar todos os serviços num único PostgreSQL quando o custo de memória pesar. A migração das tabelas atuais (`email_template`) para esse schema é da Issue #111, não desta spec. |
+| Schema e Flyway | As tabelas novas ficam no schema próprio do `email-service`, nunca no `public`; migrations em `db/migration-email-service/` e histórico do Flyway com o nome do serviço, conforme a regra da [Issue #111](https://github.com/lalgarve/jogo-acoes/issues/111), já aplicada pela spec 05-032 (schema `email_service`, histórico `email_service_schema_history`) | resolvida (2026-10-04) | Decisão da Leila na thread da 05-030: um schema por serviço, para poder rodar todos os serviços num único PostgreSQL quando o custo de memória pesar. A `email_template` já foi movida para esse schema pela 05-032. |
 | Registro do envio | Tabela `email_send` (`id` UUID = `correlationId`, `client_id`, `template_id`, `recipient_email`, `created_at`), gravada antes de publicar | resolvida (2026-10-05) | Mesmo raciocínio da decisão 9 da Iteração 4 (`sent_email` no `app/`): o `id` gerado vira o `correlationId`, e a tabela é onde os eventos do SES (Iteração 6) vão ser associados. Sem `templateData` (pode ter dado pessoal). |
 | Falha ao publicar | Transação: grava `email_send`, publica; se a publicação falhar, rollback e `503` | resolvida (2026-10-05) | Não deixa registro de envio que nunca foi para a fila. O caso inverso (publicou e o commit falhou) gera um e-mail sem registro — aceito, raro. |
 | Validação do pedido | Bean Validation das classes geradas (`@NotNull`, `@Email`) → `400` pelo `ApiExceptionHandler` | resolvida | O gerador já põe as anotações a partir do `required`/`format: email` do contrato. |
@@ -56,17 +56,17 @@ email-service/src/main/
       EmailQueuePublishException.java  # → 503
       SenderNotConfiguredException.java  # → 409
   resources/
-    db/migration-email-service/          # local definido pela Issue #111
-      V<n>__create_client_sender_table.sql
-      V<n+1>__create_email_send_table.sql
+    db/migration-email-service/          # schema email_service (spec 05-032)
+      V2__create_client_sender_table.sql
+      V3__create_email_send_table.sql
 email-lambda/src/main/java/dev/leilaalgarve/jogoacoes/email/lambda/
   EmailMessage.java                # subject/body → senderAddress, templateName, templateData
   EmailSendHandler.java            # SendTemplatedEmail
 scripts/set-email-sender.sh        # operações define o remetente de um cliente
 ```
 
-Depende da Issue #111 ter movido as migrations atuais para `db/migration-email-service/` e
-criado o schema do serviço; se ela ainda não tiver sido implementada, é feita antes da T005.
+O schema `email_service`, a pasta `db/migration-email-service/` e o histórico
+`email_service_schema_history` já existem (spec 05-032, Issue #111, PR #114).
 
 ## Riscos e trade-offs
 
