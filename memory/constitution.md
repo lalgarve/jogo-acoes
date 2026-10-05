@@ -110,6 +110,21 @@ corrigida pelo usuário no meio da conversa sobre o que realmente precisava muda
 agora tinha entendido tudo certo, julgou a solução simples, e começou a implementar sozinha —
 sem que ninguém tivesse pedido isso.
 
+## Baseline Java e upgrades de LTS
+
+Java/JDK 21 é a baseline suportada atualmente para `app`, `email-service`, `email-lambda` e
+`blackbox-proxy`. Essa baseline é refletida nos POMs dos módulos, na CI e nas imagens Docker.
+
+Uma tarefa de documentação, teste, correção ou funcionalidade que não peça mudança de Java não
+deve sugerir nem iniciar uma atualização para outro LTS. Um upgrade de Java/JDK só pode ser
+discutido ou executado após um pedido explícito.
+
+Se uma dependência, framework, ferramenta ou ambiente exigir uma versão diferente, a
+incompatibilidade deve ser reportada com sua causa, componente afetado e versão exigida. Isso
+não autoriza uma atualização automática: a mudança da baseline continua sendo uma decisão
+explícita, que deve avaliar build, testes, CI, imagens Docker e compatibilidade das
+dependências.
+
 ## Commits semânticos
 
 Formato da primeira linha:
