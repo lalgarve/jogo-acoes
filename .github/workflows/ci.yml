@@ -37,6 +37,15 @@ jobs:
       - name: Start Postgres and LocalStack
         run: docker compose up -d --wait db localstack
 
+      # Spec 05-034: EmailServiceClientIntegrationTest calls the real email-service (its own
+      # Postgres, SES on the LocalStack above). The test API key of client jogo-acoes has to be
+      # restored before app's tests use it (docker/postgres-email-service/test-data/README.md).
+      - name: Start email-service
+        run: |
+          docker compose up -d --wait db-email-service
+          ./scripts/test-api-key.sh restore
+          docker compose up -d --wait email-service
+
       - name: Run app tests with coverage (docker profile)
         env:
           SPRING_PROFILES_ACTIVE: docker
@@ -55,7 +64,7 @@ jobs:
           title: 'Cobertura de testes (JaCoCo)'
           update-comment: true
 
-      - name: Stop Postgres and LocalStack
+      - name: Stop Postgres, LocalStack and email-service
         if: always()
         run: docker compose down -v
 

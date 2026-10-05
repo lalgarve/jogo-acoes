@@ -101,8 +101,14 @@ services:
   app:
     build: .
     depends_on:
-      - db
-      - localstack
+      db:
+        condition: service_started
+      localstack:
+        condition: service_started
+      # Spec 05-034: app syncs its templates into email-service on startup and fails fast
+      # otherwise, so email-service has to be accepting requests first.
+      email-service:
+        condition: service_healthy
     environment:
       # docker-compose only: the app owns the schema here, so it connects as the admin role
       # and runs Flyway itself. Staging/production use the limited jogo_acoes_app role
@@ -115,10 +121,13 @@ services:
       # directly on the runner, not inside this container) -- from inside the app container,
       # "localhost" is itself, so this overrides it to the compose network hostname.
       SPRING_CLOUD_AWS_SQS_ENDPOINT: http://localstack:4566
+      # Spec 05-034: app calls email-service over HTTP (OpenFeign) and registers its e-mail
+      # templates there on startup -- setting this URL is what turns that on.
+      EMAIL_SERVICE_BASE_URL: http://email-service:8080/api
       # Test API key for calling email-service as client "jogo-acoes" (spec 05-030) -- docker/
       # sandbox only, versioned on purpose, not a secret. Matches the row restored by
-      # scripts/test-api-key.sh (docker/postgres-email-service/test-data/README.md). Nothing in
-      # app reads it yet: app doesn't call email-service so far.
+      # scripts/test-api-key.sh (docker/postgres-email-service/test-data/README.md): without that
+      # restore, email-service answers 401 and app refuses to start.
       EMAIL_SERVICE_API_KEY: dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU
     ports:
       - "8080:8080"
@@ -165,6 +174,13 @@ services:
       API_KEY_HMAC_PEPPER: jogo-acoes-test-pepper-not-a-secret
     ports:
       - "8082:8080"
+    # No actuator here: an open port means Tomcat is up, which Spring Boot starts only after the
+    # context (Flyway, SES client) is ready. bash's /dev/tcp, since the JRE image has no curl.
+    healthcheck:
+      test: ["CMD", "bash", "-c", "</dev/tcp/localhost/8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
 
 volumes:
   db_data:
