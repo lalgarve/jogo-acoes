@@ -259,6 +259,12 @@ Commits e PRs fecham a Issue correspondente com `Closes #N` na mensagem — mesm
 usada para referenciar uma decisão resolvida em `iteracao-N.md`/`plan.md`, só que apontando
 para a Issue.
 
+**Marcar a task como feita na mesma PR que a implementa.** A PR que resolve uma task de
+`tasks.md` já traz a linha riscada (`~~T001~~`) e o registro da verificação dela. O merge
+torna as duas coisas verdadeiras ao mesmo tempo; se a PR não for mesclada, a marcação também
+não entra. Nunca deixar para "marcar depois do merge": isso exige uma segunda PR só para
+riscar a linha, que na prática não acontece, e a tabela fica dessincronizada do código.
+
 ## Documentação viva por fase/iteração - Projetos de Software
 
 - Antes de implementar uma fase de trabalho não trivial, registrar as decisões técnicas em

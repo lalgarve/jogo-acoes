@@ -36,8 +36,9 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
   substituto — ver `spec.md`, "Requisitos funcionais".
 - T002d depende do Postgres nativo do ambiente sandbox (não de Docker) — só verificável rodando
   de fato dentro desse ambiente, não na máquina Windows de desenvolvimento local.
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
 
 ## Conferência contra o `master` (2026-10-05)
 

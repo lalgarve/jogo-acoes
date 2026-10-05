@@ -40,8 +40,9 @@ tarefas seguintes os deixam verdes.
 - T002, T010 e T013 dependem de Docker (ou do Postgres nativo do sandbox na 5433) — se não
   estiver disponível, registrar explicitamente o que não pôde ser verificado (mesmo padrão de
   `specs/05-028-testes-exigem-docker-real/tasks.md`).
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
 
 ## Resultado da implementação (2026-10-05)
 

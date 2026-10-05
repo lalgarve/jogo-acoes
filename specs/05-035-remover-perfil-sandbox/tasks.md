@@ -28,5 +28,6 @@ mudança.
   grande o suficiente para PR isolada — a Issue leva o label `iteration-5`, além do label de
   tipo (`chore`/`test`, conforme o caso).
 - T002, T010 e T011 dependem de Docker.
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
