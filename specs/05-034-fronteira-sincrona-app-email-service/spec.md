@@ -1,6 +1,6 @@
 # Spec: Fronteira síncrona entre `app` e `email-service` (Etapa 2)
 
-**Status:** rascunho
+**Status:** em revisão
 **Issue:** [#119](https://github.com/lalgarve/jogo-acoes/issues/119) (sub-issue do épico
 [#117](https://github.com/lalgarve/jogo-acoes/issues/117))
 **Iteração:** iteration-5
@@ -71,7 +71,7 @@ O critério de aceite novo é estrutural e de integração, verificado pelos tes
   template, o destinatário e as variáveis. O `app` não renderiza e-mail e não publica em fila.
 - Os 5 e-mails que o `app` envia hoje (convite, link de cadastro e as três variações de link de
   login) viram templates do cliente `jogo-acoes` no `email-service`, com o mesmo conteúdo visível.
-- O `app` cadastra/atualiza os próprios templates no `email-service` (ver "Decisões em aberto").
+- O `app` cadastra/atualiza os próprios templates no `email-service` (ver "Decisões resolvidas").
 
 **Fronteira entre os serviços**
 
@@ -152,14 +152,15 @@ O critério de aceite novo é estrutural e de integração, verificado pelos tes
   entrega repetida pela fila, mantendo a decisão da spec 05-031 (Leila, 2026-10-05). Até lá, o
   `app` não repete `POST /emails` automaticamente. A alternativa considerada, um header
   `Idempotency-Key` em `POST /emails` já nesta spec, foi descartada para não reabrir a 05-031.
+- ~~Como os templates do `app` chegam ao `email-service`~~ — o `app` guarda o conteúdo dos
+  templates (Handlebars do SES) nos próprios recursos e, ao subir, sincroniza com o
+  `email-service`, criando o que falta e atualizando o que mudou (Leila, 2026-10-05). Alternativa
+  descartada: um script de operações cadastrar os templates.
+- ~~Como o `app` testa o envio~~ — as suítes Cucumber do `app` continuam com `email.sender=stub`
+  (gravando em `sent_email`), e um teste de integração próprio exercita o cliente Feign contra o
+  `email-service` real no Docker Compose (Leila, 2026-10-05). Alternativa descartada: subir a
+  suíte inteira do `app` com o `email-service` real.
 
 ## Decisões em aberto
 
-1. **Como os templates do `app` chegam ao `email-service`.** Proposta: o `app` guarda o conteúdo
-   dos templates (Handlebars do SES) nos próprios recursos e, ao subir, sincroniza com o
-   `email-service` (cria o que falta, atualiza o que mudou). Alternativa: um script de operações
-   cadastra os templates, e o `app` só envia.
-2. **Como o `app` testa o envio nas suítes Cucumber.** Proposta: as suítes do `app` continuam
-   com `email.sender=stub` (gravando em `sent_email`), e um teste de integração próprio exercita
-   o cliente Feign contra o `email-service` real no Docker Compose. Alternativa: a suíte inteira
-   do `app` sobe com o `email-service` real.
+- Nenhuma de requisito.

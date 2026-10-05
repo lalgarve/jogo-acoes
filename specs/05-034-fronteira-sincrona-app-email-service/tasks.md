@@ -15,8 +15,8 @@ mudança de código de produção, e o resultado de cada um fica registrado aqui
 As tarefas seguintes os deixam verdes. Tudo vai na mesma PR (commits intermediários vermelhos de
 propósito), mesclada só com o build verde.
 
-**Pré-requisitos:** spec 05-031 mesclada (`POST /emails` e Lambda com template, PR #110) e as
-decisões em aberto da `spec.md` resolvidas. A implementação começa só quando for pedida
+**Pré-requisitos:** spec 05-031 mesclada (`POST /emails` e Lambda com template, PR #110). As
+decisões de requisito da `spec.md` estão resolvidas (2026-10-05). A implementação começa só quando for pedida
 explicitamente.
 
 Issue: [#119](https://github.com/lalgarve/jogo-acoes/issues/119) — cada linha abaixo é um item de
