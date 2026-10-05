@@ -1,6 +1,7 @@
 package dev.leilaalgarve.jogoacoes.emailservice.template.steps;
 
 import dev.leilaalgarve.jogoacoes.emailservice.common.testsupport.EmailServiceScenarioWorld;
+import dev.leilaalgarve.jogoacoes.emailservice.common.testsupport.ScenarioApiKeys;
 import dev.leilaalgarve.jogoacoes.emailservice.template.EmailTemplateRepository;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -21,28 +22,50 @@ public class RegisterTemplatesSteps {
 
     private final EmailServiceScenarioWorld world;
     private final EmailTemplateRepository repository;
+    private final ScenarioApiKeys apiKeys;
 
     private String previousSubject;
     private String previousBody;
+    private String secondApiKey;
+    private String otherApiKey;
 
-    public RegisterTemplatesSteps(EmailServiceScenarioWorld world, EmailTemplateRepository repository) {
+    public RegisterTemplatesSteps(EmailServiceScenarioWorld world, EmailTemplateRepository repository,
+                                  ScenarioApiKeys apiKeys) {
         this.world = world;
         this.repository = repository;
+        this.apiKeys = apiKeys;
     }
 
+    // Spec 05-030: the quoted value is the client a real key is issued for (the api-key CLI's
+    // --client), no longer the key text itself.
     @Given("a client authenticated with the API key {string}")
-    public void a_client_authenticated_with_the_api_key(String apiKey) {
-        world.setApiKey(apiKey);
+    public void a_client_authenticated_with_the_api_key(String clientName) {
+        world.authenticateAs(clientName);
     }
 
     @Given("another client authenticated with the API key {string} also registered a template named {string}")
-    public void another_client_also_registered_a_template(String apiKey, String name) {
-        registerAs(apiKey, name);
+    public void another_client_also_registered_a_template(String clientName, String name) {
+        registerAs(clientName, name);
     }
 
     @Given("another client authenticated with the API key {string} registered a template named {string}")
-    public void another_client_registered_a_template(String apiKey, String name) {
-        registerAs(apiKey, name);
+    public void another_client_registered_a_template(String clientName, String name) {
+        registerAs(clientName, name);
+    }
+
+    @Given("they have a second active API key")
+    public void they_have_a_second_active_api_key() {
+        secondApiKey = apiKeys.issueActive(world.getClientName());
+    }
+
+    @Given("an API key issued for {string} that has expired")
+    public void an_api_key_issued_that_has_expired(String clientName) {
+        otherApiKey = apiKeys.issueExpired(clientName);
+    }
+
+    @Given("an API key issued for {string} that has been revoked")
+    public void an_api_key_issued_that_has_been_revoked(String clientName) {
+        otherApiKey = apiKeys.issueRevoked(clientName);
     }
 
     @Given("they already registered a template named {string}")
@@ -103,6 +126,26 @@ public class RegisterTemplatesSteps {
         world.setLastResponse(world.request().when().get("/templates"));
     }
 
+    @When("they list their templates with the second API key")
+    public void they_list_their_templates_with_the_second_api_key() {
+        world.setLastResponse(world.requestWithApiKey(secondApiKey).when().get("/templates"));
+    }
+
+    @When("a request is made with a malformed API key")
+    public void a_request_is_made_with_a_malformed_api_key() {
+        world.setLastResponse(world.requestWithApiKey("not-a-real-api-key").when().get("/templates"));
+    }
+
+    @When("a request is made with a well-formed API key that was never issued")
+    public void a_request_is_made_with_a_key_that_was_never_issued() {
+        world.setLastResponse(world.requestWithApiKey(ScenarioApiKeys.neverIssued()).when().get("/templates"));
+    }
+
+    @When("a request is made with that API key")
+    public void a_request_is_made_with_that_api_key() {
+        world.setLastResponse(world.requestWithApiKey(otherApiKey).when().get("/templates"));
+    }
+
     @When("a request is made without an API key")
     public void a_request_is_made_without_an_api_key() {
         world.setLastResponse(world.requestWithoutApiKey().when().get("/templates"));
@@ -129,7 +172,7 @@ public class RegisterTemplatesSteps {
         // "Invariantes") -- the 201 itself is that proof. Re-confirms the row exists as the
         // observable side effect of that having succeeded.
         String name = world.getLastResponse().jsonPath().getString("name");
-        assertThat(repository.existsByClientIdAndName(world.getApiKey(), name)).isTrue();
+        assertThat(repository.existsByClientIdAndName(world.getClientName(), name)).isTrue();
     }
 
     @Then("the system rejects the registration with the reason SES returned")
@@ -140,7 +183,7 @@ public class RegisterTemplatesSteps {
 
     @Then("no template named {string} is created")
     public void no_template_named_is_created(String name) {
-        assertThat(repository.existsByClientIdAndName(world.getApiKey(), name)).isFalse();
+        assertThat(repository.existsByClientIdAndName(world.getClientName(), name)).isFalse();
     }
 
     @Then("the system rejects the registration because the name is already in use")
@@ -213,21 +256,17 @@ public class RegisterTemplatesSteps {
             .isEqualTo("Missing or invalid X-API-Key");
     }
 
-
-
-
     private void rememberCurrentContent(String name) {
         Response current = world.request().when().get("/templates/{name}", name);
         previousSubject = current.jsonPath().getString("subject");
         previousBody = current.jsonPath().getString("body");
     }
 
-    private void registerAs(String apiKey, String name) {
-        String previousKey = world.getApiKey();
-        world.setApiKey(apiKey);
-        Response response = register(name, "Subject", VALID_BODY);
+    private void registerAs(String clientName, String name) {
+        Response response = world.requestWithApiKey(apiKeys.issueActive(clientName))
+                .body(Map.of("name", name, "subject", "Subject", "body", VALID_BODY))
+                .when().post("/templates");
         assertThat(response.statusCode()).isEqualTo(201);
-        world.setApiKey(previousKey);
     }
 
     private Response register(String name, String subject, String body) {

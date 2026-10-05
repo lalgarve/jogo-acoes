@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component;
  * recreates this bean fresh per scenario ({@link ScenarioScope}), same pattern as app's own
  * {@code ScenarioWorld}. Authentication here is a header value, not a session cookie, so
  * there's no need for RestAssured's session filter.
+ *
+ * <p>The current client is a client name (the {@code --client} a key was issued for, spec
+ * 05-030) plus a real key issued for it; templates are owned by the client name, not the key.
  */
 @Component
 @ScenarioScope
@@ -20,11 +23,24 @@ public class EmailServiceScenarioWorld {
     @Value("${local.server.port}")
     private int port;
 
+    private final ScenarioApiKeys apiKeys;
+
+    private String clientName;
     private String apiKey;
     private Response lastResponse;
 
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
+    public EmailServiceScenarioWorld(ScenarioApiKeys apiKeys) {
+        this.apiKeys = apiKeys;
+    }
+
+    /** Becomes {@code clientName}, authenticated with a freshly issued active key. */
+    public void authenticateAs(String clientName) {
+        this.clientName = clientName;
+        this.apiKey = apiKeys.issueActive(clientName);
+    }
+
+    public String getClientName() {
+        return clientName;
     }
 
     public String getApiKey() {

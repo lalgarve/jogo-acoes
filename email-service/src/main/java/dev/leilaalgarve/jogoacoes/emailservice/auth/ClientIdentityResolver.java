@@ -5,11 +5,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.RequestScope;
 
 /**
- * Esqueleto (spec 05-025): o valor bruto do header {@code X-API-Key} -- já garantido não-vazio
- * por {@link ApiKeyAuthenticationFilter} antes de qualquer controller rodar -- dobra como
- * identificador do cliente dono dos templates. Único ponto a trocar quando a validação real de
- * API-KEY existir (resolvendo o cliente de verdade a partir de uma tabela/biblioteca), sem mudar
- * o contrato HTTP dos endpoints de template (plan.md).
+ * The client that owns the templates of the current request: the client name the presented API
+ * key was issued for (the api-key CLI's {@code --client}, spec 05-030), already validated by
+ * {@link ApiKeyAuthenticationFilter} before any controller runs. Never the key text, so rotating
+ * a client's key keeps its templates.
  */
 @Component
 @RequestScope
@@ -22,6 +21,6 @@ public class ClientIdentityResolver {
     }
 
     public String currentClientId() {
-        return request.getHeader(ApiKeyAuthenticationFilter.API_KEY_HEADER);
+        return (String) request.getAttribute(ApiKeyAuthenticationFilter.CLIENT_NAME_ATTRIBUTE);
     }
 }

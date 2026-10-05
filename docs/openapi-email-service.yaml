@@ -12,12 +12,12 @@ info:
     - Envio (specs/05-031-servico-email-envio): pedido de envio de um e-mail a partir de um
       template já cadastrado, com o remetente que operações configurou para o cliente; o serviço
       enfileira a mensagem na fila SQS de envio e a Lambda de e-mail entrega via SES
-      (SendTemplatedEmail). O endpoint responde assim que a mensagem é
-      enfileirada, não quando o e-mail é entregue.
+      (SendTemplatedEmail). O endpoint responde assim que a mensagem é enfileirada, não quando
+      o e-mail é entregue.
 
-    Autenticação: header `X-API-Key` em todas as rotas, validado conforme
-    specs/05-030-validacao-api-key-servico-email (ver `ApiKeyAuthenticationFilter`). O cliente
-    dono dos templates e dos envios é o cliente para o qual a chave foi emitida.
+    Autenticação por API-KEY validada pela biblioteca `api-key-validation`
+    (specs/05-030-validacao-api-key-servico-email): formato, hash, expiração e revogação. O
+    cliente dono dos templates e dos envios é aquele para o qual a chave foi emitida.
 servers:
   - url: /api
 
@@ -276,10 +276,9 @@ components:
       in: header
       name: X-API-Key
       description: >
-        API-KEY emitida pela CLI do projeto `api-key` para um cliente. Validada em toda
-        requisição (formato, existência, revogação, expiração -- spec 05-030); qualquer motivo
-        de rejeição responde 401 com o mesmo corpo genérico, sem revelar se a chave existiu.
-        O cliente para o qual a chave foi emitida é o dono dos templates e dos envios.
+        Chave emitida pela CLI do projeto lalgarve/api-key (spec 05-030). Qualquer chave
+        ausente, malformada, desconhecida, expirada ou revogada recebe o mesmo 401, sem dizer
+        o motivo. O cliente para o qual a chave foi emitida é o dono dos templates e dos envios.
 
   schemas:
     EmailTemplate:
