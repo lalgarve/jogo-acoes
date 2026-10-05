@@ -104,5 +104,8 @@ Resolvidas nesta sessão (registradas aqui, detalhamento técnico em `plan.md`):
 - ~~Framework de cenário de aceite~~ — Gherkin/Cucumber + API-first via OpenAPI, confirmado (ver
   "Cenários" acima).
 
-- A decisão de onde ficará a validação real de API-KEY (biblioteca externa ou implementação
-  própria) continua fora desta spec. Será tomada na spec que substituir o esqueleto atual.
+- ~~A decisão de onde ficará a validação real de API-KEY (biblioteca externa ou implementação
+  própria) continua fora desta spec. Será tomada na spec que substituir o esqueleto atual.~~ —
+  tomada na spec [05-030](../05-030-validacao-api-key-servico-email/spec.md): biblioteca
+  `api-key-validation` do projeto [`lalgarve/api-key`](https://github.com/lalgarve/api-key)
+  (release v1.0.1), que substitui o esqueleto.

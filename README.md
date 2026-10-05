@@ -298,15 +298,38 @@ uma pré-visualização (`TestRenderTemplate`) sem enviar e-mail nenhum. Sobe ju
 `docker compose up`, num container/banco próprios (`db-email-service`), reaproveitando o mesmo
 LocalStack de `email-lambda`.
 
-**A validação da API-KEY é um esqueleto nesta spec**: qualquer valor não vazio do header
-`X-API-Key` é aceito, e o próprio valor vira o identificador do cliente dono dos templates — sem
-checar formato/hash/expiração/revogação ainda (decisão em aberto registrada em `spec.md`).
+**O header `X-API-Key` é validado de verdade** (spec
+[05-030](specs/05-030-validacao-api-key-servico-email/spec.md)) pela biblioteca
+`api-key-validation` do projeto [`lalgarve/api-key`](https://github.com/lalgarve/api-key):
+formato, hash, expiração e revogação. O dono dos templates é o cliente para o qual a chave foi
+emitida, não o texto da chave. Qualquer chave rejeitada recebe o mesmo `401`; o motivo exato só
+aparece no log do serviço.
+
+A biblioteca não está em nenhum repositório Maven que o build lê. Antes do primeiro build local
+do `email-service`, instale-a no `~/.m2` (baixa da release do GitHub só na primeira vez; o
+`Dockerfile` faz o mesmo sozinho):
+
+```
+./scripts/install-api-key-lib.sh
+```
+
+Em `docker`/`sandbox` existe uma chave de teste fixa, do cliente `jogo-acoes`. Ela mora no
+schema `api_key` do banco `db-email-service` e precisa ser restaurada num volume novo (a suíte
+de testes do módulo também precisa dela):
+
+```
+docker compose up -d --wait db-email-service
+./scripts/test-api-key.sh restore
+```
+
+Detalhes da chave e do pepper de teste em
+[`docker/postgres-email-service/test-data/README.md`](docker/postgres-email-service/test-data/README.md).
 
 Cadastrar um template:
 
 ```
 curl -X POST http://localhost:8082/api/templates \
-  -H "X-API-Key: jogo-acoes-dev" \
+  -H "X-API-Key: dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU" \
   -H "Content-Type: application/json" \
   -d '{"name": "welcome", "subject": "Bem-vindo!", "body": "Olá {{name}}, bem-vindo!"}'
 ```
@@ -315,7 +338,7 @@ Pré-visualizar (não envia e-mail, só devolve o texto renderizado):
 
 ```
 curl -X POST http://localhost:8082/api/templates/welcome/preview \
-  -H "X-API-Key: jogo-acoes-dev" \
+  -H "X-API-Key: dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU" \
   -H "Content-Type: application/json" \
   -d '{"variables": {"name": "Ada"}}'
 ```
