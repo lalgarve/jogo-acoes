@@ -367,8 +367,8 @@ Exemplo usado neste projeto:
 
 | Nome | O que descreve |
 |---|---|
-| `sandbox` | Sem infraestrutura externa disponível (ex.: rodando isolado, sem Docker) — usa um banco embarcado no lugar do banco real |
-| `docker` | Infraestrutura real via containers, local (`docker-compose`) ou CI — descartável |
+| `docker` | Infraestrutura real via containers, local (`docker-compose`) ou CI — descartável. Perfil padrão |
+| `sandbox` | Sem Docker (ex.: rodando isolado). Só o banco real, instalado nativamente; nenhum outro serviço de infraestrutura (fila, e-mail) existe ali |
 | `staging` | Pré-produção: infraestrutura e dados reais, mas isolados de produção |
 | `production` | Produção |
 
@@ -376,6 +376,11 @@ Cada ambiente tem seu próprio arquivo de configuração autodescritivo — um c
 topo explicando por que aquele ambiente existe, quem o opera e quais restrições ele impõe
 (ex.: "este ambiente não roda migração de schema sozinho, uma equipe separada faz isso à
 mão").
+
+O perfil padrão (quando nenhum é escolhido explicitamente) é o mesmo em todos os serviços e
+vale também para os testes rodados à mão: o ambiente com a infraestrutura completa (`docker`,
+neste projeto). Rodar os testes na mão deve exigir a linha de comando mais simples possível;
+quem quer o ambiente restrito escolhe o perfil explicitamente.
 
 ## Banco de dados: um schema por serviço
 
@@ -429,6 +434,31 @@ asserção, em vez de só confiar que o método foi chamado.
 
 Não executar testes no merge que gerem cobrança por uso de API de inteligência artifical (Gemini).
 
+## Testes que dependem de infraestrutura em container
+
+Alguns testes precisam de infraestrutura que só existe em container (ex.: LocalStack). Quem
+decide se eles rodam é o perfil, nunca o próprio teste olhando o ambiente:
+
+- **Marcação explícita.** Todo teste (ou suíte) que depende dessa infraestrutura é marcado
+  como tal no próprio código, de forma visível na leitura (anotação, tag). Uma suíte que
+  depende inteira dela é marcada inteira.
+- **No perfil com containers (`docker`), a infraestrutura é considerada de pé.** Os testes
+  marcados rodam sempre. Se o serviço não responde, o teste falha: é erro de ambiente, não
+  motivo para pular.
+- **No perfil sem containers (`sandbox`), a infraestrutura nunca está de pé.** Os testes
+  marcados são pulados e aparecem como pulados no relatório, com o motivo.
+- **Nunca decidir em tempo de execução** se o serviço responde (ex.:
+  `assumeTrue(reachable(...))`, pular quando um container não sobe). Isso transforma uma falha
+  de ambiente no perfil `docker` num teste pulado, que passa despercebido.
+- Dependência que existe nos dois perfis (ex.: o banco, nativo no sandbox) não é marcada.
+
+O mecanismo concreto de marcação de cada stack fica na spec que o implementa.
+
+**Por quê**: um teste que se pula sozinho quando a infraestrutura falta esconde exatamente o
+problema que deveria acusar, e cada módulo acabava inventando um jeito diferente de lidar com
+isso. Com a marcação explícita, dá para saber lendo o código o que precisa de Docker, e o
+resultado de uma execução depende só do perfil escolhido.
+
 ## Código de teste/dev nunca dentro da aplicação
 
 Nenhum código que existe só para testar ou simular (endpoint de teste, seed de dados, poller de
@@ -479,8 +509,8 @@ só o campo sob teste, mantendo os demais válidos. Isso espelha a estrutura de 
 
 ### Java
 
-- A suíte roda contra o perfil `docker` (Postgres de verdade, não H2), não contra o perfil
-  de sandbox usado no dia a dia.
+- A suíte roda contra o perfil `docker` (Postgres e LocalStack de verdade), com todos os
+  testes marcados como dependentes de container incluídos.
 - Piso de cobertura via JaCoCo (`mvn verify`).
 - Cobertura comentada na PR a cada push via `madrapps/jacoco-report`.
 
