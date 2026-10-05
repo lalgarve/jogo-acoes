@@ -14,13 +14,13 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 | ~~T003~~ | `email-service/src/test/java/.../CucumberSpringConfiguration.java`: remover `LocalStackContainer`/`@DynamicPropertySource`; manter só `@CucumberContextConfiguration` + `@SpringBootTest` | T002 | | #<n> |
 | ~~T004~~ | `email-service/pom.xml`: remover dependências `org.testcontainers:testcontainers`, `org.testcontainers:junit-jupiter`, `org.testcontainers:localstack` | T003 | | #<n> |
 | ~~T004a~~ | `email-service/src/test/java/.../emailservice/common/testsupport/TemplateCleanupHooks.java`: hook `@After` do Cucumber que roda depois de cada cenário — `EmailTemplateRepository.deleteAll()` (limpa a tabela) + `SesClient.listTemplates()`/`deleteTemplate()` pra cada um (limpa o LocalStack). Necessário porque Postgres e LocalStack agora são persistentes entre execuções (antes, H2 em memória + Testcontainers já começavam limpos a cada `mvn test`) | T003, T004 | | #<n> |
-| T005 | `email-service/src/test/resources/features/register_templates.feature`: adicionar a tag `@requires-docker` no topo da Feature (propaga pra todos os Scenarios) | — | [P] | #<n> |
-| T006 | `email-service/pom.xml`: propriedade `cucumber.filter.tags` = `not @requires-docker` por padrão; `<profile>` `docker-tests` ativado por `env.SPRING_PROFILES_ACTIVE=docker` que zera essa propriedade; `maven-surefire-plugin` passando `cucumber.filter.tags` como `systemPropertyVariable` | T005 | | #<n> |
+| T005 | ~~`email-service/src/test/resources/features/register_templates.feature`: adicionar a tag `@requires-docker` no topo da Feature (propaga pra todos os Scenarios)~~ — substituída: a regra de testes que dependem de container agora está em `memory/constitution.md` (seção "Testes que dependem de infraestrutura em container") e a implementação para todos os módulos fica na spec 05-034 | — | | — |
+| T006 | ~~`email-service/pom.xml`: propriedade `cucumber.filter.tags` = `not @requires-docker` por padrão; `<profile>` `docker-tests` ativado por `env.SPRING_PROFILES_ACTIVE=docker` que zera essa propriedade; `maven-surefire-plugin` passando `cucumber.filter.tags` como `systemPropertyVariable`~~ — substituída: a regra de testes que dependem de container agora está em `memory/constitution.md` (seção "Testes que dependem de infraestrutura em container") e a implementação para todos os módulos fica na spec 05-034 | — | | — |
 | T007 | ~~Aplicar `@RequiresDocker` nas 13 classes `@SpringBootTest` de `app`~~ — descartado: Postgres é considerado sempre disponível (sandbox tem o nativo, aqui/CI tem o do compose); essas classes não ganham nenhuma anotação/guarda nova, continuam rodando direto | — | | — |
-| T008 | ~~Aplicar `@RequiresDocker` no Cucumber de `email-service`~~ — substituído pelo mecanismo de tag (T005/T006); `@EnabledIfEnvironmentVariable` não tem efeito nenhum sobre a suíte Cucumber (motor diferente do Jupiter), confirmado empiricamente | — | | — |
+| T008 | ~~Aplicar `@RequiresDocker` no Cucumber de `email-service`~~ — substituído pelo mecanismo de tag (T005/T006), que depois também foi substituído (ver T005); `@EnabledIfEnvironmentVariable` não tem efeito nenhum sobre a suíte Cucumber (motor diferente do Jupiter), confirmado empiricamente | — | | — |
 | ~~T009~~ | Rodar `docker compose up -d --wait db localstack` + `SPRING_PROFILES_ACTIVE=docker mvn -pl app -am verify` — confirmar que continua verde (nada deveria mudar aqui, já era o padrão de CI) | T001 | [P] | #<n> |
 | ~~T010~~ | Rodar `docker compose up -d --wait db-email-service localstack` + `SPRING_PROFILES_ACTIVE=docker mvn -pl email-service -am verify` **duas vezes seguidas**, sem derrubar os containers entre as duas — confirmar os 19 Scenarios verdes nas duas rodadas (prova de que o T004a resolveu a repetibilidade, não só que passou uma vez) | T004, T004a, T006 | | #<n> |
-| T011 | Rodar `mvn test` (sem `SPRING_PROFILES_ACTIVE`) em `email-service`, **sem** Postgres/LocalStack de pé — confirmar `BUILD SUCCESS`/`Skipped: 14` (não erro de conexão) | T006 | [P] | #<n> |
+| T011 | ~~Rodar `mvn test` (sem `SPRING_PROFILES_ACTIVE`) em `email-service`, **sem** Postgres/LocalStack de pé — confirmar `BUILD SUCCESS`/`Skipped: 14` (não erro de conexão)~~ — substituída: a regra de testes que dependem de container agora está em `memory/constitution.md` (seção "Testes que dependem de infraestrutura em container") e a implementação para todos os módulos fica na spec 05-034 | — | | — |
 | T012 | `.github/workflows/ci.yml`: novo step pra `email-service`, mesmo padrão do de `app` (sobe `db-email-service`+`localstack`, `SPRING_PROFILES_ACTIVE=docker mvn -B -pl email-service -am verify`, derruba no final) | T010 | | #<n> |
 | T013 | Atualizar `specs/05-025-servico-email-templates/tasks.md` — marcar T020 como resolvido (ou linkar pra esta spec como a forma como foi resolvido), já que a suíte passa a rodar contra o LocalStack do compose em vez de Testcontainers | T010 | | #<n> |
 
@@ -62,16 +62,15 @@ de outras specs; nenhuma delas foi feita nesta revisão.
 
 Continuam pendentes:
 
-- **T005/T006**: não há tag `@requires-docker` na feature nem filtro `cucumber.filter.tags`
-  ou perfil `docker-tests` no `email-service/pom.xml`. As tasks continuam valendo (decisão de
-  2026-10-05): no perfil `docker` o Docker é considerado de pé; no perfil `sandbox` ele nunca
-  está, e os testes que dependem dele precisam ser pulados ali. O skip não pode ser deduzido
-  em tempo de execução: os testes são marcados explicitamente como dependentes de Docker, e
-  no perfil `docker` um LocalStack que não responde é erro, não motivo para pular.
-- **Fora da tabela, mesma regra**: no `app`, `SqsEmailSenderDockerIntegrationTest` e
-  `QueueLoggingAspectIntegrationTest` usam `assumeTrue(reachable(...))` e se pulam quando o
-  LocalStack não responde, inclusive no perfil `docker`. Isso contradiz a regra acima e
-  precisa ser trocado pela marcação explícita.
-- **T011**: depende da T006.
 - **T012**: o `.github/workflows/ci.yml` só tem os steps de `app` e `email-lambda`.
 - **T013**: a T020 da spec 05-025 tem o registro da verificação, mas continua sem tachado.
+
+Substituídas (2026-10-05):
+
+- **T005/T006/T011**: o mecanismo de skip desta spec (tag `@requires-docker` +
+  `cucumber.filter.tags` por variável de ambiente) nunca foi mesclado e foi substituído pela
+  regra de `memory/constitution.md`: teste marcado explicitamente, skip decidido só pelo perfil
+  (`sandbox`), erro no perfil `docker` quando a infraestrutura não responde, nunca checagem em
+  tempo de execução. A spec 05-034 aplica essa regra a `app`, `email-service` e `email-lambda`,
+  incluindo trocar os `assumeTrue(reachable(...))` de `SqsEmailSenderDockerIntegrationTest` e
+  `QueueLoggingAspectIntegrationTest`, que esta spec tinha decidido manter.
