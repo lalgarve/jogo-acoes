@@ -1,3 +1,5 @@
+# Java 21 is the project's supported baseline; changing the LTS requires an explicit project
+# decision across Maven, CI, and all runtime images.
 # Builds only the `email-service` module (Spring Boot) -- same pattern as the root Dockerfile
 # for `app`. Build context is the repo root (not email-service/) so the reactor's root pom.xml
 # is available; see docker-compose.yml.
