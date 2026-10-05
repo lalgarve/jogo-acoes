@@ -27,6 +27,11 @@
          4.1.0; same major-line lag already seen and accepted for 4.0.0 (docs/context/iteracao-4.md,
          decisão 2). -->
     <spring-cloud-aws.version>4.1.0</spring-cloud-aws.version>
+    <!-- OpenFeign client for email-service (spec 05-034). The 2025.1 train targets Spring Boot
+         4.0.x; no release train targets 4.1 yet (2026.0.0-M1 targets 4.2). Checked on
+         2026-10-05: spring-cloud-starter-openfeign 5.0.3 starts and calls a Feign client on
+         Spring Boot 4.1.0. -->
+    <spring-cloud.version>2025.1.3</spring-cloud.version>
   </properties>
 
   <dependencyManagement>
@@ -45,10 +50,22 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring-cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
   <dependencies>
+    <!-- Spec 05-034: app sends e-mail through email-service over HTTP. -->
+    <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-starter-openfeign</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
@@ -284,6 +301,31 @@
                 <useTags>true</useTags>
                 <dateLibrary>java8</dateLibrary>
                 <useSpringBoot3>true</useSpringBoot3>
+              </configOptions>
+            </configuration>
+          </execution>
+          <!-- Spec 05-034: Feign client for email-service, generated from the same contract the
+               service implements: if the contract changes, app stops compiling instead of
+               failing at runtime. Only EmailServiceGateway may use it (ArchitectureTest). -->
+          <execution>
+            <id>email-service-client</id>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <inputSpec>${project.basedir}/../docs/openapi-email-service.yaml</inputSpec>
+              <generatorName>spring</generatorName>
+              <library>spring-cloud</library>
+              <apiPackage>dev.leilaalgarve.jogoacoes.email.client.api</apiPackage>
+              <modelPackage>dev.leilaalgarve.jogoacoes.email.client.api.model</modelPackage>
+              <generateApiTests>false</generateApiTests>
+              <generateModelTests>false</generateModelTests>
+              <configOptions>
+                <useTags>true</useTags>
+                <dateLibrary>java8</dateLibrary>
+                <useSpringBoot3>true</useSpringBoot3>
+                <openApiNullable>false</openApiNullable>
+                <configPackage>dev.leilaalgarve.jogoacoes.email.client.api.configuration</configPackage>
               </configOptions>
             </configuration>
           </execution>

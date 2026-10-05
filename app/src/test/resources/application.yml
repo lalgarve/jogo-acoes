@@ -37,6 +37,14 @@ spring:
       # is unconditional, unlike SqsEmailSender itself).
       region:
         static: us-east-1
+    # Spec 05-034: email-service's Feign clients are the only ones in app, so "default" is
+    # theirs. No automatic retry here: EmailServiceGateway retries idempotent calls only.
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 2000
+            read-timeout: 5000
 
 altcha:
   secret: test-secret
@@ -51,6 +59,15 @@ login:
 # unconditionally anyway, so it's not missing the one time it matters.
 email:
   queue-name: jogo-acoes-email-commands
+
+# Same as src/main/resources/application.yml (spec 05-034) -- this file replaces that one.
+# email-service.base-url stays unset: the Cucumber suites run without email-service;
+# EmailServiceClientIntegrationTest sets it.
+email-service:
+  api-key: ${EMAIL_SERVICE_API_KEY:dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU}
+templates:
+  name: email-service-templates
+  url: ${email-service.base-url:}
 
 # See src/main/resources/application.yml -- same replaces-not-layers reason as above; without
 # this repeated here too, the three logging aspects (spec 05-011) never actually appear during

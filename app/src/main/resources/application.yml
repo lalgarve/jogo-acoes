@@ -37,6 +37,14 @@ spring:
       # region is enough: nothing calls the client unless SqsEmailSender does.
       region:
         static: ${AWS_REGION:us-east-1}
+    # Spec 05-034: email-service's Feign clients are the only ones in app, so "default" is
+    # theirs. No automatic retry here: EmailServiceGateway retries idempotent calls only.
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 2000
+            read-timeout: 5000
 
 # Starting point, not a locked-in secret -- override via ALTCHA_SECRET in any environment
 # where the default matters (i.e. anywhere reachable from outside sandbox/docker).
@@ -55,6 +63,18 @@ login:
 # application-production.yml.
 email:
   queue-name: ${EMAIL_QUEUE_NAME:jogo-acoes-email-commands}
+
+# Spec 05-034: app calls email-service over HTTP. Everything under email-service.* (Feign client,
+# gateway, template sync at startup) is active only where email-service.base-url is set -- env
+# EMAIL_SERVICE_BASE_URL, e.g. the app container in docker-compose.yml. Unset by default so the
+# Cucumber suites run without email-service. The key never goes into a versioned file other than
+# the documented test key (spec 05-030).
+email-service:
+  api-key: ${EMAIL_SERVICE_API_KEY:}
+# Names the generated TemplatesApiClient reads (openapi-generator's spring-cloud library).
+templates:
+  name: email-service-templates
+  url: ${email-service.base-url:}
 
 # Swagger UI (spec 05-009) against the static docs/openapi.yaml contract, copied to
 # static/openapi.yaml at build time (app/pom.xml). springdoc.api-docs.enabled: false turns
