@@ -5,7 +5,8 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 vêm primeiro: cada um é escrito e visto falhando antes do código que o faz passar.
 
 O contrato (`docs/openapi-email-service.yaml`, `POST /emails`) já está escrito, junto com esta
-spec. As linhas abaixo esperam as decisões "proposta — confirmar" de `plan.md`.
+spec. Todas as decisões de `plan.md` estão resolvidas
+(2026-10-05); a implementação começa quando for pedida explicitamente.
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|

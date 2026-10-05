@@ -1,6 +1,6 @@
 # Spec: Serviço de E-mail — envio de e-mail
 
-**Status:** rascunho
+**Status:** aprovada
 **Issue:** #<a criar>
 **Iteração:** iteration-5
 
