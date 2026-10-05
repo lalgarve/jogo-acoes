@@ -414,6 +414,48 @@ inclusive as do Flyway e do Spring Session JDBC), `spring.flyway.schemas`/`table
 (`SchemaLayoutTest` em cada módulo) confere no banco real, depois do Flyway, que nada ficou no
 `public`.
 
+## Fronteira entre módulos e serviços
+
+Há duas fronteiras diferentes, e cada uma tem a sua regra:
+
+- **Módulo** (pacote de primeiro nível dentro de um mesmo serviço, ex. `user`, `competition`,
+  `email` no `app`): roda no mesmo processo e fala com outro módulo **só por serviço Java**.
+  Repositório, entidade interna e detalhe de persistência ficam dentro do módulo dono (spec
+  05-029).
+- **Serviço** (artefato com deploy próprio, ex. `app` e `email-service`): fala com outro
+  serviço **só por contrato** — HTTP documentado em OpenAPI, ou mensagem com contrato próprio
+  em `specs/NN-NNN-slug/contracts/`. Mesmo morando no mesmo repositório e no mesmo reator
+  Maven:
+  - nenhuma dependência Java entre eles, nem transitiva — nem para "só reaproveitar um DTO";
+  - nada de persistência compartilhada: entidades, repositórios, migrations, schemas (ver
+    "Banco de dados: um schema por serviço" acima). Um serviço nunca lê nem escreve o banco do
+    outro;
+  - exceção interna não atravessa a fronteira: o cliente vê status HTTP e corpo de erro do
+    contrato, e traduz isso para as próprias exceções num único ponto (o *gateway* do cliente);
+  - os DTOs do cliente são do cliente — gerados a partir do contrato, não importados do
+    servidor;
+  - cada lado documenta, na spec que cria a integração, quais dados e quais responsabilidades
+    são dele.
+- **Repetição de chamadas síncronas**: o cliente só repete automaticamente (retry) uma operação
+  que é idempotente pelo contrato — repetir deixa o servidor no mesmo estado. Uma operação que
+  não é idempotente não é repetida automaticamente até ganhar idempotência própria (ex.: chave
+  de idempotência), decidida na spec dela.
+
+**Por quê**: o objetivo de separar um serviço é poder implantar, escalar e trocar cada lado sem
+mexer no outro. Uma dependência Java "pequena" ou uma tabela lida "só para consulta" amarra os
+dois de novo, sem que o build ou o contrato mostrem isso — e o acoplamento só aparece quando um
+dos lados muda. Retry de operação não idempotente transforma uma falha de rede num efeito em
+dobro (ex.: o mesmo e-mail enviado duas vezes).
+
+**Como é verificado**: `ArchitectureTest` em cada serviço (nenhuma classe do outro serviço,
+nem no pacote raiz que eles compartilham; o cliente HTTP gerado só usado pelo *gateway*) e o
+`maven-enforcer-plugin` com `bannedDependencies` em cada `pom.xml`.
+
+**Exemplo usado neste projeto** (spec `05-034-fronteira-sincrona-app-email-service`): o `app`
+envia e-mail chamando o `email-service` por OpenFeign, com cliente gerado de
+`docs/openapi-email-service.yaml` e `X-API-Key`; o `app` é dono do histórico de quem recebeu qual
+link (`sent_email`), o `email-service` é dono dos templates, do registro do envio e da fila.
+
 ## Testes: preferir real a fake sempre que der
 
 Sempre que uma dependência externa tiver como rodar localmente/de verdade em teste

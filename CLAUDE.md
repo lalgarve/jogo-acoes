@@ -81,6 +81,9 @@ Boot, multi-módulo Maven:
 - Banco: cada serviço no próprio schema, nunca no `public`; migrations em
   `db/migration-<serviço>` e histórico do Flyway em `<schema>_schema_history` (seção "Banco de
   dados: um schema por serviço" da constitution, spec 05-032).
+- Serviços (`app`, `email-service`) só se falam por contrato (OpenAPI/mensagem): nenhuma
+  dependência Java nem persistência compartilhada entre eles, e retry automático só de operação
+  idempotente (seção "Fronteira entre módulos e serviços" da constitution, spec 05-034).
 - Código de teste/dev nunca dentro de um módulo de produção (`app/`, `email-lambda/`) — mesmo
   atrás de profile/flag, mesmo que funcione, mesmo que a alternativa exija mais código. Sempre
   um módulo/aplicação separada (padrão `blackbox-proxy/`). `email-lambda/` já corrigido
