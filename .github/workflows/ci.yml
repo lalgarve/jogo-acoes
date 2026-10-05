@@ -25,6 +25,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
+          # Java 21 is the project's supported baseline; LTS upgrades require an explicit
+          # project decision, not an automatic CI update.
           java-version: '21'
           cache: maven
 

@@ -3,6 +3,17 @@ server:
     context-path: /api
 
 spring:
+  # Own schema, never public (spec 05-032): every service can share one PostgreSQL instance --
+  # even one database -- without colliding. Set here, not in the URL, so it holds for every
+  # profile, staging/production included, where the URL comes from outside. hikari.schema
+  # becomes the connection's search_path (Flyway, Hibernate and Spring Session's own SQL).
+  datasource:
+    hikari:
+      schema: email_service
+  flyway:
+    schemas: email_service
+    table: email_service_schema_history
+    locations: classpath:db/migration-email-service
   application:
     name: email-service
   profiles:
@@ -11,6 +22,9 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: email_service
   cloud:
     aws:
       # spring-cloud-aws-starter-ses autoconfigures a SesClient bean unconditionally -- without

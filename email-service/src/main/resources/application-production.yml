@@ -4,6 +4,10 @@
 # No spring.cloud.aws.ses.endpoint override here -- falls back to the real AWS default
 # credentials/endpoint chain (blocked today on there being no real AWS account yet, same as
 # app's own staging/production profiles).
+# Schema and Flyway history names come from application.yml (spec 05-032): tables in schema
+# `email_service` (never public), history in `email_service.email_service_schema_history`, scripts from
+# db/migration-email-service. The team applying migrations by hand creates the schema and grants
+# email_service_app USAGE on it plus SELECT/INSERT/UPDATE/DELETE on its tables and sequences.
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL}

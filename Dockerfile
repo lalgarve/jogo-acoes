@@ -1,3 +1,5 @@
+# Java 21 is the project's supported baseline; changing the LTS requires an explicit project
+# decision across Maven, CI, and all runtime images.
 # Builds only the `app` module (Spring Boot) -- `email-lambda` (Quarkus) has its own,
 # separate build/deploy story and doesn't belong in this image. Build context is the repo
 # root (not app/) so the reactor's root pom.xml is available; see docker-compose.yml.

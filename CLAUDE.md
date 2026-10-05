@@ -35,6 +35,15 @@ implementação"), mesmo com desenho técnico claro na conversa, mesmo se a muda
 — "parecer simples" é julgamento da sessão, não permissão de quem pediu. Detalhe completo:
 `memory/constitution.md` → "Nunca começar a implementar sem pedido explícito".
 
+## Baseline Java e upgrades de LTS
+
+Java/JDK 21 é a baseline suportada atualmente por este projeto. Não sugerir nem iniciar uma
+atualização para outro LTS durante uma tarefa não relacionada. Só discutir ou executar um
+upgrade de Java/JDK quando houver um pedido explícito. Se uma dependência, framework,
+ferramenta ou ambiente exigir outra versão, reportar a incompatibilidade concreta e aguardar
+uma decisão explícita sobre a mudança da baseline — não transformar essa exigência em um
+upgrade automático.
+
 ## O projeto
 
 Simulação de investimentos em bolsa por competição: administradores criam competições,
@@ -69,6 +78,9 @@ Boot, multi-módulo Maven:
   checklist da Issue ou Issues próprias.
 - Testes: preferir dependência real a mock/fake sempre que der (ver seção "Testes" da
   constitution).
+- Banco: cada serviço no próprio schema, nunca no `public`; migrations em
+  `db/migration-<serviço>` e histórico do Flyway em `<schema>_schema_history` (seção "Banco de
+  dados: um schema por serviço" da constitution, spec 05-032).
 - Código de teste/dev nunca dentro de um módulo de produção (`app/`, `email-lambda/`) — mesmo
   atrás de profile/flag, mesmo que funcione, mesmo que a alternativa exija mais código. Sempre
   um módulo/aplicação separada (padrão `blackbox-proxy/`). `email-lambda/` já corrigido

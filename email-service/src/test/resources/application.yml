@@ -11,13 +11,21 @@ spring:
     username: email_service_admin
     password: email_service_admin
     driver-class-name: org.postgresql.Driver
+    hikari:
+      schema: email_service
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: email_service
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    # Same as src/main/resources/application.yml (spec 05-032) -- this file replaces that one.
+    schemas: email_service
+    table: email_service_schema_history
+    locations: classpath:db/migration-email-service
   cloud:
     aws:
       credentials:
