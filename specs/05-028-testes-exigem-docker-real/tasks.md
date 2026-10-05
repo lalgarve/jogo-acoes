@@ -63,10 +63,11 @@ de outras specs; nenhuma delas foi feita nesta revisão.
 Continuam pendentes:
 
 - **T005/T006**: não há tag `@requires-docker` na feature nem filtro `cucumber.filter.tags`
-  ou perfil `docker-tests` no `email-service/pom.xml`. O comentário de
-  `CucumberSpringConfiguration` diz que Postgres e LocalStack precisam estar de pé antes da
-  suíte, o que sugere que esse mecanismo de skip foi abandonado, mas nenhuma decisão registra
-  isso.
+  ou perfil `docker-tests` no `email-service/pom.xml`. As tasks continuam valendo (decisão de
+  2026-10-05): no perfil `docker` o Docker é considerado de pé; no perfil `sandbox` ele nunca
+  está, e os testes que dependem dele precisam ser pulados ali. No `app`, as classes que usam
+  o LocalStack já se pulam sozinhas sem o Compose (`SqsEmailSenderDockerIntegrationTest`,
+  `QueueLoggingAspectIntegrationTest`). A suíte Cucumber do `email-service` ainda não faz isso.
 - **T011**: depende da T006.
 - **T012**: o `.github/workflows/ci.yml` só tem os steps de `app` e `email-lambda`.
 - **T013**: a T020 da spec 05-025 tem o registro da verificação, mas continua sem tachado.
