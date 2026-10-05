@@ -35,8 +35,13 @@ Outros fatos que pesam nas decisões:
   testes, então `spring.profiles.default` precisa estar nos dois.
 - Com `docker` como padrão nos testes, `application-docker.yml` passa a valer em toda execução,
   como já acontece no CI (`SPRING_PROFILES_ACTIVE=docker`). Ele liga `email.sender: sqs`.
-- O `StubEmailSender` é o `EmailSender` quando `email.sender` não está definido
-  (`matchIfMissing`). Depois desta spec, nenhum perfil de execução fica sem `email.sender`.
+- O `StubEmailSender` é o `EmailSender` quando `email.sender` não está definido ou vale `stub`
+  (`matchIfMissing`). A spec 05-034 (PR #120) decidiu que as suítes Cucumber do `app` continuam
+  com `email.sender=stub`, gravando em `sent_email`, e que tirá-lo do código de produção é uma
+  pendência separada.
+- A spec 05-034 também mexe em pontos que esta toca: define `email-service.base-url` por perfil,
+  incluindo `http://localhost:8082` no `sandbox`, e a T015 dela remove o `SqsEmailSender` e a
+  configuração de fila do `app`.
 
 ## Decisões de arquitetura
 
@@ -48,7 +53,8 @@ Outros fatos que pesam nas decisões:
 | Como impedir a volta da checagem em tempo de execução | Regra ArchUnit "nenhuma classe de teste usa `org.junit.jupiter.api.Assumptions`" no `ArchitectureTest` de `app` e `email-service`; no `email-lambda`, `archunit-junit5` em escopo `test` e um `ArchitectureTest` novo | proposta | Proibir `Assumptions` inteiro é mais simples que reconhecer "checagem de rede". Os únicos usos hoje são os três a remover. |
 | O que fazer com as specs implementadas e os diários que citam o `sandbox` | Ficam como estão | resolvida | São registro do que foi decidido na época. A spec 05-028 ganha só uma nota apontando para esta. |
 | `docs/disciplina/*` | Revisar seguindo `docs/disciplina/CLAUDE.md`; a lista de perfis continua atendendo "ao menos dois ambientes" (`docker`, `staging`, `production`) | proposta | Documento de entrega da disciplina tem regras próprias de edição. |
-| `StubEmailSender` | **Em aberto**: deixa de ser usado por qualquer perfil de execução. Removê-lo (e ajustar os testes que leem `sent_email`) fica para uma Issue separada; aqui só o Javadoc é corrigido | em aberto | Remover mexe em código de produção e em testes de várias features, fora do objetivo desta spec. Também pesa a regra "Código de teste/dev nunca dentro da aplicação". |
+| `StubEmailSender` | Fica. Só o Javadoc muda: deixa de citar o `sandbox` e passa a citar as suítes Cucumber do `app` (`email.sender=stub`) | resolvida | Alinhado com a spec 05-034, que mantém o stub nas suítes Cucumber do `app`. Tirá-lo do código de produção continua pendência separada, registrada lá. |
+| Convivência com a spec 05-034 (PR #120) | Quem for mesclado depois ajusta o outro: se a 05-034 entrar antes, a T003 desta spec só mexe no que sobrar dos testes com `assumeTrue` (a T015 dela apaga o `SqsEmailSenderDockerIntegrationTest`) e a T006 remove o `email-service.base-url` do `application-sandbox.yml` junto com o arquivo; se esta entrar antes, a 05-034 deixa de definir a URL para o `sandbox` | proposta | As duas specs tocam os mesmos arquivos de configuração e testes do `app`. |
 
 ## Estrutura de módulos/pacotes
 

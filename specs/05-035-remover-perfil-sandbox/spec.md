@@ -107,8 +107,10 @@ Esta spec é infraestrutura de execução e de teste, não comportamento de prod
 - Os cenários `@requires-real-ses` (Issue #104): dependem do SES real, não de container, e
   continuam fora da execução padrão.
 - Trocar o Dev Services do `email-lambda` pelo LocalStack do Compose.
-- O destino do `StubEmailSender` (ver `plan.md`).
+- Tirar o `StubEmailSender` do código de produção: as suítes Cucumber do `app` continuam usando
+  o stub (spec 05-034), e a remoção é uma pendência separada registrada lá.
 
 ## Decisões em aberto
 
-Ver `plan.md`.
+Nenhuma. A convivência com a spec 05-034 (PR #120), que mexe nos mesmos arquivos do `app`, está
+em `plan.md`.
