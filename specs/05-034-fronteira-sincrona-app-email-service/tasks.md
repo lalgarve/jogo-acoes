@@ -55,4 +55,29 @@ checklist nela.
 
 ## Resultado da verificação
 
-A preencher durante a implementação (T001–T005 antes das correções; T017, T018 no fim).
+### Primeira rodada (2026-10-05) — tudo o que não depende da 05-031
+
+Feito nesta rodada: T001–T013 e T016. Esperam a 05-031 (que por enquanto é só spec e contrato,
+PR #110): T014, T015, o item (5) do T006 (envio), T017–T019.
+
+- **T001 vermelho antes da mudança**, só com as violações inventariadas: SQS violada 3 vezes,
+  todas em `SqsEmailSender` (parâmetro do construtor, campo e `SqsTemplate.send`); Thymeleaf
+  violada 7 vezes, todas em `EmailContentRenderer`. Continua vermelho até o T015, de propósito.
+- **T002**: a regra (d) nasceu vermelha (nenhuma classe para checar) e ficou verde com o cliente
+  gerado; a (e) nasceu verde e foi provada com uma classe `user.UsesProbe` usando
+  `email.client.Probe` (1 violação), desfeita.
+- **T003**: provada com `emailservice.Leak` + `email.UsesLeak` no `app` (2 violações), desfeitas.
+- **T004**: provada nos dois sentidos — `email-service` como dependência do `app` e `jogo-acoes`
+  como dependência do `email-service` fazem `mvn validate` falhar com `BannedDependencies`.
+- **T005**: provada com `jogoacoes.user.Leak` + `emailservice.common.UsesLeak` no
+  `email-service` (2 violações), desfeitas.
+- **T006** (sem Docker neste ambiente): `email-service` rodando localmente (`java -jar`, perfil
+  `docker`, PostgreSQL 16 nativo, chave de teste restaurada com `scripts/test-api-key.sh`) e o
+  SES substituído localmente pelo `moto_server` só para esta verificação — na CI é o LocalStack.
+  Os 7 testes passaram. Observação: com o `moto`, o assunto da pré-visualização volta com
+  acentos corrompidos (`VerÃ£o`); o teste usa um nome sem acento. Falta conferir no
+  LocalStack/SES real se é só do `moto` ou do `MimeRenderedTemplateParser` do `email-service`.
+- **Suíte do `app`** (perfil padrão, Postgres nativo): 179 testes, só as 2 falhas esperadas do
+  T001.
+- **Spring Cloud OpenFeign**: 2025.1.3 sobre Spring Boot 4.1.0 subiu e chamou um `@FeignClient`
+  num projeto mínimo, e o `app` compila e passa os testes com ele.
