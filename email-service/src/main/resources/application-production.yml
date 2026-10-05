@@ -8,6 +8,10 @@
 # `email_service` (never public), history in `email_service.email_service_schema_history`, scripts from
 # db/migration-email-service. The team applying migrations by hand creates the schema and grants
 # email_service_app USAGE on it plus SELECT/INSERT/UPDATE/DELETE on its tables and sequences.
+# API_KEY_HMAC_PEPPER (spec 05-030) has no default here: it comes from the environment's secret
+# manager, and HmacPepperStartupCheck fails startup without it. The DB team also grants
+# email_service_app USAGE on schema api_key and SELECT on api_key.api_keys (keys are issued by the
+# api-key CLI with the admin role; this service only reads them).
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL}

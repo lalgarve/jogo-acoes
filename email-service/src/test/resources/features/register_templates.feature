@@ -87,6 +87,12 @@ Feature: Register e-mail templates
       When they try to preview the template named "newsletter"
       Then the system shows an error that the template does not exist
 
+    Scenario: Client sees the same templates with a second active API key
+      Given they already registered a template named "welcome"
+      And they have a second active API key
+      When they list their templates with the second API key
+      Then they see only the template named "welcome"
+
   Rule: Every request requires an API key
 
     Scenario: Request without an API key
@@ -95,4 +101,22 @@ Feature: Register e-mail templates
 
     Scenario: Request with an empty API key
       When a request is made with an empty API key
+      Then the system rejects the request as unauthorized
+
+    Scenario: Request with a malformed API key
+      When a request is made with a malformed API key
+      Then the system rejects the request as unauthorized
+
+    Scenario: Request with an API key that was never issued
+      When a request is made with a well-formed API key that was never issued
+      Then the system rejects the request as unauthorized
+
+    Scenario: Request with an expired API key
+      Given an API key issued for "client-a" that has expired
+      When a request is made with that API key
+      Then the system rejects the request as unauthorized
+
+    Scenario: Request with a revoked API key
+      Given an API key issued for "client-a" that has been revoked
+      When a request is made with that API key
       Then the system rejects the request as unauthorized

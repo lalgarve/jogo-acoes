@@ -9,10 +9,9 @@ info:
     pré-visualizáveis (TestRenderTemplate) sem enviar e-mail nenhum. Escrito antes de qualquer
     controller — a implementação do módulo `email-service` segue este contrato.
 
-    Autenticação por API-KEY é um esqueleto nesta fase (ver spec.md, "Fora de escopo"/"Decisões
-    em aberto"): qualquer valor não vazio de `X-API-Key` é aceito, e a própria string da chave
-    identifica o cliente dono dos templates — sem validação de formato/hash/expiração/revogação
-    ainda.
+    Autenticação por API-KEY validada pela biblioteca `api-key-validation`
+    (specs/05-030-validacao-api-key-servico-email): formato, hash, expiração e revogação. O
+    cliente dono dos templates é aquele para o qual a chave foi emitida.
 servers:
   - url: /api
 
@@ -204,9 +203,9 @@ components:
       in: header
       name: X-API-Key
       description: >
-        Esqueleto nesta fase (spec 05-025): qualquer valor não vazio é aceito, e a própria
-        string da chave identifica o cliente dono dos templates. Validação de verdade
-        (formato/hash/expiração/revogação) fica para uma spec futura.
+        Chave emitida pela CLI do projeto lalgarve/api-key (spec 05-030). Qualquer chave
+        ausente, malformada, desconhecida, expirada ou revogada recebe o mesmo 401, sem dizer
+        o motivo.
 
   schemas:
     EmailTemplate:

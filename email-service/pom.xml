@@ -99,6 +99,16 @@
       <artifactId>flyway-database-postgresql</artifactId>
     </dependency>
 
+    <!-- Spec 05-030: real API-KEY validation (lalgarve/api-key, release v1.0.1). Not on Maven
+         Central nor on a registry this build reads: scripts/install-api-key-lib.sh installs it
+         into ~/.m2 from the GitHub release first (plan.md, "Como distribuir api-key-validation
+         para o build"). Only the auth package may use it (ArchitectureTest). -->
+    <dependency>
+      <groupId>dev.leilaalgarve.apikey</groupId>
+      <artifactId>api-key-validation</artifactId>
+      <version>1.0.1</version>
+    </dependency>
+
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
@@ -113,6 +123,14 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-data-jpa-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Spec 05-030, T001: same version as app/pom.xml. -->
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>1.5.0</version>
       <scope>test</scope>
     </dependency>
 

@@ -13,8 +13,8 @@ import java.time.Instant;
 
 /**
  * A client's registered e-mail template, mirrored on Amazon SES under {@link #sesTemplateName}
- * (see data-model.md). {@code clientId} is the raw {@code X-API-Key} value received at
- * registration time -- a skeleton pending real API-KEY validation (spec.md).
+ * (see data-model.md). {@code clientId} is the client name the registering API key was issued
+ * for (spec 05-030), resolved by {@code auth.ClientIdentityResolver}.
  */
 @Entity
 @Table(name = "email_template")
