@@ -1,6 +1,6 @@
 # Spec: H2 sai do projeto — Postgres real sempre (sandbox, testes e Docker), sem Testcontainers
 
-**Status:** parcialmente implementada (pendentes: T012 e T013; T005, T006 e T011 substituídas pela spec 05-034; ver `tasks.md`)
+**Status:** parcialmente implementada (pendentes: T012 e T013; T005, T006 e T011 substituídas pela spec 05-035; ver `tasks.md`)
 **Issue:** #<a criar>
 **Iteração:** iteration-5
 
@@ -18,7 +18,7 @@ infraestrutura real.
 **Revisão (2026-10-05):** o que acontece com testes que dependem de infraestrutura em container
 (ex.: LocalStack) no perfil `sandbox` saiu do escopo desta spec. A regra está em
 `memory/constitution.md`, seção "Testes que dependem de infraestrutura em container", e a
-implementação em todos os módulos fica na spec 05-034. Esta spec fica com a troca de H2 e
+implementação em todos os módulos fica na spec 05-035. Esta spec fica com a troca de H2 e
 Testcontainers por infraestrutura real e com o step de CI do `email-service`.
 
 ## Motivação
@@ -75,7 +75,7 @@ Esta spec não adiciona nem muda comportamento de produto — é infraestrutura 
   igual ao que `email-lambda` já assume hoje em CI.
 - Rodar a suíte num ambiente sem Docker (ex.: o perfil sandbox da própria Claude) não tenta
   nenhum truque de substituição. Como os testes que dependem de container se comportam ali é
-  definido em `memory/constitution.md` e implementado na spec 05-034.
+  definido em `memory/constitution.md` e implementado na spec 05-035.
 
 ## Requisitos funcionais
 
@@ -93,7 +93,7 @@ Esta spec não adiciona nem muda comportamento de produto — é infraestrutura 
   seguindo o mesmo padrão já usado pra `app` (sobe `db-email-service` + `localstack` via
   `docker compose`, roda `mvn -pl email-service -am verify`).
 - A falta de Docker no ambiente corrente nunca é motivo pra reintroduzir H2/Testcontainers como
-  substituto. O tratamento dos testes que dependem de container fica na spec 05-034.
+  substituto. O tratamento dos testes que dependem de container fica na spec 05-035.
 - `application-sandbox.yml` (de `app` e `email-service`) troca de H2 pra PostgreSQL real, apontando
   pro Postgres nativo já instalado no ambiente sandbox (mesmas portas/roles do perfil `docker`:
   `localhost:5432`/`jogo_acoes_admin` e `localhost:5433`/`email_service_admin`), usando
@@ -116,7 +116,7 @@ Esta spec não adiciona nem muda comportamento de produto — é infraestrutura 
   isso não foi afetado pelo problema desta sessão) e isso já funciona lá hoje. Não mexer, a
   menos que surja o mesmo tipo de problema.
 - Marcar e pular testes que dependem de infraestrutura em container, em qualquer módulo — spec
-  05-034, seguindo `memory/constitution.md`.
+  05-035, seguindo `memory/constitution.md`.
 - Resolver a causa raiz do Testcontainers não funcionar no Docker Desktop desta máquina Windows
   específica — foi investigado (ver `specs/05-025-servico-email-templates/tasks.md`), mas a
   decisão aqui é parar de depender disso, não consertar o Testcontainers em si.
