@@ -1,22 +1,31 @@
 openapi: 3.0.3
 info:
-  title: Serviço de E-mail — Templates
-  version: "0.1.0"
+  title: Serviço de E-mail
+  version: "0.2.0"
   description: >
-    API-first draft da primeira feature do Serviço de E-mail
-    (specs/05-025-servico-email-templates, Iteração 5) — cadastro de templates, sincronizados
-    com o Amazon SES (CreateTemplate/UpdateTemplate, validação real de sintaxe) e
-    pré-visualizáveis (TestRenderTemplate) sem enviar e-mail nenhum. Escrito antes de qualquer
+    Contrato API-first do Serviço de E-mail (Iteração 5). Escrito antes de qualquer
     controller — a implementação do módulo `email-service` segue este contrato.
+
+    - Templates (specs/05-025-servico-email-templates): cadastro de templates, sincronizados
+      com o Amazon SES (CreateTemplate/UpdateTemplate, validação real de sintaxe) e
+      pré-visualizáveis (TestRenderTemplate) sem enviar e-mail nenhum.
+    - Envio (specs/05-031-servico-email-envio): pedido de envio de um e-mail a partir de um
+      template já cadastrado, com o remetente que operações configurou para o cliente; o serviço
+      enfileira a mensagem na fila SQS de envio e a Lambda de e-mail entrega via SES
+      (SendTemplatedEmail). O endpoint responde assim que a mensagem é enfileirada, não quando
+      o e-mail é entregue.
 
     Autenticação por API-KEY validada pela biblioteca `api-key-validation`
     (specs/05-030-validacao-api-key-servico-email): formato, hash, expiração e revogação. O
-    cliente dono dos templates é aquele para o qual a chave foi emitida.
+    cliente dono dos templates e dos envios é aquele para o qual a chave foi emitida.
 servers:
   - url: /api
 
 tags:
   - name: templates
+    description: Cadastro e pré-visualização de templates (spec 05-025)
+  - name: emails
+    description: Envio de e-mail a partir de um template cadastrado (spec 05-031)
 
 security:
   - ApiKeyAuth: []
@@ -196,6 +205,70 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /emails:
+    post:
+      tags: [emails]
+      operationId: sendEmail
+      summary: Queue one email built from one of the calling client's own templates
+      description: >
+        Looks up the template by name among the calling client's own templates and the
+        sender address operations configured for the client, validates the request and
+        publishes one message to the SQS send queue (senderAddress/templateName/templateData,
+        rendered by SES at send time via
+        SendTemplatedEmail). Responds 202 as soon as the message is queued -- delivery happens
+        asynchronously in email-lambda, and a later delivery failure (bounce, complaint) is not
+        reported back by this endpoint. The returned id travels with the message as its
+        correlationId (and as the SES message tag `correlationId`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendEmailRequest'
+      responses:
+        '202':
+          description: Accepted -- the message is on the send queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendEmailResponse'
+        '400':
+          description: >
+            Malformed request -- e.g. missing templateName/recipientEmail, or recipientEmail
+            not a syntactically valid address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid X-API-Key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No template with this name for this client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: >
+            No sender address has been configured for the calling client yet (set by
+            operations, not through this API) -- nothing was queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            The message could not be published to the send queue -- nothing was sent, the
+            client may retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -205,7 +278,7 @@ components:
       description: >
         Chave emitida pela CLI do projeto lalgarve/api-key (spec 05-030). Qualquer chave
         ausente, malformada, desconhecida, expirada ou revogada recebe o mesmo 401, sem dizer
-        o motivo.
+        o motivo. O cliente para o qual a chave foi emitida é o dono dos templates e dos envios.
 
   schemas:
     EmailTemplate:
@@ -264,3 +337,39 @@ components:
       type: object
       properties:
         message: { type: string }
+
+    SendEmailRequest:
+      type: object
+      required: [templateName, recipientEmail]
+      properties:
+        templateName:
+          type: string
+          description: >
+            Nome do template, como cadastrado pelo próprio cliente (não o nome namespaced no
+            SES)
+        recipientEmail:
+          type: string
+          format: email
+          description: Um único destinatário por pedido
+        templateData:
+          type: object
+          additionalProperties: true
+          description: >
+            Variáveis para renderizar o template (TemplateData do SendTemplatedEmail). Ausente
+            equivale a um objeto vazio.
+
+    SendEmailResponse:
+      type: object
+      required: [id, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: >
+            Identificador do envio -- vai na mensagem da fila como correlationId e como message
+            tag do SES
+        status:
+          type: string
+          enum: [QUEUED]
+          description: Único valor nesta spec -- a mensagem foi publicada na fila de envio
+
