@@ -109,7 +109,7 @@ O critério de aceite novo é estrutural e de integração, verificado pelos tes
   estado.
 - `POST /templates/{name}/preview` não muda estado e pode ser repetido livremente.
 - O `app` só repete automaticamente (retry) chamadas idempotentes. `POST /emails` não é repetido
-  automaticamente enquanto não tiver idempotência própria (ver "Decisões em aberto").
+  automaticamente: a idempotência dele fica para a Etapa 4 (ver "Decisões resolvidas").
 
 **Falhas**
 
@@ -146,19 +146,20 @@ O critério de aceite novo é estrutural e de integração, verificado pelos tes
 - Tirar o `StubEmailSender` do `app` de produção (regra "Código de teste/dev nunca dentro da
   aplicação"). É uma pendência real, mas separada; esta spec não a agrava.
 
+## Decisões resolvidas
+
+- ~~Idempotência de `POST /emails` para repetição pelo cliente~~ — fica na Etapa 4, junto com a
+  entrega repetida pela fila, mantendo a decisão da spec 05-031 (Leila, 2026-10-05). Até lá, o
+  `app` não repete `POST /emails` automaticamente. A alternativa considerada, um header
+  `Idempotency-Key` em `POST /emails` já nesta spec, foi descartada para não reabrir a 05-031.
+
 ## Decisões em aberto
 
-1. **Idempotência de `POST /emails` para repetição pelo cliente.** A spec 05-031 (decisão de
-   2026-10-04) deixou isso para a Etapa 4, junto com a entrega repetida pela fila. O épico #117
-   (2026-10-05) diz que a idempotência de operações HTTP síncronas "pertence à Etapa 2 quando
-   relevante". Proposta desta spec: manter a decisão da 05-031 (Etapa 4) e, até lá, o `app` não
-   repete `POST /emails` automaticamente. Alternativa: trazer para cá um header
-   `Idempotency-Key` em `POST /emails`.
-2. **Como os templates do `app` chegam ao `email-service`.** Proposta: o `app` guarda o conteúdo
+1. **Como os templates do `app` chegam ao `email-service`.** Proposta: o `app` guarda o conteúdo
    dos templates (Handlebars do SES) nos próprios recursos e, ao subir, sincroniza com o
    `email-service` (cria o que falta, atualiza o que mudou). Alternativa: um script de operações
    cadastra os templates, e o `app` só envia.
-3. **Como o `app` testa o envio nas suítes Cucumber.** Proposta: as suítes do `app` continuam
+2. **Como o `app` testa o envio nas suítes Cucumber.** Proposta: as suítes do `app` continuam
    com `email.sender=stub` (gravando em `sent_email`), e um teste de integração próprio exercita
    o cliente Feign contra o `email-service` real no Docker Compose. Alternativa: a suíte inteira
    do `app` sobe com o `email-service` real.
