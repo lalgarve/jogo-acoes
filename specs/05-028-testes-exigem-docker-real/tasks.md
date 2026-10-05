@@ -65,9 +65,13 @@ Continuam pendentes:
 - **T005/T006**: não há tag `@requires-docker` na feature nem filtro `cucumber.filter.tags`
   ou perfil `docker-tests` no `email-service/pom.xml`. As tasks continuam valendo (decisão de
   2026-10-05): no perfil `docker` o Docker é considerado de pé; no perfil `sandbox` ele nunca
-  está, e os testes que dependem dele precisam ser pulados ali. No `app`, as classes que usam
-  o LocalStack já se pulam sozinhas sem o Compose (`SqsEmailSenderDockerIntegrationTest`,
-  `QueueLoggingAspectIntegrationTest`). A suíte Cucumber do `email-service` ainda não faz isso.
+  está, e os testes que dependem dele precisam ser pulados ali. O skip não pode ser deduzido
+  em tempo de execução: os testes são marcados explicitamente como dependentes de Docker, e
+  no perfil `docker` um LocalStack que não responde é erro, não motivo para pular.
+- **Fora da tabela, mesma regra**: no `app`, `SqsEmailSenderDockerIntegrationTest` e
+  `QueueLoggingAspectIntegrationTest` usam `assumeTrue(reachable(...))` e se pulam quando o
+  LocalStack não responde, inclusive no perfil `docker`. Isso contradiz a regra acima e
+  precisa ser trocado pela marcação explícita.
 - **T011**: depende da T006.
 - **T012**: o `.github/workflows/ci.yml` só tem os steps de `app` e `email-lambda`.
 - **T013**: a T020 da spec 05-025 tem o registro da verificação, mas continua sem tachado.
