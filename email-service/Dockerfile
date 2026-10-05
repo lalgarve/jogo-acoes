@@ -12,13 +12,18 @@ COPY email-service/pom.xml email-service/pom.xml
 COPY app/pom.xml app/pom.xml
 COPY email-lambda/pom.xml email-lambda/pom.xml
 COPY blackbox-proxy/pom.xml blackbox-proxy/pom.xml
-RUN mvn -B -pl email-service -am dependency:go-offline
+# api-key-validation (spec 05-030) is not on any registry this build reads: the script installs it
+# into ~/.m2 from the GitHub release. The BuildKit cache mount keeps ~/.m2 across builds, so the
+# release is downloaded once, like any Maven dependency -- every RUN that needs ~/.m2 mounts it.
+COPY scripts/install-api-key-lib.sh scripts/install-api-key-lib.sh
+RUN --mount=type=cache,target=/root/.m2 ./scripts/install-api-key-lib.sh
+RUN --mount=type=cache,target=/root/.m2 mvn -B -pl email-service -am dependency:go-offline
 # email-service/pom.xml's openapi-generator-maven-plugin reads ../docs/openapi-email-service.yaml
 # (relative to this module) during `package` -- without this, the build fails as soon as it
 # reaches generate-sources.
 COPY docs docs
 COPY email-service/src email-service/src
-RUN mvn -B -pl email-service -am package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 mvn -B -pl email-service -am package -DskipTests
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
