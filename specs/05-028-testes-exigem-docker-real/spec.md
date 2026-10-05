@@ -15,11 +15,12 @@ Testcontainers; o perfil sandbox contra o PostgreSQL já instalado nativamente n
 (fora de Docker, ver "Contexto técnico" em `plan.md`). Nunca há substituto mais fraco para a
 infraestrutura real.
 
-**Revisão (2026-10-05):** o que acontece com testes que dependem de infraestrutura em container
-(ex.: LocalStack) no perfil `sandbox` saiu do escopo desta spec. A regra está em
-`memory/constitution.md`, seção "Testes que dependem de infraestrutura em container", e a
-implementação em todos os módulos fica na spec 05-035. Esta spec fica com a troca de H2 e
-Testcontainers por infraestrutura real e com o step de CI do `email-service`.
+**Revisão (2026-10-05):** o perfil `sandbox` descrito aqui foi removido depois pela spec
+05-035, porque o ambiente da Claude passou a ter Docker. Com isso, o que acontecia com testes
+que dependem de container num ambiente sem Docker deixou de existir: os testes sempre exigem a
+infraestrutura de pé (`memory/constitution.md`, "Testes exigem a infraestrutura de pé"). Esta
+spec fica com a troca de H2 e Testcontainers por infraestrutura real e com o step de CI do
+`email-service`. As menções ao `sandbox` abaixo são histórico.
 
 ## Motivação
 
@@ -74,8 +75,8 @@ Esta spec não adiciona nem muda comportamento de produto — é infraestrutura 
   sobe LocalStack sozinha — assume que `docker compose up localstack` já está rodando,
   igual ao que `email-lambda` já assume hoje em CI.
 - Rodar a suíte num ambiente sem Docker (ex.: o perfil sandbox da própria Claude) não tenta
-  nenhum truque de substituição. Como os testes que dependem de container se comportam ali é
-  definido em `memory/constitution.md` e implementado na spec 05-035.
+  nenhum truque de substituição. (Revisão: o perfil `sandbox` foi removido pela spec 05-035;
+  ver o topo deste arquivo.)
 
 ## Requisitos funcionais
 
@@ -93,7 +94,7 @@ Esta spec não adiciona nem muda comportamento de produto — é infraestrutura 
   seguindo o mesmo padrão já usado pra `app` (sobe `db-email-service` + `localstack` via
   `docker compose`, roda `mvn -pl email-service -am verify`).
 - A falta de Docker no ambiente corrente nunca é motivo pra reintroduzir H2/Testcontainers como
-  substituto. O tratamento dos testes que dependem de container fica na spec 05-035.
+  substituto. Os testes sempre exigem a infraestrutura de pé (spec 05-035).
 - `application-sandbox.yml` (de `app` e `email-service`) troca de H2 pra PostgreSQL real, apontando
   pro Postgres nativo já instalado no ambiente sandbox (mesmas portas/roles do perfil `docker`:
   `localhost:5432`/`jogo_acoes_admin` e `localhost:5433`/`email_service_admin`), usando
@@ -115,8 +116,7 @@ Esta spec não adiciona nem muda comportamento de produto — é infraestrutura 
 - `email-lambda` — já usa Testcontainers via Quarkus Dev Services em CI (não localmente, por
   isso não foi afetado pelo problema desta sessão) e isso já funciona lá hoje. Não mexer, a
   menos que surja o mesmo tipo de problema.
-- Marcar e pular testes que dependem de infraestrutura em container, em qualquer módulo — spec
-  05-035, seguindo `memory/constitution.md`.
+- Remover o perfil `sandbox` e os `assumeTrue` dos testes — spec 05-035.
 - Resolver a causa raiz do Testcontainers não funcionar no Docker Desktop desta máquina Windows
   específica — foi investigado (ver `specs/05-025-servico-email-templates/tasks.md`), mas a
   decisão aqui é parar de depender disso, não consertar o Testcontainers em si.
