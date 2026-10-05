@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Spec 05-030: ApiKey (api-key library) is owned by the api-key CLI and lives in its own schema,
+     api_key, not in this service's default schema (hibernate.default_schema: email_service,
+     spec 05-032). Overrides only the table's schema; the library's own annotations stay as they
+     are. -->
+<entity-mappings xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm/orm_3_1.xsd"
+                 version="3.1">
+  <entity class="dev.leilaalgarve.apikey.core.ApiKey">
+    <table name="api_keys" schema="api_key"/>
+  </entity>
+</entity-mappings>

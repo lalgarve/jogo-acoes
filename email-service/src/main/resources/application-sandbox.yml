@@ -10,3 +10,9 @@ spring:
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
+
+# Spec 05-030: HMAC pepper the api-key CLI hashed this environment's keys with (ApiKeyHasher reads
+# API_KEY_HMAC_PEPPER). Test value, versioned on purpose -- matches the test key's dump
+# (docker/postgres-email-service/test-data/README.md). An API_KEY_HMAC_PEPPER environment
+# variable overrides it.
+API_KEY_HMAC_PEPPER: jogo-acoes-test-pepper-not-a-secret
