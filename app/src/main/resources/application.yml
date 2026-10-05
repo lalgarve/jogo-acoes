@@ -17,7 +17,7 @@ spring:
   application:
     name: jogo-acoes
   profiles:
-    default: docker
+    default: sandbox
   jpa:
     open-in-view: false
     hibernate:

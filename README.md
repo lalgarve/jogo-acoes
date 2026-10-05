@@ -62,15 +62,14 @@ dos três — cada módulo mantém seu próprio *parent*/BOM):
 
 ## Ambientes
 
-O perfil ativo do Spring é escolhido por `SPRING_PROFILES_ACTIVE` (ou `docker`, se
-nenhum for definido, tanto no `app` quanto no `email-service`, inclusive nos testes). Cada um
-tem seu arquivo `application-<nome>.yml` em `app/src/main/resources` (e em
-`email-service/src/main/resources`, para os perfis que o serviço usa):
+O perfil ativo do Spring é escolhido por `SPRING_PROFILES_ACTIVE` (ou `sandbox`, se
+nenhum for definido). Cada um tem seu arquivo `application-<nome>.yml` em
+`app/src/main/resources`:
 
 | Perfil | Banco | Quando usar |
 |---|---|---|
-| `docker` (padrão) | PostgreSQL real em containers | Localmente via `docker compose up`, ou CI |
-| `sandbox` | PostgreSQL instalado nativamente no ambiente | Rodar/testar sem Docker (sandbox da Claude); exige `SPRING_PROFILES_ACTIVE=sandbox` |
+| `sandbox` (padrão) | PostgreSQL instalado nativamente no ambiente | Rodar/testar sem Docker (sandbox da Claude) |
+| `docker` | PostgreSQL real em containers | Localmente via `docker-compose up`, ou CI |
 | `docker,blackbox` | PostgreSQL real em containers | Testes de caixa-preta (Swagger UI, Selenium futuro, suíte Python) — ver "Ambiente de testes blackbox" abaixo |
 | `staging` | PostgreSQL real, gerido por outra equipe | Pré-produção |
 | `production` | PostgreSQL real, gerido por outra equipe | Produção |

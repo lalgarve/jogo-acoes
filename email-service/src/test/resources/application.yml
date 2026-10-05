@@ -3,11 +3,6 @@ server:
     context-path: /api
 
 spring:
-  profiles:
-    # Same default as src/main/resources/application.yml (this file replaces that one): a
-    # plain `mvn verify` runs against the docker profile, like CI. Set
-    # SPRING_PROFILES_ACTIVE=sandbox to run without Docker.
-    default: docker
   datasource:
     # Real PostgreSQL (docker-compose.yml's `db-email-service` service), not H2 -- see
     # specs/05-028-testes-exigem-docker-real/plan.md. Tests require
