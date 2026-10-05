@@ -70,7 +70,8 @@ do envio pelo `correlationId` como *message tag* do SES.
 - O endpoint não espera a entrega: tempo de resposta limitado à consulta do template e à
   publicação na fila.
 - Testes contra PostgreSQL real e LocalStack (SQS e SES), sem mock — mesmo padrão das specs
-  05-025/05-028.
+  05-025/05-028. Sem LocalStack de pé, os testes falham (`memory/constitution.md`, "Testes
+  exigem a infraestrutura de pé").
 
 ## Fora de escopo
 

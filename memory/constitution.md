@@ -259,6 +259,12 @@ Commits e PRs fecham a Issue correspondente com `Closes #N` na mensagem — mesm
 usada para referenciar uma decisão resolvida em `iteracao-N.md`/`plan.md`, só que apontando
 para a Issue.
 
+**Marcar a task como feita na mesma PR que a implementa.** A PR que resolve uma task de
+`tasks.md` já traz a linha riscada (`~~T001~~`) e o registro da verificação dela. O merge
+torna as duas coisas verdadeiras ao mesmo tempo; se a PR não for mesclada, a marcação também
+não entra. Nunca deixar para "marcar depois do merge": isso exige uma segunda PR só para
+riscar a linha, que na prática não acontece, e a tabela fica dessincronizada do código.
+
 ## Documentação viva por fase/iteração - Projetos de Software
 
 - Antes de implementar uma fase de trabalho não trivial, registrar as decisões técnicas em
@@ -368,7 +374,6 @@ Exemplo usado neste projeto:
 | Nome | O que descreve |
 |---|---|
 | `docker` | Infraestrutura real via containers, local (`docker-compose`) ou CI — descartável. Perfil padrão |
-| `sandbox` | Sem Docker (ex.: rodando isolado). Só o banco real, instalado nativamente; nenhum outro serviço de infraestrutura (fila, e-mail) existe ali |
 | `staging` | Pré-produção: infraestrutura e dados reais, mas isolados de produção |
 | `production` | Produção |
 
@@ -379,8 +384,12 @@ mão").
 
 O perfil padrão (quando nenhum é escolhido explicitamente) é o mesmo em todos os serviços e
 vale também para os testes rodados à mão: o ambiente com a infraestrutura completa (`docker`,
-neste projeto). Rodar os testes na mão deve exigir a linha de comando mais simples possível;
-quem quer o ambiente restrito escolhe o perfil explicitamente.
+neste projeto). Rodar os testes na mão deve exigir a linha de comando mais simples possível.
+
+Não criar um ambiente "sem infraestrutura" (sem Docker, com substitutos do banco ou da fila)
+enquanto nenhum lugar onde o projeto roda precisar dele. Este projeto teve um perfil
+`sandbox` assim, para um ambiente de desenvolvimento sem Docker; quando esse ambiente passou a
+ter Docker, o perfil foi removido (spec 05-035).
 
 ## Banco de dados: um schema por serviço
 
@@ -394,7 +403,7 @@ os padrões do banco ou da ferramenta de migração:
   recursiva, então um subdiretório dela seria encontrado por quem ainda usa o padrão.
 - **Tabela de histórico própria**, `<schema>_schema_history`, dentro do próprio schema.
 - **O schema é definido pela aplicação**, não pela URL de conexão: a URL muda por ambiente e,
-  fora de `sandbox`/`docker`, costuma vir de fora (de quem opera o banco).
+  fora do `docker`, costuma vir de fora (de quem opera o banco).
 
 **Por quê**: o objetivo é poder colocar todos os serviços numa única instância do banco, e até
 num único banco, quando for conveniente — no início, o custo de memória de subir várias
@@ -434,30 +443,21 @@ asserção, em vez de só confiar que o método foi chamado.
 
 Não executar testes no merge que gerem cobrança por uso de API de inteligência artifical (Gemini).
 
-## Testes que dependem de infraestrutura em container
+## Testes exigem a infraestrutura de pé
 
-Alguns testes precisam de infraestrutura que só existe em container (ex.: LocalStack). Quem
-decide se eles rodam é o perfil, nunca o próprio teste olhando o ambiente:
+Os testes rodam contra a infraestrutura real do ambiente com containers (`docker`, neste
+projeto: banco, fila e e-mail emulados pelo LocalStack), que precisa estar de pé antes da
+execução. Nada é pulado por falta dela:
 
-- **Marcação explícita.** Todo teste (ou suíte) que depende dessa infraestrutura é marcado
-  como tal no próprio código, de forma visível na leitura (anotação, tag). Uma suíte que
-  depende inteira dela é marcada inteira.
-- **No perfil com containers (`docker`), a infraestrutura é considerada de pé.** Os testes
-  marcados rodam sempre. Se o serviço não responde, o teste falha: é erro de ambiente, não
-  motivo para pular.
-- **No perfil sem containers (`sandbox`), a infraestrutura nunca está de pé.** Os testes
-  marcados são pulados e aparecem como pulados no relatório, com o motivo.
-- **Nunca decidir em tempo de execução** se o serviço responde (ex.:
-  `assumeTrue(reachable(...))`, pular quando um container não sobe). Isso transforma uma falha
-  de ambiente no perfil `docker` num teste pulado, que passa despercebido.
-- Dependência que existe nos dois perfis (ex.: o banco, nativo no sandbox) não é marcada.
-
-O mecanismo concreto de marcação de cada stack fica na spec que o implementa.
+- **Infraestrutura fora do ar é erro.** O teste falha com o erro de conexão, não aparece como
+  pulado.
+- **Nenhum teste decide em tempo de execução se roda** (ex.: `assumeTrue(reachable(...))`,
+  pular quando um container não sobe). Um teste de arquitetura impede esse padrão.
+- **Como subir a infraestrutura** fica documentado no `README.md`, junto do comando de teste.
 
 **Por quê**: um teste que se pula sozinho quando a infraestrutura falta esconde exatamente o
 problema que deveria acusar, e cada módulo acabava inventando um jeito diferente de lidar com
-isso. Com a marcação explícita, dá para saber lendo o código o que precisa de Docker, e o
-resultado de uma execução depende só do perfil escolhido.
+isso. Como todo lugar onde o projeto roda tem Docker, não há caso legítimo para pular.
 
 ## Código de teste/dev nunca dentro da aplicação
 
@@ -509,8 +509,8 @@ só o campo sob teste, mantendo os demais válidos. Isso espelha a estrutura de 
 
 ### Java
 
-- A suíte roda contra o perfil `docker` (Postgres e LocalStack de verdade), com todos os
-  testes marcados como dependentes de container incluídos.
+- A suíte roda contra o perfil `docker` (Postgres e LocalStack de verdade), sem nenhum teste
+  pulado por falta de infraestrutura.
 - Piso de cobertura via JaCoCo (`mvn verify`).
 - Cobertura comentada na PR a cada push via `madrapps/jacoco-report`.
 
