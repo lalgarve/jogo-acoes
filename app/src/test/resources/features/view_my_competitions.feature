@@ -76,3 +76,14 @@ Feature: View my competitions
       Given is not a participant in a competition
       When they access that competition's details
       Then the system shows the competition's basic information with read-only access
+
+  Rule: The administrator sees the competitions they created
+
+    Background:
+      Given the user is the system administrator
+      And the user is logged into the system
+
+    Scenario: Administrator views a competition they created, even without participating in it
+      Given the administrator created a competition
+      When they access their competitions list
+      Then the system shows that competition under "created"
