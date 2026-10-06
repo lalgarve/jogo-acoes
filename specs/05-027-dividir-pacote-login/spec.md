@@ -1,6 +1,6 @@
 # Spec: Dividir `login`/`link` em `user`, `loginSession` e `loginSecurity`
 
-**Status:** rascunho
+**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** [#96](https://github.com/lalgarve/jogo-acoes/issues/96) (épico) — decorre da
 [Issue #95](https://github.com/lalgarve/jogo-acoes/issues/95) (comunicação entre módulos deve
 passar por serviço, nunca repositório cruzado)

@@ -24,20 +24,39 @@ pequenas o bastante para não precisar de PR isolada).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Passos Cucumber para `manage_active_sessions.feature` — cenários: (a) listar sessões ativas mostra id/rótulo/data/flag "é a atual"; (b) logar simulando dois dispositivos com Client Hints/User-Agent diferentes e confirmar que a listagem mostra dois rótulos distintos e reconhecíveis (valida a spec 05-009 de ponta a ponta); (c) revogar uma sessão de outro dispositivo simulado e confirmar que uma chamada autenticada seguinte com aquele cookie/sessão devolve 401; (d) revogar a própria sessão atual também desloga; (e) revogar sessão inexistente ou de outro usuário devolve 404. Chamada direta a `GET /sessions`/`DELETE /sessions/{id}` em JSON cru; rodar e confirmar que falha agora (caminhos ainda não existem) | — | [P] | #60 |
-| T002 | Contrato: em `docs/openapi.yaml`, adicionar `GET /sessions` (retorna array de `Session`) e `DELETE /sessions/{sessionId}` (`204`/`404`); schema novo `Session` (`id`, `deviceLabel`, `createdAt`, `current`); `x-roles: [PLAYER, ADMINISTRATOR]` nas duas (qualquer jogador autenticado, mesma convenção da spec 05-004) | T001 | | #60 |
-| T003 | Migration Flyway nova: coluna `http_session_id` (`NOT NULL`) em `login_session`; atualizar `docs/diagrams/der.md` com a coluna nova e a nota de que ela liga o registro à sessão HTTP real (Spring Session JDBC) | T002 | | #60 |
-| T004 | `link/LoginSession.java` ganha o campo `httpSessionId`; `LoginLinkSessionService.establish()` passa a gravá-lo a partir de `request.getSession().getId()`, chamado depois de `securityContextRepository.saveContext(...)` | T003 | | #60 |
-| T005 | `link/LoginSessionRepository.java` ganha `findByIdAndUserId(Long id, Long userId)` — usado pela revogação para já filtrar por dono numa query só | T002 | [P] | #60 |
-| T006 | Criar `login/SessionsController.java` (implementa a interface `SessionsApi` gerada) + lógica de listagem: mapeia `LoginSession` ativa do usuário autenticado para `Session`, calculando `current` pela comparação `httpSessionId` == `request.getSession().getId()` | T004, T005 | | #60 |
-| T007 | Lógica de revogação no mesmo controller (ou serviço dedicado, se ficar grande): `findByIdAndUserId` (404 se ausente), injeta `SessionRepository<? extends Session>` (Spring Session JDBC) e chama `.deleteById(httpSessionId)`, marca `endedAt` no próprio registro | T006 | | #60 |
-| T008 | Rodar `manage_active_sessions.feature` de novo — confirmar verde, incluindo o cenário que valida a spec 05-009 | T001, T007 | | #60 |
-| T009 | Rodar a suíte completa (`mvn test`) — confirmar verde, nenhum cenário/teste existente alterado além dos novos | T008 | | #60 |
+| ~~T001~~ | Passos Cucumber para `manage_active_sessions.feature` — cenários: (a) listar sessões ativas mostra id/rótulo/data/flag "é a atual"; (b) logar simulando dois dispositivos com Client Hints/User-Agent diferentes e confirmar que a listagem mostra dois rótulos distintos e reconhecíveis (valida a spec 05-009 de ponta a ponta); (c) revogar uma sessão de outro dispositivo simulado e confirmar que uma chamada autenticada seguinte com aquele cookie/sessão devolve 401; (d) revogar a própria sessão atual também desloga; (e) revogar sessão inexistente ou de outro usuário devolve 404. Chamada direta a `GET /sessions`/`DELETE /sessions/{id}` em JSON cru; rodar e confirmar que falha agora (caminhos ainda não existem) | — | [P] | #60 |
+| ~~T002~~ | Contrato: em `docs/openapi.yaml`, adicionar `GET /sessions` (retorna array de `Session`) e `DELETE /sessions/{sessionId}` (`204`/`404`); schema novo `Session` (`id`, `deviceLabel`, `createdAt`, `current`); `x-roles: [PLAYER, ADMINISTRATOR]` nas duas (qualquer jogador autenticado, mesma convenção da spec 05-004) | T001 | | #60 |
+| ~~T003~~ | Migration Flyway nova: coluna `http_session_id` (`NOT NULL`) em `login_session`; atualizar `docs/diagrams/der.md` com a coluna nova e a nota de que ela liga o registro à sessão HTTP real (Spring Session JDBC) | T002 | | #60 |
+| ~~T004~~ | `link/LoginSession.java` ganha o campo `httpSessionId`; `LoginLinkSessionService.establish()` passa a gravá-lo a partir de `request.getSession().getId()`, chamado depois de `securityContextRepository.saveContext(...)` | T003 | | #60 |
+| ~~T005~~ | `link/LoginSessionRepository.java` ganha `findByIdAndUserId(Long id, Long userId)` — usado pela revogação para já filtrar por dono numa query só | T002 | [P] | #60 |
+| ~~T006~~ | Criar `login/SessionsController.java` (implementa a interface `SessionsApi` gerada) + lógica de listagem: mapeia `LoginSession` ativa do usuário autenticado para `Session`, calculando `current` pela comparação `httpSessionId` == `request.getSession().getId()` | T004, T005 | | #60 |
+| ~~T007~~ | Lógica de revogação no mesmo controller (ou serviço dedicado, se ficar grande): `findByIdAndUserId` (404 se ausente), injeta `SessionRepository<? extends Session>` (Spring Session JDBC) e chama `.deleteById(httpSessionId)`, marca `endedAt` no próprio registro | T006 | | #60 |
+| ~~T008~~ | Rodar `manage_active_sessions.feature` de novo — confirmar verde, incluindo o cenário que valida a spec 05-009 | T001, T007 | | #60 |
+| ~~T009~~ | Rodar a suíte completa (`mvn test`) — confirmar verde, nenhum cenário/teste existente alterado além dos novos | T008 | | #60 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
 - Cada linha vira um item de checklist na Issue-épico da feature, ou uma Issue própria
   quando grande o suficiente para PR isolada — a Issue leva o label `iteration-5`, além do
   label de tipo (`feat`).
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
+
+## Conferência contra o `master` (2026-10-06)
+
+Todas as tasks foram implementadas no commit `ee91c08` (PR #65), mas a tabela nunca foi
+marcada. Marcadas agora, depois de conferir o código; nenhuma delas foi feita nesta revisão. O
+código saiu de `login/` para `loginsession/` depois, na spec 05-027.
+
+- **T001**: `manage_active_sessions.feature` com os seis cenários e
+  `ManageActiveSessionsSteps.java`.
+- **T002**: `GET /sessions`, `DELETE /sessions/{sessionId}` e o schema `Session` no
+  `docs/openapi.yaml`.
+- **T003/T004**: migration `V7__add_http_session_id_to_login_session.sql` (hoje em
+  `db/migration-jogo-acoes/`) e o campo `httpSessionId` em `LoginSession`, preenchido pelo
+  `LoginLinkSessionService`.
+- **T005–T007**: `LoginSessionRepository.findByIdAndUserId`, `SessionsController` e
+  `SessionsService` (listagem com `current` e revogação).
+- **T008/T009**: verificação registrada na descrição da PR #65 (142 testes, 0 falhas, nenhum
+  cenário existente alterado) e no CI.

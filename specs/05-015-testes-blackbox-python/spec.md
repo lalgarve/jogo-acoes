@@ -1,6 +1,6 @@
 # Spec: Suíte de testes blackbox em Python (behave + pytest)
 
-**Status:** rascunho
+**Status:** implementada, com T005 substituída pelas specs 05-018 e 05-023 (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** [#69](https://github.com/lalgarve/jogo-acoes/issues/69)
 **Iteração:** iteration-5
 

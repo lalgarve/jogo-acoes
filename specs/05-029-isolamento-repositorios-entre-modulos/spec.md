@@ -1,6 +1,6 @@
 # Spec: Isolar repositórios por módulo — comunicação entre módulos só por serviço
 
-**Status:** rascunho
+**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** [#95](https://github.com/lalgarve/jogo-acoes/issues/95) (auditoria que originou esta
 spec — "Scope" daquela Issue é exatamente o que esta spec implementa)
 **Iteração:** iteration-5

@@ -1,6 +1,6 @@
 # Spec: Refatorar pacote base `io.deployo` → `dev.leilaalgarve`
 
-**Status:** rascunho
+**Status:** implementada (todas as tasks riscadas em `tasks.md`; status conferido em 2026-10-06)
 **Issue:** [#45](https://github.com/lalgarve/jogo-acoes/issues/45)
 **Iteração:** iteration-5
 

@@ -1,6 +1,6 @@
 # Spec: H2 sai do projeto — Postgres real sempre (sandbox, testes e Docker), sem Testcontainers
 
-**Status:** parcialmente implementada (pendentes: T012 e T013; T005, T006 e T011 substituídas pela spec 05-035; ver `tasks.md`)
+**Status:** parcialmente implementada (pendente: T012; T005, T006 e T011 substituídas pela spec 05-035; ver `tasks.md`)
 **Issue:** #<a criar>
 **Iteração:** iteration-5
 

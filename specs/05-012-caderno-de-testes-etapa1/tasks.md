@@ -24,22 +24,42 @@ pequenas o bastante para não precisar de PR isolada).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Confirmar que as specs 05-009/05-010/05-011 estão implementadas e mescladas na branch de código | — | | #62 |
-| T002 | Checkout/atualização da branch de documentação separada (`docs/...`, convenção da Issue #43) a partir do `master` atual — fast-forward simples, sem conflito esperado | — | [P] | #62 |
-| T003 | Esqueleto de `docs/disciplina/caderno-de-testes.md`: seção `## Etapa 1` com o formato fixo por caso (Objetivo → Passos no Swagger UI → Log esperado → Select de verificação) | T002 | | #62 |
-| T004 | Caso 1 — fluxo Controller→Service→Repository: `GET /sessions` no Swagger UI (caminho feliz), log esperado (spec 05-011) e `SELECT` em `login_session` confirmando o retorno | T001, T003 | [P] | #62 |
-| T005 | Caso 2 — Bean Validation: `DELETE /sessions/{sessionId}` com um id não numérico no Swagger UI, resposta `400` esperada, log esperado | T001, T003 | [P] | #62 |
-| T006 | Caso 3 — tratamento de exceção centralizado: `DELETE /sessions/{sessionId}` com um id que não existe (ou de outro usuário), `404` via `ApiExceptionHandler`, log esperado | T001, T003 | [P] | #62 |
-| T007 | Caso 4 — consultas Spring Data além do CRUD básico: aponta as duas consultas dedicadas usadas por `GET`/`DELETE /sessions` (`findByUserIdAndEndedAtIsNull...`, `findByIdAndUserId`), com o `SELECT` gerado por cada uma | T001, T003 | [P] | #62 |
-| T008 | Caso 5 — OpenAPI/Swagger UI: exercitar `consumeLoginLink` no Swagger UI preenchendo os headers de Client Hints (spec 05-009) manualmente, confirmando que aparecem como campo na UI | T001, T003 | [P] | #62 |
-| T009 | Caso 6 — organização de pacotes por domínio: nota estrutural apontando `login/`/`link/` (sem chamada HTTP), referenciando as specs 05-001/05-002 | T003 | [P] | #62 |
-| T010 | Executar cada caso manualmente contra a aplicação rodando (`docker-compose`) e confirmar que os logs/`SELECT`s descritos batem com a execução real — ajustar o texto onde divergir | T004, T005, T006, T007, T008, T009 | | #62 |
-| T011 | Atualizar a linha "Documentação da API via OpenAPI/Swagger" (e qualquer outra que passe a se aplicar) em `docs/disciplina/alinhamento-projeto-disciplina.md`, já que deixa de faltar a UI interativa | T010 | | #62 |
+| ~~T001~~ | Confirmar que as specs 05-009/05-010/05-011 estão implementadas e mescladas na branch de código | — | | #62 |
+| ~~T002~~ | Checkout/atualização da branch de documentação separada (`docs/...`, convenção da Issue #43) a partir do `master` atual — fast-forward simples, sem conflito esperado | — | [P] | #62 |
+| ~~T003~~ | Esqueleto de `docs/disciplina/caderno-de-testes.md`: seção `## Etapa 1` com o formato fixo por caso (Objetivo → Passos no Swagger UI → Log esperado → Select de verificação) | T002 | | #62 |
+| ~~T004~~ | Caso 1 — fluxo Controller→Service→Repository: `GET /sessions` no Swagger UI (caminho feliz), log esperado (spec 05-011) e `SELECT` em `login_session` confirmando o retorno | T001, T003 | [P] | #62 |
+| ~~T005~~ | Caso 2 — Bean Validation: `DELETE /sessions/{sessionId}` com um id não numérico no Swagger UI, resposta `400` esperada, log esperado | T001, T003 | [P] | #62 |
+| ~~T006~~ | Caso 3 — tratamento de exceção centralizado: `DELETE /sessions/{sessionId}` com um id que não existe (ou de outro usuário), `404` via `ApiExceptionHandler`, log esperado | T001, T003 | [P] | #62 |
+| ~~T007~~ | Caso 4 — consultas Spring Data além do CRUD básico: aponta as duas consultas dedicadas usadas por `GET`/`DELETE /sessions` (`findByUserIdAndEndedAtIsNull...`, `findByIdAndUserId`), com o `SELECT` gerado por cada uma | T001, T003 | [P] | #62 |
+| ~~T008~~ | Caso 5 — OpenAPI/Swagger UI: exercitar `consumeLoginLink` no Swagger UI preenchendo os headers de Client Hints (spec 05-009) manualmente, confirmando que aparecem como campo na UI | T001, T003 | [P] | #62 |
+| ~~T009~~ | Caso 6 — organização de pacotes por domínio: nota estrutural apontando `login/`/`link/` (sem chamada HTTP), referenciando as specs 05-001/05-002 | T003 | [P] | #62 |
+| ~~T010~~ | Executar cada caso manualmente contra a aplicação rodando (`docker-compose`) e confirmar que os logs/`SELECT`s descritos batem com a execução real — ajustar o texto onde divergir | T004, T005, T006, T007, T008, T009 | | #62 |
+| ~~T011~~ | Atualizar a linha "Documentação da API via OpenAPI/Swagger" (e qualquer outra que passe a se aplicar) em `docs/disciplina/alinhamento-projeto-disciplina.md`, já que deixa de faltar a UI interativa | T010 | | #62 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
 - Cada linha vira um item de checklist na Issue-épico da feature, ou uma Issue própria
   quando grande o suficiente para PR isolada — a Issue leva o label `iteration-5`, além do
   label de tipo (`docs`).
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
+
+## Conferência contra o `master` (2026-10-06)
+
+Todas as tasks foram feitas no commit `3ab7ee0` (branch de documentação da Issue #43, PR #80),
+mas a tabela nunca foi marcada. Marcadas agora, depois de conferir o documento; nenhuma delas
+foi feita nesta revisão.
+
+- **T001/T002**: o `3ab7ee0` saiu depois do merge das specs 05-009, 05-010 e 05-011, no branch
+  separado de documentação.
+- **T003–T009**: `docs/disciplina/caderno-de-testes.md`, seção "Etapa 1", Casos 1 a 6.
+- **T010**: os logs e selects foram capturados rodando a aplicação, registrado no próprio
+  caderno e na mensagem do `3ab7ee0`. A execução foi no perfil `sandbox`, não no
+  `docker-compose` do texto da task; a T012 da spec 05-032 confirmou depois os selects no
+  Postgres.
+- **T011**: `alinhamento-projeto-disciplina.md` atualizado no mesmo commit.
+
+O caderno ficou desatualizado em dois pontos, fora do escopo desta spec: o Caso 6 cita o pacote
+`login` (hoje `loginsession`, spec 05-027) e as instruções de execução citam o perfil
+`sandbox` (removido pela spec 05-035, T009).

@@ -23,21 +23,21 @@ três frentes independentes, cada uma pequena o bastante para não precisar de P
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Extrair a interface `captcha/CaptchaVerifier.java` (só `boolean verify(String token)`) a partir de `CaptchaService`; renomear a classe atual para `AltchaCaptchaVerifier` (implementa a interface, mantém `createChallenge`/`encodeToken` intactos — comportamento idêntico ao de hoje) | — | [P] | #68 |
-| T002 | Criar `captcha/AlwaysPassCaptchaVerifier.java` (`verify` sempre retorna `true`, nenhuma dependência); anotar as duas implementações com `@ConditionalOnProperty(name = "captcha.verifier", ...)` (`altcha`, `matchIfMissing = true`, e `always-pass`) | T001 | | #68 |
-| T003 | Atualizar `EntryRequestService` para depender de `CaptchaVerifier` (interface), não da classe concreta; atualizar `RequestCompetitionEntrySteps` (Cucumber) para referenciar `AltchaCaptchaVerifier` no lugar de `CaptchaService` | T001 | | #68 |
-| T004 | Rodar a suíte completa (`mvn test`) — confirmar verde, nenhum cenário/teste existente alterado além dos ajustados em T003; o perfil de teste padrão continua exigindo o captcha real (`AltchaCaptchaVerifier` via `matchIfMissing`) | T002, T003 | | #68 |
-| T005 | Criar `app/src/main/resources/application-blackbox.yml` (só `captcha.verifier: always-pass`) | T002 | [P] | #68 |
-| T006 | Adicionar duas execuções de `maven-dependency-plugin` (`copy`, fase `package`) em `app/pom.xml`: `org.jacoco:org.jacoco.agent:0.8.15:jar:runtime` → `target/jacoco/jacocoagent.jar`, `org.jacoco:org.jacoco.cli:0.8.15:jar:nodeps` → `target/jacoco/jacococli.jar` (mesma versão do `jacoco-maven-plugin` já usado) | — | [P] | #68 |
-| T007 | Atualizar `Dockerfile`: estágio final copia `target/jacoco/jacocoagent.jar`/`jacococli.jar` (gerados por T006 no estágio de build) para `/app/`, sempre — nenhum `ENTRYPOINT`/`CMD` novo | T006 | | #68 |
-| T008 | Criar `docker-compose.blackbox.yml` (sobreposição): serviço `app` ganha `SPRING_PROFILES_ACTIVE: docker,blackbox`, `JAVA_TOOL_OPTIONS: -javaagent:/app/jacocoagent.jar=output=tcpserver,address=*,port=6300,includes=dev.leilaalgarve.jogoacoes.*` e a porta `"6300:6300"` publicada; `docker-compose.yml` original fica intocado | T005, T007 | | #68 |
-| T009 | Criar `scripts/blackbox-coverage.sh`: `jacococli dump` (contra `localhost:6300`) seguido de `jacococli report` (`--classfiles app/target/classes --sourcefiles app/src/main/java --html target/site/jacoco-blackbox`) | T007 | [P] | #68 |
-| T010 | Criar `blackbox/BlackboxDataSeeder.java` (`ApplicationRunner`, `@Component @Profile("blackbox")`): garante, de forma idempotente, um `User` com e-mail fixo (`admin@blackbox.local`) + `UserRole` `ADMINISTRATOR` — mesma lógica de `UserMother.administrator()` (teste), agora em código principal | — | [P] | #68 |
-| T011 | Adicionar `SentEmailRepository.findTopByEmailOrderBySentAtDesc(String email)` | — | [P] | #68 |
-| T012 | Criar `blackbox/BlackboxController.java` (`@RestController @Profile("blackbox")`, `GET /blackbox/last-email?email={endereço}` — devolve `{ link, template, sentAt }` do envio mais recente ou `404`) e `blackbox/BlackboxSecurityConfigContributor.java` (`permitAll` na rota acima) | T011 | | #68 |
-| T013 | Rodar a suíte completa (`mvn test`) — confirmar verde; em particular, `ArchitectureTest` continua passando (o `BlackboxSecurityConfigContributor` no mesmo pacote satisfaz a regra de todo `@RestController` ter um) e `OpenApiRoutesConsistencyTest`/`OpenApiRolesConsistencyTest` continuam passando (a rota nova nunca aparece no perfil em que os testes rodam) | T010, T012 | | #68 |
-| T014 | Verificação manual de ponta a ponta contra o ambiente combinado (agente JaCoCo + `blackbox`): (a) `GET /blackbox/last-email` devolve `404` antes de qualquer envio, depois o link certo após um `POST /login-requests` pro e-mail do administrador semeado; (b) esse link autentica via `GET /login-links/{token}` e redireciona pro `/admin`; (c) autenticado como administrador, cria uma competição pública (`POST /competitions`, que não tem `captchaToken` no contrato — só `entry-requests` exige); (d) `POST /competitions/{id}/entry-requests` anônimo com `captchaToken` vazio é aceito (`202`) só sob o perfil `blackbox`, confirmando o bypass; (e) `scripts/blackbox-coverage.sh` gera `target/site/jacoco-blackbox/index.html` com dados de cobertura reais desse fluxo. Executado com sucesso rodando o jar empacotado localmente (agente `-javaagent` anexado na linha de comando, Postgres local no lugar do `docker-compose` — o build da imagem em si ficou bloqueado pela política de rede do ambiente de implementação, que nega acesso ao registry de imagens Docker; ver nota abaixo) | T008, T009, T013 | | #68 |
-| T015 | Atualizar `README.md`: seção sobre o ambiente `blackbox` — como subir, e-mail do administrador semeado (sem senha — login por link), como ler o link de um e-mail enviado, escopo do bypass de captcha (só aqui), como gerar o relatório de cobertura da aplicação exercitada externamente, e que isso é independente do relatório de sempre da suíte Java (`target/site/jacoco/`, `mvn test`/`mvn verify`) | T014 | | #68 |
+| ~~T001~~ | Extrair a interface `captcha/CaptchaVerifier.java` (só `boolean verify(String token)`) a partir de `CaptchaService`; renomear a classe atual para `AltchaCaptchaVerifier` (implementa a interface, mantém `createChallenge`/`encodeToken` intactos — comportamento idêntico ao de hoje) | — | [P] | #68 |
+| ~~T002~~ | Criar `captcha/AlwaysPassCaptchaVerifier.java` (`verify` sempre retorna `true`, nenhuma dependência); anotar as duas implementações com `@ConditionalOnProperty(name = "captcha.verifier", ...)` (`altcha`, `matchIfMissing = true`, e `always-pass`) | T001 | | #68 |
+| ~~T003~~ | Atualizar `EntryRequestService` para depender de `CaptchaVerifier` (interface), não da classe concreta; atualizar `RequestCompetitionEntrySteps` (Cucumber) para referenciar `AltchaCaptchaVerifier` no lugar de `CaptchaService` | T001 | | #68 |
+| ~~T004~~ | Rodar a suíte completa (`mvn test`) — confirmar verde, nenhum cenário/teste existente alterado além dos ajustados em T003; o perfil de teste padrão continua exigindo o captcha real (`AltchaCaptchaVerifier` via `matchIfMissing`) | T002, T003 | | #68 |
+| ~~T005~~ | Criar `app/src/main/resources/application-blackbox.yml` (só `captcha.verifier: always-pass`) | T002 | [P] | #68 |
+| ~~T006~~ | Adicionar duas execuções de `maven-dependency-plugin` (`copy`, fase `package`) em `app/pom.xml`: `org.jacoco:org.jacoco.agent:0.8.15:jar:runtime` → `target/jacoco/jacocoagent.jar`, `org.jacoco:org.jacoco.cli:0.8.15:jar:nodeps` → `target/jacoco/jacococli.jar` (mesma versão do `jacoco-maven-plugin` já usado) | — | [P] | #68 |
+| ~~T007~~ | Atualizar `Dockerfile`: estágio final copia `target/jacoco/jacocoagent.jar`/`jacococli.jar` (gerados por T006 no estágio de build) para `/app/`, sempre — nenhum `ENTRYPOINT`/`CMD` novo | T006 | | #68 |
+| ~~T008~~ | Criar `docker-compose.blackbox.yml` (sobreposição): serviço `app` ganha `SPRING_PROFILES_ACTIVE: docker,blackbox`, `JAVA_TOOL_OPTIONS: -javaagent:/app/jacocoagent.jar=output=tcpserver,address=*,port=6300,includes=dev.leilaalgarve.jogoacoes.*` e a porta `"6300:6300"` publicada; `docker-compose.yml` original fica intocado | T005, T007 | | #68 |
+| ~~T009~~ | Criar `scripts/blackbox-coverage.sh`: `jacococli dump` (contra `localhost:6300`) seguido de `jacococli report` (`--classfiles app/target/classes --sourcefiles app/src/main/java --html target/site/jacoco-blackbox`) | T007 | [P] | #68 |
+| ~~T010~~ | Criar `blackbox/BlackboxDataSeeder.java` (`ApplicationRunner`, `@Component @Profile("blackbox")`): garante, de forma idempotente, um `User` com e-mail fixo (`admin@blackbox.local`) + `UserRole` `ADMINISTRATOR` — mesma lógica de `UserMother.administrator()` (teste), agora em código principal | — | [P] | #68 |
+| ~~T011~~ | Adicionar `SentEmailRepository.findTopByEmailOrderBySentAtDesc(String email)` | — | [P] | #68 |
+| ~~T012~~ | Criar `blackbox/BlackboxController.java` (`@RestController @Profile("blackbox")`, `GET /blackbox/last-email?email={endereço}` — devolve `{ link, template, sentAt }` do envio mais recente ou `404`) e `blackbox/BlackboxSecurityConfigContributor.java` (`permitAll` na rota acima) | T011 | | #68 |
+| ~~T013~~ | Rodar a suíte completa (`mvn test`) — confirmar verde; em particular, `ArchitectureTest` continua passando (o `BlackboxSecurityConfigContributor` no mesmo pacote satisfaz a regra de todo `@RestController` ter um) e `OpenApiRoutesConsistencyTest`/`OpenApiRolesConsistencyTest` continuam passando (a rota nova nunca aparece no perfil em que os testes rodam) | T010, T012 | | #68 |
+| ~~T014~~ | Verificação manual de ponta a ponta contra o ambiente combinado (agente JaCoCo + `blackbox`): (a) `GET /blackbox/last-email` devolve `404` antes de qualquer envio, depois o link certo após um `POST /login-requests` pro e-mail do administrador semeado; (b) esse link autentica via `GET /login-links/{token}` e redireciona pro `/admin`; (c) autenticado como administrador, cria uma competição pública (`POST /competitions`, que não tem `captchaToken` no contrato — só `entry-requests` exige); (d) `POST /competitions/{id}/entry-requests` anônimo com `captchaToken` vazio é aceito (`202`) só sob o perfil `blackbox`, confirmando o bypass; (e) `scripts/blackbox-coverage.sh` gera `target/site/jacoco-blackbox/index.html` com dados de cobertura reais desse fluxo. Executado com sucesso rodando o jar empacotado localmente (agente `-javaagent` anexado na linha de comando, Postgres local no lugar do `docker-compose` — o build da imagem em si ficou bloqueado pela política de rede do ambiente de implementação, que nega acesso ao registry de imagens Docker; ver nota abaixo) | T008, T009, T013 | | #68 |
+| ~~T015~~ | Atualizar `README.md`: seção sobre o ambiente `blackbox` — como subir, e-mail do administrador semeado (sem senha — login por link), como ler o link de um e-mail enviado, escopo do bypass de captcha (só aqui), como gerar o relatório de cobertura da aplicação exercitada externamente, e que isso é independente do relatório de sempre da suíte Java (`target/site/jacoco/`, `mvn test`/`mvn verify`) | T014 | | #68 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -58,5 +58,30 @@ três frentes independentes, cada uma pequena o bastante para não precisar de P
   `docs/` pro contexto de build, e `app/pom.xml` (openapi-generator-maven-plugin,
   maven-resources-plugin) precisa de `../docs/openapi.yaml` em `package` — sem a correção,
   `docker build` falharia em qualquer perfil, não só `blackbox`.
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
+
+## Conferência contra o `master` (2026-10-06)
+
+As tasks foram feitas no commit `9e14a40` (PR #67), mas a tabela nunca foi marcada. Marcadas
+agora, depois de conferir o código; nenhuma delas foi feita nesta revisão.
+
+- **T001–T003, T005**: `captcha/CaptchaVerifier`, `AltchaCaptchaVerifier` (padrão) e
+  `AlwaysPassCaptchaVerifier` (`captcha.verifier: always-pass` no `application-blackbox.yml`).
+- **T006–T009**: execução do `maven-dependency-plugin` que copia o agente e o CLI do JaCoCo, o
+  `Dockerfile`, o `docker-compose.blackbox.yml` e o `scripts/blackbox-coverage.sh`.
+- **T011**: `SentEmailRepository.findTopByEmailOrderBySentAtDesc` existe, mas ficou sem
+  chamador depois da spec 05-023.
+- **T015**: seção "Ambiente de testes blackbox" do `README.md`, reescrita depois pelas specs
+  05-016, 05-023 e 05-026.
+- **T004/T013**: o check `test` do CI passou no `9e14a40` e na cabeça da PR #67.
+- **T014**: verificação registrada na própria linha e nas notas abaixo da tabela (jar empacotado
+  com `-javaagent` contra Postgres local).
+
+Substituídas:
+
+- **T010**: o `BlackboxDataSeeder` foi apagado pela spec 05-026; o primeiro administrador vem
+  do `bootstrap/AdministratorBootstrap`.
+- **T012**: `BlackboxController` e `BlackboxSecurityConfigContributor` foram apagados pela spec
+  05-023; o e-mail é lido direto do LocalStack.

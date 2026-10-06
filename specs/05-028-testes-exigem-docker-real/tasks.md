@@ -22,7 +22,7 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 | ~~T010~~ | Rodar `docker compose up -d --wait db-email-service localstack` + `SPRING_PROFILES_ACTIVE=docker mvn -pl email-service -am verify` **duas vezes seguidas**, sem derrubar os containers entre as duas — confirmar os 19 Scenarios verdes nas duas rodadas (prova de que o T004a resolveu a repetibilidade, não só que passou uma vez) | T004, T004a, T006 | | #<n> |
 | T011 | ~~Rodar `mvn test` (sem `SPRING_PROFILES_ACTIVE`) em `email-service`, **sem** Postgres/LocalStack de pé — confirmar `BUILD SUCCESS`/`Skipped: 14` (não erro de conexão)~~ — substituída: sem ambiente sem Docker, nada é pulado; os testes sempre exigem a infraestrutura de pé (`memory/constitution.md`, "Testes exigem a infraestrutura de pé") e o perfil `sandbox` sai na spec 05-035 | — | | — |
 | T012 | `.github/workflows/ci.yml`: novo step pra `email-service`, mesmo padrão do de `app` (sobe `db-email-service`+`localstack`, `SPRING_PROFILES_ACTIVE=docker mvn -B -pl email-service -am verify`, derruba no final) | T010 | | #<n> |
-| T013 | Atualizar `specs/05-025-servico-email-templates/tasks.md` — marcar T020 como resolvido (ou linkar pra esta spec como a forma como foi resolvido), já que a suíte passa a rodar contra o LocalStack do compose em vez de Testcontainers | T010 | | #<n> |
+| ~~T013~~ | Atualizar `specs/05-025-servico-email-templates/tasks.md` — marcar T020 como resolvido (ou linkar pra esta spec como a forma como foi resolvido), já que a suíte passa a rodar contra o LocalStack do compose em vez de Testcontainers | T010 | | #<n> |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -58,13 +58,14 @@ de outras specs; nenhuma delas foi feita nesta revisão.
 - **T004a**: `common/testsupport/TemplateCleanupHooks.java` existe.
 - **T009**: coberta pela T009 da spec 05-032 (`mvn -pl app -am verify` com o perfil `docker`,
   176 testes, 0 falhas).
+- **T013** (2026-10-06): a T020 da spec 05-025 foi riscada; o registro da verificação já
+  estava lá.
 - **T010**: coberta pela T013 da spec 05-030 (`mvn -pl email-service -am verify` duas vezes
   seguidas sem derrubar os containers, 29 testes e 0 falhas nas duas).
 
-Continuam pendentes:
+Continua pendente:
 
 - **T012**: o `.github/workflows/ci.yml` só tem os steps de `app` e `email-lambda`.
-- **T013**: a T020 da spec 05-025 tem o registro da verificação, mas continua sem tachado.
 
 Substituídas (2026-10-05):
 

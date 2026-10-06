@@ -1,6 +1,6 @@
 # Spec: Ambiente de testes blackbox (captcha sempre válido + cobertura JaCoCo da aplicação)
 
-**Status:** rascunho
+**Status:** implementada, com T010 e T012 substituídas pelas specs 05-026 e 05-023 (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** [#68](https://github.com/lalgarve/jogo-acoes/issues/68)
 **Iteração:** iteration-5
 

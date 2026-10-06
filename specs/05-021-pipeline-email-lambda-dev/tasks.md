@@ -76,8 +76,9 @@ de saída); e o script `03-deploy-email-lambda.sh` roda sem erro na ordem certa 
   em `specs/05-014-ambiente-testes-blackbox/tasks.md` e `specs/05-016-.../tasks.md`) — se não
   estiver disponível, registrar explicitamente e validar o que der (T004/T011, que não
   precisam de `docker compose up` completo).
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
 
 ## T010 — registro da verificação
 

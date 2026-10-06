@@ -1,6 +1,6 @@
 # Spec: Modularização inicial do `app/` por domínio
 
-**Status:** rascunho
+**Status:** implementada (todas as tasks riscadas em `tasks.md`; status conferido em 2026-10-06)
 **Issue:** [#46](https://github.com/lalgarve/jogo-acoes/issues/46)
 **Iteração:** iteration-5
 

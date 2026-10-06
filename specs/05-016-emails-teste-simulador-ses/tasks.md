@@ -16,22 +16,22 @@ pequenas o bastante para não precisar de PR isolada).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Criar `app/src/test/java/dev/leilaalgarve/jogoacoes/common/testsupport/TestEmails.java` — `unique(String qualifier)` (`"success+" + qualifier + "-" + UUID.randomUUID() + "@simulator.amazonses.com"`) e `fixed(String qualifier)` (`"success+" + qualifier + "@simulator.amazonses.com"`) | — | [P] | #70 |
-| T002 | Migrar `common/testsupport/UserMother.java` e `common/testsupport/CompetitionMother.java` para `TestEmails.unique(...)` | T001 | [P] | #70 |
-| T003 | Migrar `competition/steps/RequestCompetitionEntrySteps.java`, `competition/steps/CreateCompetitionSteps.java` e `competition/steps/ManageCompetitionPlayersSteps.java` para `TestEmails.unique(...)`/`TestEmails.fixed(...)` (`"not-an-email"` não muda — é o próprio objeto do teste de validação) | T001 | [P] | #70 |
-| T004 | Migrar `link/LoginSteps.java` e `link/LinkServiceTest.java` para `TestEmails.unique(...)`/`TestEmails.fixed(...)` | T001 | [P] | #70 |
-| T005 | Migrar `login/LoginLinkHandlerTest.java` e `competition/CompetitionLinkHandlerTest.java` para `TestEmails.fixed(...)`/`TestEmails.unique(...)` (endereços como `"player@example.com"`, `"admin@example.com"`, `"someone@example.com"`) | T001 | [P] | #70 |
-| T006 | Migrar `email/EmailContentRendererTest.java`, `email/StubEmailSenderTest.java`, `email/SqsEmailSenderTest.java` e `email/SqsEmailSenderDockerIntegrationTest.java` para `TestEmails.fixed(...)`/`TestEmails.unique(...)` | T001 | [P] | #70 |
-| T007 | Migrar `log/LogRepositoryTest.java`, `log/AuditLogServiceTest.java`, `log/AuditLoggingIntegrationTest.java` e `common/logging/QueueLoggingAspectIntegrationTest.java` para `TestEmails.fixed(...)`/`TestEmails.unique(...)` | T001 | [P] | #70 |
-| T008 | Migrar os e-mails dinâmicos de `blackbox/BlackboxProfileIntegrationTest.java` (`"blackbox-test-...@example.com"`, `"never-sent-...@example.com"`) para `TestEmails.unique(...)` — a referência a `BlackboxDataSeeder.ADMIN_EMAIL` não muda aqui, só o valor da constante (T009) | T001 | [P] | #70 |
-| T009 | Atualizar `BlackboxDataSeeder.ADMIN_EMAIL` (`app/src/main`, spec 05-014) de `admin@blackbox.local` para `success+admin@simulator.amazonses.com` | — | [P] | #70 |
-| T010 | Atualizar o literal de `email-lambda/src/test/java/dev/leilaalgarve/jogoacoes/email/lambda/EmailSendHandlerTest.java` (`"player@example.com"` → `"success+player@simulator.amazonses.com"`) | — | [P] | #70 |
-| T011 | Atualizar `blackbox-tests/features/steps/public_competition_entry_steps.py`: constante `ADMIN_EMAIL` (mesmo valor de T009) e o e-mail dinâmico do jogador (`context.player_email`, formato equivalente ao `TestEmails.unique`) | T009 | | #70 |
-| T012 | Atualizar `README.md` (seção "Ambiente de testes blackbox") — a menção a `admin@blackbox.local` passa a citar o novo endereço | T009 | | #70 |
-| T013 | Rodar a suíte completa do módulo `app` (`mvn -pl app -am test`) — confirmar verde, incluindo `BlackboxProfileIntegrationTest` com o novo `ADMIN_EMAIL` | T002, T003, T004, T005, T006, T007, T008, T009 | | #70 |
-| T014 | Rodar a suíte de `email-lambda` (`mvn -pl email-lambda -am test`) — confirmar verde (ou *skip* gracioso sem Docker, mesmo comportamento já documentado em `EmailSendHandlerTest`) | T010 | [P] | #70 |
-| T015 | Rodar `behave`/`pytest` de `blackbox-tests/` contra o ambiente `blackbox` (spec 05-014/05-015) — confirmar verde, em particular o login do administrador semeado com o novo e-mail. Executado com sucesso contra o jar empacotado + Postgres real (mesmo caminho usado para verificar as specs 05-014/05-015 — `docker compose up` completo não pôde ser confirmado neste ambiente pelo mesmo bloqueio de rede ao registry de imagens já registrado ali) | T011, T012, T013 | | #70 |
-| T016 | `grep -rn "@example\.com" app/src/test email-lambda/src/test blackbox-tests/features blackbox-tests/tests` — confirmar que só sobram os endereços propositalmente inválidos listados em "Fora de escopo" de `spec.md` (`"not-an-email"`). Achado na varredura: `blackbox-tests/tests/test_mailbox.py` também usava `@example.com` (não estava listado em `plan.md`) — corrigido junto | T013, T014, T015 | | #70 |
+| ~~T001~~ | Criar `app/src/test/java/dev/leilaalgarve/jogoacoes/common/testsupport/TestEmails.java` — `unique(String qualifier)` (`"success+" + qualifier + "-" + UUID.randomUUID() + "@simulator.amazonses.com"`) e `fixed(String qualifier)` (`"success+" + qualifier + "@simulator.amazonses.com"`) | — | [P] | #70 |
+| ~~T002~~ | Migrar `common/testsupport/UserMother.java` e `common/testsupport/CompetitionMother.java` para `TestEmails.unique(...)` | T001 | [P] | #70 |
+| ~~T003~~ | Migrar `competition/steps/RequestCompetitionEntrySteps.java`, `competition/steps/CreateCompetitionSteps.java` e `competition/steps/ManageCompetitionPlayersSteps.java` para `TestEmails.unique(...)`/`TestEmails.fixed(...)` (`"not-an-email"` não muda — é o próprio objeto do teste de validação) | T001 | [P] | #70 |
+| ~~T004~~ | Migrar `link/LoginSteps.java` e `link/LinkServiceTest.java` para `TestEmails.unique(...)`/`TestEmails.fixed(...)` | T001 | [P] | #70 |
+| ~~T005~~ | Migrar `login/LoginLinkHandlerTest.java` e `competition/CompetitionLinkHandlerTest.java` para `TestEmails.fixed(...)`/`TestEmails.unique(...)` (endereços como `"player@example.com"`, `"admin@example.com"`, `"someone@example.com"`) | T001 | [P] | #70 |
+| ~~T006~~ | Migrar `email/EmailContentRendererTest.java`, `email/StubEmailSenderTest.java`, `email/SqsEmailSenderTest.java` e `email/SqsEmailSenderDockerIntegrationTest.java` para `TestEmails.fixed(...)`/`TestEmails.unique(...)` | T001 | [P] | #70 |
+| ~~T007~~ | Migrar `log/LogRepositoryTest.java`, `log/AuditLogServiceTest.java`, `log/AuditLoggingIntegrationTest.java` e `common/logging/QueueLoggingAspectIntegrationTest.java` para `TestEmails.fixed(...)`/`TestEmails.unique(...)` | T001 | [P] | #70 |
+| ~~T008~~ | Migrar os e-mails dinâmicos de `blackbox/BlackboxProfileIntegrationTest.java` (`"blackbox-test-...@example.com"`, `"never-sent-...@example.com"`) para `TestEmails.unique(...)` — a referência a `BlackboxDataSeeder.ADMIN_EMAIL` não muda aqui, só o valor da constante (T009) | T001 | [P] | #70 |
+| ~~T009~~ | Atualizar `BlackboxDataSeeder.ADMIN_EMAIL` (`app/src/main`, spec 05-014) de `admin@blackbox.local` para `success+admin@simulator.amazonses.com` | — | [P] | #70 |
+| ~~T010~~ | Atualizar o literal de `email-lambda/src/test/java/dev/leilaalgarve/jogoacoes/email/lambda/EmailSendHandlerTest.java` (`"player@example.com"` → `"success+player@simulator.amazonses.com"`) | — | [P] | #70 |
+| ~~T011~~ | Atualizar `blackbox-tests/features/steps/public_competition_entry_steps.py`: constante `ADMIN_EMAIL` (mesmo valor de T009) e o e-mail dinâmico do jogador (`context.player_email`, formato equivalente ao `TestEmails.unique`) | T009 | | #70 |
+| ~~T012~~ | Atualizar `README.md` (seção "Ambiente de testes blackbox") — a menção a `admin@blackbox.local` passa a citar o novo endereço | T009 | | #70 |
+| ~~T013~~ | Rodar a suíte completa do módulo `app` (`mvn -pl app -am test`) — confirmar verde, incluindo `BlackboxProfileIntegrationTest` com o novo `ADMIN_EMAIL` | T002, T003, T004, T005, T006, T007, T008, T009 | | #70 |
+| ~~T014~~ | Rodar a suíte de `email-lambda` (`mvn -pl email-lambda -am test`) — confirmar verde (ou *skip* gracioso sem Docker, mesmo comportamento já documentado em `EmailSendHandlerTest`) | T010 | [P] | #70 |
+| ~~T015~~ | Rodar `behave`/`pytest` de `blackbox-tests/` contra o ambiente `blackbox` (spec 05-014/05-015) — confirmar verde, em particular o login do administrador semeado com o novo e-mail. Executado com sucesso contra o jar empacotado + Postgres real (mesmo caminho usado para verificar as specs 05-014/05-015 — `docker compose up` completo não pôde ser confirmado neste ambiente pelo mesmo bloqueio de rede ao registry de imagens já registrado ali) | T011, T012, T013 | | #70 |
+| ~~T016~~ | `grep -rn "@example\.com" app/src/test email-lambda/src/test blackbox-tests/features blackbox-tests/tests` — confirmar que só sobram os endereços propositalmente inválidos listados em "Fora de escopo" de `spec.md` (`"not-an-email"`). Achado na varredura: `blackbox-tests/tests/test_mailbox.py` também usava `@example.com` (não estava listado em `plan.md`) — corrigido junto | T013, T014, T015 | | #70 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -43,5 +43,22 @@ pequenas o bastante para não precisar de PR isolada).
   `specs/05-014-ambiente-testes-blackbox/tasks.md`), validar contra o jar empacotado + Postgres
   real (mesmo caminho já usado para verificar as specs 05-014/05-015), e registrar
   explicitamente qual dos dois foi usado.
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
+
+## Conferência contra o `master` (2026-10-06)
+
+Todas as tasks foram implementadas no commit `2109d3d` (PR #72), mas a tabela nunca foi
+marcada. Marcadas agora, depois de conferir o código; nenhuma delas foi feita nesta revisão.
+
+- **T001–T012**: `common/testsupport/TestEmails.java` existe e os testes, steps, fixtures do
+  `blackbox-tests/`, o `EmailSendHandlerTest` do `email-lambda` e o `README.md` usam endereços
+  `@simulator.amazonses.com`. Arquivos citados que mudaram depois: o `LoginSteps` foi para
+  `loginsession/` (spec 05-027), o `BlackboxDataSeeder` foi apagado (spec 05-026) e o
+  `BlackboxProfileIntegrationTest` só tem o teste do captcha (spec 05-023).
+- **T013–T015**: verificação registrada na mensagem do `2109d3d` (`app` 155/155,
+  `email-lambda`, `behave` e `pytest` verdes).
+- **T016**: o grep da época ficou limpo. Specs posteriores voltaram a usar `@example.com` em
+  `blackbox-tests/tests/test_seed_factories.py` (05-018), `user/UserProvisioningServiceTest.java`
+  e `bootstrap/AdministratorBootstrapTest.java` (05-026); isso fica fora desta spec.
