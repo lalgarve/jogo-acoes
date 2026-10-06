@@ -1,6 +1,6 @@
 # Spec: Container de UI web para o PostgreSQL
 
-**Status:** parcialmente implementada (pendente: T002, validação manual do Adminer; ver `tasks.md`)
+**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** [#63](https://github.com/lalgarve/jogo-acoes/issues/63)
 **Iteração:** iteration-5
 
