@@ -29,9 +29,10 @@ jogador.
   classes e de sequência complementares em
   [`docs/diagrams/classes.md`](docs/diagrams/classes.md) e
   [`docs/diagrams/sequencia.md`](docs/diagrams/sequencia.md).
-- **Integração contínua** (`.github/workflows/ci.yml`): suíte de testes com piso de cobertura
-  de linha (JaCoCo, 80%) rodando a cada *pull request* contra infraestrutura real (Postgres,
-  fila SQS) via Docker, não contra simulação em memória.
+- **Integração contínua** (`.github/workflows/ci.yml`): suítes de testes do `app` (com piso de
+  cobertura de linha, JaCoCo, 80%), do `email-service` e do `email-lambda` rodando a cada
+  *pull request* contra infraestrutura real (Postgres, SQS e SES no LocalStack) via Docker, não
+  contra simulação em memória.
 
 ## Arquitetura planejada
 
