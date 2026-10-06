@@ -1,6 +1,6 @@
 # Spec: Caderno de testes — Etapa 1 (Swagger)
 
-**Status:** rascunho
+**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** [#62](https://github.com/lalgarve/jogo-acoes/issues/62)
 **Iteração:** iteration-5
 

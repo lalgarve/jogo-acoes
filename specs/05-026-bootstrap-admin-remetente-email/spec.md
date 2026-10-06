@@ -1,6 +1,6 @@
 # Spec: Bootstrap do primeiro administrador e do remetente de e-mail via variável de ambiente
 
-**Status:** rascunho
+**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** parte da [Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84) — substitui a
 spec [05-024](../05-024-extrair-blackbox-data-seeder/spec.md) (descartada)
 **Iteração:** iteration-5 (Etapa 2 antecipada)

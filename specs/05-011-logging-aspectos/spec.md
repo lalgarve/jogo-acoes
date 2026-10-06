@@ -1,6 +1,6 @@
 # Spec: Logging estruturado via aspectos (AOP), suprimido em produção
 
-**Status:** rascunho
+**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** [#61](https://github.com/lalgarve/jogo-acoes/issues/61)
 **Iteração:** iteration-5
 

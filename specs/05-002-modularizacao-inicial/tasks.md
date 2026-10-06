@@ -52,5 +52,6 @@ em suas novas localizações de módulo.
   aplicada incrementalmente, módulo a módulo, à medida que a necessidade aparecer em specs
   futuras (ex.: quando um módulo ganhar cliente OpenFeign na Etapa 2), não como parte da
   modularização inicial.
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.

@@ -65,5 +65,6 @@ mais os 4 testes dedicados novos: `LinkRouterKeyUniquenessTest`, `LoginLinkHandl
   quando grande o suficiente para PR isolada — a Issue leva o label `iteration-5`, além do
   label de tipo (`refactor`). Todas as tarefas desta spec ficam como checklist na Issue
   [#47](https://github.com/lalgarve/jogo-acoes/issues/47).
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.

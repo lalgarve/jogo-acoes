@@ -1,6 +1,6 @@
 # Spec: Remover a leitura de e-mail de `app/` — Python lê o LocalStack direto
 
-**Status:** rascunho
+**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** parte da [Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84) (a fatia
 `blackbox/` do escopo)
 **Iteração:** iteration-5 (Etapa 2 antecipada — o desenho ficou pequeno o suficiente pra caber

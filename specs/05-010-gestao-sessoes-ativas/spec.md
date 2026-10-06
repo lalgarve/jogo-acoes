@@ -1,6 +1,6 @@
 # Spec: Gestão de sessões ativas (listar e revogar)
 
-**Status:** rascunho
+**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** [#60](https://github.com/lalgarve/jogo-acoes/issues/60)
 **Iteração:** iteration-5
 

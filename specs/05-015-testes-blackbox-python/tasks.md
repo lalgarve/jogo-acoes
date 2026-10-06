@@ -23,16 +23,16 @@ pequenas o bastante para não precisar de PR isolada).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Criar `blackbox-tests/pyproject.toml` (dependências: `behave`, `pytest`, `openapi-python-client`, `httpx`) | — | [P] | #69 |
-| T002 | Gerar o cliente a partir de `docs/openapi.yaml` via `openapi-python-client generate` para `blackbox-tests/generated_client/`; confirmar que o pacote gerado importa sem erro (`python -c "import ..."`) | T001 | | #69 |
-| T003 | Adicionar `blackbox-tests/generated_client/` e o ambiente virtual Python local ao `.gitignore` (raiz) | T002 | [P] | #69 |
-| T004 | Criar o hook compartilhado de `behave` (`blackbox-tests/features/environment.py`) que lê `API_BASE_URL` (default `http://localhost:8080/api`) e instancia o cliente gerado, disponibilizando via `context` para os passos | T002 | | #69 |
-| T005 | Criar o helper `blackbox-tests/features/mailbox.py` (nome definido em `plan.md`): uma função que chama `GET {API_BASE_URL}/blackbox/last-email?email={endereço}` via `httpx` direto (não pelo cliente gerado, rota fora de `docs/openapi.yaml`) e devolve o `link` do corpo, ou levanta um erro claro em `404` (nenhum e-mail enviado ainda); usável tanto por passos de `behave` quanto por testes `pytest` | T004 | [P] | #69 |
-| T006 | Escrever o primeiro `.feature` novo (`blackbox-tests/features/`) — caminho feliz de ponta a ponta do ponto de vista de um cliente HTTP externo, incluindo pelo menos um passo que depende de clicar num link (ex.: login do administrador semeado via link mágico, para então criar uma competição), texto próprio (não copiado de nenhum `.feature` Java) | T004, T005 | | #69 |
-| T007 | Implementar os passos Python do `.feature` de T006, chamando o cliente gerado para as chamadas de contrato e o helper de T005 para ler o link de e-mail quando o passo precisar dele (sem JDBC direto, sem ler log — só as respostas HTTP) | T006 | | #69 |
-| T008 | Rodar o cenário de T006/T007 contra o ambiente `blackbox` (spec 05-014) — confirmar verde, incluindo o passo que envia `captchaToken` vazio (sem resolver o desafio ALTCHA de verdade) e os passos que leem o link de login/registro via `GET /blackbox/last-email`. Executado com sucesso: `behave` (1 cenário, 7 passos) e `pytest` (1 teste) verdes, rodando contra o jar da spec 05-014 com Postgres real (o `docker compose up` completo não pôde ser confirmado neste ambiente por bloqueio de rede ao registry de imagens — mesma limitação registrada em `specs/05-014-ambiente-testes-blackbox/tasks.md`) | T007 | | #69 |
-| T009 | Escrever pelo menos um teste `pytest` técnico pontual (`blackbox-tests/tests/`) — uma verificação que não justifica um cenário Gherkin completo (ex.: o shape de um corpo de erro específico, ou o `404` do helper de T005 quando nenhum e-mail foi enviado para um endereço) | T002, T005 | [P] | #69 |
-| T010 | Criar `blackbox-tests/README.md`: como instalar dependências, gerar/regenerar o cliente, rodar `behave`/`pytest`, e contra qual ambiente (link para a seção `blackbox` do `README.md` da raiz, spec 05-014, incluindo o e-mail do administrador semeado) | T008, T009 | | #69 |
+| ~~T001~~ | Criar `blackbox-tests/pyproject.toml` (dependências: `behave`, `pytest`, `openapi-python-client`, `httpx`) | — | [P] | #69 |
+| ~~T002~~ | Gerar o cliente a partir de `docs/openapi.yaml` via `openapi-python-client generate` para `blackbox-tests/generated_client/`; confirmar que o pacote gerado importa sem erro (`python -c "import ..."`) | T001 | | #69 |
+| ~~T003~~ | Adicionar `blackbox-tests/generated_client/` e o ambiente virtual Python local ao `.gitignore` (raiz) | T002 | [P] | #69 |
+| ~~T004~~ | Criar o hook compartilhado de `behave` (`blackbox-tests/features/environment.py`) que lê `API_BASE_URL` (default `http://localhost:8080/api`) e instancia o cliente gerado, disponibilizando via `context` para os passos | T002 | | #69 |
+| ~~T005~~ | Criar o helper `blackbox-tests/features/mailbox.py` (nome definido em `plan.md`): uma função que chama `GET {API_BASE_URL}/blackbox/last-email?email={endereço}` via `httpx` direto (não pelo cliente gerado, rota fora de `docs/openapi.yaml`) e devolve o `link` do corpo, ou levanta um erro claro em `404` (nenhum e-mail enviado ainda); usável tanto por passos de `behave` quanto por testes `pytest` | T004 | [P] | #69 |
+| ~~T006~~ | Escrever o primeiro `.feature` novo (`blackbox-tests/features/`) — caminho feliz de ponta a ponta do ponto de vista de um cliente HTTP externo, incluindo pelo menos um passo que depende de clicar num link (ex.: login do administrador semeado via link mágico, para então criar uma competição), texto próprio (não copiado de nenhum `.feature` Java) | T004, T005 | | #69 |
+| ~~T007~~ | Implementar os passos Python do `.feature` de T006, chamando o cliente gerado para as chamadas de contrato e o helper de T005 para ler o link de e-mail quando o passo precisar dele (sem JDBC direto, sem ler log — só as respostas HTTP) | T006 | | #69 |
+| ~~T008~~ | Rodar o cenário de T006/T007 contra o ambiente `blackbox` (spec 05-014) — confirmar verde, incluindo o passo que envia `captchaToken` vazio (sem resolver o desafio ALTCHA de verdade) e os passos que leem o link de login/registro via `GET /blackbox/last-email`. Executado com sucesso: `behave` (1 cenário, 7 passos) e `pytest` (1 teste) verdes, rodando contra o jar da spec 05-014 com Postgres real (o `docker compose up` completo não pôde ser confirmado neste ambiente por bloqueio de rede ao registry de imagens — mesma limitação registrada em `specs/05-014-ambiente-testes-blackbox/tasks.md`) | T007 | | #69 |
+| ~~T009~~ | Escrever pelo menos um teste `pytest` técnico pontual (`blackbox-tests/tests/`) — uma verificação que não justifica um cenário Gherkin completo (ex.: o shape de um corpo de erro específico, ou o `404` do helper de T005 quando nenhum e-mail foi enviado para um endereço) | T002, T005 | [P] | #69 |
+| ~~T010~~ | Criar `blackbox-tests/README.md`: como instalar dependências, gerar/regenerar o cliente, rodar `behave`/`pytest`, e contra qual ambiente (link para a seção `blackbox` do `README.md` da raiz, spec 05-014, incluindo o e-mail do administrador semeado) | T008, T009 | | #69 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -44,5 +44,27 @@ pequenas o bastante para não precisar de PR isolada).
   ponta a ponta mesmo assim, contra o mesmo jar/Postgres real usado para verificar a spec 05-014
   diretamente (sem o container em si). `API_BASE_URL` aponta pra onde quer que a aplicação
   esteja — `docker compose up` ou não, o comportamento da suíte é o mesmo.
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
+
+## Conferência contra o `master` (2026-10-06)
+
+As tasks foram feitas no commit `30c30ca` (PR #67), mas a tabela nunca foi marcada. Marcadas
+agora, depois de conferir o código; nenhuma delas foi feita nesta revisão.
+
+- **T001–T004**: `blackbox-tests/pyproject.toml` (`behave`, `pytest`, `httpx`; o
+  `openapi-python-client` é instalado à parte, como diz o README),
+  `openapi-python-client-config.yaml`, entradas no `.gitignore` e `features/environment.py`.
+- **T006/T007**: `features/public_competition_entry.feature` e os steps, só com o cliente
+  gerado e a leitura de e-mail.
+- **T009**: `tests/test_mailbox.py`, adaptado depois pela spec 05-023.
+- **T010**: `blackbox-tests/README.md`.
+- **T008**: verificação registrada na própria linha (`behave` 1 cenário, `pytest` 1 teste),
+  contra o jar da 05-014 e Postgres real. A suíte foi rodada de novo com Docker na T015 da spec
+  05-023.
+
+Substituída:
+
+- **T005**: `features/mailbox.py` foi apagado pela spec 05-018; a leitura de e-mail está em
+  `common/blackbox_fixtures.py`, que lê o LocalStack (spec 05-023).
