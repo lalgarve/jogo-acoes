@@ -53,6 +53,9 @@ email-service:
 templates:
   name: email-service-templates
   url: ${email-service.base-url:}
+emails:
+  name: email-service-emails
+  url: ${email-service.base-url:}
 
 # See src/main/resources/application.yml -- same replaces-not-layers reason as above; without
 # this repeated here too, the three logging aspects (spec 05-011) never actually appear during

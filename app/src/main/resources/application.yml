@@ -63,9 +63,13 @@ email:
 # the documented test key (spec 05-030).
 email-service:
   api-key: ${EMAIL_SERVICE_API_KEY:}
-# Names the generated TemplatesApiClient reads (openapi-generator's spring-cloud library).
+# Names the generated TemplatesApiClient and EmailsApiClient read (openapi-generator's spring-cloud
+# library); without them the url defaults to a relative "/api" and the context fails to start.
 templates:
   name: email-service-templates
+  url: ${email-service.base-url:}
+emails:
+  name: email-service-emails
   url: ${email-service.base-url:}
 
 # Swagger UI (spec 05-009) against the static docs/openapi.yaml contract, copied to

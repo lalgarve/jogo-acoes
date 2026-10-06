@@ -153,7 +153,8 @@ class EmailServiceClientIntegrationTest {
     @MethodSource("everyKindOfEmail")
     void sendingRecordsEmailServiceIdAndReachesSesWithTheTemplate(EmailTemplate template, String name,
             String competitionName, RequestType origin, String expectedTemplateName) throws Exception {
-        String recipient = unique("send-" + expectedTemplateName);
+        // Short qualifier: the local part has to stay within 64 characters (@Email in the generated client).
+        String recipient = unique("send");
         String link = "https://jogo-acoes.example/login-links/" + UUID.randomUUID();
 
         emailSender.send(new EmailRequest(null, recipient, name, competitionName, origin, link, template));
