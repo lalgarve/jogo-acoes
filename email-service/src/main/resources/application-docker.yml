@@ -19,6 +19,9 @@ spring:
         secret-key: test
       ses:
         endpoint: ${SPRING_CLOUD_AWS_SES_ENDPOINT:http://localhost:4566}
+      # Spec 05-031: the send queue (email.queue-name) lives in the same LocalStack.
+      sqs:
+        endpoint: ${SPRING_CLOUD_AWS_SQS_ENDPOINT:http://localhost:4566}
 
 # Spec 05-030: HMAC pepper the api-key CLI hashed this environment's keys with (ApiKeyHasher reads
 # API_KEY_HMAC_PEPPER). Test value, versioned on purpose -- matches the test key's dump

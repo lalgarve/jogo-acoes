@@ -55,7 +55,7 @@ dos três — cada módulo mantém seu próprio *parent*/BOM):
 | `app/` | Spring Boot | O sistema principal (API, persistência, regras de negócio) |
 | `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES — ver "Pipeline de e-mail ponta a ponta em desenvolvimento" abaixo pra rodar como processo vivo localmente |
 | `blackbox-proxy/` | Spring Boot | Proxy reverso de teste (spec 05-020) — ver "Ambiente de testes blackbox" abaixo |
-| `email-service/` | Spring Boot | Serviço de E-mail (spec 05-025) — cadastro de templates sincronizado com o SES; ver "Cadastro de templates do Serviço de E-mail" abaixo |
+| `email-service/` | Spring Boot | Serviço de E-mail (specs 05-025 e 05-031) — cadastro de templates sincronizado com o SES e envio de e-mail por template; ver "Cadastro de templates do Serviço de E-mail" e "Envio de e-mail pelo Serviço de E-mail" abaixo |
 
 `mvn verify` na raiz builda os quatro. Pra rodar só um: `mvn -pl app -am verify`,
 `mvn -pl email-lambda -am verify`, `mvn -pl blackbox-proxy -am verify` ou
@@ -345,6 +345,52 @@ curl -X POST http://localhost:8082/api/templates/welcome/preview \
 ```
 
 Contrato completo: [`docs/openapi-email-service.yaml`](docs/openapi-email-service.yaml).
+
+## Envio de e-mail pelo Serviço de E-mail
+
+Spec [05-031](specs/05-031-servico-email-envio/spec.md): `POST /emails` pede o envio de um
+e-mail a partir de um template já cadastrado pelo próprio cliente. O serviço confere o pedido,
+grava o envio (`email_send`), publica uma mensagem na fila `jogo-acoes-email-commands` e
+responde `202` na hora, com o `id` do envio. Quem envia de fato é a Lambda de e-mail
+(`email-lambda`), com `SendTemplatedEmail` do SES: o SES renderiza o template no envio, e o `id`
+vai junto como *message tag* `correlationId`. O `202` quer dizer "na fila", não "entregue".
+
+**O remetente é fixo por cliente e definido por operações**, não pela API — o pedido não tem
+campo `from`. Enquanto o cliente não tiver remetente, `POST /emails` responde `409`. O endereço
+só é conferido quanto ao formato; ele precisa ser uma identidade verificada no SES, senão o
+envio falha depois, na Lambda. Para definir ou trocar o remetente de um cliente (o
+`email-service` precisa já ter subido uma vez, para o Flyway criar a tabela):
+
+```
+./scripts/set-email-sender.sh jogo-acoes no-reply@jogo-acoes.example
+```
+
+Em `docker`, `./scripts/test-api-key.sh restore` já faz isso para o cliente de teste
+`jogo-acoes`, com o endereço que o LocalStack verifica na subida
+(`EMAIL_SENDER_ADDRESS` em `docker-compose.yml`). Sem o container `db-email-service` rodando, o
+script usa o `psql` local; `--host`/`--port`, `EMAIL_SERVICE_DB_USER` e `PGPASSWORD` apontam
+para outro banco.
+
+Enviar um e-mail a partir do template `welcome` cadastrado acima:
+
+```
+curl -X POST http://localhost:8082/api/emails \
+  -H "X-API-Key: dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU" \
+  -H "Content-Type: application/json" \
+  -d '{"templateName": "welcome", "recipientEmail": "success@simulator.amazonses.com", "templateData": {"name": "Ada"}}'
+```
+
+Resposta: `202 {"id": "<uuid>", "status": "QUEUED"}`. Template inexistente (ou de outro
+cliente) dá `404`, pedido malformado dá `400` e falha ao publicar na fila dá `503` (nada é
+enviado nem gravado; pode repetir). Repetir o mesmo pedido gera dois e-mails: idempotência fica
+para a Etapa 4.
+
+A Lambda só aceita mensagens com template. O `app/` ainda publica na mesma fila o formato antigo
+(`subject`/`body` já renderizados), que a Lambda rejeita: até o `app/` passar a enviar pelo
+Serviço de E-mail, os e-mails dele (link mágico, convites) não saem em `docker`.
+
+Os testes do módulo usam uma fila própria no LocalStack (`email-service-send-test`, criada pela
+própria suíte), para ler de volta a mensagem publicada antes que a Lambda a consuma.
 
 ## Licença
 
