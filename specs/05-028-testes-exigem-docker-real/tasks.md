@@ -21,7 +21,7 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 | ~~T009~~ | Rodar `docker compose up -d --wait db localstack` + `SPRING_PROFILES_ACTIVE=docker mvn -pl app -am verify` — confirmar que continua verde (nada deveria mudar aqui, já era o padrão de CI) | T001 | [P] | #<n> |
 | ~~T010~~ | Rodar `docker compose up -d --wait db-email-service localstack` + `SPRING_PROFILES_ACTIVE=docker mvn -pl email-service -am verify` **duas vezes seguidas**, sem derrubar os containers entre as duas — confirmar os 19 Scenarios verdes nas duas rodadas (prova de que o T004a resolveu a repetibilidade, não só que passou uma vez) | T004, T004a, T006 | | #<n> |
 | T011 | ~~Rodar `mvn test` (sem `SPRING_PROFILES_ACTIVE`) em `email-service`, **sem** Postgres/LocalStack de pé — confirmar `BUILD SUCCESS`/`Skipped: 14` (não erro de conexão)~~ — substituída: sem ambiente sem Docker, nada é pulado; os testes sempre exigem a infraestrutura de pé (`memory/constitution.md`, "Testes exigem a infraestrutura de pé") e o perfil `sandbox` sai na spec 05-035 | — | | — |
-| T012 | `.github/workflows/ci.yml`: novo step pra `email-service`, mesmo padrão do de `app` (sobe `db-email-service`+`localstack`, `SPRING_PROFILES_ACTIVE=docker mvn -B -pl email-service -am verify`, derruba no final) | T010 | | #<n> |
+| ~~T012~~ | `.github/workflows/ci.yml`: novo step pra `email-service`, mesmo padrão do de `app` (sobe `db-email-service`+`localstack`, `SPRING_PROFILES_ACTIVE=docker mvn -B -pl email-service -am verify`, derruba no final) | T010 | | #<n> |
 | ~~T013~~ | Atualizar `specs/05-025-servico-email-templates/tasks.md` — marcar T020 como resolvido (ou linkar pra esta spec como a forma como foi resolvido), já que a suíte passa a rodar contra o LocalStack do compose em vez de Testcontainers | T010 | | #<n> |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
@@ -63,9 +63,17 @@ de outras specs; nenhuma delas foi feita nesta revisão.
 - **T010**: coberta pela T013 da spec 05-030 (`mvn -pl email-service -am verify` duas vezes
   seguidas sem derrubar os containers, 29 testes e 0 falhas nas duas).
 
-Continua pendente:
+Feita depois (2026-10-06):
 
-- **T012**: o `.github/workflows/ci.yml` só tem os steps de `app` e `email-lambda`.
+- **T012**: `.github/workflows/ci.yml` sobe `db`, `db-email-service` e `localstack` juntos e
+  ganhou os steps do `email-service` (instala a biblioteca de API-Key, restaura a chave de teste
+  e roda `mvn -B -pl email-service -am verify` com o perfil `docker`), na mesma PR da T011 da
+  spec 05-030. Verificação local reproduzindo o CI:
+  `docker compose down -v`, `db`, `db-email-service` e `localstack` de pé (volumes novos, como
+  no CI). Sem o `restore`, `mvn -pl email-service -am verify` quebra com `missing table
+  [api_key.api_keys]`; depois do `./scripts/test-api-key.sh restore`, 29 testes, 0 falhas,
+  0 erros e 2 pulados (os cenários `@requires-real-ses`, fora da execução padrão pela Issue
+  #104, não por falta de infraestrutura).
 
 Substituídas (2026-10-05):
 
