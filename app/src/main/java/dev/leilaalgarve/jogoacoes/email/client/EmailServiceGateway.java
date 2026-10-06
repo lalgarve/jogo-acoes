@@ -1,9 +1,11 @@
 package dev.leilaalgarve.jogoacoes.email.client;
 
+import dev.leilaalgarve.jogoacoes.email.client.api.EmailsApi;
 import dev.leilaalgarve.jogoacoes.email.client.api.TemplatesApi;
 import dev.leilaalgarve.jogoacoes.email.client.api.model.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.email.client.api.model.EmailTemplateCreateRequest;
 import dev.leilaalgarve.jogoacoes.email.client.api.model.EmailTemplateUpdateRequest;
+import dev.leilaalgarve.jogoacoes.email.client.api.model.SendEmailRequest;
 import dev.leilaalgarve.jogoacoes.email.client.api.model.TemplatePreviewRequest;
 import dev.leilaalgarve.jogoacoes.email.client.api.model.TemplatePreviewResponse;
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceAuthenticationException;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
@@ -35,9 +38,26 @@ public class EmailServiceGateway {
     private static final long RETRY_WAIT_MILLIS = 200;
 
     private final TemplatesApi templates;
+    private final EmailsApi emails;
 
-    EmailServiceGateway(TemplatesApi templates) {
+    EmailServiceGateway(TemplatesApi templates, EmailsApi emails) {
         this.templates = templates;
+        this.emails = emails;
+    }
+
+    /**
+     * Asks email-service to send one e-mail from one of app's templates and returns the id it
+     * gave the send (202). Never retried: POST /emails has no idempotency until Stage 4, so a
+     * retry after a lost response could send the e-mail twice (spec 05-034).
+     */
+    public UUID sendEmail(String templateName, String recipientEmail, Map<String, Object> templateData) {
+        try {
+            return emails.sendEmail(new SendEmailRequest()
+                            .templateName(templateName).recipientEmail(recipientEmail).templateData(templateData))
+                    .getBody().getId();
+        } catch (FeignException e) {
+            throw translate("POST /emails (" + templateName + ")", e);
+        }
     }
 
     public Optional<EmailServiceTemplate> findTemplate(String name) {

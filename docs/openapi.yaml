@@ -151,6 +151,7 @@ paths:
         '401': { description: Not logged in }
         '403': { description: Not an administrator }
         '404': { description: Competition not found }
+        '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /competitions/{competitionId}/entry-requests:
     post:
@@ -194,6 +195,7 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Private competition (no visible entry point), or competition not found
+        '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /login-requests:
     post:
@@ -222,6 +224,7 @@ paths:
                   description: Same-origin relative path to redirect to after login — see the operation description.
       responses:
         '202': { description: Accepted — link sent by e-mail if the address is known }
+        '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /login-links/{token}:
     get:
@@ -347,6 +350,7 @@ paths:
                   items: { type: string, format: email }
       responses:
         '202': { description: "Accepted — players added with status e-mail not sent, then invited" }
+        '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /competitions/{competitionId}/players/{participationId}:
     patch:
@@ -419,6 +423,7 @@ paths:
           schema: { type: integer, format: int64 }
       responses:
         '202': { description: Accepted }
+        '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /competitions/{competitionId}/players/invite-emails:
     post:
@@ -444,6 +449,7 @@ paths:
                   items: { type: integer, format: int64 }
       responses:
         '202': { description: Accepted }
+        '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /sessions:
     get:
@@ -518,6 +524,16 @@ components:
       required: false
       schema: { type: string }
       description: Structured Field boolean (`?0`/`?1`) -- whether the device is mobile.
+  responses:
+    # Spec 05-034: operations that send an e-mail call email-service synchronously; when it can't
+    # be reached the whole operation is undone (no invite or link left behind without its e-mail)
+    # and the caller can simply try again.
+    EmailServiceUnavailable:
+      description: The e-mail could not be sent right now (email-service unavailable); nothing was changed, try again
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
   schemas:
     CompetitionType:
       type: string
