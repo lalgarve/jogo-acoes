@@ -154,7 +154,7 @@ Base: template válido.
 |---|---|---|
 | P0 | completo | devolve assunto e corpo renderizados, com os valores das variáveis |
 | P1 | vazio (`Map.of()`) | lança `EmailServiceRejectedException` (422), sem nova tentativa |
-| P2 | `null` | lança `EmailServiceRejectedException` (400), sem nova tentativa |
+| P2 | `null` | lança `jakarta.validation.ConstraintViolationException` antes de chamar o email-service: a bean validation do cliente gerado recusa (`variables` é obrigatório no contrato). Ver "Desvio encontrado na implementação" |
 | P3 | completo + uma chave a mais | igual a P0 |
 | P4 | faltando `competitionName` | lança `EmailServiceRejectedException` (422), sem nova tentativa |
 
@@ -248,3 +248,15 @@ Decididas em 2026-10-06, todas pela opção recomendada.
   "testes unitários". Os testes chamam o método da classe direto, mas contra o email-service e o
   Postgres reais, sem mock, como manda a constitution ("Testes: preferir real a fake sempre que
   der").
+
+## Desvio encontrado na implementação
+
+- **P2 (2026-10-06).** A spec esperava `EmailServiceRejectedException` (400 do email-service). Na
+  prática, o cliente Feign gerado tem bean validation (`@NotNull` em `variables`, que é
+  obrigatório em `docs/openapi-email-service.yaml`) e lança
+  `jakarta.validation.ConstraintViolationException` antes de qualquer chamada HTTP. O mesmo vale
+  para `sendEmail` com `templateName` nulo, que hoje a validação de D1 já intercepta antes. O teste
+  registra o comportamento real. Isso quer dizer que uma exceção do cliente gerado chega ao resto
+  do `app` sem tradução, o que contraria a ideia de que só o `EmailServiceGateway` conhece o
+  cliente (spec 05-034). Decidir se o gateway deve recusar `variables` nulo com
+  `IllegalArgumentException`, como em D1, fica em aberto.
