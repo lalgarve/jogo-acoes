@@ -8,4 +8,6 @@ import java.util.List;
 public interface CompetitionRepository extends JpaRepository<Competition, Long> {
 
     List<Competition> findByTypeAndStatus(CompetitionType type, CompetitionStatus status);
+
+    List<Competition> findByCreator_Id(Long creatorId);
 }

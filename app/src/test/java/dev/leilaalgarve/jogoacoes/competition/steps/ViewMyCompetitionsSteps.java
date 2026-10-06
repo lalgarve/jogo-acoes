@@ -3,7 +3,9 @@ package dev.leilaalgarve.jogoacoes.competition.steps;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import dev.leilaalgarve.jogoacoes.common.testsupport.CompetitionMother;
 import dev.leilaalgarve.jogoacoes.competition.Competition;
+import dev.leilaalgarve.jogoacoes.competition.CompetitionService;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionStatus;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionType;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
@@ -35,12 +37,15 @@ public class ViewMyCompetitionsSteps {
 
     private final ScenarioWorld world;
     private final CompetitionFixtures competitionFixtures;
+    private final CompetitionService competitionService;
     private final ParticipationRepository participationRepository;
 
     public ViewMyCompetitionsSteps(ScenarioWorld world, CompetitionFixtures competitionFixtures,
+                                    CompetitionService competitionService,
                                     ParticipationRepository participationRepository) {
         this.world = world;
         this.competitionFixtures = competitionFixtures;
+        this.competitionService = competitionService;
         this.participationRepository = participationRepository;
     }
 
@@ -87,6 +92,11 @@ public class ViewMyCompetitionsSteps {
         world.setTargetCompetition(competitionFixtures.publicCompetition());
     }
 
+    @Given("the administrator created a competition")
+    public void the_administrator_created_a_competition() {
+        world.setTargetCompetition(competitionService.create(CompetitionMother.validPublicCompetition()));
+    }
+
     @When("they access their competitions list")
     public void they_access_their_competitions_list() {
         world.setLastResponse(world.request().when().get("/competitions/mine"));
@@ -107,11 +117,11 @@ public class ViewMyCompetitionsSteps {
         world.setLastResponse(world.request().when().post("/competitions/{id}/entry-requests", world.getTargetCompetition().getId()));
     }
 
-    @Then("^the system shows that competition under \"(participating|participated in the past|invited, not confirmed)\"$")
+    @Then("^the system shows that competition under \"(participating|participated in the past|invited, not confirmed|created)\"$")
     public void the_system_shows_that_competition_under(String bucketLabel) {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(200);
         String expectedBucket = bucketKey(bucketLabel);
-        for (String bucket : List.of("participating", "pastParticipations", "pendingConfirmation")) {
+        for (String bucket : List.of("participating", "pastParticipations", "pendingConfirmation", "created")) {
             List<Map<String, Object>> items = world.getLastResponse().jsonPath().getList(bucket);
             boolean present = items.stream().anyMatch(item -> world.getTargetCompetition().getId().equals(((Number) item.get("id")).longValue()));
             assertThat(present).as("competition present under '%s'", bucket).isEqualTo(bucket.equals(expectedBucket));
@@ -157,6 +167,7 @@ public class ViewMyCompetitionsSteps {
             case "participating" -> "participating";
             case "participated in the past" -> "pastParticipations";
             case "invited, not confirmed" -> "pendingConfirmation";
+            case "created" -> "created";
             default -> throw new IllegalArgumentException("Unknown bucket label: " + label);
         };
     }
