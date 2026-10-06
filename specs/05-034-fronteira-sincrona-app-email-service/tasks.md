@@ -101,3 +101,7 @@ Feito nesta rodada: T014, T015, o item (5) do T006 e a documentação do T019.
   `emails.name`/`emails.url` (sem eles a URL padrão é o relativo `/api` e o contexto não sobe), e
   o endereço de teste passava de 64 caracteres na parte local, que o `@Email` do cliente gerado
   rejeita.
+- **CI verde** no commit `0d91c20` (2026-10-06): suíte do `app` contra o `email-service`, o
+  PostgreSQL e o LocalStack reais, incluindo os 5 envios conferidos no SES do LocalStack, e a
+  suíte do `email-service`. Pendentes: T017 (rodada manual a partir de `docker compose down -v`) e
+  T018 (comparar os 5 e-mails no SES Viewer), que precisam de Docker fora da CI.
