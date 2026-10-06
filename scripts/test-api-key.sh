@@ -10,7 +10,10 @@
 # docker/postgres-email-service/test-data/README.md for the key and pepper this dump matches.
 #
 #   restore  drops and recreates the `api_key` schema from the saved dump (email-service's own
-#            tables, in their own schema, are never touched)
+#            tables, in their own schema, are never touched), then sets the test client's sender
+#            address (spec 05-031) with scripts/set-email-sender.sh -- the address LocalStack
+#            verifies (docker/localstack/init/02-verify-ses-sender.sh). Only once email-service has
+#            created its tables (Flyway); before that, run this again after starting it
 #   dump     overwrites the saved dump with the current `api_key` schema -- only after
 #            deliberately generating a new test key
 #
@@ -29,6 +32,11 @@ DB_USER="email_service_admin"
 DB_PASSWORD="email_service_admin"
 DB_HOST="localhost"
 DB_PORT="5433"
+
+# Spec 05-031: test client's sender address -- the one docker-compose.yml's EMAIL_SENDER_ADDRESS
+# makes LocalStack verify, so the jogo-acoes client's e-mails are accepted by SES there.
+TEST_CLIENT="jogo-acoes"
+TEST_SENDER_ADDRESS="no-reply@jogo-acoes.example"
 
 usage() {
   echo "Usage: $0 restore|dump [--host HOST] [--port PORT]" >&2
@@ -62,10 +70,10 @@ use_container() {
 run_psql() {
   if use_container; then
     docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T db-email-service \
-      psql -v ON_ERROR_STOP=1 -q -U "$DB_USER" -d "$DB_NAME"
+      psql -v ON_ERROR_STOP=1 -q -U "$DB_USER" -d "$DB_NAME" "$@"
   else
     PGPASSWORD="$DB_PASSWORD" psql -v ON_ERROR_STOP=1 -q -h "$DB_HOST" -p "$DB_PORT" \
-      -U "$DB_USER" -d "$DB_NAME"
+      -U "$DB_USER" -d "$DB_NAME" "$@"
   fi
 }
 
@@ -84,6 +92,13 @@ case "$COMMAND" in
   restore)
     run_psql < "$DUMP_FILE"
     echo "Restored the api_key schema from $DUMP_FILE"
+    if [ "$(echo "SELECT to_regclass('email_service.client_sender') IS NOT NULL" | run_psql -tA)" = "t" ]; then
+      "$REPO_ROOT/scripts/set-email-sender.sh" "$TEST_CLIENT" "$TEST_SENDER_ADDRESS" \
+        --host "$DB_HOST" --port "$DB_PORT"
+    else
+      echo "email_service.client_sender doesn't exist yet: start email-service once (Flyway), then" \
+        "run this again to set the sender address of $TEST_CLIENT"
+    fi
     ;;
   dump)
     # pg_dump >= 16.10 wraps the script in \restrict/\unrestrict, which older psql clients

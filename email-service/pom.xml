@@ -73,6 +73,13 @@
       <artifactId>spring-cloud-aws-starter-ses</artifactId>
     </dependency>
 
+    <!-- Spec 05-031, T004: publishes send requests to the SQS send queue with SqsTemplate, same
+         pattern as app's SqsEmailSender. -->
+    <dependency>
+      <groupId>io.awspring.cloud</groupId>
+      <artifactId>spring-cloud-aws-starter-sqs</artifactId>
+    </dependency>
+
     <!-- T003: TestRenderTemplate's response is a raw MIME string (plan.md), parsed into
          subject/body with Jakarta Mail instead of hand-rolled parsing. -->
     <dependency>

@@ -30,7 +30,7 @@ class SchemaLayoutTest {
     @Test
     void tablesLiveInTheModuleSchema() {
         assertThat(tablesIn(SCHEMA))
-                .contains(HISTORY_TABLE, "email_template");
+                .contains(HISTORY_TABLE, "email_template", "client_sender", "email_send");
     }
 
     @Test

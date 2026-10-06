@@ -1,7 +1,7 @@
 # Spec: Serviço de E-mail — envio de e-mail
 
-**Status:** aprovada
-**Issue:** #<a criar>
+**Status:** implementada
+**Issue:** [#130](https://github.com/lalgarve/jogo-acoes/issues/130)
 **Iteração:** iteration-5
 
 ## Resumo

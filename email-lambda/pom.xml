@@ -13,8 +13,8 @@
     sends via Amazon SES. Deliberately not Spring Boot: this needs to cold-start fast and
     cheap, which Quarkus (JVM mode here, GraalVM native image for real deploys) is built for
     and Spring Boot is not. Knows nothing about the main app's domain -- the queue message
-    already carries the rendered subject/body, so this is a generic "send this text to this
-    address" worker.
+    names a template already on SES, its data and the sender (spec 05-031), so this is a generic
+    "send this SES template to this address" worker.
   </description>
 
   <properties>

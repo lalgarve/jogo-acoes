@@ -10,6 +10,8 @@
 # decision 1) -- LocalStack genuinely supports it (Issue #87, full investigation in
 # specs/05-022-harness-teste-consumo-email/investigacao-issue-87.md), so no custom consumer
 # code (the old EmailQueuePoller, removed) is needed to bridge the gap locally.
+#
+# No sender address for the function (spec 05-031): each message carries its client's own.
 set -e
 
 FUNCTION_ZIP=/tmp/email-lambda-target/function.zip
@@ -28,8 +30,7 @@ awslocal lambda create-function \
     QUARKUS_SES_AWS_REGION=us-east-1,
     QUARKUS_SES_AWS_CREDENTIALS_TYPE=static,
     QUARKUS_SES_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID=test,
-    QUARKUS_SES_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY=test,
-    EMAIL_SENDER_ADDRESS='"${EMAIL_SENDER_ADDRESS:?EMAIL_SENDER_ADDRESS not set}"'
+    QUARKUS_SES_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY=test
   }'
 
 # The function stays "Pending" for a few seconds while LocalStack builds its execution
