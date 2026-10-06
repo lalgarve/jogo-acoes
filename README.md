@@ -20,8 +20,9 @@ jogador.
   link de login, ALTCHA como captcha (prova de trabalho auto-hospedada, sem serviço
   terceirizado), log de auditoria.
 - **`email-lambda/`**: AWS Lambda (Quarkus, com suporte a imagem nativa GraalVM) que consome
-  uma fila Amazon SQS e envia o e-mail via Amazon SES — desacoplada do sistema principal, que
-  só publica na fila e nunca fala com o SES diretamente.
+  uma fila Amazon SQS e envia o e-mail via Amazon SES. Quem publica na fila é o Serviço de
+  E-mail (`email-service/`); o sistema principal só chama a API dele e nunca fala com a fila nem
+  com o SES diretamente.
 - **Especificação de domínio (BDD)**: cada fluxo (login, criação de competição, gerência de
   jogadores, pedido de entrada) tem cenários Gherkin cobrindo caminho feliz e casos de erro,
   executados a cada mudança.
@@ -257,8 +258,9 @@ Por baixo, três coisas acontecem em ordem: o serviço `email-lambda-builder` bu
 real do módulo (`function.zip`) e sai; o LocalStack sobe só depois disso (`depends_on:
 condition: service_completed_successfully`) com o serviço `lambda` habilitado; e um script de
 inicialização faz o deploy desse artefato como uma função Lambda de verdade dentro do
-LocalStack, com um *event source mapping* real ligado na mesma fila que `app/` já publica
-(`SqsEmailSender`) — o mesmo mecanismo de disparo que a AWS real usaria em produção, sem
+LocalStack, com um *event source mapping* real ligado na mesma fila em que o `email-service`
+publica (o `app/` pede o envio ao `email-service` por `POST /emails`) — o mesmo mecanismo de
+disparo que a AWS real usaria em produção, sem
 nenhum consumidor customizado no meio (verificado de ponta a ponta, ver Issue
 [#87](https://github.com/lalgarve/jogo-acoes/issues/87)).
 
@@ -385,12 +387,30 @@ cliente) dá `404`, pedido malformado dá `400` e falha ao publicar na fila dá 
 enviado nem gravado; pode repetir). Repetir o mesmo pedido gera dois e-mails: idempotência fica
 para a Etapa 4.
 
-A Lambda só aceita mensagens com template. O `app/` ainda publica na mesma fila o formato antigo
-(`subject`/`body` já renderizados), que a Lambda rejeita: até o `app/` passar a enviar pelo
-Serviço de E-mail, os e-mails dele (link mágico, convites) não saem em `docker`.
+A Lambda só aceita mensagens com template.
 
 Os testes do módulo usam uma fila própria no LocalStack (`email-service-send-test`, criada pela
 própria suíte), para ler de volta a mensagem publicada antes que a Lambda a consuma.
+
+### O `app/` envia pelo Serviço de E-mail
+
+Desde a spec [05-034](specs/05-034-fronteira-sincrona-app-email-service/spec.md), o `app/`
+depende do `email-service` para enviar e-mail (link mágico, convites): cada envio é uma chamada
+síncrona a `POST /emails`, feita dentro da transação de negócio. Se o `email-service` estiver
+fora do ar, a operação é desfeita e a API do `app/` responde `503`. Na subida, o `app/` também
+cadastra no `email-service` os seus 5 templates Handlebars
+(`app/src/main/resources/email-templates/`). Por isso o `email-service` precisa estar no ar antes
+do `app/`; no `docker compose up` a ordem já é garantida (o `app` espera o `email-service` ficar
+saudável).
+
+A chave de teste do cliente `jogo-acoes` também precisa estar restaurada
+(`./scripts/test-api-key.sh restore`, ver acima). Num volume novo, rode o script de novo depois
+que o `email-service` tiver subido uma vez: só então a tabela de remetentes existe e o remetente
+do cliente `jogo-acoes` é definido. Sem chave ou sem remetente, o `email-service` recusa os
+envios do `app/`.
+
+Nos testes e nas suítes Cucumber do `app/` nada disso é necessário: sem `email.sender`
+configurado, o `app/` usa o `StubEmailSender`, que só grava o envio em `sent_email`.
 
 ## Licença
 

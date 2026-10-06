@@ -189,8 +189,11 @@ classDiagram
 
 ## E-mail assíncrono
 
-Lado produtor (`app/`, pacote `io.deployo.jogoacoes.email`) e consumidor (`email-lambda/`,
-pacote `io.deployo.jogoacoes.email.lambda`).
+Três lados: o cliente no `app/` (pacote `dev.leilaalgarve.jogoacoes.email`), que chama o
+`email-service` de forma síncrona (spec 05-034); o `email-service/` (pacote
+`dev.leilaalgarve.jogoacoes.emailservice.send`), que publica na fila SQS; e o consumidor
+`email-lambda/` (pacote `dev.leilaalgarve.jogoacoes.email.lambda`), que pede ao Amazon SES o
+envio do template (spec 05-031).
 
 ```mermaid
 classDiagram
@@ -209,67 +212,82 @@ classDiagram
         +EmailTemplate template
     }
     class StubEmailSender {
-        -SentEmailRecorder recorder
+        -SentEmailRecorder sentEmailRecorder
         +send(EmailRequest request)
     }
-    class SqsEmailSender {
-        -EmailContentRenderer renderer
-        -SqsTemplate sqsTemplate
-        -SentEmailRecorder recorder
-        -String queueName
+    class EmailServiceEmailSender {
+        -EmailServiceGateway gateway
+        -SentEmailRecorder sentEmailRecorder
         +send(EmailRequest request)
     }
-    class EmailContentRenderer {
-        -TemplateEngine templateEngine
-        +render(EmailRequest request) RenderedEmail
+    class EmailServiceGateway {
+        -TemplatesApi templates
+        -EmailsApi emails
+        +sendEmail(String templateName, String recipientEmail, Map templateData) UUID
+        +findTemplate(String name) Optional~EmailServiceTemplate~
+        +upsertTemplate(EmailServiceTemplate template)
+        +preview(String name, Map variables) TemplatePreview
     }
-    class RenderedEmail {
-        <<record>>
-        +String subject
-        +String body
+    class EmailTemplateSynchronizer {
+        -EmailServiceGateway gateway
+        +synchronize()
     }
     class SentEmailRecorder {
         +record(EmailRequest request) SentEmail
-    }
-    class EmailMessage_produtor["EmailMessage (app)"] {
-        <<record>>
-        +String schemaVersion
-        +String correlationId
-        +String recipientEmail
-        +String subject
-        +String body
+        +record(EmailRequest request, UUID emailServiceId) SentEmail
     }
 
     EmailSender <|.. StubEmailSender
-    EmailSender <|.. SqsEmailSender
+    EmailSender <|.. EmailServiceEmailSender
     EmailSender ..> EmailRequest : usa
-    SqsEmailSender ..> EmailContentRenderer : usa
-    SqsEmailSender ..> SentEmailRecorder : usa
-    SqsEmailSender ..> EmailMessage_produtor : publica na fila
     StubEmailSender ..> SentEmailRecorder : usa
-    EmailContentRenderer ..> RenderedEmail : produz
+    EmailServiceEmailSender ..> EmailServiceGateway : usa
+    EmailServiceEmailSender ..> SentEmailRecorder : usa
+    EmailServiceEmailSender ..> EmailTemplate : escolhe 1 dos 5\ntemplates Handlebars
+    EmailTemplateSynchronizer ..> EmailServiceGateway : cadastra os 5 templates\nna subida
     SentEmailRecorder ..> SentEmail : grava
-    EmailContentRenderer ..> EmailTemplate : escolhe 1 dos 5\n.html físicos
+
+    class EmailSendService["EmailSendService (email-service)"] {
+        -SqsTemplate sqsTemplate
+        -String queueName
+        +send(String clientId, SendEmailRequest request) UUID
+    }
+    class EmailQueueMessage["EmailQueueMessage (email-service)"] {
+        <<record>>
+        +String schemaVersion
+        +String correlationId
+        +String senderAddress
+        +String recipientEmail
+        +String templateName
+        +Map templateData
+    }
+    EmailServiceGateway ..> EmailSendService : POST /emails (HTTP, X-API-Key)
+    EmailSendService ..> EmailQueueMessage : publica na fila
 
     class EmailSendHandler["EmailSendHandler (email-lambda)"] {
         -SesClient sesClient
         -ObjectMapper objectMapper
-        -String senderAddress
         +handleRequest(SQSEvent event, Context context) Void
     }
     class EmailMessage_lambda["EmailMessage (email-lambda)"] {
         <<record>>
         +String schemaVersion
         +String correlationId
+        +String senderAddress
         +String recipientEmail
-        +String subject
-        +String body
+        +String templateName
+        +Map templateData
     }
     EmailSendHandler ..> EmailMessage_lambda : desserializa da fila
-    EmailSendHandler ..> SesClient : SES.SendEmail
+    EmailSendHandler ..> SesClient : SES.SendTemplatedEmail
 ```
 
-`EmailMessage` existe **duas vezes** — uma cópia em cada lado (`app/`/`email-lambda/`), de
-propósito: é o contrato da fila, não um tipo compartilhado num módulo comum, pra nenhum dos
-dois lados forçar release do outro se mudar. `StubEmailSender` é a implementação ativa em
-`sandbox`/testes; `SqsEmailSender` em `docker`/`staging`/`production`.
+O contrato da fila existe **duas vezes**, uma cópia em cada lado (`EmailQueueMessage` no
+`email-service/`, `EmailMessage` no `email-lambda/`), de propósito: é o contrato da fila, não um
+tipo compartilhado num módulo comum, pra nenhum dos dois lados forçar release do outro se mudar.
+Entre `app/` e `email-service/` o contrato é o OpenAPI `docs/openapi-email-service.yaml`, do qual
+o cliente OpenFeign do `app/` é gerado; não há nenhuma classe Java compartilhada. `templateName`
+na fila é o nome com namespace no SES (`jogo-acoes__<nome>`), e o SES renderiza o template com
+`templateData` na hora do envio. `StubEmailSender` é a implementação padrão (`email.sender`
+ausente ou `stub`: testes e suítes Cucumber); `EmailServiceEmailSender` ativa com
+`email.sender=email-service` (container `app` do `docker-compose.yml`, `staging`, `production`).

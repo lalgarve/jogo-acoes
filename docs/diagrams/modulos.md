@@ -403,14 +403,6 @@ classDiagram
         REGISTRATION_LINK
         LOGIN_LINK
     }
-    class RenderedEmail {
-        <<record>>
-        +String subject
-        +String body
-    }
-    class EmailContentRenderer {
-        +render(EmailRequest) RenderedEmail
-    }
     class SentEmail {
         +Long id
         +User user
@@ -418,6 +410,7 @@ classDiagram
         +String link
         +EmailTemplate template
         +LocalDateTime sentAt
+        +UUID emailServiceId
     }
     class SentEmailRepository {
         <<interface>>
@@ -425,63 +418,98 @@ classDiagram
     }
     class SentEmailRecorder {
         +record(EmailRequest) SentEmail
+        +record(EmailRequest, UUID emailServiceId) SentEmail
     }
     class StubEmailSender {
         +send(EmailRequest)
     }
-    class SqsEmailSender {
+    class EmailServiceEmailSender {
         +send(EmailRequest)
+        +templateNameFor(EmailRequest)$ String
+        +templateDataFor(EmailRequest)$ Map
     }
-    class EmailMessage {
+    class EmailServiceGateway {
+        +sendEmail(String templateName, String recipientEmail, Map templateData) UUID
+        +findTemplate(String) Optional~EmailServiceTemplate~
+        +upsertTemplate(EmailServiceTemplate)
+        +preview(String, Map) TemplatePreview
+    }
+    class EmailTemplateSynchronizer {
+        +synchronize()
+    }
+    class EmailServiceTemplate {
         <<record>>
-        +String schemaVersion
-        +String correlationId
-        +String recipientEmail
+        +String name
         +String subject
         +String body
     }
+    class EmailServiceClientConfiguration {
+        X-API-Key interceptor
+    }
 
     EmailSender <|.. StubEmailSender
-    EmailSender <|.. SqsEmailSender
+    EmailSender <|.. EmailServiceEmailSender
     EmailSender ..> EmailRequest : usa
     StubEmailSender --> SentEmailRecorder
-    SqsEmailSender --> EmailContentRenderer
-    SqsEmailSender --> SentEmailRecorder
-    SqsEmailSender ..> EmailMessage : publica na fila SQS
-    EmailContentRenderer ..> RenderedEmail : produz
-    EmailContentRenderer --> EmailTemplate
+    EmailServiceEmailSender --> EmailServiceGateway
+    EmailServiceEmailSender --> SentEmailRecorder
+    EmailTemplateSynchronizer --> EmailServiceGateway
+    EmailTemplateSynchronizer ..> EmailServiceTemplate : lê de email-templates/
+    EmailServiceClientConfiguration ..> EmailServiceGateway : configura o cliente Feign
     SentEmailRecorder --> SentEmailRepository
     SentEmailRecorder ..> SentEmail : grava
     SentEmailRepository --> SentEmail
     SentEmail --> EmailTemplate
 ```
 
-`StubEmailSender`/`SqsEmailSender` são mutuamente exclusivos via `@ConditionalOnProperty
-(email.sender)` — `stub` é o padrão (`sandbox`/testes), `sqs` ativa em `docker`/`staging`/
-`production`. `EmailMessage` desta classe é a cópia do lado produtor; o consumidor
-(`EmailSendHandler`, que chama Amazon SES) mora em `email-lambda/`, um módulo Maven/deployable
-separado — fora da árvore `dev.leilaalgarve.jogoacoes` deste app, por isso fora do diagrama de
-dependências da Introdução.
+`StubEmailSender`/`EmailServiceEmailSender` são mutuamente exclusivos via
+`@ConditionalOnProperty(email.sender)`: `stub` (ou a propriedade ausente) é o padrão, usado
+pelos testes e pelas suítes Cucumber; `email-service` ativa o envio de verdade, e é o valor que o
+container `app` do `docker-compose.yml` (`EMAIL_SENDER`) e os perfis `staging`/`production`
+definem. As classes de `email/client/` (`EmailServiceClientConfiguration`,
+`EmailServiceGateway`, `EmailTemplateSynchronizer`) só existem com `email-service.base-url`
+configurado. `EmailServiceGateway` é a única classe que usa a API gerada (OpenFeign, a partir de
+`docs/openapi-email-service.yaml`) e traduz `FeignException` em exceções do módulo: indisponível
+ou 5xx vira `EmailServiceUnavailableException` (503 na API do `app`), 401 vira
+`EmailServiceAuthenticationException` e o resto vira `EmailServiceRejectedException`. Só
+`GET`/`PUT`/preview são repetidos em caso de falha; `POST /emails` nunca, porque uma repetição
+depois de uma resposta perdida poderia enviar o e-mail duas vezes (spec 05-034).
 
-### Envio de e-mail (produtor)
+`app` não renderiza mais e-mail nem fala com fila: os 5 templates Handlebars ficam em
+`app/src/main/resources/email-templates/` e o `EmailTemplateSynchronizer` os cadastra no
+`email-service` no `ApplicationReadyEvent` (`PUT`; se 404, `POST`; se 409, `PUT` de novo). A
+fila SQS, o `EmailSendHandler` (`email-lambda/`) e o Amazon SES ficam do outro lado do
+`email-service`, fora da árvore `dev.leilaalgarve.jogoacoes` deste app e, por isso, fora do
+diagrama de dependências da Introdução.
+
+### Envio de e-mail (`app` → `email-service`)
 
 ```mermaid
 sequenceDiagram
     participant Svc as Serviço de negócio<br/>(competition/loginsession)
-    participant Sender as SqsEmailSender
-    participant Renderer as EmailContentRenderer
+    participant Sender as EmailServiceEmailSender
+    participant GW as EmailServiceGateway
+    participant ESvc as email-service
     participant Rec as SentEmailRecorder
-    participant SQS as Fila SQS (comando)
 
+    Note over Svc,Rec: dentro da @Transactional do serviço de negócio<br/>(exceto POST /login-requests, que não é transacional)
     Svc->>Sender: send(EmailRequest)
-    Sender->>Renderer: render(EmailRequest)
-    Renderer->>Renderer: escolhe 1 dos 5 templates Thymeleaf<br/>(template + competitionName + origin)
-    Renderer-->>Sender: RenderedEmail{subject, body}
-    Sender->>Rec: record(EmailRequest)
-    Rec->>Rec: grava SentEmail (Postgres)
-    Rec-->>Sender: SentEmail{id}
-    Sender->>SQS: send(EmailMessage{correlationId=SentEmail.id, subject, body})
-    Note over SQS: consumido por EmailSendHandler (email-lambda) →<br/>Amazon SES -- ver classes.md/"E-mail assíncrono"
+    Sender->>Sender: templateNameFor(EmailRequest)<br/>1 dos 5 templates (template + competitionName + origin)
+    Sender->>Sender: templateDataFor(EmailRequest)<br/>name, competitionName, link (só os não nulos)
+    Sender->>GW: sendEmail(templateName, email, templateData)
+    GW->>ESvc: POST /emails (X-API-Key), sem retry
+    alt aceito
+        ESvc-->>GW: 202 {id}
+        GW-->>Sender: UUID emailServiceId
+        Sender->>Rec: record(EmailRequest, emailServiceId)
+        Rec->>Rec: grava SentEmail com email_service_id (Postgres)
+    else indisponível ou 5xx
+        ESvc--xGW: falha
+        GW--xSender: EmailServiceUnavailableException
+        Sender--xSvc: propaga, a transação de negócio é desfeita
+        Note over Svc: ApiExceptionHandler responde 503
+    end
+    Note over ESvc: depois do 202, o email-service publica na fila SQS<br/>e o email-lambda chama SES SendTemplatedEmail<br/>(ver sequencia.md, seção 6)
 ```
 
 ## Módulo `user`
