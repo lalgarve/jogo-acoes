@@ -56,6 +56,16 @@ jobs:
           SPRING_PROFILES_ACTIVE: docker
         run: mvn -B -pl app -am verify
 
+      # The PR comment below only gives percentages; the HTML report shows line by line what is
+      # uncovered. Uploaded even when the coverage gate failed the build, which is exactly when
+      # it is needed (spec 05-036).
+      - name: Upload app's JaCoCo report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-app
+          path: app/target/site/jacoco/
+
       # email-service depends on dev.leilaalgarve.apikey:api-key-validation, which is not on Maven
       # Central: the script installs it into ~/.m2 from the lalgarve/api-key release (a no-op when
       # the Maven cache already has it). Spec 05-030, T011.
