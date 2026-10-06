@@ -1,6 +1,6 @@
 # Spec: Administrador lista as competições que criou
 
-**Status:** rascunho
+**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** —
 **Iteração:** iteration-5
 
