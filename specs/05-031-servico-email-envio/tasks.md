@@ -70,7 +70,11 @@ localstack`, `./scripts/install-api-key-lib.sh`, `./scripts/test-api-key.sh rest
   `SqsEmailSenderDockerIntegrationTest` falhou por um resto do teste manual do T007 na fila
   compartilhada (uma mensagem do `email-service`); com a fila limpa, verde. No CI isso não
   acontece: a suíte do `email-service` usa a fila própria.
-- **Não verificado aqui**: a Lambda nova rodando dentro do LocalStack (ponta a ponta fila → SES).
-  A imagem `public.ecr.aws/lambda/java:21` não baixa neste ambiente (bloqueio de rede), então a
-  função ficou `Failed` no LocalStack local; o handler foi verificado pelo T003. O CI também não
-  roda esse caminho.
+- **Ponta a ponta (fila → Lambda → SES)**: não deu para rodar no container de nuvem (a imagem
+  `public.ecr.aws/lambda/java:21` não baixa lá). Leila rodou em 2026-10-06 numa máquina com
+  Docker, no commit `ffa11c6`: a `EmailLambda` ficou `Active` no LocalStack, as três suítes
+  passaram (email-service duas vezes), e um `POST /emails` com a chave de teste devolveu `202`.
+  Cerca de 12 s depois, o registro de SES do LocalStack mostrava a mensagem com
+  `Source` = `no-reply@jogo-acoes.example`, `Template` = `jogo-acoes__welcome` e
+  `TemplateData` = `{"name":"Ada"}`. Os casos `404`/`400`/`401` e a recusa de endereço
+  inválido pelo `set-email-sender.sh` também se confirmaram.
