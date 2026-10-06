@@ -5,7 +5,6 @@ import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import dev.leilaalgarve.jogoacoes.common.testsupport.CompetitionMother;
 import dev.leilaalgarve.jogoacoes.competition.Competition;
-import dev.leilaalgarve.jogoacoes.competition.CompetitionService;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionStatus;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionType;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
@@ -37,15 +36,12 @@ public class ViewMyCompetitionsSteps {
 
     private final ScenarioWorld world;
     private final CompetitionFixtures competitionFixtures;
-    private final CompetitionService competitionService;
     private final ParticipationRepository participationRepository;
 
     public ViewMyCompetitionsSteps(ScenarioWorld world, CompetitionFixtures competitionFixtures,
-                                    CompetitionService competitionService,
                                     ParticipationRepository participationRepository) {
         this.world = world;
         this.competitionFixtures = competitionFixtures;
-        this.competitionService = competitionService;
         this.participationRepository = participationRepository;
     }
 
@@ -94,7 +90,15 @@ public class ViewMyCompetitionsSteps {
 
     @Given("the administrator created a competition")
     public void the_administrator_created_a_competition() {
-        world.setTargetCompetition(competitionService.create(CompetitionMother.validPublicCompetition()));
+        Response response = world.request()
+                .body(CompetitionMother.validPublicCompetition())
+                .when()
+                .post("/competitions");
+        assertThat(response.statusCode()).isEqualTo(201);
+        Competition createdCompetition = new Competition();
+        createdCompetition.setId(response.jsonPath().getLong("id"));
+        createdCompetition.setName(response.jsonPath().getString("name"));
+        world.setTargetCompetition(createdCompetition);
     }
 
     @When("they access their competitions list")
