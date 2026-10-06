@@ -47,6 +47,9 @@ jobs:
           docker compose up -d --wait db-email-service
           ./scripts/test-api-key.sh restore
           docker compose up -d --wait email-service
+          # Again now that email-service's Flyway created client_sender: sets the sender of
+          # client jogo-acoes (spec 05-031), which app's send test needs.
+          ./scripts/test-api-key.sh restore
 
       - name: Run app tests with coverage (docker profile)
         env:

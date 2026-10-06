@@ -29,14 +29,6 @@ spring:
     store-type: jdbc
     timeout: 30d
   cloud:
-    aws:
-      # spring-cloud-aws-starter-sqs autoconfigures an SqsAsyncClient/SqsTemplate bean
-      # unconditionally (not gated by email.sender below) -- without a resolvable region that
-      # bean fails to construct at all, breaking every test that boots the Spring context, even
-      # though SqsEmailSender itself stays inactive (ConditionalOnProperty) here. A static
-      # region is enough: nothing calls the client unless SqsEmailSender does.
-      region:
-        static: ${AWS_REGION:us-east-1}
     # Spec 05-034: email-service's Feign clients are the only ones in app, so "default" is
     # theirs. No automatic retry here: EmailServiceGateway retries idempotent calls only.
     openfeign:
@@ -56,13 +48,13 @@ altcha:
 login:
   max-devices-per-user: 3
 
-# email.sender picks the EmailSender bean (dev.leilaalgarve.jogoacoes.email): "stub" (default, no
-# value needed) just records to sent_email; "sqs" publishes to the command queue for
-# email-lambda to pick up (docs/context/iteracao-4.md). Only set to "sqs" in profiles that
-# actually have a queue to publish to -- see application-docker.yml/application-staging.yml/
-# application-production.yml.
+# email.sender picks the EmailSender bean (dev.leilaalgarve.jogoacoes.email): "stub" (default)
+# just records to sent_email; "email-service" sends through email-service's POST /emails (spec
+# 05-034), which also needs email-service.base-url below. staging/production always use
+# email-service; under docker it comes from env EMAIL_SENDER (the app container in
+# docker-compose.yml sets it), so the Cucumber suites run with the stub.
 email:
-  queue-name: ${EMAIL_QUEUE_NAME:jogo-acoes-email-commands}
+  sender: ${EMAIL_SENDER:stub}
 
 # Spec 05-034: app calls email-service over HTTP. Everything under email-service.* (Feign client,
 # gateway, template sync at startup) is active only where email-service.base-url is set -- env
@@ -93,7 +85,7 @@ springdoc:
     url: ${server.servlet.context-path}/openapi.yaml
 
 # DEBUG for the whole application package, not just common.logging (spec 05-011) -- this is
-# what makes ControllerLoggingAspect/RepositoryLoggingAspect/QueueLoggingAspect appear on the
+# what makes ControllerLoggingAspect/RepositoryLoggingAspect/EmailServiceLoggingAspect appear on the
 # console (they all log at DEBUG), and establishes the same convention for any future log
 # in the app. root stays at Spring Boot's own default (INFO). application-production.yml
 # overrides this back to INFO to suppress the three aspects there.

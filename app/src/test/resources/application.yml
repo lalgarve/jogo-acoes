@@ -30,13 +30,6 @@ spring:
     store-type: jdbc
     timeout: 30d
   cloud:
-    aws:
-      # See src/main/resources/application.yml -- this file replaces (not layers on top of)
-      # that one during tests, so the same static-region workaround needs repeating here or
-      # every @SpringBootTest/Cucumber context fails to boot (SqsAsyncClient autoconfiguration
-      # is unconditional, unlike SqsEmailSender itself).
-      region:
-        static: us-east-1
     # Spec 05-034: email-service's Feign clients are the only ones in app, so "default" is
     # theirs. No automatic retry here: EmailServiceGateway retries idempotent calls only.
     openfeign:
@@ -51,14 +44,6 @@ altcha:
 
 login:
   max-devices-per-user: 3
-
-# See src/main/resources/application.yml -- same replaces-not-layers reason as spring.cloud.aws
-# above. Only actually needed when SPRING_PROFILES_ACTIVE=docker (application-docker.yml, which
-# does layer on top of this file, is what flips email.sender to sqs and makes SqsEmailSender's
-# @Value("${email.queue-name}") constructor param get resolved at all) -- defined here
-# unconditionally anyway, so it's not missing the one time it matters.
-email:
-  queue-name: jogo-acoes-email-commands
 
 # Same as src/main/resources/application.yml (spec 05-034) -- this file replaces that one.
 # email-service.base-url stays unset: the Cucumber suites run without email-service;

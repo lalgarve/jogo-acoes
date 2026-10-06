@@ -4,10 +4,10 @@ import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
 
 /**
- * Everything an {@link EmailSender} needs to record the send and pick/render the right one of
- * the 5 physical templates (docs/context/iteracao-4.md, "Catálogo de templates de e-mail"). The
- * enum alone is not enough for that last part: {@code LOGIN_LINK} covers 3 different physical
- * files (login-link.html / login-link-invite.html / login-link-request.html), disambiguated by
+ * Everything an {@link EmailSender} needs to record the send and pick the right one of
+ * the 5 templates (docs/context/iteracao-4.md, "Catálogo de templates de e-mail"). The
+ * enum alone is not enough for that last part: {@code LOGIN_LINK} covers 3 different templates
+ * (login-link / login-link-invite / login-link-request), disambiguated by
  * {@code competitionName} (absent only for the standalone login case) and {@code origin}.
  *
  * @param userId           nullable — the recipient may not have an account yet.

@@ -105,8 +105,6 @@ services:
     depends_on:
       db:
         condition: service_started
-      localstack:
-        condition: service_started
       # Spec 05-034: app syncs its templates into email-service on startup and fails fast
       # otherwise, so email-service has to be accepting requests first.
       email-service:
@@ -119,13 +117,11 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/jogo_acoes
       SPRING_DATASOURCE_USERNAME: jogo_acoes_admin
       SPRING_DATASOURCE_PASSWORD: jogo_acoes_admin
-      # application-docker.yml defaults to localhost:4566 (right for CI, which runs mvn
-      # directly on the runner, not inside this container) -- from inside the app container,
-      # "localhost" is itself, so this overrides it to the compose network hostname.
-      SPRING_CLOUD_AWS_SQS_ENDPOINT: http://localstack:4566
-      # Spec 05-034: app calls email-service over HTTP (OpenFeign) and registers its e-mail
-      # templates there on startup -- setting this URL is what turns that on.
+      # Spec 05-034: app calls email-service over HTTP (OpenFeign), registers its e-mail
+      # templates there on startup and sends every e-mail through it -- app no longer talks to
+      # the queue. The CI runner's Cucumber suites leave EMAIL_SENDER unset and use the stub.
       EMAIL_SERVICE_BASE_URL: http://email-service:8080/api
+      EMAIL_SENDER: email-service
       # Test API key for calling email-service as client "jogo-acoes" (spec 05-030) -- docker/
       # sandbox only, versioned on purpose, not a secret. Matches the row restored by
       # scripts/test-api-key.sh (docker/postgres-email-service/test-data/README.md): without that
