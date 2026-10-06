@@ -31,11 +31,13 @@ jobs:
           cache: maven
 
       # Real PostgreSQL (specs/05-028-testes-exigem-docker-real/plan.md: no H2 anywhere in this
-      # project). LocalStack stands in for SQS, so SqsEmailSender publishes to a real queue instead of
-      # just compiling (docs/context/iteracao-4.md, "Produtor: EmailSender real").
-      # docker-compose.yml already defines both services with the init scripts this profile needs.
+      # project) -- one instance per service, app on 5432 and email-service on 5433. LocalStack
+      # stands in for SQS and SES, so SqsEmailSender publishes to a real queue instead of just
+      # compiling (docs/context/iteracao-4.md, "Produtor: EmailSender real") and email-service
+      # registers templates in a real SES store. docker-compose.yml already defines all three
+      # services with the init scripts the docker profile needs.
       - name: Start Postgres and LocalStack
-        run: docker compose up -d --wait db localstack
+        run: docker compose up -d --wait db db-email-service localstack
 
       # Spec 05-034: EmailServiceClientIntegrationTest calls the real email-service (its own
       # Postgres, SES on the LocalStack above). The test API key of client jogo-acoes has to be
@@ -50,6 +52,26 @@ jobs:
         env:
           SPRING_PROFILES_ACTIVE: docker
         run: mvn -B -pl app -am verify
+
+      # email-service depends on dev.leilaalgarve.apikey:api-key-validation, which is not on Maven
+      # Central: the script installs it into ~/.m2 from the lalgarve/api-key release (a no-op when
+      # the Maven cache already has it). Spec 05-030, T011.
+      # Runs even if the app tests failed, so one red step doesn't hide the other service's result.
+      - name: Install the api-key library
+        if: ${{ !cancelled() }}
+        run: ./scripts/install-api-key-lib.sh
+
+      # A fresh db-email-service volume has no api_key schema; restoring the saved test key creates
+      # the schema and the key every email-service test uses (spec 05-030, T011).
+      - name: Restore email-service's test API key
+        if: ${{ !cancelled() }}
+        run: ./scripts/test-api-key.sh restore
+
+      - name: Run email-service tests (docker profile)
+        if: ${{ !cancelled() }}
+        env:
+          SPRING_PROFILES_ACTIVE: docker
+        run: mvn -B -pl email-service -am verify
 
       # Runs even if the coverage gate above failed the build, so the PR still shows the
       # actual percentage instead of just a red check with no explanation.

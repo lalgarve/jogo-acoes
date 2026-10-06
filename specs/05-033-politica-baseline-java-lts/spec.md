@@ -1,6 +1,6 @@
 # Spec: Política da baseline Java e dos upgrades de LTS
 
-**Status:** proposta  
+**Status:** implementada  
 **Issue:** [#115](https://github.com/lalgarve/jogo-acoes/issues/115)  
 **Iteração:** iteration-5
 

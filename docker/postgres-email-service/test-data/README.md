@@ -37,7 +37,11 @@ Com o `db-email-service` de pé (`docker compose up -d --wait db-email-service`)
 ```
 
 Apaga e recria só o schema `api_key` — as tabelas do Serviço de E-mail (templates) não são tocadas. Pode rodar
-quantas vezes quiser. Sem o container rodando, usa o `psql` local contra `localhost:5433`
+quantas vezes quiser. Depois, define o remetente do cliente `jogo-acoes` como
+`no-reply@jogo-acoes.example` (spec [05-031](../../../specs/05-031-servico-email-envio/spec.md),
+`scripts/set-email-sender.sh`), o endereço que o LocalStack verifica na subida. Isso só acontece
+se o `email-service` já subiu alguma vez contra o banco (é o Flyway dele que cria a tabela
+`client_sender`); senão o script avisa e basta rodar de novo depois. Sem o container rodando, usa o `psql` local contra `localhost:5433`
 (sandbox); `--host`/`--port` mudam o destino.
 
 ## Gerar uma chave nova (só se for de propósito)

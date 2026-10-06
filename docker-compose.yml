@@ -60,6 +60,8 @@ services:
       # without it -- undocumented, found by hitting the endpoint. lambda is what actually
       # runs email-lambda's function.zip.
       SERVICES: sqs,ses,s3,lambda
+      # Sender identity 02-verify-ses-sender.sh verifies -- the test client jogo-acoes's sender
+      # address in email-service (spec 05-031, set by scripts/test-api-key.sh restore).
       EMAIL_SENDER_ADDRESS: no-reply@jogo-acoes.example
     ports:
       - "4566:4566"
@@ -152,7 +154,8 @@ services:
       timeout: 5s
       retries: 10
 
-  # Serviço de E-mail (spec 05-025) -- cadastro de templates sincronizado com o SES. X-API-Key é
+  # Serviço de E-mail (spec 05-025) -- cadastro de templates sincronizado com o SES e envio de
+  # e-mail por template pela fila (spec 05-031). X-API-Key é
   # validada de verdade com a biblioteca api-key (spec 05-030): só chaves emitidas pela CLI no
   # schema api_key passam. A chave de teste (cliente jogo-acoes) vem do dump restaurado por
   # scripts/test-api-key.sh restore -- ver docker/postgres-email-service/test-data/README.md.
@@ -169,6 +172,10 @@ services:
       SPRING_DATASOURCE_USERNAME: email_service_admin
       SPRING_DATASOURCE_PASSWORD: email_service_admin
       SPRING_CLOUD_AWS_SES_ENDPOINT: http://localstack:4566
+      # Spec 05-031: POST /emails publishes to the send queue LocalStack's init scripts create and
+      # wire to email-lambda (same queue as app's).
+      SPRING_CLOUD_AWS_SQS_ENDPOINT: http://localstack:4566
+      EMAIL_QUEUE_NAME: jogo-acoes-email-commands
       # Test pepper the test key was hashed with (same value as application-docker.yml); never a
       # real secret.
       API_KEY_HMAC_PEPPER: jogo-acoes-test-pepper-not-a-secret

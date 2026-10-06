@@ -1,6 +1,6 @@
 # Spec: Identificação de dispositivo via User-Agent Client Hints + Swagger UI interativa
 
-**Status:** rascunho
+**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** [#59](https://github.com/lalgarve/jogo-acoes/issues/59)
 **Iteração:** iteration-5
 

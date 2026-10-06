@@ -1,6 +1,6 @@
 # Spec: Serviço de E-mail — validação real de API-KEY
 
-**Status:** implementada (T011 aguarda o step de CI do `email-service`, spec 05-028 T012)
+**Status:** implementada
 **Issue:** [#108](https://github.com/lalgarve/jogo-acoes/issues/108)
 **Iteração:** iteration-5
 

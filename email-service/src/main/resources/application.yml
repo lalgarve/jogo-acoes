@@ -27,12 +27,19 @@ spring:
         default_schema: email_service
   cloud:
     aws:
-      # spring-cloud-aws-starter-ses autoconfigures a SesClient bean unconditionally -- without
-      # a resolvable region that bean fails to construct at all, breaking every context that
-      # boots this module, even one that never actually calls SES (same reasoning as
-      # app/src/main/resources/application.yml's region.static for SQS).
+      # spring-cloud-aws-starter-ses (and -sqs, spec 05-031) autoconfigure their clients
+      # unconditionally -- without a resolvable region those beans fail to construct at all,
+      # breaking every context that boots this module, even one that never calls AWS (same
+      # reasoning as app/src/main/resources/application.yml's region.static for SQS).
       region:
         static: ${AWS_REGION:us-east-1}
+
+# Spec 05-031: SQS send queue POST /emails publishes to; email-lambda consumes it and sends via
+# SES. Same queue (and default name) as app's email.queue-name -- created by
+# docker/localstack/init/01-create-queue.sh in docker. One queue for every client of this service
+# for now (plan.md, "Mesma fila ou fila nova").
+email:
+  queue-name: ${EMAIL_QUEUE_NAME:jogo-acoes-email-commands}
 
 logging:
   level:

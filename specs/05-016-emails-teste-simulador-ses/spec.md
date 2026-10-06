@@ -1,6 +1,6 @@
 # Spec: Padronizar e-mails de teste para o simulador de caixa de entrada do Amazon SES
 
-**Status:** rascunho
+**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
 **Issue:** [#70](https://github.com/lalgarve/jogo-acoes/issues/70)
 **Iteração:** iteration-5
 

@@ -38,6 +38,15 @@ spring:
         # specs/05-028-testes-exigem-docker-real/plan.md. Tests require
         # `docker compose up -d localstack` beforehand.
         endpoint: http://localhost:4566
+      sqs:
+        # Same LocalStack. Spec 05-031: SendQueue (test support) creates the queue below itself.
+        endpoint: http://localhost:4566
+
+# Spec 05-031: a queue of this suite's own, not docker-compose's jogo-acoes-email-commands --
+# LocalStack wires that one to the deployed email-lambda, which would consume each message before
+# a scenario could read it back (see SendQueue).
+email:
+  queue-name: email-service-send-test
 
 logging:
   level:

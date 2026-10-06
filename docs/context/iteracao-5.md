@@ -293,6 +293,25 @@ funciona igual independente de o corpo ter sido renderizado no produtor ou pelo 
   quem não usa o cadastro de templates do Serviço de E-mail — a Lambda provavelmente precisa
   distinguir os dois casos pelo `schemaVersion`.
 
+**Decidido e implementado na spec
+[05-031](../../specs/05-031-servico-email-envio/spec.md)** (`POST /emails`), o que fecha três dos
+pontos em aberto acima:
+
+- **SESv1** (`SendTemplatedEmail`): é o `SesClient` que a Lambda e o `email-service` já usam, e
+  os templates da 05-025 são criados com o `CreateTemplate` do v1. Ir para o v2 obrigaria a
+  migrar a 05-025 junto.
+- **A mensagem da fila só tem template**: `schemaVersion`, `correlationId`, `senderAddress`,
+  `recipientEmail`, `templateName` (o nome no SES, `<cliente>__<nome>`) e `templateData`. O
+  formato com `subject`/`body` já renderizados deixou de existir, sem versão nova do contrato
+  (`schemaVersion` continua `"1"`) e sem os dois formatos em paralelo: o sistema está em
+  pré-produção. O remetente vem na mensagem (fixo por cliente, definido por operações com
+  `scripts/set-email-sender.sh`); a Lambda não tem mais remetente próprio.
+- **Anti-bounce e idempotência ficam para a Etapa 4** (decisão de 2026-10-04), fora da 05-031.
+
+Consequência aceita na 05-031: o `SqsEmailSender` do `app/` ainda publica `subject`/`body`, que
+a Lambda nova rejeita, então os e-mails do `app/` não saem em `docker`/CI até a spec que leva o
+`app/` a enviar pelo Serviço de E-mail (seção 5).
+
 ## 4. Sistema de Admin — decisão em aberto (revisada)
 
 O brainstorm original desenhava este sistema especificamente para orquestrar login e chamar os
@@ -604,11 +623,10 @@ abaixo) foi resolvida pela implementação — vive em `LinkSessionService`
   convivem temporariamente com ele?
 - Serviço de E-mail: repositório próprio (precedente do `deployo-api-key`) ou módulo no reator
   atual?
-- Estrutura definitiva da fila de envio — contrato original da Iteração 4 (`subject`/`body`
-  já renderizados) ou o revisado na seção 3.2 (`templateName`/`templateData` via SES
-  Templates, mensagem menor)? E o log de erros de envio, ainda sem estrutura desenhada.
-- SESv1 (`SendTemplatedEmail`) ou SESv2 (`SendEmail` com `Content.Template`) para o fluxo da
-  seção 3.2 — depende de checar o que o `SesClient` do `email-lambda` já expõe.
+- ~~Estrutura definitiva da fila de envio~~ — resolvida na spec 05-031: só o contrato com
+  template da seção 3.2. Continua em aberto o log de erros de envio, ainda sem estrutura
+  desenhada.
+- ~~SESv1 ou SESv2 para o fluxo da seção 3.2~~ — SESv1 (`SendTemplatedEmail`), spec 05-031.
 - Como reconciliar os 5 templates Thymeleaf existentes (fragmentos `th:insert` de
   header/footer) com a sintaxe Handlebars mais simples do SES, se a seção 3.2 for adotada —
   duplicar o header/footer em cada template do SES, ou pré-montar o HTML final antes de

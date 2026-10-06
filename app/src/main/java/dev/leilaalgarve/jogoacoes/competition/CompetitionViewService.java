@@ -31,7 +31,7 @@ public class CompetitionViewService {
                 .toList();
     }
 
-    /** Three groups, always present even when empty — never a flat list (spec 05-004). */
+    /** Four groups, always present even when empty — never a flat list (spec 05-004 and 05-017). */
     public MyCompetitions listMyCompetitions(Long userId) {
         MyCompetitions result = new MyCompetitions();
         for (Participation participation : participationRepository.findByUser_Id(userId)) {
@@ -46,6 +46,9 @@ public class CompetitionViewService {
             } else {
                 result.addPendingConfirmationItem(summary);
             }
+        }
+        for (Competition competition : competitionRepository.findByCreator_Id(userId)) {
+            result.addCreatedItem(toSummary(competition));
         }
         return result;
     }

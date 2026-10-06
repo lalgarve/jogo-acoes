@@ -34,8 +34,9 @@ mesmo padrão das specs 05-014/05-015/05-016 (ver "Cenários" em `spec.md`).
   se `docker compose up` completo não estiver disponível, validar contra o jar empacotado +
   Postgres real (mesmo caminho já usado para verificar as specs 05-014/05-015/05-016), e
   registrar explicitamente qual dos dois foi usado.
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
 
 ## T013 — registro da verificação manual
 

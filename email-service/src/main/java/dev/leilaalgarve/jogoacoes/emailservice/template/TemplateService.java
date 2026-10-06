@@ -71,6 +71,12 @@ public class TemplateService {
         return new TemplatePreviewResponse().subject(rendered.subject()).body(rendered.body());
     }
 
+    /** The client's own template named {@code name}, to send an e-mail from (spec 05-031). */
+    public TemplateReference reference(String clientId, String name) {
+        EmailTemplate entity = findOrThrow(clientId, name);
+        return new TemplateReference(entity.getId(), entity.getSesTemplateName());
+    }
+
     private EmailTemplate findOrThrow(String clientId, String name) {
         return repository.findByClientIdAndName(clientId, name).orElseThrow(() -> new TemplateNotFoundException(name));
     }

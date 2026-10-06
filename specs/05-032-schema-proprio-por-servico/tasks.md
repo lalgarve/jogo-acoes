@@ -33,8 +33,9 @@ checklist nela.
 - T009, T010 dependem de Docker; T011 do Postgres nativo do sandbox. Se algum não estiver
   disponível, registrar explicitamente o que não pôde ser verificado (mesmo padrão de
   `specs/05-028-testes-exigem-docker-real/tasks.md`).
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
 
 ## Resultado da verificação (2026-10-04)
 

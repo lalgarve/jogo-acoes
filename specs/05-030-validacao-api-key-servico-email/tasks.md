@@ -28,7 +28,7 @@ tarefas seguintes os deixam verdes.
 | ~~T008~~ | Steps/hooks do Cucumber: `@Before` emite as chaves dos cenários em `api_key.api_keys` (via `ApiKeyHasher` + `ApiKeyRepository`, inclusive expirada e revogada), `@After` apaga só as linhas criadas pelo cenário (nunca a chave de teste do dump) | T007 | | #108 |
 | ~~T009~~ | `auth/ApiKeyAuthenticationFilter` chama `ApiKeyValidator.validate`, guarda `clientName` no atributo `apiKey.clientName`, responde 401 com o corpo atual para qualquer `Invalid` e loga o motivo (nunca a chave); `ClientIdentityResolver` lê o atributo. T001, T002 e T007 verdes | T006, T008 | | #108 |
 | ~~T010~~ | `email-service/Dockerfile`: estágio de build roda `scripts/install-api-key-lib.sh` antes do `dependency:go-offline`, com `RUN --mount=type=cache,target=/root/.m2` para não baixar de novo a cada build; `docker-compose.yml`: `API_KEY_HMAC_PEPPER` de teste no serviço `email-service` e comentário do serviço atualizado (não é mais esqueleto); `docker compose up --build email-service` + `scripts/test-api-key.sh restore` + `curl` com a chave de teste → 2xx, com chave inválida → 401 | T009 | | #108 |
-| T011 | CI: quando o step de `email-service` existir (spec 05-028, T012), rodar `scripts/install-api-key-lib.sh` e `scripts/test-api-key.sh restore` antes do `mvn verify` | T009 | [P] | #108 |
+| ~~T011~~ | CI: quando o step de `email-service` existir (spec 05-028, T012), rodar `scripts/install-api-key-lib.sh` e `scripts/test-api-key.sh restore` antes do `mvn verify` | T009 | [P] | #108 |
 | ~~T012~~ | Documentação: `README.md` (seção do Serviço de E-mail — exemplos `curl` com a chave de teste, sem "esqueleto"), `specs/05-025-servico-email-templates/spec.md` (apontar a decisão adiada para esta spec) | T010 | [P] | #108 |
 | ~~T013~~ | Rodar `docker compose up -d --wait db-email-service localstack` + `scripts/test-api-key.sh restore` + `SPRING_PROFILES_ACTIVE=docker mvn -pl email-service -am verify` **duas vezes seguidas** — todos os cenários verdes nas duas (repetibilidade das chaves criadas pelos hooks) | T009 | | #108 |
 
@@ -40,8 +40,9 @@ tarefas seguintes os deixam verdes.
 - T002, T010 e T013 dependem de Docker (ou do Postgres nativo do sandbox na 5433) — se não
   estiver disponível, registrar explicitamente o que não pôde ser verificado (mesmo padrão de
   `specs/05-028-testes-exigem-docker-real/tasks.md`).
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
 
 ## Resultado da implementação (2026-10-05)
 
@@ -74,9 +75,14 @@ tarefas seguintes os deixam verdes.
   confia na CA do proxy HTTPS do ambiente: o `curl` do script falhava com erro 60. Esse ajuste não
   foi versionado, porque é coisa do sandbox; fora dele, o `Dockerfile` do repositório não
   precisa disso.
-- **T011**: não se aplica ainda. O CI só roda as suítes do `app` e do `email-lambda`; o step do
-  `email-service` é a T012 da spec 05-028, ainda não feita. O `mvn -pl app -am` do CI não
-  resolve as dependências do `email-service`, então não precisa da biblioteca.
+- **T011** (2026-10-06): o CI roda `./scripts/install-api-key-lib.sh` e
+  `./scripts/test-api-key.sh restore` antes do `mvn -B -pl email-service -am verify`, no step
+  criado pela T012 da spec 05-028. Verificação local reproduzindo o CI:
+  `docker compose down -v`, `db`, `db-email-service` e `localstack` de pé (volumes novos, como
+  no CI). Sem o `restore`, `mvn -pl email-service -am verify` quebra com `missing table
+  [api_key.api_keys]`; depois do `./scripts/test-api-key.sh restore`, 29 testes, 0 falhas,
+  0 erros e 2 pulados (os cenários `@requires-real-ses`, fora da execução padrão pela Issue
+  #104, não por falta de infraestrutura).
 - **T013**: `docker compose down -v`, `db-email-service` e `localstack` de pé, `restore`, e
   `mvn -pl email-service -am verify` duas vezes seguidas: 29 testes e 0 falhas nas duas. No fim
   só restava a chave de teste em `api_key.api_keys`.

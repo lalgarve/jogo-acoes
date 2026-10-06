@@ -579,7 +579,7 @@ components:
                 with no body (the same endpoint requestOrConfirmEntry already exposes).
 
     MyCompetitions:
-      description: Always all three groups, even when empty — never a flat list.
+      description: Always all four groups, even when empty — never a flat list.
       type: object
       properties:
         participating:
@@ -589,6 +589,9 @@ components:
           type: array
           items: { $ref: '#/components/schemas/CompetitionSummary' }
         pendingConfirmation:
+          type: array
+          items: { $ref: '#/components/schemas/CompetitionSummary' }
+        created:
           type: array
           items: { $ref: '#/components/schemas/CompetitionSummary' }
 

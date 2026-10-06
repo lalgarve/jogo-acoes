@@ -31,7 +31,7 @@ critério de sempre).
 | ~~T017~~ | `application.yml` usa `docker` como perfil padrão; `application-docker.yml` aponta para PostgreSQL `db-email-service` e LocalStack; `application-production.yml` não define *endpoint override* e usa a cadeia de credenciais AWS | ~~T006~~ | | #93 |
 | ~~T018~~ | `CucumberSpringConfiguration.java` com `@SpringBootTest(webEnvironment=RANDOM_PORT)`; a suíte usa PostgreSQL e LocalStack já iniciados via Docker Compose, sem Testcontainers | ~~T017~~ | | #93 |
 | ~~T019~~ | `RegisterTemplatesSteps.java` — step definitions dos 14 cenários de `register_templates.feature`, via RestAssured contra o servidor real + `EmailTemplateRepository` para as asserções que olham o banco | T016, T018 | | #93 |
-| T020 | Com `db-email-service` e `localstack` ativos, rodar `mvn -pl email-service -am test`; validar os 12 cenários incluídos na execução padrão. Os dois cenários `@requires-real-ses` de sintaxe Handlebars inválida ficam adiados para validação contra Amazon SES real na [Issue #104](https://github.com/lalgarve/jogo-acoes/issues/104) | ~~T019~~ | | #93 |
+| ~~T020~~ | Com `db-email-service` e `localstack` ativos, rodar `mvn -pl email-service -am test`; validar os 12 cenários incluídos na execução padrão. Os dois cenários `@requires-real-ses` de sintaxe Handlebars inválida ficam adiados para validação contra Amazon SES real na [Issue #104](https://github.com/lalgarve/jogo-acoes/issues/104) | ~~T019~~ | | #93 |
 | ~~T021~~ | `docker/postgres-email-service/init/01-roles.sql` — mesmo padrão de `docker/postgres/init/01-roles.sql`, papéis `email_service_admin`/`email_service_app` | — | [P] | #93 |
 | ~~T022~~ | `docker-compose.yml`: novo serviço `db-email-service` (Postgres 16, mesmo padrão de `db`, usando o init script de T021) e novo serviço `email-service` (`depends_on: db-email-service, localstack`; `SPRING_PROFILES_ACTIVE=docker`; `SPRING_CLOUD_AWS_SES_ENDPOINT=http://localstack:4566`) | T017, T021 | | #93 |
 | ~~T023~~ | `README.md` — nova seção: como subir `email-service`, exemplo de `curl` cadastrando um template com `X-API-Key` (qualquer valor, esqueleto), nota explícita de que a validação da chave ainda não é real | ~~T022~~ | | #93 |
@@ -47,14 +47,15 @@ critério de sempre).
   `db-email-service` e `localstack` já iniciados via Compose. Os dois casos que dependem do
   comportamento de rejeição do SES real ficam fora da execução padrão e estão rastreados na
   Issue #104.
-- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
-  mesclado — não deixar a tabela dessincronizada do estado real.
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
+  junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
+  Issues") — não deixar a tabela dessincronizada do estado real.
 
 ## T020 — registro da verificação
 
 Validação concluída nesta sessão contra os containers PostgreSQL e LocalStack já ativos via
-Docker Compose, sem Testcontainers. Manter T020 sem tachado até o commit que registra esta
-conclusão ser mesclado, conforme a convenção acima:
+Docker Compose, sem Testcontainers. O commit que registra esta
+conclusão foi mesclado na PR #99; a T020 foi riscada na conferência de 2026-10-06:
 
 - `mvn -pl email-service -am test` — `BUILD SUCCESS`; 14 cenários descobertos, 0 falhas, 0 erros,
   2 ignorados por `@requires-real-ses` e 12 executados com sucesso.
