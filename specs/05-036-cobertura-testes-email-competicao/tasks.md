@@ -18,7 +18,7 @@ hoje o gateway não recusa nome vazio ou nulo, e T005 o deixa verde.
 | ~~T007~~ | `competition/PlayerManagementServiceIntegrationTest` (novo): jogador A na competição privada 1 e não na 2; `removePlayer(competição 2, participação de A na 1)` lança `PlayerNotFoundException`, a participação continua com o mesmo status, sem registro `PARTICIPATION_STATUS_CHANGED` | — | [P] | #132 |
 | ~~T008~~ | `competition/EntryRequestServiceIntegrationTest` (novo): E1 (`null`) e E2 (`"   "`) lançam `EntryRequestValidationException`, sem participação nova e sem linha nova em `sent_email` | — | [P] | #132 |
 | ~~T009~~ | Rodar `mvn -pl app -am verify` de novo e registrar instruções e linhas, total e do `EmailServiceGateway`, comparando com T001. As duas métricas ≥ 80% (C3) | T002, T005–T008 | | #132 |
-| T010 | Na PR: conferir que o run do CI tem o artifact `jacoco-app`, que o `index.html` dele abre e mostra o mesmo relatório de T009 (C2), e que o comentário da PR mostra instruções ≥ 80% (C3) | T003, T009 | | #132 |
+| ~~T010~~ | Na PR: conferir que o run do CI tem o artifact `jacoco-app`, que o `index.html` dele abre e mostra o mesmo relatório de T009 (C2), e que o comentário da PR mostra instruções ≥ 80% (C3) | T003, T009 | | #132 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -52,3 +52,7 @@ hoje o gateway não recusa nome vazio ou nulo, e T005 o deixa verde.
   **94,78% de instruções / 95,35% de linhas** (C3). `EmailServiceGateway` 57/68 linhas, 16/20
   branches; `EmailServiceRejectedException` 2/2 linhas. O P2 foi ajustado ao comportamento real
   (ver "Desvio encontrado na implementação" em `spec.md`).
+- **T010 (2026-10-07):** CI da PR #138 (run 37645004263) verde. O run tem o artifact
+  `jacoco-app` (584 KB). Baixado, o `index.html` mostra 262 de 5.017 instruções sem cobertura
+  (94,78%), o mesmo de T009, e o `jacoco.csv` não tem nenhuma classe de `email.client.api` (C2).
+  O comentário da PR mostra 94,78% no projeto e 88,01% nos arquivos alterados (C3).
