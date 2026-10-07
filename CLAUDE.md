@@ -78,6 +78,9 @@ Boot, multi-módulo Maven:
   checklist da Issue ou Issues próprias.
 - Testes: preferir dependência real a mock/fake sempre que der (ver seção "Testes" da
   constitution).
+- Critério de aceite: toda classe de exceção criada tem um teste que a lança, e todo branch de
+  exceção é exercitado ao menos uma vez; o que não der é justificado no `plan.md` e avisado no
+  chat ao abrir a PR (constitution, "Critério de aceite: exceções e caminhos de erro").
 - Banco: cada serviço no próprio schema, nunca no `public`; migrations em
   `db/migration-<serviço>` e histórico do Flyway em `<schema>_schema_history` (seção "Banco de
   dados: um schema por serviço" da constitution, spec 05-032).
