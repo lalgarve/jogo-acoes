@@ -135,6 +135,22 @@ Por fim, quando o link é de competição e o jogador nunca teve conta, o consum
 
 ![Sequência: registro em duas fases via CompetitionLinkHandler](image/login-registro-duas-fases-sequencia.png)
 
+#### Preparação do sistema para testes com Swagger
+
+O Swagger UI, gerado a partir do contrato `docs/openapi.yaml`, monta e envia requisições HTTP para a API diretamente do navegador. Usamos essa ferramenta nos testes manuais da aplicação. Complementamos esses testes com uma suíte de testes de caixa-preta em Python (`behave` e `pytest`), que exercita a API por fora, como um cliente real, e reproduz automaticamente muitos dos problemas que encontraríamos repetindo os testes à mão.
+
+Para testar a aplicação dessa forma, resolvemos cinco problemas.
+
+**1. Validação do captcha.** As rotas de pedido de entrada em competição exigem um token de captcha (ALTCHA), obtido ao resolver um desafio de prova de trabalho. Como o projeto não tem um frontend que resolva esse desafio, criamos o perfil `blackbox`, empilhado sobre o perfil `docker`, no qual a aplicação aceita qualquer captcha. Nem a suíte de testes Java nem a produção ativam esse perfil, então o captcha real continua protegendo os demais ambientes.
+
+**2. Informações sobre a execução.** Quando testamos a aplicação por fora, vemos apenas a resposta HTTP. Para acompanhar o que acontece por dentro, disponibilizamos o Adminer, uma interface web de consulta ao banco PostgreSQL, e incluímos logs de execução. Para os logs, decidimos usar programação orientada a aspectos (AOP), por ser a forma mais elegante de implementar uma especificação como "logar todas as entradas e saídas de controladores". Os *advices* definem os pontos do código em que são executados, por exemplo, em torno da execução de um método. Assim, escrevemos o código de log em um único lugar, em vez de modificar cada método (ASPECT..., [20--]). Criamos três aspectos: um para os controladores REST, um para os repositórios de acesso ao banco e um para as mensagens enviadas à fila. Todos registram em nível DEBUG, mostram só o primeiro elemento de listas longas e ficam desligados no perfil de produção.
+
+**3. Leitura de e-mails.** O login e a entrada em competições dependem de um link que enviamos por e-mail e que a API nunca devolve na resposta. Nos ambientes de teste, o LocalStack simula o Amazon SES e oferece uma API para consultar os e-mails enviados. A suíte Python usa essa API para extrair o link de cada e-mail. Para os testes com Swagger, adicionamos ao ambiente um projeto de código aberto (`localstack-aws-ses-email-viewer`) que lista e exibe esses e-mails no navegador.
+
+**4. Dados de competições criadas no passado.** Alguns estados do sistema, como competições já iniciadas ou encerradas, dependem de tempo decorrido. Criamos scripts Python que geram uma massa de dados repetível usando apenas a API, como faria um cliente real. Para os estados que dependem de datas passadas, executamos a aplicação com o relógio deslocado para o passado (`libfaketime`), sem alterar o código.
+
+**5. Cabeçalhos de dispositivo.** A aplicação identifica o dispositivo de cada sessão pelos cabeçalhos `Sec-CH-UA*` (*Client Hints*) e `User-Agent`. Para simular logins em dispositivos diferentes, precisamos alterar esses cabeçalhos, mas o navegador impede que uma página envie cabeçalhos iniciados por `Sec-`. Cogitamos usar um proxy que aplicasse os cabeçalhos, mas o Swagger UI já gera, para cada requisição, o comando `curl` equivalente, com os cabeçalhos preenchidos. Executamos esse comando no terminal, que não tem essa restrição, e assim realizamos esses testes pela linha de comando.
+
 ## **Etapa 2 — Separação e Comunicação entre Serviços**
 
 | Requisito | Situação |
@@ -178,6 +194,8 @@ Para evitar cadastro de usuários usando emails temporários, usamos listas grat
 
 
 # Bibliografia
+
+ASPECT Oriented Programming (AOP) in Spring Framework. *GeeksforGeeks*, [20--]. Disponível em: <https://www.geeksforgeeks.org/advance-java/aspect-oriented-programming-aop-in-spring-framework/>. Acesso em: 5 out. 2026.
 
 GRAZIANO, Alfonso. **AI-Native Software Engineering**. Sebastopol, CA: O'Reilly Media, 2026. E-book. Versão preliminar (*early release*); publicação prevista para fev. 2027. Disponível em: <https://learning.oreilly.com/library/view/ai-native-software-engineering/0642572352530/>. Acesso em: 24 set. 2026.
 
