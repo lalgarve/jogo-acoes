@@ -32,11 +32,26 @@ Um jogo de simulação de investimentos em bolsa: administradores criam competi�
 * envio de emails usando uma fila SQS para determinar os dados e o template  
 * uso do DynamoDB para evitar o envio de emails duplicados
 
-# Conceitos 
+# Objetivos 
 
-O desenvolvimento foi pensado de forma que se assemelhasse a um projeto empresarial. Procuramos conceitos e metodologias modernas, usando como base o que aprendemos durante o curso, mas não nos limitando apenas a elas. Primeiro determinados as iterações, com o resumo dos requisitos de cada, criando um roadmap. Esse roadmap serve como guia, podendo ser repensado ao longo do tempo. Depois veio a especificação. Escolhemos BDD por gerar uma especificação executável, que pode ser entendida pelo cliente e equipe de teste. Ao mesmo tempo, a estruturação torna a comunicação com a IA mais clara. 
+O desenvolvimento foi pensado de forma que se assemelhasse a um projeto empresarial. Procuramos conceitos e metodologias modernas, usando como base o que aprendemos durante o curso, mas não nos limitando apenas a elas. Primeiro determinamos as iterações, com o resumo dos requisitos de cada, criando um roadmap. Esse roadmap serve como guia, podendo ser repensado ao longo do tempo. Depois especificamos o sistema. 
 
-Mesmo usando uma metodologia nova, com uma sintaxe nova, ao usar BDD (Behavior Driven Developmente), na hora de definir os passos usados pelo Gerkin, percebemos ao fim da Iteração 1 que alguns cerários do Gerkin possuiam os mesmos passos setando os campos válidos. Para cada teste que verificava valor inválido de um dos campos. Isso parecia desrespeitar o princípio de reuso. Buscando soluções,  resolvemos o problema uma fábrica (ObjectMother) e builder - o builder foi criado pela geração do código a partir do arquivo openaapi.yaml.
+Criar prompts efetivos para a IA não é uma tarefa simples. Tanto que existe uma disciplina emergente de Engenharia de Prompt. Assim, em vez de tentar construir o prompt perfeito, procuramos formas de estruturar melhor a informação e de inferir se a IA entendeu o problema.
+
+Antes da disciplina, usamos uma metodologia própria que combinava uma linguagem estruturada para a especificação do sistema (Gherkin), diagrama DER para definir o banco de dados e o modelo do sistema e finalmente, a adoção de API-First, para verificação rápida dos endpoints propostos e arquivos guardando os contextos da IA evitando a necessidade de repitir instruções entre chats.
+
+Descobrimos no início da disciplina a metodologia SDD, Specification Driven Desing. Esta metodologia possui arquivos e processos específicos para desenvolvimento de software usando IA. Como é uma metodologia já usadas por algumas empresas e softwares, a IA já conhece e sabe trabalhar com ela.
+
+## TDD - Test Driven Design
+
+
+## BDD - Behavior Driven Design
+
+BDD foi no início uma evolução do TDD \- Test Driven Development. Um dos problemas encontrados no TDD era o risco de alto acoplamento entre os testes e o código. Se testava o que cada método fazia e não o comportamento esperado do sistema. Esta metodologia também incorpora princípios do DDD \- Domain Driven Development. DDD prega o uso de uma língua ubíqua entre o cliente e o time de desenvolvimento. Esta língua deve ser usada na comunicação, documentação e código. 
+
+BDD define o que o sistema deve fazer em instruções estruturadas. Essas instruções podem ser em inglês ou qualquer outro idioma suportado. O formato permite a compreensão pelo cliente e a estruturação facilita a compreensão pela IA. A partir do BDD, se pode criar testes automatizados para verificação dos requisitos do sistema, ou seja, se tem uma especificação executável. 
+
+Mesmo usando uma metodologia nova, com uma sintaxe nova, ao usar BDD (Behavior Driven Developmente), na hora de definir os passos usados pelo Gherkin, percebemos ao fim da Iteração 1 que alguns cenários do Gherkin possuiam os mesmos passos setando os campos válidos. Para cada teste que verificava valor inválido de um dos campos. Isso parecia desrespeitar o princípio de reuso. Buscando soluções,  resolvemos o problema uma fábrica (ObjectMother) e builder - o builder foi criado pela geração do código a partir do arquivo openaapi.yaml.
 
 O cenário abaixo, do arquivo `create_competition.feature`, mostra o problema ao fim da Iteração 1. Para testar apenas o nome vazio, o cenário precisa repetir os passos que preenchem todos os outros campos com valores válidos, os mesmos passos de todos os outros cenários de campo inválido:
 
@@ -62,21 +77,25 @@ Scenario: Administrator tries to create a competition without a name
   Then the system rejects the competition creation and shows an error message about the missing name
 ```
 
+## Api-First
 
+## Diagram as Code
+
+
+
+## SDD - Specification Driven Design
 
 # **Status do projeto**
 
 O projeto jogo de ações foi iniciado como um projeto para portfólio, por esse motivo não está no mesmo estado dos projetos desenvolvidos pela turma na disciplina anterior. Ele foi desenvolvido com ajuda de IA: Claude, Anthropic, modo IA da Google e app Gemini para Android.
 
-O desenvolvimento foi pensado de forma que se assemelhasse a um projeto empresarial. Primeiro foram determinadas as iterações, com o resumo dos requisitos de cada, criando um roadmap. Esse roadmap serve como guia, podendo ser repensado ao longo do tempo. Depois veio a especificação. Escolhemos BDD por gerar uma especificação executável, que pode ser entendida pelo cliente e equipe de teste. Ao mesmo tempo, a estruturação torna a comunicação com a IA mais clara.
+
 
 Com o BDD inicial, foi gerado e revisado o DER. Decidimos que certas tabelas, como as de log de auditoria, deveriam aceitar apenas inserção e leitura. O BDD foi revisado eliminando comandos repetidos. A definição de inúmeros campos foi 
 
-Criar prompts efetivos para a IA não é uma tarefa simples. Tanto que existe uma disciplina emergente de Engenharia de Prompt. Assim, em vez de tentar construir o prompt perfeito, procuramos formas de inferir se a IA possui as informações suficientes para realizar as tarefas. Para isso decidimos por BDD \- Behavior Driven Development. 
+ Para isso decidimos por BDD \- Behavior Driven Development. 
 
-BDD foi no início uma evolução do TDD \- Test Driven Development. Um dos problemas encontrados no TDD era o risco de alto acoplamento entre os testes e o código. Se testava o que cada método fazia e não o comportamento esperado do sistema. Esta metodologia também incorpora princípios do DDD \- Domain Driven Development. DDD prega o uso de uma língua ubíqua entre o cliente e o time de desenvolvimento. Esta língua deve ser usada na comunicação, documentação e código. 
-
-BDD define o que o sistema deve fazer em instruções estruturadas. Essas instruções podem ser em inglês ou qualquer outro idioma suportado. O formato permite a compreensão pelo cliente e a estruturação facilita a compreensão pela IA. A partir do BDD, se pode criar testes automatizados para verificação dos requisitos do sistema.  Além de gerar e verificar o DER, optamos pela abordagem API-first antes da implantação em Java. No caso do tratamento de erro do e-mail, pedimos geração de diagramas de sequências. 
+ Além de gerar e verificar o DER, optamos pela abordagem API-first antes da implantação em Java. No caso do tratamento de erro do e-mail, pedimos geração de diagramas de sequências. 
 
 ## **Etapa 1 — Organização Arquitetural**
 
@@ -156,4 +175,9 @@ Por fim, quando o link é de competição e o jogador nunca teve conta, o consum
 #### Processamento em Lote - Atualização da tabela de domínios de emails temporários
 
 Para evitar cadastro de usuários usando emails temporários, usamos listas gratuitas publicadas na internet.
+
+
+# Bibliografia
+
+
 
