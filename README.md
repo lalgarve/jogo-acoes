@@ -55,12 +55,10 @@ dos três — cada módulo mantém seu próprio *parent*/BOM):
 |---|---|---|
 | `app/` | Spring Boot | O sistema principal (API, persistência, regras de negócio) |
 | `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES — ver "Pipeline de e-mail ponta a ponta em desenvolvimento" abaixo pra rodar como processo vivo localmente |
-| `blackbox-proxy/` | Spring Boot | Proxy reverso de teste (spec 05-020) — ver "Ambiente de testes blackbox" abaixo |
 | `email-service/` | Spring Boot | Serviço de E-mail (specs 05-025 e 05-031) — cadastro de templates sincronizado com o SES e envio de e-mail por template; ver "Cadastro de templates do Serviço de E-mail" e "Envio de e-mail pelo Serviço de E-mail" abaixo |
 
-`mvn verify` na raiz builda os quatro. Pra rodar só um: `mvn -pl app -am verify`,
-`mvn -pl email-lambda -am verify`, `mvn -pl blackbox-proxy -am verify` ou
-`mvn -pl email-service -am verify`.
+`mvn verify` na raiz builda os três. Pra rodar só um: `mvn -pl app -am verify`,
+`mvn -pl email-lambda -am verify` ou `mvn -pl email-service -am verify`.
 
 ## Ambientes
 
@@ -199,7 +197,7 @@ campo pra preenchê-los — mas nenhum navegador deixa uma página mandar um hea
 `Sec-` de propósito (é assim que ele impede que a página falsifique esses hints), então clicar
 em "Execute" nunca manda o valor digitado.
 
-**Forma usada atualmente**: preencher os campos `Sec-CH-UA*` normalmente no "Try it out" do
+Preencher os campos `Sec-CH-UA*` normalmente no "Try it out" do
 Swagger UI e copiar o comando `curl` que ele já monta ao lado (com os headers preenchidos
 certinho) — rodar esse `curl` direto no terminal em vez de clicar "Execute" contorna a
 restrição, já que ela só existe pra scripts de página, não pra um cliente HTTP de linha de
@@ -217,32 +215,6 @@ curl -X 'GET' \
 
 (exemplo — o Swagger UI gera o comando exato pra rota e valores preenchidos no momento; o
 cookie de sessão, se precisar, pode ser copiado das ferramentas de desenvolvedor do navegador)
-
-**Alternativa disponível, deixada de lado por enquanto**: `blackbox-proxy/` (spec 05-020,
-`mvn -pl blackbox-proxy -am verify`) — um proxy reverso, aplicação separada numa porta própria,
-que fica na frente do `app/` e aplica os headers configurados nele em toda chamada, permitindo
-clicar "Execute" direto no navegador sem copiar nenhum `curl`. Mais conveniente pra quem for
-testar bastante variação de dispositivo, mas exige manter mais um processo no ar — o `curl`
-copiado do Swagger UI resolve o mesmo problema sem essa complicação extra, por isso é a forma
-usada por padrão hoje.
-
-```
-./scripts/blackbox-proxy.sh
-```
-
-Configura o dispositivo simulado uma vez:
-
-```
-curl -X POST http://localhost:8090/blackbox/proxy/headers \
-  -H "Content-Type: application/json" \
-  -d '{"secChUa": "\"Chromium\";v=\"131\"", "secChUaPlatform": "\"Windows\"", "secChUaPlatformVersion": "\"15.0.0\"", "secChUaMobile": "?0"}'
-```
-
-E abre `http://localhost:8090/api/swagger-ui.html` em vez do endereço direto do `app/` — o
-resto do Swagger UI (qualquer rota, não só login/registro) continua funcionando exatamente como
-sempre, sem precisar montar nada à mão a cada chamada. Pra mais de um dispositivo ao mesmo
-tempo, roda o script de novo com `--proxy-port` diferente — cada instância guarda sua própria
-configuração, independente.
 
 ## Pipeline de e-mail ponta a ponta em desenvolvimento
 

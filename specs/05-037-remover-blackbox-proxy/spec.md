@@ -1,6 +1,6 @@
 # Spec: Remover o módulo `blackbox-proxy/`
 
-**Status:** rascunho
+**Status:** implementada (ver `tasks.md`)
 **Issue:** [#123](https://github.com/lalgarve/jogo-acoes/issues/123)
 **Iteração:** iteration-5
 

@@ -54,7 +54,6 @@ Boot, multi-módulo Maven:
 |---|---|
 | `app/` | API principal (Spring Boot) |
 | `email-lambda/` | Consumidor da fila de e-mail (AWS Lambda / Quarkus) |
-| `blackbox-proxy/` | Proxy reverso de teste — controla `Sec-CH-UA*`/`User-Agent` pro Swagger UI (spec 05-020), não roda em `staging`/`production` |
 | `blackbox-tests/` | Suíte de testes de caixa-preta em Python (`behave` + `pytest`), fora do reator Maven |
 
 ## Onde procurar o quê
@@ -89,7 +88,7 @@ Boot, multi-módulo Maven:
   idempotente (seção "Fronteira entre módulos e serviços" da constitution, spec 05-034).
 - Código de teste/dev nunca dentro de um módulo de produção (`app/`, `email-lambda/`) — mesmo
   atrás de profile/flag, mesmo que funcione, mesmo que a alternativa exija mais código. Sempre
-  um módulo/aplicação separada (padrão `blackbox-proxy/`). `email-lambda/` já corrigido
+  um módulo/aplicação separada (como a suíte `blackbox-tests/`). `email-lambda/` já corrigido
   (`EmailQueuePoller` removido — LocalStack dispara o Lambda nativamente, ver Issue #87); `app/`
   (pacote `blackbox/`) também corrigido ([Issue #84](https://github.com/lalgarve/jogo-acoes/issues/84),
   specs 05-023/05-026).
