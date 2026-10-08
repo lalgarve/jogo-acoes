@@ -5,17 +5,18 @@ ambientes" e "Testes exigem a infraestrutura de pé").
 
 ## Contexto técnico
 
-Testes que hoje decidem em tempo de execução (conferido no `master` em 2026-10-05):
+Nenhum teste decide mais em tempo de execução: não há uso de `Assumptions` em `app`,
+`email-service` nem `email-lambda` (conferido no `master` em 2026-10-08). Não há nada a remover;
+a regra ArchUnit serve só para impedir que o padrão volte.
 
-| Módulo | Teste | Depende de | Como decide hoje |
-|---|---|---|---|
-| `app` | `email/SqsEmailSenderDockerIntegrationTest` | LocalStack (SQS) | `@BeforeAll` + `assumeTrue(reachable(5432) && reachable(4566))` |
-| `app` | `common/logging/QueueLoggingAspectIntegrationTest` | LocalStack (SQS) | igual ao de cima |
-| `email-lambda` | `EmailSendHandlerTest.sendsAWellFormedMessageWithoutError` | LocalStack do Dev Services (SES) | `catch (SdkClientException)` + `assumeTrue(false, ...)` |
+Quando esta spec foi escrita (2026-10-05), três testes decidiam em tempo de execução. Todos já
+saíram por outras specs:
 
-Conferido de novo em 2026-10-08: nenhum dos três decide mais em tempo de execução. Os dois do
-`app` foram apagados no commit `8818c94` (spec 05-034, T015) e o `catch` do `email-lambda` saiu no
-commit `ffa11c6` (spec 05-031). A regra ArchUnit continua, para impedir a volta do padrão.
+| Módulo | Teste | Depende de | Como decidia | Removido em |
+|---|---|---|---|---|
+| `app` | `email/SqsEmailSenderDockerIntegrationTest` | LocalStack (SQS) | `@BeforeAll` + `assumeTrue(reachable(5432) && reachable(4566))` | `8818c94` (spec 05-034, T015: teste apagado) |
+| `app` | `common/logging/QueueLoggingAspectIntegrationTest` | LocalStack (SQS) | igual ao de cima | `8818c94` (spec 05-034, T015: teste apagado) |
+| `email-lambda` | `EmailSendHandlerTest.sendsAWellFormedMessageWithoutError` | LocalStack do Dev Services (SES) | `catch (SdkClientException)` + `assumeTrue(false, ...)` | `ffa11c6` (spec 05-031) |
 
 Menções ao perfil `sandbox` na documentação e configuração ativas (as do "modo sandbox" do SES
 ficam):
@@ -54,11 +55,11 @@ Outros fatos que pesam nas decisões:
 | O que substitui o perfil `sandbox`? | Nada. Os ambientes ficam `docker` (padrão), `staging` e `production` | resolvida (2026-10-05) | Nenhum lugar onde o projeto roda deixa de ter Docker (decisão da Leila em 2026-10-05). Constitution, "Nomenclatura de ambientes". |
 | Como os testes que dependem do LocalStack se comportam sem ele? | Falham. Nenhuma marcação, nenhum skip | resolvida (2026-10-05) | Constitution, "Testes exigem a infraestrutura de pé". Sem ambiente legítimo sem Docker, pular só esconderia erro. |
 | Perfil padrão | `spring.profiles.default: docker` no `application.yml` principal do `app` e no de teste de `app` e de `email-service`, com comentário explicando a repetição | resolvida | Os testes do `app` já rodam assim no CI; o padrão novo só alinha a execução à mão. |
-| Como impedir a volta da checagem em tempo de execução | Regra ArchUnit "nenhuma classe de teste usa `org.junit.jupiter.api.Assumptions`" no `ArchitectureTest` de `app` e `email-service`; no `email-lambda`, `archunit-junit5` em escopo `test` e um `ArchitectureTest` novo | proposta | Proibir `Assumptions` inteiro é mais simples que reconhecer "checagem de rede". Os únicos usos hoje são os três a remover. |
+| Como impedir a volta da checagem em tempo de execução | Regra ArchUnit "nenhuma classe de teste usa `org.junit.jupiter.api.Assumptions`" no `ArchitectureTest` de `app` e `email-service`; no `email-lambda`, `archunit-junit5` em escopo `test` e um `ArchitectureTest` novo | proposta | Proibir `Assumptions` inteiro é mais simples que reconhecer "checagem de rede". Não há uso hoje (2026-10-08), então a regra nasce verde e é provada com uma violação temporária (`tasks.md`, T001). |
 | O que fazer com as specs implementadas e os diários que citam o `sandbox` | Ficam como estão | resolvida | São registro do que foi decidido na época. A spec 05-028 ganha só uma nota apontando para esta. |
 | `docs/disciplina/*` | Revisar seguindo `docs/disciplina/CLAUDE.md`; a lista de perfis continua atendendo "ao menos dois ambientes" (`docker`, `staging`, `production`) | proposta | Documento de entrega da disciplina tem regras próprias de edição. |
 | `StubEmailSender` | Fica. Só o Javadoc muda: deixa de citar o `sandbox` e passa a citar as suítes Cucumber do `app` (`email.sender=stub`) | resolvida | Alinhado com a spec 05-034, que mantém o stub nas suítes Cucumber do `app`. Tirá-lo do código de produção continua pendência separada, registrada lá. |
-| Convivência com a spec 05-034 (PR #120) | Quem for mesclado depois ajusta o outro: se a 05-034 entrar antes, a T003 desta spec só mexe no que sobrar dos testes com `assumeTrue` (a T015 dela apaga o `SqsEmailSenderDockerIntegrationTest`) e a T006 remove o `email-service.base-url` do `application-sandbox.yml` junto com o arquivo; se esta entrar antes, a 05-034 deixa de definir a URL para o `sandbox` | proposta | As duas specs tocam os mesmos arquivos de configuração e testes do `app`. |
+| Convivência com a spec 05-034 (PR #120) | A 05-034 entrou antes: apagou os dois testes do `app` com `assumeTrue` (a T003 desta spec ficou sem objeto) e não definiu `email-service.base-url` no `application-sandbox.yml` do `app`, então a T006 só apaga o arquivo | resolvida (2026-10-08) | As duas specs tocam os mesmos arquivos de configuração e testes do `app`. |
 
 ## Estrutura de módulos/pacotes
 
