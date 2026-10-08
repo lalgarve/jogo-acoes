@@ -501,6 +501,32 @@ execução. Nada é pulado por falta dela:
 problema que deveria acusar, e cada módulo acabava inventando um jeito diferente de lidar com
 isso. Como todo lugar onde o projeto roda tem Docker, não há caso legítimo para pular.
 
+## Critério de aceite: exceções e caminhos de erro exercitados por teste
+
+Nenhuma task que cria ou altera código é aceita sem:
+
+- **Toda classe de exceção criada tem pelo menos um teste que a faz ser lançada** pelo caminho
+  real do código (a chamada que falha), não um `new XException()` solto no teste só para
+  instanciá-la.
+- **Todo branch de exceção é exercitado ao menos uma vez**: `catch`, `@ExceptionHandler`,
+  tradução de erro de um cliente (ex.: status HTTP → exceção da aplicação), retry, fallback.
+  Um branch que nenhum teste percorre é comportamento de falha que ninguém viu funcionar.
+
+**Quando for muito difícil exercitar um caso** (ex.: uma falha que só a infraestrutura real
+produz e que não dá para provocar no ambiente de teste), a exceção à regra é explícita, nunca
+silenciosa:
+
+1. Justificar por escrito na documentação da feature (`plan.md` da spec, ou `tasks.md` no
+   registro da verificação): qual exceção/branch ficou sem teste e por quê.
+2. Avisar no chat, ao abrir a PR, listando esses casos — para que a decisão de aceitar seja de
+   quem revisa, não de quem implementou.
+
+**Por quê**: os caminhos de erro são os que menos aparecem no uso normal e os que mais custam
+quando falham em produção (ex.: um serviço remoto fora do ar devolvendo `500` em vez de `503`,
+ou uma transação que deveria ser desfeita e não é). Cobertura de linha não garante isso — uma
+classe de exceção pode estar coberta só pelo construtor. O template de `tasks.md`
+(`templates/tasks-template.md`) traz esta verificação como task própria.
+
 ## Código de teste/dev nunca dentro da aplicação
 
 Nenhum código que existe só para testar ou simular (endpoint de teste, seed de dados, poller de

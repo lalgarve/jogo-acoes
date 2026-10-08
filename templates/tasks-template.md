@@ -7,6 +7,7 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 |---|---|---|---|---|
 | T001 | <tarefa> | — | [P] | #<n> |
 | T002 | <tarefa> | T001 | | #<n> |
+| T0NN | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas e os branches de exceção (`catch`, `@ExceptionHandler`, tradução de erro, retry, fallback) adicionados ou alterados; para cada um, apontar o teste que o exercita. O que não tiver teste é justificado em `plan.md` e avisado no chat ao abrir a PR. Registrar a lista aqui | todas as tasks de código | | #<n> |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
