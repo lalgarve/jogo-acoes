@@ -14,7 +14,9 @@ spring:
   flyway:
     enabled: false
 
-# Real queue exists (or will) here, unlike sandbox -- see application.yml for what this
-# switches and docs/context/iteracao-4.md for the queue-name property.
+# E-mail goes through email-service (spec 05-034): its URL (including /api) and this client's
+# API key come from env EMAIL_SERVICE_BASE_URL and EMAIL_SERVICE_API_KEY, with no default.
 email:
-  sender: sqs
+  sender: email-service
+email-service:
+  base-url: ${EMAIL_SERVICE_BASE_URL}

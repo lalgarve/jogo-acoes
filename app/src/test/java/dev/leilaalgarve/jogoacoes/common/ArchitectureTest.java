@@ -21,6 +21,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.simpleName;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
@@ -31,6 +33,8 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 class ArchitectureTest {
 
     private static final String BASE_PACKAGE = "dev.leilaalgarve.jogoacoes";
+    private static final String EMAIL_SERVICE_PACKAGE = BASE_PACKAGE + ".emailservice..";
+    private static final String EMAIL_CLIENT_API_PACKAGE = BASE_PACKAGE + ".email.client.api..";
 
     @Test
     void everyModuleWithARestControllerHasASecurityConfigContributor() {
@@ -88,6 +92,65 @@ class ArchitectureTest {
                 .should(onlyBeAccessedFromTheirOwnModule());
 
         rule.check(importedClasses);
+    }
+
+    /**
+     * Spec 05-034: app and email-service are separately deployable services and share no Java
+     * code. They even share the root package (email-service lives under
+     * {@code dev.leilaalgarve.jogoacoes.emailservice}), so a class from email-service on app's
+     * classpath would silently join this analysis -- this rule makes that visible.
+     */
+    @Test
+    void appDoesNotContainOrDependOnEmailServiceClasses() {
+        JavaClasses importedClasses = productionClasses();
+
+        noClasses().should().resideInAPackage(EMAIL_SERVICE_PACKAGE)
+                .orShould().dependOnClassesThat().resideInAPackage(EMAIL_SERVICE_PACKAGE)
+                .check(importedClasses);
+    }
+
+    /**
+     * Spec 05-034: e-mail goes through email-service over HTTP. The queue belongs to
+     * email-service and email-lambda now, so nothing in app talks to SQS.
+     */
+    @Test
+    void appDoesNotTalkToTheEmailQueue() {
+        noClasses().should().dependOnClassesThat().resideInAnyPackage(
+                        "io.awspring.cloud.sqs..", "software.amazon.awssdk.services.sqs..")
+                .check(productionClasses());
+    }
+
+    /** Spec 05-034: e-mail content is rendered by SES from email-service templates, not by app. */
+    @Test
+    void appDoesNotRenderEmailsWithThymeleaf() {
+        noClasses().should().dependOnClassesThat().resideInAPackage("org.thymeleaf..")
+                .check(productionClasses());
+    }
+
+    /**
+     * Spec 05-034: the Feign interface generated from docs/openapi-email-service.yaml is only
+     * called by EmailServiceGateway, which translates remote failures into app exceptions.
+     */
+    @Test
+    void generatedEmailServiceApiIsOnlyUsedByTheGateway() {
+        classes().that().resideInAPackage(EMAIL_CLIENT_API_PACKAGE)
+                .should().onlyHaveDependentClassesThat(
+                        resideInAPackage(EMAIL_CLIENT_API_PACKAGE).or(simpleName("EmailServiceGateway")))
+                .check(productionClasses());
+    }
+
+    /** Spec 05-034: other modules send e-mail through EmailSender, never through the HTTP client. */
+    @Test
+    void onlyTheEmailModuleUsesTheEmailServiceClient() {
+        noClasses().that().resideOutsideOfPackage(BASE_PACKAGE + ".email..")
+                .should().dependOnClassesThat().resideInAPackage(BASE_PACKAGE + ".email.client..")
+                .check(productionClasses());
+    }
+
+    private static JavaClasses productionClasses() {
+        return new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages(BASE_PACKAGE);
     }
 
     private static ArchCondition<JavaClass> onlyBeAccessedFromTheirOwnModule() {

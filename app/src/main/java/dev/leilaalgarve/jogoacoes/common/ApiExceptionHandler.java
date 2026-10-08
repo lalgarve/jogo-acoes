@@ -6,6 +6,7 @@ import dev.leilaalgarve.jogoacoes.competition.exception.CompetitionValidationExc
 import dev.leilaalgarve.jogoacoes.competition.exception.EntryRequestValidationException;
 import dev.leilaalgarve.jogoacoes.competition.exception.PlayerNotFoundException;
 import dev.leilaalgarve.jogoacoes.competition.exception.PlayerValidationException;
+import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceUnavailableException;
 import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkInvalidException;
 import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkUsedOnAnotherDeviceException;
 
@@ -57,6 +58,17 @@ public class ApiExceptionHandler {
     @ExceptionHandler(LoginLinkUsedOnAnotherDeviceException.class)
     public ResponseEntity<Void> handleLoginLinkUsedOnAnotherDevice() {
         return ResponseEntity.status(HttpStatus.CONFLICT).build();
+    }
+
+    /**
+     * email-service couldn't be reached while sending an e-mail (spec 05-034). The exception
+     * already rolled back the business transaction that asked for it, so nothing was changed
+     * and the caller can try again.
+     */
+    @ExceptionHandler(EmailServiceUnavailableException.class)
+    public ResponseEntity<Error> handleEmailServiceUnavailable() {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new Error().message("The e-mail could not be sent right now, try again"));
     }
 
     /**

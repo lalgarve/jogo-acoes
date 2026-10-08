@@ -1,0 +1,130 @@
+# Tasks: Fronteira síncrona entre `app` e `email-service` (Etapa 2)
+
+Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
+"Rastreamento de trabalho via Issues" em `memory/constitution.md`).
+
+**Testes de verificação primeiro.** T001 a T005 são escritos e rodados antes de qualquer
+mudança de código de produção, e o resultado de cada um fica registrado aqui:
+
+- Regras que hoje têm violação nascem vermelhas listando **exatamente** as violações
+  inventariadas (`SqsEmailSender` para SQS, `EmailContentRenderer` para Thymeleaf).
+- Regras que hoje não têm violação nascem verdes; a prova de que pegam algo é introduzir uma
+  violação temporária, ver o build falhar pelo motivo certo e desfazer (sem commitar a violação).
+- Testes de integração do cliente nascem vermelhos porque o cliente ainda não existe.
+
+As tarefas seguintes os deixam verdes. Tudo vai na mesma PR (commits intermediários vermelhos de
+propósito), mesclada só com o build verde.
+
+**Pré-requisitos:** spec 05-031 mesclada (`POST /emails` e Lambda com template; spec na PR #110,
+implementação na PR #131, mesclada em 2026-10-06). As
+decisões de requisito da `spec.md` estão resolvidas (2026-10-05). A implementação começa só quando for pedida
+explicitamente.
+
+Issue: [#119](https://github.com/lalgarve/jogo-acoes/issues/119) — cada linha abaixo é um item de
+checklist nela.
+
+| ID | Descrição | Depende de | Paralelizável | Issue |
+|---|---|---|---|---|
+| ~~T001~~ | `app`, `common/ArchitectureTest`: regras (b) nenhuma dependência de SQS e (c) nenhuma dependência de `org.thymeleaf..` (ver `plan.md`). Rodar e confirmar que falham com **exatamente** 1 violação cada (`SqsEmailSender`; `EmailContentRenderer`). Ao contar, filtrar `getAccessesFromSelf()` de cada origem por `getTargetOwner()` (lição da 05-029). Registrar aqui | — | [P] | #119 |
+| ~~T002~~ | `app`, `common/ArchitectureTest`: regras (d) a API Feign gerada (`..email.client.api..`) só é acessada pelo `EmailServiceGateway` e (e) nada fora de `..email..` depende de `..email.client..`. Rodar e registrar: (d) vermelha porque o pacote ainda não existe; (e) verde | — | [P] | #119 |
+| ~~T003~~ | `app`, `common/ArchitectureTest`: regra (a) nenhuma classe do `app` reside em nem depende de `..jogoacoes.emailservice..`. Nasce verde: provar com uma violação temporária (uma classe de teste em `dev.leilaalgarve.jogoacoes.emailservice` usada por uma classe do `app`), ver falhar, desfazer. Registrar | — | [P] | #119 |
+| ~~T004~~ | `app/pom.xml` e `email-service/pom.xml`: `maven-enforcer-plugin` com `bannedDependencies` (`app` proíbe `dev.leilaalgarve.jogoacoes:email-service`; `email-service` proíbe `dev.leilaalgarve.jogoacoes:jogo-acoes`, inclusive transitivas). Nasce verde: provar adicionando a dependência proibida temporariamente, ver `mvn validate` falhar, desfazer. Registrar | — | [P] | #119 |
+| ~~T005~~ | `email-service`: `archunit-junit5` no `pom.xml` e `common/ArchitectureTest` novo — nenhuma classe depende de `dev.leilaalgarve.jogoacoes..` fora de `..emailservice..`. Nasce verde: provar com violação temporária, desfazer. Registrar | — | [P] | #119 |
+| ~~T006~~ | `app`: `email/client/EmailServiceClientIntegrationTest` contra o `email-service` real do Docker Compose (chave de teste do cliente `jogo-acoes`): (1) sincronizar os templates cria os 5 no `email-service` (`GET /templates` lista `invite`, `registration-link`, `login-link`, `login-link-invite`, `login-link-request`); (2) sincronizar de novo não falha e não muda nada; (3) `PUT` repetido com o mesmo conteúdo devolve o mesmo resultado; (4) `preview` repetido devolve o mesmo resultado; (5) enviar um `EmailRequest` de cada tipo grava `sent_email` com `email_service_id` igual ao `id` do `202` e a mensagem aparece na fila do LocalStack com o template `jogo-acoes__<nome>`; (6) chave inválida → exceção de configuração, sem retry; (7) `email-service` parado → `EmailServiceUnavailableException` dentro do tempo limite. Rodar e ver falhar (cliente inexistente) | — | | #119 |
+| ~~T007~~ | `memory/constitution.md`: seção nova "Fronteira entre módulos e serviços" (ver `plan.md`), com o caso `app`/`email-service` como exemplo; resumo curto no `CLAUDE.md` se couber | — | [P] | #119 |
+| ~~T008~~ | `specs/05-034-.../contracts/feign-client.md` (a partir de `templates/contracts-template.md`): operações do `email-service` que o `app` usa, headers, tempo limite, quais são repetidas e quais não, tradução de cada status HTTP para exceção do `app` | — | [P] | #119 |
+| ~~T009~~ | `app/pom.xml`: `spring-cloud-starter-openfeign` (BOM do Spring Cloud alinhado ao Spring Boot — se não houver versão compatível, parar e reportar); segunda execução do `openapi-generator-maven-plugin` para `docs/openapi-email-service.yaml` com `library: spring-cloud`, pacotes `email.client.api`/`.model`; `@EnableFeignClients` restrito a esse pacote | T006 | | #119 |
+| ~~T010~~ | `app`: configuração `email-service.base-url`/`email-service.api-key`, tempo limite em `spring.cloud.openfeign.client.config.email-service`, `EmailServiceApiKeyInterceptor`; `base-url` por perfil (`docker`, `sandbox`; `staging`/`production` de fora) | T009 | | #119 |
+| ~~T011~~ | `app`: `EmailServiceGateway` (única classe que usa a API gerada; traduz `FeignException` por status; retry só em `GET`/`PUT`/`preview` e só para erro de conexão/`503`) e exceções do `app` | T010 | | #119 |
+| ~~T012~~ | `app`: templates Handlebars em `src/main/resources/email-templates/` (cabeçalho, rodapé e 5 × assunto/corpo), convertidos dos Thymeleaf atuais sem mudar o texto; `EmailTemplateSynchronizer` (upsert `PUT` → `404` → `POST` → `409` → `PUT`) em `ApplicationReadyEvent` | T011 | | #119 |
+| ~~T013~~ | `app`: migration `V8__add_email_service_id_to_sent_email.sql` em `db/migration-jogo-acoes`; `SentEmail`/`SentEmailRecorder` gravam o `id` do `202` | — | [P] | #119 |
+| ~~T014~~ | `app`: `EmailServiceEmailSender` (`email.sender=email-service`) mapeando `EmailRequest` → nome do template + `templateData`; `GlobalExceptionHandler` mapeia `EmailServiceUnavailableException` → `503`; conferir se o envio ocorre dentro da transação de negócio e registrar em `plan.md` | T011, T012, T013 | | #119 |
+| ~~T015~~ | `app`: remover `SqsEmailSender`, `EmailMessage`, `EmailContentRenderer`, `RenderedEmail`, `templates/email/`, `spring-cloud-aws-starter-sqs` e a configuração de fila dos perfis; `email.sender` = `email-service` em `docker`/`staging`/`production`; `QueueLoggingAspect` passa a interceptar o `EmailServiceGateway` (sem logar a chave nem o corpo); remover `SqsEmailSenderTest`/`SqsEmailSenderDockerIntegrationTest` e ajustar `QueueLoggingAspectIntegrationTest`. T001 fica verde | T014 | | #119 |
+| ~~T016~~ | `docker-compose.yml`: healthcheck no `email-service`; `app` com `depends_on: email-service: condition: service_healthy` e `EMAIL_SERVICE_URL`; atualizar o comentário do `EMAIL_SERVICE_API_KEY` ("Nothing in app reads it yet"); `docker compose config -q` | T010 | [P] | #119 |
+| ~~T017~~ | `docker compose down -v` + subir `db`, `db-email-service`, `localstack`, `email-service`; `SPRING_PROFILES_ACTIVE=docker mvn -pl app -am verify` e `mvn -pl email-service -am verify` — T001 a T006 verdes, suítes Cucumber verdes | T015, T016, T003, T004, T005 | | #119 |
+| ~~T018~~ | Conferir os 5 e-mails no SES Viewer do LocalStack com o fluxo real (convite, link de cadastro, 3 variações de login) e comparar com os renderizados pelo Thymeleaf antes da mudança. Registrar aqui | T017 | | #119 |
+| ~~T019~~ | Documentação: `README.md` (o `app` depende do `email-service` para enviar e-mail; ordem de subida); `docs/context/iteracao-5.md` (seção 5 e "Decisões em aberto": `SqsEmailSender` substituído, decidido); diagrama de componentes/sequência afetado em `docs/diagrams/`, validando a renderização do Mermaid (constitution, "Diagramas Mermaid") | T017 | [P] | #119 |
+
+- **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
+  ordem/em paralelo.
+- Cada linha vira um item de checklist na Issue #119 — label `iteration-5`, além do label de
+  tipo (`feat`).
+- T006, T017 e T018 dependem de Docker. Se não estiver disponível, registrar explicitamente o que
+  não pôde ser verificado (mesmo padrão de `specs/05-028-testes-exigem-docker-real/tasks.md`).
+- Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) quando o commit que a resolve for
+  mesclado — não deixar a tabela dessincronizada do estado real.
+
+## Resultado da verificação
+
+### Primeira rodada (2026-10-05) — tudo o que não depende da 05-031
+
+Feito nesta rodada: T001–T013 e T016. Esperam a 05-031 (que por enquanto é só spec e contrato,
+PR #110): T014, T015, o item (5) do T006 (envio), T017–T019.
+
+- **T001 vermelho antes da mudança**, só com as violações inventariadas: SQS violada 3 vezes,
+  todas em `SqsEmailSender` (parâmetro do construtor, campo e `SqsTemplate.send`); Thymeleaf
+  violada 7 vezes, todas em `EmailContentRenderer`. Continua vermelho até o T015, de propósito.
+- **T002**: a regra (d) nasceu vermelha (nenhuma classe para checar) e ficou verde com o cliente
+  gerado; a (e) nasceu verde e foi provada com uma classe `user.UsesProbe` usando
+  `email.client.Probe` (1 violação), desfeita.
+- **T003**: provada com `emailservice.Leak` + `email.UsesLeak` no `app` (2 violações), desfeitas.
+- **T004**: provada nos dois sentidos — `email-service` como dependência do `app` e `jogo-acoes`
+  como dependência do `email-service` fazem `mvn validate` falhar com `BannedDependencies`.
+- **T005**: provada com `jogoacoes.user.Leak` + `emailservice.common.UsesLeak` no
+  `email-service` (2 violações), desfeitas.
+- **T006** (sem Docker neste ambiente): `email-service` rodando localmente (`java -jar`, perfil
+  `docker`, PostgreSQL 16 nativo, chave de teste restaurada com `scripts/test-api-key.sh`) e o
+  SES substituído localmente pelo `moto_server` só para esta verificação — na CI é o LocalStack.
+  Os 7 testes passaram. Observação: com o `moto`, o assunto da pré-visualização volta com
+  acentos corrompidos (`VerÃ£o`); o teste usa um nome sem acento. Falta conferir no
+  LocalStack/SES real se é só do `moto` ou do `MimeRenderedTemplateParser` do `email-service`.
+- **Suíte do `app`** (perfil padrão, Postgres nativo): 179 testes, só as 2 falhas esperadas do
+  T001.
+- **Spring Cloud OpenFeign**: 2025.1.3 sobre Spring Boot 4.1.0 subiu e chamou um `@FeignClient`
+  num projeto mínimo, e o `app` compila e passa os testes com ele.
+
+### Segunda rodada (2026-10-06) — depois da 05-031 (PR #131)
+
+Feito nesta rodada: T014, T015, o item (5) do T006 e a documentação do T019.
+
+- **T001 verde**: sem `SqsEmailSender` e `EmailContentRenderer`, as regras (b) e (c) passam
+  (`ArchitectureTest`, 8 testes, 0 falhas).
+- **T006 (5)**: o envio dos 5 tipos de `EmailRequest` grava `sent_email` com `email_service_id` e
+  confere a mensagem no SES do LocalStack (template `jogo-acoes__<nome>` e o `link` no
+  `templateData`), não na fila — ver `plan.md`, "Ajustes feitos na segunda rodada".
+- **Verificação local** (sem Docker: PostgreSQL 16 nativo, `email-service` em `java -jar` na
+  porta 8082, `moto_server` no lugar do LocalStack): suíte do `app` com 189 testes, só os 5 envios
+  falham, e só na última conferência, porque o `moto` não tem o `GET /_aws/ses` nem o
+  `email-lambda`; até o `202` e a linha em `sent_email`, os 5 passam. A conferência no SES fica
+  para a CI, que roda o LocalStack com o `email-lambda`.
+- **Dois erros achados na primeira CI desta rodada**: o `EmailsApiClient` gerado lê
+  `emails.name`/`emails.url` (sem eles a URL padrão é o relativo `/api` e o contexto não sobe), e
+  o endereço de teste passava de 64 caracteres na parte local, que o `@Email` do cliente gerado
+  rejeita.
+- **CI verde** no commit `0d91c20` (2026-10-06): suíte do `app` contra o `email-service`, o
+  PostgreSQL e o LocalStack reais, incluindo os 5 envios conferidos no SES do LocalStack, e a
+  suíte do `email-service`. Pendentes: T017 (rodada manual a partir de `docker compose down -v`) e
+  T018 (comparar os 5 e-mails no SES Viewer), que precisam de Docker fora da CI.
+
+### Terceira rodada (2026-10-08) — verificação manual antes do merge
+
+- **T017**: `docker compose down -v`, depois `db`, `db-email-service` e `localstack`,
+  `scripts/test-api-key.sh restore`, `email-service` e `restore` de novo (mesma ordem da CI), no
+  commit `d5970d4`. `SPRING_PROFILES_ACTIVE=docker mvn -B -pl app -am verify`: 189 testes, 0
+  falhas, 0 pulados, `jacoco:check` verde, `ArchitectureTest` 8/8, Cucumber 74/74.
+  `SPRING_PROFILES_ACTIVE=docker mvn -B -pl email-service -am verify`: 40 testes, 0 falhas, 2
+  pulados, que são os dois cenários `@requires-real-ses` de `register_templates.feature`, excluídos
+  de propósito pelo `RunCucumberTest` (Issue #104), igual à CI.
+- **T018 (comparação automática)**: o SES do LocalStack guarda o envio como template + dados, sem
+  o HTML renderizado. Por isso, para cada um dos 5 envios que a suíte fez chegar lá (`invite`,
+  `registration-link`, `login-link`, `login-link-invite`, `login-link-request`), os mesmos
+  `TemplateData` foram renderizados dos dois jeitos: pelos templates Thymeleaf do `master`
+  (`SpringTemplateEngine`, assunto tirado do `<title>`, como fazia o `EmailContentRenderer`) e
+  pelo SES (`POST /templates/{nome}/preview` do `email-service`, que chama o `TestRenderTemplate`).
+  Nos 5 casos, o assunto e o texto visível são iguais (comparação sem tags, comentários e
+  diferenças de espaço). Na conferência visual lado a lado, a Leila confirmou que os 5 estão
+  iguais (2026-10-08).
+- **T019**: a documentação entrou na segunda rodada (`0d91c20`). Faltava registrar a validação do
+  Mermaid exigida pela constitution: os 5 blocos alterados pela PR (`classes.md` bloco 3,
+  `modulos.md` blocos 9 e 10, `sequencia.md` blocos 6 e 10) foram renderizados pelo validador
+  Mermaid, todos válidos e sem erro de sintaxe.

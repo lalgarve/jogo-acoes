@@ -9,26 +9,10 @@ spring:
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
-  cloud:
-    aws:
-      # LocalStack (docker-compose.yml service, docker/localstack/init creates the queue),
-      # not real AWS -- fake credentials are fine and deliberately don't fall back to the
-      # default provider chain, which would otherwise try (and fail slowly) instance-profile/
-      # EC2-metadata lookups on every run here. staging/production don't set these, so they
-      # keep using that default chain (real IAM) -- see application-staging.yml/
-      # application-production.yml.
-      credentials:
-        access-key: test
-        secret-key: test
-      sqs:
-        endpoint: ${SPRING_CLOUD_AWS_SQS_ENDPOINT:http://localhost:4566}
-        # Spring Cloud AWS's own property description calls this out for exactly this case
-        # ("SQS-compatible providers that return non-UUID message IDs") -- not independently
-        # confirmed against this LocalStack version, but cheap to set defensively either way.
-        convert-message-id-to-uuid: false
 
-email:
-  sender: sqs
+# email.sender comes from env EMAIL_SENDER here (application.yml): the app container in
+# docker-compose.yml sends through email-service, while the Cucumber suites, run with this
+# profile on the CI runner, keep the stub (spec 05-034).
 
 # Session decision (2026-10-02): a plain `docker compose up`, with no admin-related
 # configuration at all, should still bootstrap an administrator -- requiring ADMIN_EMAIL to be

@@ -259,7 +259,7 @@ sequenceDiagram
         LiS-->>CS: LinkCreationResult{id, token}
         CS->>AL: record(LOGIN_LINK_ISSUED)
         CS->>ES: send(EmailRequest)
-        Note over ES: template = INVITE (sem conta) ou<br/>LOGIN_LINK (já tem conta) --<br/>EmailContentRenderer escolhe o .html<br/>físico por origin=INVITE + competitionName
+        Note over ES: template = INVITE (sem conta) ou<br/>LOGIN_LINK (já tem conta) --<br/>EmailServiceEmailSender escolhe o template<br/>do email-service por origin=INVITE + competitionName<br/>(seção 6)
         CS->>PR: save(status=EMAIL_SENT)
         CS->>AL: record(PARTICIPATION_STATUS_CHANGED)
     end
@@ -397,33 +397,46 @@ sequenceDiagram
     PC-->>A: 204 No Content
 ```
 
-## 6. Envio assíncrono de e-mail — produtor → SQS → Lambda → SES
+## 6. Envio de e-mail — app → email-service (síncrono) → SQS → Lambda → SES (assíncrono)
 
-O que todo `EmailSender.send(...)` acima dispara: o sistema principal publica numa fila
-Amazon SQS, e uma AWS Lambda consome e envia via Amazon SES.
+O que todo `EmailSender.send(...)` acima dispara (spec 05-034): o sistema principal chama o
+`email-service` de forma síncrona (`POST /emails`), dentro da transação de negócio, e grava o
+`SentEmail` com o id devolvido no 202. Daí em diante o caminho é assíncrono: o `email-service`
+publica numa fila Amazon SQS, e uma AWS Lambda consome e pede ao Amazon SES o envio do template
+(spec 05-031). Se o `email-service` estiver indisponível, a transação de negócio é desfeita e a
+API do `app` responde 503. A exceção é `POST /login-requests`, que não é transacional.
 
 ```mermaid
 sequenceDiagram
     participant Svc as Serviço de negócio<br/>(Competition/EntryRequest/Login/PlayerManagement)
-    participant Sender as SqsEmailSender
-    participant Renderer as EmailContentRenderer
+    participant Sender as EmailServiceEmailSender
+    participant GW as EmailServiceGateway
     participant Rec as SentEmailRecorder
+    participant ESvc as email-service<br/>(EmailSendService)
     participant SQS as Fila SQS (comando)
     participant Lambda as EmailSendHandler
     participant SES as Amazon SES
 
     Svc->>Sender: send(EmailRequest)
-    Sender->>Renderer: render(EmailRequest)
-    Renderer->>Renderer: escolhe 1 dos 5 templates Thymeleaf<br/>(origem + já tem conta)
-    Renderer-->>Sender: RenderedEmail{subject, body}
-    Sender->>Rec: record(EmailRequest)
-    Rec->>Rec: grava SentEmail (Postgres)
-    Rec-->>Sender: SentEmail{id}
-    Sender->>SQS: send(EmailMessage{correlationId=SentEmail.id, subject, body})
+    Sender->>Sender: templateNameFor + templateDataFor<br/>(1 dos 5 templates, name/competitionName/link)
+    Sender->>GW: sendEmail(templateName, email, templateData)
+    GW->>ESvc: POST /emails (X-API-Key), sem retry
+    alt aceito
+        ESvc->>ESvc: grava email_send (Postgres do email-service)
+        ESvc->>SQS: send(EmailQueueMessage{correlationId=email_send.id,<br/>templateName=jogo-acoes__nome, templateData})
+        ESvc-->>GW: 202 {id}
+        GW-->>Sender: UUID emailServiceId
+        Sender->>Rec: record(EmailRequest, emailServiceId)
+        Rec->>Rec: grava SentEmail com email_service_id (Postgres do app)
+    else indisponível ou 5xx
+        ESvc--xGW: falha
+        GW--xSvc: EmailServiceUnavailableException
+        Note over Svc: transação de negócio desfeita,<br/>ApiExceptionHandler responde 503
+    end
 
     SQS-->>Lambda: entrega a mensagem
     Lambda->>Lambda: parse EmailMessage (JSON)
-    Lambda->>SES: sendEmail(source, destination, subject, body,<br/>tags=[correlationId])
+    Lambda->>SES: sendTemplatedEmail(source, destination, template,<br/>templateData, tags=[correlationId])
     alt sucesso (aceito para entrega)
         SES-->>Lambda: 200
         Lambda-->>SQS: confirma (deleta a mensagem)

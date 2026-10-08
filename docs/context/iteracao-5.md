@@ -220,6 +220,11 @@ como está, consumindo dela) — em vez de o `app/` continuar publicando direto 
 E-mail virar só uma segunda validação em paralelo. Precisa ser decidido explicitamente antes de
 implementar, não assumido por omissão.
 
+> **Resolvido pela spec [05-034](../../specs/05-034-fronteira-sincrona-app-email-service/spec.md):**
+> o `SqsEmailSender`, o `EmailContentRenderer` e os templates Thymeleaf saíram do `app/`. O
+> `app/` chama o Serviço de E-mail (`POST /emails`) pelo `EmailServiceEmailSender`, e o Serviço
+> de E-mail é o único publicador na fila; o `email-lambda` continua consumindo dela.
+
 **Onde este serviço mora** (decisão em aberto): repositório novo e próprio (mesmo padrão de
 `deployo-infra`/`deployo-website`, já que o objetivo é ser reutilizável por *outras*
 aplicações, não só um módulo interno do `jogo-acoes`), ou módulo dentro do reator Maven atual
@@ -312,6 +317,12 @@ Consequência aceita na 05-031: o `SqsEmailSender` do `app/` ainda publica `subj
 a Lambda nova rejeita, então os e-mails do `app/` não saem em `docker`/CI até a spec que leva o
 `app/` a enviar pelo Serviço de E-mail (seção 5).
 
+> **Resolvido pela spec [05-034](../../specs/05-034-fronteira-sincrona-app-email-service/spec.md):**
+> o `SqsEmailSender` e os templates Thymeleaf foram removidos do `app/`. Os 5 templates foram
+> convertidos para Handlebars (`app/src/main/resources/email-templates/`), com o header/footer
+> num `layout.html` comum que o `app/` junta ao conteúdo de cada template antes de cadastrá-lo
+> no Serviço de E-mail, na subida (HTML final pré-montado, sem fragmentos no SES). Isso também fecha a tensão com os templates Thymeleaf listada em "Em aberto" acima.
+
 ## 4. Sistema de Admin — decisão em aberto (revisada)
 
 O brainstorm original desenhava este sistema especificamente para orquestrar login e chamar os
@@ -338,6 +349,12 @@ resposta.
 - Decisão em aberto (ligada à pendência da seção 3): se o `EmailSender`/`SqsEmailSender` atuais
   do `app/` são removidos e substituídos pelo cliente Feign, ou se convivem durante uma
   transição.
+  **Resolvido pela spec [05-034](../../specs/05-034-fronteira-sincrona-app-email-service/spec.md)**:
+  sem transição. O `SqsEmailSender` foi removido e o `EmailServiceEmailSender` (implementação de
+  `EmailSender`) chama o Serviço de E-mail de forma síncrona pelo cliente OpenFeign gerado de
+  `docs/openapi-email-service.yaml`, dentro da transação de negócio; com o Serviço de E-mail
+  indisponível, a transação é desfeita e a API do `app/` responde 503. O `StubEmailSender`
+  continua como padrão nos testes.
 
 ## 6. PDF final e caderno de testes Swagger — por Etapa, em branch próprio
 
@@ -619,18 +636,20 @@ abaixo) foi resolvida pela implementação — vive em `LinkSessionService`
   `05-011-logging-aspectos` (log via aspectos, console/texto simples, nível DEBUG) já deixa uma
   nota cruzada pra isso nos seus "Riscos e trade-offs" — sem desenho de integração ainda, só o
   registro da intenção.
-- O `SqsEmailSender`/templates do `app/` migram para dentro do Serviço de E-mail, ou
-  convivem temporariamente com ele?
+- ~~O `SqsEmailSender`/templates do `app/` migram para dentro do Serviço de E-mail, ou
+  convivem temporariamente com ele?~~ — resolvida na spec 05-034: o `SqsEmailSender` e os
+  templates Thymeleaf foram removidos do `app/`, que passou a enviar pelo Serviço de E-mail.
 - Serviço de E-mail: repositório próprio (precedente do `deployo-api-key`) ou módulo no reator
   atual?
 - ~~Estrutura definitiva da fila de envio~~ — resolvida na spec 05-031: só o contrato com
   template da seção 3.2. Continua em aberto o log de erros de envio, ainda sem estrutura
   desenhada.
 - ~~SESv1 ou SESv2 para o fluxo da seção 3.2~~ — SESv1 (`SendTemplatedEmail`), spec 05-031.
-- Como reconciliar os 5 templates Thymeleaf existentes (fragmentos `th:insert` de
+- ~~Como reconciliar os 5 templates Thymeleaf existentes (fragmentos `th:insert` de
   header/footer) com a sintaxe Handlebars mais simples do SES, se a seção 3.2 for adotada —
   duplicar o header/footer em cada template do SES, ou pré-montar o HTML final antes de
-  cadastrar.
+  cadastrar.~~ — resolvida na spec 05-034: os templates foram convertidos para Handlebars, e o
+  `app/` os cadastra no Serviço de E-mail na subida.
 - Validação de `variables_schema` via JSON Schema — biblioteca e ponto de validação exatos.
 - Diagrama do fluxo de autenticação do Serviço de E-mail — precisa ser refeito considerando o
   `deployo-api-key` (não é mais o mesmo fluxo do brainstorm original).

@@ -6,6 +6,7 @@ import dev.leilaalgarve.jogoacoes.user.UserService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Shared by every {@link EmailSender} implementation: recording the send in {@code sent_email}
@@ -23,7 +24,13 @@ class SentEmailRecorder {
     }
 
     SentEmail record(EmailRequest request) {
+        return record(request, null);
+    }
+
+    /** Records a send email-service accepted, with the id it gave it (spec 05-034). */
+    SentEmail record(EmailRequest request, UUID emailServiceId) {
         SentEmail sentEmail = new SentEmail();
+        sentEmail.setEmailServiceId(emailServiceId);
         if (request.userId() != null) {
             sentEmail.setUser(userService.getById(request.userId()));
         }

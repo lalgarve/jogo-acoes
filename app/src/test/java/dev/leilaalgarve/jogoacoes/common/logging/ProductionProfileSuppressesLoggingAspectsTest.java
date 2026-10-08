@@ -39,7 +39,10 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.datasource.username=jogo_acoes_admin",
         "spring.datasource.password=jogo_acoes_admin",
         "spring.datasource.driver-class-name=org.postgresql.Driver",
-        "spring.flyway.enabled=false"
+        "spring.flyway.enabled=false",
+        // No default in application-production.yml either (spec 05-034): the real email-service
+        // docker-compose.yml starts, with the test key from the test application.yml.
+        "email-service.base-url=http://localhost:8082/api"
 })
 @ActiveProfiles("production")
 @ExtendWith(OutputCaptureExtension.class)
@@ -52,7 +55,7 @@ class ProductionProfileSuppressesLoggingAspectsTest {
     void noneOfTheThreeAspectsLogUnderTheProductionProfile(CapturedOutput output) {
         competitionRepository.findAll();
 
-        assertThat(output).doesNotContain("ControllerLoggingAspect", "RepositoryLoggingAspect", "QueueLoggingAspect");
+        assertThat(output).doesNotContain("ControllerLoggingAspect", "RepositoryLoggingAspect", "EmailServiceLoggingAspect");
     }
 
     @AfterEach

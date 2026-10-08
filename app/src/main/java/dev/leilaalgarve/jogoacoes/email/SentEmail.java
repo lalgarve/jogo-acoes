@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "sent_email")
@@ -39,6 +40,10 @@ public class SentEmail {
 
     @Column(name = "sent_at", nullable = false)
     private LocalDateTime sentAt;
+
+    /** Spec 05-034: id email-service gave this send; null when it didn't go through email-service. */
+    @Column(name = "email_service_id")
+    private UUID emailServiceId;
 
     public Long getId() {
         return id;
@@ -86,5 +91,13 @@ public class SentEmail {
 
     public void setSentAt(LocalDateTime sentAt) {
         this.sentAt = sentAt;
+    }
+
+    public UUID getEmailServiceId() {
+        return emailServiceId;
+    }
+
+    public void setEmailServiceId(UUID emailServiceId) {
+        this.emailServiceId = emailServiceId;
     }
 }

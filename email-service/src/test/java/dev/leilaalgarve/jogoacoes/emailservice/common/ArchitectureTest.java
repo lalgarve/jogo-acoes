@@ -6,6 +6,8 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideOutsideOfPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
@@ -19,6 +21,8 @@ class ArchitectureTest {
     private static final String BASE_PACKAGE = "dev.leilaalgarve.jogoacoes.emailservice";
     private static final String AUTH_PACKAGE = BASE_PACKAGE + ".auth..";
     private static final String API_KEY_LIBRARY = "dev.leilaalgarve.apikey..";
+    /** Root package shared with app; email-service owns only the {@code emailservice} branch of it. */
+    private static final String SHARED_ROOT_PACKAGE = "dev.leilaalgarve.jogoacoes";
 
     private final JavaClasses productionClasses = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
@@ -41,5 +45,22 @@ class ArchitectureTest {
                 .should().callMethod(HttpServletRequest.class, "getHeader", String.class)
                 .orShould().callMethod(HttpServletRequest.class, "getHeaders", String.class)
                 .check(productionClasses);
+    }
+
+    /**
+     * Spec 05-034: app and email-service are separately deployable services and share no Java
+     * code. Because they share the root package, a class from app on this classpath would land
+     * right next to email-service's own -- importing the shared root makes that visible.
+     */
+    @Test
+    void emailServiceDoesNotContainOrDependOnAppClasses() {
+        JavaClasses sharedRootClasses = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages(SHARED_ROOT_PACKAGE);
+
+        noClasses().should().resideOutsideOfPackage(BASE_PACKAGE + "..")
+                .orShould().dependOnClassesThat(resideInAPackage(SHARED_ROOT_PACKAGE + "..")
+                        .and(resideOutsideOfPackage(BASE_PACKAGE + "..")))
+                .check(sharedRootClasses);
     }
 }
