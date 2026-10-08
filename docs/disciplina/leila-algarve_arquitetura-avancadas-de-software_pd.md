@@ -179,5 +179,9 @@ Para evitar cadastro de usuários usando emails temporários, usamos listas grat
 
 # Bibliografia
 
+GRAZIANO, Alfonso. **AI-Native Software Engineering**. Sebastopol, CA: O'Reilly Media, 2026. E-book. Versão preliminar (*early release*); publicação prevista para fev. 2027. Disponível em: <https://learning.oreilly.com/library/view/ai-native-software-engineering/0642572352530/>. Acesso em: 24 set. 2026.
+
+SMART, John Ferguson. **BDD in Action**: Behavior-Driven Development for the Whole Software Lifecycle. Shelter Island, NY: Manning Publications, 2014. E-book. ISBN 978-1-61729-165-4. Disponível em: <https://learning.oreilly.com/library/view/bdd-in-action/9781617291654/>. Acesso em: 24 set. 2026.
+
 
 
