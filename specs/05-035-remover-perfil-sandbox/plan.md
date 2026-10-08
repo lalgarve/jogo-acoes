@@ -13,6 +13,10 @@ Testes que hoje decidem em tempo de execução (conferido no `master` em 2026-10
 | `app` | `common/logging/QueueLoggingAspectIntegrationTest` | LocalStack (SQS) | igual ao de cima |
 | `email-lambda` | `EmailSendHandlerTest.sendsAWellFormedMessageWithoutError` | LocalStack do Dev Services (SES) | `catch (SdkClientException)` + `assumeTrue(false, ...)` |
 
+Conferido de novo em 2026-10-08: nenhum dos três decide mais em tempo de execução. Os dois do
+`app` foram apagados no commit `8818c94` (spec 05-034, T015) e o `catch` do `email-lambda` saiu no
+commit `ffa11c6` (spec 05-031). A regra ArchUnit continua, para impedir a volta do padrão.
+
 Menções ao perfil `sandbox` na documentação e configuração ativas (as do "modo sandbox" do SES
 ficam):
 
@@ -66,14 +70,11 @@ app/src/main/resources/application-production.yml        comentário
 app/src/test/resources/application.yml                   + profiles.default: docker
 app/src/main/java/.../email/StubEmailSender.java         Javadoc
 app/src/main/java/.../bootstrap/AdministratorBootstrap.java  Javadoc
-app/src/test/java/.../email/SqsEmailSenderDockerIntegrationTest.java      sem @BeforeAll/assumeTrue
-app/src/test/java/.../common/logging/QueueLoggingAspectIntegrationTest.java  idem
 app/src/test/java/.../common/ArchitectureTest.java       + regra "sem Assumptions"
 email-service/src/main/resources/application-sandbox.yml (apagado)
 email-service/src/test/resources/application.yml         + profiles.default: docker
 email-service/src/test/java/.../common/ArchitectureTest.java  + regra "sem Assumptions"
 email-lambda/pom.xml                                     + archunit-junit5 (test)
-email-lambda/src/test/java/.../EmailSendHandlerTest.java sem catch/assumeTrue; Javadoc
 email-lambda/src/test/java/.../ArchitectureTest.java     (novo, regra "sem Assumptions")
 docker-compose.yml, scripts/test-api-key.sh, docker/postgres-email-service/test-data/README.md  textos
 README.md                                                "Como rodar os testes"; tabela "Ambientes"

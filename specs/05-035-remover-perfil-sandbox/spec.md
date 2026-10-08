@@ -40,6 +40,10 @@ com o resto do projeto:
 A spec 05-028 tentou tratar parte disso com um filtro de tags (T005/T006/T011). Essas tasks
 foram substituídas por esta spec.
 
+> **Atualização (2026-10-08):** os `assumeTrue` do `app` e do `email-lambda` descritos acima já
+> saíram do `master` por outras specs (05-034 e 05-031; ver `tasks.md`, T003 e T004). O resto da
+> motivação continua valendo.
+
 ## Cenários (comportamento esperado)
 
 Esta spec é infraestrutura de execução e de teste, não comportamento de produto. Não há
@@ -87,7 +91,8 @@ Esta spec é infraestrutura de execução e de teste, não comportamento de prod
   `app/src/test/resources/application.yml` e `email-service/src/test/resources/application.yml`
   (o principal do `email-service` já é `docker`).
 - Remover os `assumeTrue(reachable(...))` de `app` e o `catch` + `assumeTrue(false, ...)` de
-  `email-lambda`: sem infraestrutura, esses testes falham.
+  `email-lambda`: sem infraestrutura, esses testes falham. Já feito fora desta spec (ver
+  `tasks.md`, T003 e T004).
 - Regra ArchUnit nos três módulos: nenhuma classe de teste usa
   `org.junit.jupiter.api.Assumptions`.
 - Remover as menções ao perfil `sandbox` da documentação e da configuração ativas (lista em
