@@ -113,7 +113,7 @@ Com o BDD inicial, foi gerado e revisado o DER. Decidimos que certas tabelas, co
 
 Reorganizamos os pacotes de `app/` por domínio de negócio (`link`, `login`, `competition`, `log`, `email`, `captcha`, `common`), abandonando a separação anterior por camada técnica (`web`/`service`/`repository`/`domain`).
 
-Como estudo de caso desse princípio, revisamos em seguida o mecanismo de login por link mágico enviado por e-mail. Antes da revisão, o pacote responsável pelo link tinha uma referência direta (chave estrangeira) para a competição — o mecanismo genérico de link "sabia" sobre um caso de uso específico, violando a separação de responsabilidades entre módulos. Invertemos essa dependência aplicando o Dependency Inversion Principle: os módulos consumidores (`login`, para login avulso; `competition`, para convite/pedido de entrada) passaram a implementar uma interface (`LinkHandler`) e a depender do mecanismo genérico, nunca o contrário. Essa direção de dependência é verificável estaticamente — nenhum import de `login`/`competition` existe dentro do pacote `link`.
+Como estudo de caso desse princípio, revisamos em seguida o mecanismo de login por link mágico enviado por e-mail. Antes da revisão, o pacote responsável pelo link tinha uma referência direta (chave estrangeira) para a competição — o mecanismo genérico de link "sabia" sobre um caso de uso específico, violando a separação de responsabilidades entre módulos. Invertemos essa dependência aplicando o Dependency Inversion Principle: os módulos consumidores (`login`, para login avulso; `competition`, para convite/pedido de entrada) passaram a implementar uma interface (`LinkHandler`) e a depender do mecanismo genérico, nunca o contrário. Com essa inversão, o pacote `link` não importa nenhum tipo dos módulos `login` e `competition`.
 
 O diagrama abaixo mostra a arquitetura resultante: um serviço genérico (`LinkService`) orquestra o ciclo de vida do link, um roteador (`LinkRouter`) despacha pela chave de serviço gravada no link para o `LinkHandler` correto, e cada módulo consumidor implementa essa interface.
 
@@ -151,6 +151,17 @@ Para testar a aplicação dessa forma, resolvemos cinco problemas.
 
 **5. Cabeçalhos de dispositivo.** A aplicação identifica o dispositivo de cada sessão pelos cabeçalhos `Sec-CH-UA*` (*Client Hints*) e `User-Agent`. Para simular logins em dispositivos diferentes, precisamos alterar esses cabeçalhos, mas o navegador impede que uma página envie cabeçalhos iniciados por `Sec-`. Cogitamos usar um proxy que aplicasse os cabeçalhos, mas o Swagger UI já gera, para cada requisição, o comando `curl` equivalente, com os cabeçalhos preenchidos. Executamos esse comando no terminal, que não tem essa restrição, e assim realizamos esses testes pela linha de comando.
 
+#### Testes para mitigação de riscos na arquitetura
+
+Nas especificações que modularizaram o sistema, registramos os riscos que a própria divisão em módulos introduzia: o uso de *strings* em pontos do código que o compilador não verifica, como os caminhos de rota nas regras de segurança e as chaves dos tratadores de link; a definição de permissões espalhada por diferentes módulos; e a documentação, no contrato OpenAPI, de quem pode acessar cada rota, que pode divergir da regra realmente aplicada. Documentar esses riscos não impede que os erros ocorram. Por isso, criamos testes automatizados para mitigá-los. Comentaremos testes semelhantes das etapas posteriores na seção correspondente.
+
+**Permissões definidas por cada módulo.** Dividimos a configuração de segurança para que cada módulo com endpoints registre as próprias regras de acesso, por meio de uma implementação de `SecurityConfigContributor`. Essa divisão traz dois riscos: um módulo novo esquecer de registrar suas regras e dois módulos registrarem regras para as mesmas rotas. Um teste com ArchUnit verifica que todo módulo com um controlador REST possui um `SecurityConfigContributor` no mesmo pacote. O teste `RouteOwnershipTest` lê as rotas que o Spring MVC realmente registrou e verifica que cada primeiro segmento de caminho pertence a um único módulo e que nenhum módulo mapeia a raiz (`/`). Como dois módulos nunca disputam o mesmo caminho, a ordem em que aplicamos as regras de cada módulo não altera o resultado. Se ainda assim uma rota ficar sem regra, ela cai na regra central, que exige autenticação: o erro fecha o acesso, nunca o abre.
+
+**Uso de *strings* no código.** As regras de segurança identificam as rotas por *strings*, e cada tratador de link se registra no roteador por uma chave, também uma *string*. O compilador não detecta um erro de digitação nem uma chave repetida. O teste `LinkRouterKeyUniquenessTest` verifica que todo tratador declara uma chave não nula e única e comprova que uma chave repetida impede a aplicação de iniciar. Um caminho digitado errado numa regra de segurança altera o comportamento de acesso da rota, e os cenários da suíte comportamental (Cucumber) detectam essa mudança.
+
+**Documentação de quem pode acessar cada rota.** Seguimos a abordagem API-First, e o contrato `docs/openapi.yaml` documenta, na extensão `x-roles`, quais papéis podem acessar cada operação. Essa extensão é apenas documentação: nada a aplica em tempo de execução. O teste `OpenApiRolesConsistencyTest` compara, para cada operação do contrato, os papéis documentados com a decisão real de autorização do Spring Security, para três perfis de acesso: anônimo, jogador e administrador. O teste `OpenApiRoutesConsistencyTest` verifica que toda rota implementada está no contrato e que toda operação do contrato está implementada.
+
+
 ## **Etapa 2 — Separação e Comunicação entre Serviços**
 
 | Requisito | Situação |
@@ -165,6 +176,14 @@ Para testar a aplicação dessa forma, resolvemos cinco problemas.
 *Atualização (planejamento posterior a este mapeamento): a extração deixou de ser um microsserviço isolado só para a checagem de MX/domínio descartável — vira um **Serviço de E-mail** reutilizável (ver docs/context/iteracao-5.md), com essa checagem como uma de suas responsabilidades entre outras (registro de templates, envio para aplicações clientes via API key). jogo-acoes consome esse serviço via OpenFeign, fechando o requisito de comunicação síncrona desta Etapa.*
 
 
+
+### **Principais tarefas realizadas na Etapa 2**
+
+#### Testes para mitigação de riscos na arquitetura
+
+Nesta etapa, reforçamos os limites entre os módulos de `app/`. Dividimos o antigo módulo `login` em três: `user`, com os dados de usuário e papéis; `loginsession`, com o pedido e o consumo do link de login e a gestão de sessões; e `loginsecurity`, com a configuração de segurança HTTP. Com a divisão, o risco passou a ser um módulo depender de outro contornando esses limites.
+
+**Dependências entre módulos.** Dois testes com ArchUnit protegem os limites entre os módulos. O primeiro verifica que os módulos de base (`user`, `loginsecurity` e `link`) não dependem uns dos outros nem do módulo `loginsession`, que depende dos três. O segundo verifica que cada repositório só é acessado de dentro do próprio módulo, de modo que os módulos se comuniquem apenas por meio de serviços. Escrevemos esse segundo teste antes das correções: ele começou falhando, listando cada acesso indevido que precisávamos corrigir, e passou quando terminamos a refatoração.
 
 ## **Etapa 3 — Configuração e Execução dos Serviços**
 
