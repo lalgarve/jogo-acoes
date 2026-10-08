@@ -62,16 +62,56 @@ dos três — cada módulo mantém seu próprio *parent*/BOM):
 `mvn -pl email-lambda -am verify`, `mvn -pl blackbox-proxy -am verify` ou
 `mvn -pl email-service -am verify`.
 
+## Como rodar os testes
+
+Os testes rodam contra a infraestrutura real do Docker Compose, que precisa estar de pé antes
+(`memory/constitution.md`, "Testes exigem a infraestrutura de pé"). É a mesma ordem da CI
+(`.github/workflows/ci.yml`):
+
+```bash
+docker compose up -d --wait db db-email-service localstack
+./scripts/test-api-key.sh restore
+docker compose up -d --wait email-service
+./scripts/test-api-key.sh restore
+```
+
+O `restore` roda duas vezes porque a segunda define o remetente do cliente `jogo-acoes`, numa
+tabela que só existe depois que o `email-service` sobe (ver "Envio de e-mail pelo Serviço de
+E-mail" abaixo). O `email-service` também precisa da biblioteca de API-KEY no `~/.m2`
+(`./scripts/install-api-key-lib.sh`, uma vez).
+
+Depois, cada suíte roda sem nenhuma variável de ambiente, porque `docker` é o perfil padrão
+(spec 05-035):
+
+```bash
+mvn -pl app -am verify
+```
+
+```bash
+mvn -pl email-service -am verify
+```
+
+```bash
+mvn -pl email-lambda -am verify
+```
+
+O `email-lambda` não usa o Compose: o Quarkus sobe o próprio LocalStack pelo Dev Services, e só
+precisa do Docker.
+
+**Se a infraestrutura não estiver de pé, os testes que dependem dela falham** com erro de
+conexão. Nenhum teste se pula por falta dela, e uma regra ArchUnit em cada módulo impede que um
+teste use `Assumptions` do JUnit para decidir em tempo de execução se roda. No `app`, um contexto
+que não sobe pode ainda derrubar em cascata testes de outras classes que não dependem da peça
+que falta. Nesse caso, olhe primeiro o erro do primeiro contexto que falhou.
+
 ## Ambientes
 
-O perfil ativo do Spring é escolhido por `SPRING_PROFILES_ACTIVE` (ou `sandbox`, se
-nenhum for definido). Cada um tem seu arquivo `application-<nome>.yml` em
-`app/src/main/resources`:
+O perfil ativo do Spring é escolhido por `SPRING_PROFILES_ACTIVE` (ou `docker`, se nenhum for
+definido). Cada um tem seu arquivo `application-<nome>.yml` em `app/src/main/resources`:
 
 | Perfil | Banco | Quando usar |
 |---|---|---|
-| `sandbox` (padrão) | PostgreSQL instalado nativamente no ambiente | Rodar/testar sem Docker (sandbox da Claude) |
-| `docker` | PostgreSQL real em containers | Localmente via `docker-compose up`, ou CI |
+| `docker` (padrão) | PostgreSQL real em containers | Localmente via `docker compose up`, testes e CI |
 | `docker,blackbox` | PostgreSQL real em containers | Testes de caixa-preta (Swagger UI, Selenium futuro, suíte Python) — ver "Ambiente de testes blackbox" abaixo |
 | `staging` | PostgreSQL real, gerido por outra equipe | Pré-produção |
 | `production` | PostgreSQL real, gerido por outra equipe | Produção |
@@ -108,7 +148,7 @@ normalmente exigem um cliente completo:
 
 - **Captcha sempre aceito** — não existe ainda um frontend que resolva o desafio ALTCHA de
   verdade, então qualquer `captchaToken` (incluindo vazio) é aceito. Só neste perfil: qualquer
-  outro (`sandbox`, `docker` sozinho, `staging`, `production`) continua exigindo um captcha
+  outro (`docker` sozinho, `staging`, `production`) continua exigindo um captcha
   resolvido de verdade.
 - **Administrador já semeado** — como só um administrador pode criar competições e não existe
   via de API para criar um, a aplicação garante, de forma idempotente ao subir, um administrador
@@ -316,7 +356,7 @@ do `email-service`, instale-a no `~/.m2` (baixa da release do GitHub só na prim
 ./scripts/install-api-key-lib.sh
 ```
 
-Em `docker`/`sandbox` existe uma chave de teste fixa, do cliente `jogo-acoes`. Ela mora no
+Em `docker` existe uma chave de teste fixa, do cliente `jogo-acoes`. Ela mora no
 schema `api_key` do banco `db-email-service` e precisa ser restaurada num volume novo (a suíte
 de testes do módulo também precisa dela):
 

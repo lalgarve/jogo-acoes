@@ -95,6 +95,18 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
 
 ## Log de decisões
 
+### Sessão 2026-10-08
+
+- Spec 05-035 removeu o perfil `sandbox`. `caderno-de-testes.md` atualizado: a aplicação sobe
+  com `docker compose up` (perfil `docker`) e o e-mail passa pelo SES do LocalStack. A nota
+  sobre os `SELECT`s capturados contra H2 fica, como registro de como foram obtidos.
+- `alinhamento-projeto-disciplina.md` não foi tocado: é histórico (ver tabela acima).
+- **Pendente no rascunho** (`leila-algarve_arquitetura-avancadas-de-software_pd.md`, tabela da
+  Etapa 3): "Profiles para ao menos dois ambientes" ainda lista
+  `sandbox/docker/staging/production`; o certo agora é `docker/staging/production`, que continua
+  atendendo o requisito. Não editado pela PR da spec 05-035 porque a PR #112 sincroniza o
+  rascunho local da autora e mexe nas linhas vizinhas.
+
 ### Sessão 2026-09-16
 
 - Primeiros diagramas desta pasta: 5 arquivos PlantUML em `uml/` (`login-arquitetura-classes`,
