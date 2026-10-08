@@ -316,12 +316,15 @@
         <artifactId>jacoco-maven-plugin</artifactId>
         <version>0.8.15</version>
         <configuration>
-          <!-- Both packages are generated from docs/openapi.yaml by openapi-generator
-               (interfaceOnly): interfaces/DTOs and its enum-converter config, none of it
-               hand-written, so none of it should count toward our own coverage gate. -->
+          <!-- Everything openapi-generator writes, none of it hand-written, so none of it
+               should count toward our own coverage gate (spec 05-036): from docs/openapi.yaml,
+               app's interfaces/DTOs and their enum-converter config; from
+               docs/openapi-email-service.yaml, email-service's Feign client, DTOs and client
+               configuration. The hand-written classes of email.client sit one level above. -->
           <excludes>
             <exclude>dev/leilaalgarve/jogoacoes/api/**</exclude>
             <exclude>org/openapitools/**</exclude>
+            <exclude>dev/leilaalgarve/jogoacoes/email/client/api/**</exclude>
           </excludes>
         </configuration>
         <executions>

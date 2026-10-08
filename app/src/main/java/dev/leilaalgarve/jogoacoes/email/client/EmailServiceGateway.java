@@ -35,7 +35,7 @@ import java.util.function.Supplier;
 public class EmailServiceGateway {
 
     static final int MAX_ATTEMPTS = 3;
-    private static final long RETRY_WAIT_MILLIS = 200;
+    static final long RETRY_WAIT_MILLIS = 200;
 
     private final TemplatesApi templates;
     private final EmailsApi emails;
@@ -51,6 +51,7 @@ public class EmailServiceGateway {
      * retry after a lost response could send the e-mail twice (spec 05-034).
      */
     public UUID sendEmail(String templateName, String recipientEmail, Map<String, Object> templateData) {
+        requireName(templateName);
         try {
             return emails.sendEmail(new SendEmailRequest()
                             .templateName(templateName).recipientEmail(recipientEmail).templateData(templateData))
@@ -61,6 +62,7 @@ public class EmailServiceGateway {
     }
 
     public Optional<EmailServiceTemplate> findTemplate(String name) {
+        requireName(name);
         return retrying(() -> {
             try {
                 EmailTemplate found = templates.getTemplate(name).getBody();
@@ -79,6 +81,10 @@ public class EmailServiceGateway {
      * it twice ends in the same state as running it once.
      */
     public void upsertTemplate(EmailServiceTemplate template) {
+        if (template == null) {
+            throw new IllegalArgumentException("No template to upsert");
+        }
+        requireName(template.name());
         if (update(template)) {
             return;
         }
@@ -96,6 +102,7 @@ public class EmailServiceGateway {
     }
 
     public TemplatePreview preview(String name, Map<String, Object> variables) {
+        requireName(name);
         return retrying(() -> {
             try {
                 TemplatePreviewResponse rendered = templates
@@ -120,6 +127,18 @@ public class EmailServiceGateway {
                 throw translate("PUT /templates/" + template.name(), e);
             }
         });
+    }
+
+    /**
+     * Template names come from app's own code (EmailTemplate, EmailTemplateSynchronizer), so a
+     * missing one is a programming error, rejected before any call: unchecked, an empty name
+     * would end up in a URL with no template segment, or in a template email-service creates
+     * with no name (spec 05-036, D1).
+     */
+    private static void requireName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Template name must not be null or blank, was: " + name);
+        }
     }
 
     private static <T> T retrying(Supplier<T> idempotentCall) {

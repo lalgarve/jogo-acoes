@@ -8,7 +8,9 @@ import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.email.SentEmail;
 import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceAuthenticationException;
+import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceRejectedException;
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceUnavailableException;
+import jakarta.validation.ConstraintViolationException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
@@ -120,6 +122,140 @@ class EmailServiceClientIntegrationTest {
     }
 
     @Test
+    void sendingWithEveryVariableReturnsEmailServiceId() {
+        assertThat(gateway.sendEmail("login-link-invite", unique("data"), completeLoginLinkInviteData())).isNotNull();
+    }
+
+    @Test
+    void sendingWithAnExtraVariableReturnsEmailServiceId() {
+        Map<String, Object> data = completeLoginLinkInviteData();
+        data.put("notInTheTemplate", "ignored");
+
+        assertThat(gateway.sendEmail("login-link-invite", unique("data"), data)).isNotNull();
+    }
+
+    static Stream<Arguments> incompleteTemplateData() {
+        Map<String, Object> missingCompetitionName = completeLoginLinkInviteData();
+        missingCompetitionName.remove("competitionName");
+        return Stream.of(
+                Arguments.of("empty", Map.of()),
+                Arguments.of("null", null),
+                Arguments.of("missing competitionName", missingCompetitionName));
+    }
+
+    /**
+     * Current behavior, not the desired one (spec 05-036, D2): email-service queues the send (202)
+     * and rendering only fails later, in email-lambda, so app gets an id for an e-mail that is
+     * never delivered. Has to change together with Issue #134.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("incompleteTemplateData")
+    void sendingWithIncompleteDataIsStillAcceptedByEmailService(String description, Map<String, Object> data) {
+        assertThat(gateway.sendEmail("login-link-invite", unique("data"), data)).isNotNull();
+    }
+
+    @Test
+    void upsertingANewTemplateTwiceCreatesItThenUpdatesItToTheSameState() {
+        // email-service has no DELETE /templates/{name}: a fresh name every run (spec 05-036).
+        EmailServiceTemplate created = new EmailServiceTemplate(
+                "coverage-" + UUID.randomUUID(), "Assunto {{name}}", "<p>Olá, {{name}}</p>");
+
+        gateway.upsertTemplate(created);
+        assertThat(gateway.findTemplate(created.name())).contains(created);
+
+        gateway.upsertTemplate(created);
+        assertThat(gateway.findTemplate(created.name())).contains(created);
+    }
+
+    @Test
+    void upsertingAnEmptySubjectAndBodyIsRejectedAndLeavesTheTemplateAsItWas() {
+        EmailServiceTemplate existing = new EmailServiceTemplate(
+                "coverage-" + UUID.randomUUID(), "Assunto", "<p>Corpo</p>");
+        gateway.upsertTemplate(existing);
+
+        assertThatThrownBy(() -> gateway.upsertTemplate(new EmailServiceTemplate(existing.name(), "", "")))
+                .isInstanceOf(EmailServiceRejectedException.class);
+        assertThat(gateway.findTemplate(existing.name())).contains(existing);
+    }
+
+    @Test
+    void previewWithAnExtraVariableRendersLikeWithout() {
+        Map<String, Object> extra = completeLoginLinkInviteData();
+        extra.put("notInTheTemplate", "ignored");
+
+        assertThat(gateway.preview("login-link-invite", extra))
+                .isEqualTo(gateway.preview("login-link-invite", completeLoginLinkInviteData()));
+    }
+
+    static Stream<Arguments> previewDataSesCannotRender() {
+        return incompleteTemplateData().filter(arguments -> arguments.get()[1] != null);
+    }
+
+    /** 4xx is the same on a retry: rejected at once, faster than a single wait between attempts. */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("previewDataSesCannotRender")
+    void previewWithIncompleteDataIsRejectedWithoutRetrying(String description, Map<String, Object> data) {
+        Instant start = Instant.now();
+
+        assertThatThrownBy(() -> gateway.preview("login-link-invite", data))
+                .isInstanceOf(EmailServiceRejectedException.class);
+        assertThat(Duration.between(start, Instant.now()))
+                .isLessThan(Duration.ofMillis(EmailServiceGateway.RETRY_WAIT_MILLIS));
+    }
+
+    /**
+     * Current behavior (spec 05-036, P2): the generated client's bean validation (variables is
+     * required in docs/openapi-email-service.yaml) rejects it before any call, so the exception
+     * is the generated client's, not one of app's EmailService* exceptions.
+     */
+    @Test
+    void previewWithNoVariablesIsRejectedByTheGeneratedClientBeforeCallingEmailService() {
+        assertThatThrownBy(() -> gateway.preview("login-link-invite", null))
+                .isInstanceOf(ConstraintViolationException.class);
+    }
+
+    // Spec 05-036, D1: template names come from app's own code, so a missing one is a
+    // programming error, rejected before any call. IllegalArgumentException is never what an
+    // answer from email-service turns into, which is what shows no call was made.
+
+    @ParameterizedTest
+    @MethodSource("missingNames")
+    void findingATemplateWithoutANameIsRejectedBeforeCallingEmailService(String name) {
+        assertThatThrownBy(() -> gateway.findTemplate(name)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @MethodSource("missingNames")
+    void upsertingATemplateWithoutANameIsRejectedBeforeCallingEmailService(String name) {
+        EmailServiceTemplate nameless = new EmailServiceTemplate(name, "Assunto", "<p>Corpo</p>");
+
+        assertThatThrownBy(() -> gateway.upsertTemplate(nameless)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void upsertingNoTemplateIsRejectedBeforeCallingEmailService() {
+        assertThatThrownBy(() -> gateway.upsertTemplate(null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @MethodSource("missingNames")
+    void sendingWithoutATemplateNameIsRejectedBeforeCallingEmailService(String name) {
+        assertThatThrownBy(() -> gateway.sendEmail(name, unique("noname"), completeLoginLinkInviteData()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @MethodSource("missingNames")
+    void previewingWithoutATemplateNameIsRejectedBeforeCallingEmailService(String name) {
+        assertThatThrownBy(() -> gateway.preview(name, completeLoginLinkInviteData()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    static Stream<String> missingNames() {
+        return Stream.of("", "   ", null);
+    }
+
+    @Test
     void appDoesNotStartWithAnApiKeyEmailServiceRejects() {
         assertThatThrownBy(() -> startAppWith(EMAIL_SERVICE_URL,
                 "dak_notARealKeyAtAllxxxxxxxxxxxxxxxxxxxxxxxxxxx"))
@@ -205,6 +341,12 @@ class EmailServiceClientIntegrationTest {
             chain.add(t);
         }
         return chain;
+    }
+
+    /** Every variable login-link-invite renders. */
+    private static Map<String, Object> completeLoginLinkInviteData() {
+        return new java.util.HashMap<>(Map.of(
+                "name", "Ana", "competitionName", "Copa de Inverno", "link", "https://jogo-acoes.example/login-links/abc"));
     }
 
     private static EmailServiceTemplate templateNamed(String name) {
