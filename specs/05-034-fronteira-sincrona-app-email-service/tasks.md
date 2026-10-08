@@ -41,9 +41,9 @@ checklist nela.
 | ~~T014~~ | `app`: `EmailServiceEmailSender` (`email.sender=email-service`) mapeando `EmailRequest` → nome do template + `templateData`; `GlobalExceptionHandler` mapeia `EmailServiceUnavailableException` → `503`; conferir se o envio ocorre dentro da transação de negócio e registrar em `plan.md` | T011, T012, T013 | | #119 |
 | ~~T015~~ | `app`: remover `SqsEmailSender`, `EmailMessage`, `EmailContentRenderer`, `RenderedEmail`, `templates/email/`, `spring-cloud-aws-starter-sqs` e a configuração de fila dos perfis; `email.sender` = `email-service` em `docker`/`staging`/`production`; `QueueLoggingAspect` passa a interceptar o `EmailServiceGateway` (sem logar a chave nem o corpo); remover `SqsEmailSenderTest`/`SqsEmailSenderDockerIntegrationTest` e ajustar `QueueLoggingAspectIntegrationTest`. T001 fica verde | T014 | | #119 |
 | ~~T016~~ | `docker-compose.yml`: healthcheck no `email-service`; `app` com `depends_on: email-service: condition: service_healthy` e `EMAIL_SERVICE_URL`; atualizar o comentário do `EMAIL_SERVICE_API_KEY` ("Nothing in app reads it yet"); `docker compose config -q` | T010 | [P] | #119 |
-| T017 | `docker compose down -v` + subir `db`, `db-email-service`, `localstack`, `email-service`; `SPRING_PROFILES_ACTIVE=docker mvn -pl app -am verify` e `mvn -pl email-service -am verify` — T001 a T006 verdes, suítes Cucumber verdes | T015, T016, T003, T004, T005 | | #119 |
+| ~~T017~~ | `docker compose down -v` + subir `db`, `db-email-service`, `localstack`, `email-service`; `SPRING_PROFILES_ACTIVE=docker mvn -pl app -am verify` e `mvn -pl email-service -am verify` — T001 a T006 verdes, suítes Cucumber verdes | T015, T016, T003, T004, T005 | | #119 |
 | T018 | Conferir os 5 e-mails no SES Viewer do LocalStack com o fluxo real (convite, link de cadastro, 3 variações de login) e comparar com os renderizados pelo Thymeleaf antes da mudança. Registrar aqui | T017 | | #119 |
-| T019 | Documentação: `README.md` (o `app` depende do `email-service` para enviar e-mail; ordem de subida); `docs/context/iteracao-5.md` (seção 5 e "Decisões em aberto": `SqsEmailSender` substituído, decidido); diagrama de componentes/sequência afetado em `docs/diagrams/`, validando a renderização do Mermaid (constitution, "Diagramas Mermaid") | T017 | [P] | #119 |
+| ~~T019~~ | Documentação: `README.md` (o `app` depende do `email-service` para enviar e-mail; ordem de subida); `docs/context/iteracao-5.md` (seção 5 e "Decisões em aberto": `SqsEmailSender` substituído, decidido); diagrama de componentes/sequência afetado em `docs/diagrams/`, validando a renderização do Mermaid (constitution, "Diagramas Mermaid") | T017 | [P] | #119 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -105,3 +105,25 @@ Feito nesta rodada: T014, T015, o item (5) do T006 e a documentação do T019.
   PostgreSQL e o LocalStack reais, incluindo os 5 envios conferidos no SES do LocalStack, e a
   suíte do `email-service`. Pendentes: T017 (rodada manual a partir de `docker compose down -v`) e
   T018 (comparar os 5 e-mails no SES Viewer), que precisam de Docker fora da CI.
+
+### Terceira rodada (2026-10-08) — verificação manual antes do merge
+
+- **T017**: `docker compose down -v`, depois `db`, `db-email-service` e `localstack`,
+  `scripts/test-api-key.sh restore`, `email-service` e `restore` de novo (mesma ordem da CI), no
+  commit `d5970d4`. `SPRING_PROFILES_ACTIVE=docker mvn -B -pl app -am verify`: 189 testes, 0
+  falhas, 0 pulados, `jacoco:check` verde, `ArchitectureTest` 8/8, Cucumber 74/74.
+  `SPRING_PROFILES_ACTIVE=docker mvn -B -pl email-service -am verify`: 40 testes, 0 falhas, 2
+  pulados, que são os dois cenários `@requires-real-ses` de `register_templates.feature`, excluídos
+  de propósito pelo `RunCucumberTest` (Issue #104), igual à CI.
+- **T018 (comparação automática)**: o SES do LocalStack guarda o envio como template + dados, sem
+  o HTML renderizado. Por isso, para cada um dos 5 envios que a suíte fez chegar lá (`invite`,
+  `registration-link`, `login-link`, `login-link-invite`, `login-link-request`), os mesmos
+  `TemplateData` foram renderizados dos dois jeitos: pelos templates Thymeleaf do `master`
+  (`SpringTemplateEngine`, assunto tirado do `<title>`, como fazia o `EmailContentRenderer`) e
+  pelo SES (`POST /templates/{nome}/preview` do `email-service`, que chama o `TestRenderTemplate`).
+  Nos 5 casos, o assunto e o texto visível são iguais (comparação sem tags, comentários e
+  diferenças de espaço). A conferência visual lado a lado fica com a Leila.
+- **T019**: a documentação entrou na segunda rodada (`0d91c20`). Faltava registrar a validação do
+  Mermaid exigida pela constitution: os 5 blocos alterados pela PR (`classes.md` bloco 3,
+  `modulos.md` blocos 9 e 10, `sequencia.md` blocos 6 e 10) foram renderizados pelo validador
+  Mermaid, todos válidos e sem erro de sintaxe.
