@@ -27,10 +27,10 @@ import java.util.Set;
  *
  * ADMIN_EMAIL has no default here -- in staging/production, an unset/typo'd value should do
  * nothing, not create a permanent administrator nobody can reach (this never creates a second
- * one, so that mistake could never be corrected later). application-docker.yml/
- * application-sandbox.yml each set their own ADMIN_EMAIL default (SES's mailbox simulator
- * address), so dev/test environments still get an administrator automatically; a real env var
- * there still wins, standard Spring Boot property precedence.
+ * one, so that mistake could never be corrected later). application-docker.yml sets its own
+ * ADMIN_EMAIL default (SES's mailbox simulator address), so the dev/test environment still gets
+ * an administrator automatically; a real env var there still wins, standard Spring Boot property
+ * precedence.
  *
  * Idempotent by "does any administrator already exist", not by e-mail: once any administrator
  * exists, this never acts again, even if ADMIN_EMAIL changes or is unset on a later restart.

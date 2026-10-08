@@ -3,6 +3,11 @@ server:
     context-path: /api
 
 spring:
+  # Same as src/main/resources/application.yml (spec 05-035) -- this file replaces that one, so
+  # without repeating it no profile would be active unless SPRING_PROFILES_ACTIVE is set, a state
+  # CI (which runs with `docker`) never tests.
+  profiles:
+    default: docker
   datasource:
     # Real PostgreSQL (docker-compose.yml's `db-email-service` service), not H2 -- see
     # specs/05-028-testes-exigem-docker-real/plan.md. Tests require

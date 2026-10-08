@@ -61,8 +61,8 @@
     <!-- CDI-managed SesClient + config (quarkus.ses.aws.*) + Dev Services: auto-starts
          LocalStack via Testcontainers for tests when no endpoint-override is configured,
          same mechanism already used for Postgres/SQS elsewhere in this project (see
-         docs/context/iteracao-4.md, decision 3); requires Docker, so only exercised in the
-         `docker` CI profile, not this agent's sandbox. -->
+         docs/context/iteracao-4.md, decision 3); requires Docker, which every place this
+         project runs has (spec 05-035): without it the tests fail, never skip. -->
     <dependency>
       <groupId>io.quarkiverse.amazonservices</groupId>
       <artifactId>quarkus-amazon-ses</artifactId>
@@ -70,8 +70,8 @@
     <!-- The SES client needs an HTTP transport on the classpath; the extension defaults to
          this one (sync URL Connection client) rather than Apache/Netty. Found by actually
          running the build in this session: boot failed with NoClassDefFoundError without
-         it, not documented anywhere I could check (quarkus.io/docs.quarkiverse.io blocked
-         from this sandbox). -->
+         it, not documented anywhere I could check (quarkus.io/docs.quarkiverse.io were blocked
+         from that session's network). -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>url-connection-client</artifactId>
@@ -88,6 +88,13 @@
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>3.27.7</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Spec 05-035: same version as app/pom.xml and email-service/pom.xml. -->
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>1.5.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

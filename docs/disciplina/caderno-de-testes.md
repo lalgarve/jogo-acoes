@@ -11,17 +11,16 @@ aplicação de verdade (não são exemplos hipotéticos) — ver "Como reproduzi
 
 ### Como reproduzir
 
-1. Subir a aplicação (`docker-compose up` a partir da raiz do repositório, ou
-   `mvn spring-boot:run` dentro de `app/` para o perfil `sandbox`, com H2 no lugar do
-   PostgreSQL).
+1. Subir a aplicação com `docker compose up` a partir da raiz do repositório (perfil `docker`,
+   o padrão desde a spec 05-035).
 2. Abrir o Swagger UI em `http://localhost:8080/api/swagger-ui/index.html` (spec 05-009).
 3. Precisamos de um jogador cadastrado com sessão ativa para exercitar `GET`/`DELETE
    /sessions`. Sem uma tela de cadastro ainda (fora do escopo desta Etapa), os passos abaixo
    preparam esse estado via a própria API:
    - `POST /login-requests` com o e-mail de um jogador já cadastrado no banco — devolve `202`
      sempre (não revela se o e-mail existe), e grava um `LinkRecord` com o token do link mágico.
-   - Como não há envio de e-mail real (`email.sender: stub` no perfil `sandbox`), o token não
-     chega a uma caixa de entrada — mas aparece no log da própria chamada (ver Caso 1 abaixo,
+   - O e-mail não chega a uma caixa de entrada real (o SES do LocalStack só registra o envio),
+     mas o token aparece no log da própria chamada (ver Caso 1 abaixo,
      `RepositoryLoggingAspect` loga o retorno de `LinkRecordRepository.save(...)` por completo,
      token incluído), ou pode ser lido direto da tabela `link_record`/`sent_email`.
    - `GET /login-links/{token}` com esse token estabelece a sessão (cookie `SESSION`) — feito
@@ -29,7 +28,8 @@ aplicação de verdade (não são exemplos hipotéticos) — ver "Como reproduzi
      saem autenticadas.
 4. Consultar o PostgreSQL: via a UI web da spec 05-013 (quando implementada) ou `psql`
    diretamente contra o container `db` do `docker-compose.yml`. Os `SELECT`s abaixo foram
-   capturados contra H2 (perfil `sandbox`, sem Docker disponível no momento da escrita) — sintaxe
+   capturados contra H2 (antigo perfil `sandbox`, sem Docker disponível no momento da escrita;
+   o perfil foi removido na spec 05-035) — sintaxe
    padrão, mesmo resultado esperado em PostgreSQL.
 
 ### Caso 1 — Fluxo Controller → Service → Repository → Banco

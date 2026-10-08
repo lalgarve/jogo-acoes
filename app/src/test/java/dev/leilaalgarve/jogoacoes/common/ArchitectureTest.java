@@ -35,6 +35,7 @@ class ArchitectureTest {
     private static final String BASE_PACKAGE = "dev.leilaalgarve.jogoacoes";
     private static final String EMAIL_SERVICE_PACKAGE = BASE_PACKAGE + ".emailservice..";
     private static final String EMAIL_CLIENT_API_PACKAGE = BASE_PACKAGE + ".email.client.api..";
+    private static final String JUNIT_ASSUMPTIONS = "org.junit.jupiter.api.Assumptions";
 
     @Test
     void everyModuleWithARestControllerHasASecurityConfigContributor() {
@@ -145,6 +146,23 @@ class ArchitectureTest {
         noClasses().that().resideOutsideOfPackage(BASE_PACKAGE + ".email..")
                 .should().dependOnClassesThat().resideInAPackage(BASE_PACKAGE + ".email.client..")
                 .check(productionClasses());
+    }
+
+    /**
+     * Spec 05-035: missing infrastructure is an error, never a skip (constitution, "Testes exigem
+     * a infraestrutura de pé"), so no test decides at runtime whether to run. Named by string,
+     * not by class literal: a class literal would make this test depend on Assumptions itself.
+     */
+    @Test
+    void noTestSkipsItselfWithAssumptions() {
+        noClasses().should().dependOnClassesThat().haveFullyQualifiedName(JUNIT_ASSUMPTIONS)
+                .check(testClasses());
+    }
+
+    private static JavaClasses testClasses() {
+        return new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.ONLY_INCLUDE_TESTS)
+                .importPackages(BASE_PACKAGE);
     }
 
     private static JavaClasses productionClasses() {

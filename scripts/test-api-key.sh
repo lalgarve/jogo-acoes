@@ -4,9 +4,9 @@
 #
 # The plaintext key is printed only once by the CLI and can't be recovered from the database, so
 # the generated row is kept in docker/postgres-email-service/test-data/api-key-test-data.sql:
-# restoring it into a fresh database (new docker volume, sandbox Postgres) makes the same test
+# restoring it into a fresh database (e.g. a new docker volume) makes the same test
 # key valid again, without generating a new one and updating every place that uses it. Test
-# values only (docker/sandbox) -- never used in staging/production. See
+# values only (docker) -- never used in staging/production. See
 # docker/postgres-email-service/test-data/README.md for the key and pepper this dump matches.
 #
 #   restore  drops and recreates the `api_key` schema from the saved dump (email-service's own
@@ -18,7 +18,7 @@
 #            deliberately generating a new test key
 #
 # Uses the running db-email-service container (docker compose) when there is one; otherwise the
-# local psql/pg_dump against --host/--port (sandbox: native Postgres, same database/credentials).
+# local psql/pg_dump against --host/--port (a Postgres outside Compose, same database/credentials).
 #
 # Usage: ./scripts/test-api-key.sh restore|dump [--host HOST] [--port PORT]
 # Example: ./scripts/test-api-key.sh restore
