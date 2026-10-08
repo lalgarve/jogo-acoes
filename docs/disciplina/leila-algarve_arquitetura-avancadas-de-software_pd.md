@@ -8,70 +8,70 @@ Um jogo de simulação de investimentos em bolsa: administradores criam competi�
 
 * login por link recebido por e-mail  
 * solicitação de ingresso clicando no link da competição pública e fornecendo o e-mail para recebimento do link  
-* convites com link enviados por email para ingresso em uma competição privada  
+* convites com link enviados por e-mail para ingresso em uma competição privada  
 * limites de login em diferentes dispositivos  
 * o administrador pode remover jogadores de competições   
-* verificação do formato dos endereços de email
+* verificação do formato dos endereços de e-mail
 
-## **Serviço de Email**
+## **Serviço de E-mail**
 
-* verificação do formato dos endereços de email  
+* verificação do formato dos endereços de e-mail  
 * verificação dos registros MX e A no DNS  
 * cadastro de domínios bloqueados  
 * cadastro de domínios temporários  
 * cadastro de domínios liberados  
-* cadastro de emails bloqueados  
+* cadastro de e-mails bloqueados  
 * inclusão automática do e-mail no cadastro de bloqueados dependendo da falha do envio  
-* envio de e-mails via SQS usando SES, usando o sistema de DLQ (dead-letter queue)  
-* fila para recebimento de status de emails que não são imediatos como, por exemplo, bounce  
+* envio de e-mails via SQS e SES, com fila de mensagens não processadas (DLQ, *dead-letter queue*)  
+* fila para receber status de envio que não são imediatos, como o *bounce*  
 * retentativa de envio automática dependendo do erro  
 * verificação de acesso ao serviço usando API-KEY
 
 ## **Função Lambda**
 
-* envio de emails usando uma fila SQS para determinar os dados e o template  
-* uso do DynamoDB para evitar o envio de emails duplicados
+* envio de e-mails a partir de uma fila SQS, cujas mensagens definem os dados e o template  
+* uso do DynamoDB para evitar o envio de e-mails duplicados
 
 # Objetivos Gerais
 
-Inteligência artificial faz parte da evolução tecnológica que promete revolucionar a forma de trabalhar. Sendo assim, buscamos uma forma de integrarmos essa vanguarda tecnológica. Teoria é importante. Livros e cursos estão sendo lançados no mercado. No entanto, a prática também é essencial. Para podermos colocar conceitos derivados de pesquisa e experiência em prática, buscamos um projeto que se aproximasse de uma aplicação de fato, não apenas algumas classes e protótipos.
+A inteligência artificial faz parte de uma evolução tecnológica que promete revolucionar a forma de trabalhar. Por isso, buscamos uma forma de integrar essa vanguarda tecnológica ao nosso trabalho. A teoria é importante, e livros e cursos sobre o tema estão sendo lançados no mercado. No entanto, a prática também é essencial. Para colocar em prática conceitos derivados de pesquisa e experiência, buscamos um projeto que se aproximasse de uma aplicação real, e não apenas de algumas classes e protótipos.
 
 O desenvolvimento foi pensado de forma que se assemelhasse a um projeto empresarial. Procuramos conceitos e metodologias modernas, usando como base o que aprendemos durante o curso, mas não nos limitando apenas a elas. Primeiro determinamos as iterações, com o resumo dos requisitos de cada, criando um roadmap. Esse roadmap serve como guia, podendo ser repensado ao longo do tempo. Depois especificamos o sistema. 
 
-Decidimos vestir o chapéu de uma Startup de tecnologia disposta a lançar um jogo educativo sobre compra e venda de ações. Escolhendo ser uma Startup traz alguns requisitos embutidos:
+Decidimos vestir o chapéu de uma startup de tecnologia disposta a lançar um jogo educativo sobre compra e venda de ações. Ser uma startup traz alguns requisitos embutidos:
 * baixo custo inicial de deploy;
 * capacidade de atender ao crescimento da demanda.
 
-Independente do futuro do projeto ou se ele seria capaz de trazer retorno financeiro, temos também a proposta de criação de um portifólio e crescimento da nossa marca pessoal. O projeto também serve como forma de aprendizado de como usar IA de forma efetiva para geração de código seguro, testável e fácil manutenção. 
+Independentemente do futuro do projeto e de sua capacidade de trazer retorno financeiro, também nos propomos a criar um portfólio e a fortalecer nossa marca pessoal. O projeto ainda serve para aprendermos a usar a IA de forma efetiva na geração de código seguro, testável e de fácil manutenção. 
 
-Parte da execução desse projeto foi aprovada como trabalho da disciplina de Arquitetura Avançada. Este documento trata do que foi desenvolvido especificamente para atender os requisitos necessários. 
+Parte da execução desse projeto foi aprovada como trabalho da disciplina de Arquitetura Avançada. Este documento trata do que desenvolvemos especificamente para atender aos requisitos da disciplina. 
 
 # Metodologia de desenvolvimento
 
-Criar prompts efetivos para a IA não é uma tarefa simples. Tanto que existe uma disciplina emergente de Engenharia de Prompt. Assim, em vez de tentar construir o prompt perfeito, procuramos formas de estruturar melhor a informação e de inferir se a IA entendeu o problema. Antes da disciplina, usamos uma metodologia própria que combinava uma linguagem estruturada para a especificação do sistema (Gherkin), diagrama DER para definir o banco de dados e o modelo do sistema e finalmente, a adoção de API-First, para verificação rápida dos endpoints propostos e arquivos guardando os contextos da IA evitando a necessidade de repitir instruções entre chats.
+Criar prompts efetivos para a IA não é uma tarefa simples, tanto que já existe uma disciplina emergente dedicada a isso, a Engenharia de Prompt. Assim, em vez de tentar construir o prompt perfeito, procuramos formas de estruturar melhor a informação e de inferir se a IA entendeu o problema. Antes da disciplina, usávamos uma metodologia própria que combinava uma linguagem estruturada para especificar o sistema (Gherkin), um diagrama DER para definir o banco de dados e o modelo do sistema, a abordagem API-First, para verificar rapidamente os endpoints propostos, e arquivos que guardam o contexto da IA, evitando repetir instruções entre conversas.
 
-BDD foi no início uma evolução do TDD \- Test Driven Development. Um dos problemas encontrados no TDD era o risco de alto acoplamento entre os testes e o código. Se testava o que cada método fazia e não o comportamento esperado do sistema. Esta metodologia também incorpora princípios do DDD \- Domain Driven Development. DDD prega o uso de uma língua ubíqua entre o cliente e o time de desenvolvimento. Esta língua deve ser usada na comunicação, documentação e código. 
+O BDD (*Behavior-Driven Development*) surgiu como uma evolução do TDD (*Test-Driven Development*). Um dos problemas encontrados no TDD era o risco de alto acoplamento entre os testes e o código: testava-se o que cada método fazia, e não o comportamento esperado do sistema. O BDD também incorpora princípios do DDD (*Domain-Driven Design*), que prega o uso de uma linguagem ubíqua entre o cliente e o time de desenvolvimento. Essa linguagem deve ser usada na comunicação, na documentação e no código. 
 
-Além dos pontos acima, BDD define o que o sistema deve fazer em instruções estruturadas. Essas instruções podem ser em inglês ou qualquer outro idioma suportado. O formato permite a compreensão pelo cliente e a estruturação facilita a compreensão pela IA. A partir do BDD, se pode criar testes automatizados para verificação dos requisitos do sistema, ou seja, se tem uma especificação executável. 
+Além disso, o BDD define o que o sistema deve fazer em instruções estruturadas, que podem ser escritas em inglês ou em qualquer outro idioma suportado. O formato permite a compreensão pelo cliente, e a estruturação facilita a compreensão pela IA. A partir dos cenários BDD, criamos testes automatizados que verificam os requisitos do sistema, ou seja, temos uma especificação executável. 
 
-Descobrimos no início da disciplina a metodologia SDD, Specification Driven Design. Esta metodologia possui arquivos e processos específicos para desenvolvimento de software usando IA. Como é uma metodologia já usadas por algumas empresas e softwares, a IA já conhece e sabe trabalhar com ela. Inclusive existe um repositório no Github Spec-Kit com vários arquivos modelos. 
+No início da disciplina, descobrimos a metodologia SDD (*Spec-Driven Development*). Essa metodologia define arquivos e processos específicos para o desenvolvimento de software com IA. Como algumas empresas e ferramentas já a utilizam, a IA já a conhece e sabe trabalhar com ela. Existe inclusive um repositório no GitHub, o Spec Kit, com vários arquivos-modelo. 
 
-Essa metodologia busca detalhar o máximo a especificação, decisões técnicas e tarefas a serem efetuadas antes da implementação. Alguns podem confundir com a metodologia cascata, mas não é o mesmo. A especificação é sobre uma pequena porção do código e é usada pela IA para a implementação.
+Essa metodologia busca detalhar ao máximo a especificação, as decisões técnicas e as tarefas antes da implementação. Ela pode lembrar o modelo cascata, mas há uma diferença essencial: cada especificação cobre uma pequena porção do sistema, e a IA a usa como base para a implementação.
 
 Usamos:
-* constituition.md - arquivo usado para definir princípios, regras que valem para todo o código.
-* spec.md - decide o que deve ser implementado
-* plan.md - decide as decisões técnicas da implementação
-* tasks.md - decide as tarefas a serem executadas
+* `constitution.md`: define os princípios e as regras que valem para todo o código;
+* `spec.md`: define o que deve ser implementado;
+* `plan.md`: registra as decisões técnicas da implementação;
+* `tasks.md`: lista as tarefas a executar.
 
-Comecei a usar SDD na Iteração 5 do projeto. O método anterior - cenários BDD + TDD + ApiFirst - continuam a serem usados sempre que relevante. No TDD, a IA cria os testes primeiro e verifica que eles falham antes da implementação. Também usamos diagramas sempre que necessário. Por exemplo, na incepção do projeto, pedimos a criação de um diagrama DER para verificarmos o modelo sugerido e visualizarmos melhor as modificações necessárias. Os diagramas são definidos em texto tornando fácil a interpretaçãoe edição. Há várias opções gratuitas. No código decidimos por Mermaid.js por ser suportado nativamente pelo GitHub. Nesse arquivo, os diagramas são gerados usando PlantUML por poder ser convertido em Tex. 
+Começamos a usar SDD na Iteração 5 do projeto. Os métodos anteriores (cenários BDD, TDD e API-First) continuam em uso sempre que relevantes. No TDD, a IA cria os testes primeiro e verifica que eles falham antes da implementação. Também usamos diagramas sempre que necessário. Por exemplo, na incepção do projeto, pedimos a criação de um diagrama DER para verificar o modelo sugerido e visualizar melhor as modificações necessárias. Definimos os diagramas em texto, o que facilita a interpretação e a edição, e há várias ferramentas gratuitas para isso. No código, escolhemos o Mermaid.js, por ser suportado nativamente pelo GitHub. Neste documento, geramos os diagramas com PlantUML, porque as imagens geradas podem ser incluídas no LaTeX. 
 
 
-# Refatoração Cenários BDD
+# Refatoração dos cenários BDD
 
-Mesmo usando uma metodologia nova, com uma sintaxe nova, ao usar BDD (Behavior Driven Developmente), na hora de definir os passos usados pelo Gherkin, percebemos ao fim da Iteração 1 que alguns cenários do Gherkin possuiam os mesmos passos setando os campos válidos. Para cada teste que verificava valor inválido de um dos campos. Isso parecia desrespeitar o princípio de reuso. Buscando soluções,  resolvemos o problema uma fábrica (ObjectMother) e builder - o builder foi criado pela geração do código a partir do arquivo openaapi.yaml.
+Mesmo com uma metodologia e uma sintaxe novas para nós, ao definir os passos dos cenários Gherkin, percebemos, ao fim da Iteração 1, que vários cenários repetiam os mesmos passos para preencher os campos válidos: um cenário para cada campo inválido testado. Isso contrariava o princípio de reúso. Resolvemos o problema com uma fábrica (*Object Mother*) e um *builder*, este gerado automaticamente a partir do arquivo `openapi.yaml`.
 
-O cenário abaixo, do arquivo `create_competition.feature`, mostra o problema ao fim da Iteração 1. Para testar apenas o nome vazio, o cenário precisa repetir os passos que preenchem todos os outros campos com valores válidos, os mesmos passos de todos os outros cenários de campo inválido:
+O cenário abaixo, do arquivo `create_competition.feature`, mostra o problema ao fim da Iteração 1. Para testar apenas o nome vazio, o cenário precisava repetir os passos que preenchem todos os outros campos com valores válidos, os mesmos passos de todos os outros cenários de campo inválido:
 
 ```gherkin
 Scenario: Administrator tries to create a competition without a name
@@ -85,7 +85,7 @@ Scenario: Administrator tries to create a competition without a name
   Then the system rejects the competition creation and shows an error message about the missing name
 ```
 
-Na Iteração 3, o mesmo cenário ficou apenas com o que o distingue dos demais. Os valores válidos dos outros campos passaram a vir da fábrica `CompetitionMother`, que devolve um `CompetitionCreateRequest` já preenchido, e o passo sobrescreve somente o campo em teste:
+Na Iteração 3, deixamos no cenário apenas o que o distingue dos demais. Os valores válidos dos outros campos passaram a vir da fábrica `CompetitionMother`, que devolve um `CompetitionCreateRequest` já preenchido, e o passo sobrescreve somente o campo em teste:
 
 ```gherkin
 Scenario: Administrator tries to create a competition without a name
@@ -95,19 +95,22 @@ Scenario: Administrator tries to create a competition without a name
   Then the system rejects the competition creation and shows an error message about the missing name
 ```
 
-# ** Desenvolvimento para Disciplina de Arquitetura Avançada **
+# **Desenvolvimento para a disciplina de Arquitetura Avançada**
 
 ## **Etapa 1 — Organização Arquitetural**
 
-| Requisito | Situação |
-| :---- | :---- |
-| Fluxo Controller → Service → Repository → BD, sem acesso direto do controller ao repository | Atendido |
-| Validação via Bean Validation | Atendido — via contrato OpenAPI (docs/openapi.yaml), que gera as anotações no DTO |
-| Tratamento de exceções centralizado | Atendido — ApiExceptionHandler com @ControllerAdvice |
-| Duas ou mais consultas Spring Data além do CRUD básico | Atendido — bem mais que duas, em vários repositórios |
-| Documentação da API via OpenAPI/Swagger | Atendido como contrato estático (docs/openapi.yaml); falta uma UI interativa (Swagger UI) rodando junto da aplicação — ver seção 5 |
-| Organização de pacotes por domínio/funcionalidade, não por camada técnica | Atendido — pacotes reorganizados por domínio (link/, login/, competition/, log/, email/, captcha/, common/); ver "Principais tarefas realizadas na Etapa 1" abaixo |
-| README com módulos, dependência entre eles e candidato a serviço independente | Parcial — a informação existe implicitamente, mas não está escrita no README nesse formato |
+Na tabela abaixo, a coluna "Antes" mostra a situação do projeto no levantamento inicial, feito em 02/09/2026, comparando o projeto com os requisitos da disciplina. A coluna "Ao fim da Etapa 1" mostra a situação na tag `etapa-1`, de 30/09/2026.
+
+| Requisito | Antes (02/09/2026) | Ao fim da Etapa 1 (tag `etapa-1`) |
+| :---- | :---- | :---- |
+| Fluxo Controller → Service → Repository → BD, sem acesso direto do controller ao repository | Atendido | Atendido |
+| Validação via Bean Validation | Atendido — via contrato OpenAPI (docs/openapi.yaml), que gera as anotações no DTO | Atendido |
+| Tratamento de exceções centralizado | Atendido — ApiExceptionHandler com @ControllerAdvice | Atendido |
+| Duas ou mais consultas Spring Data além do CRUD básico | Atendido — bem mais que duas, em vários repositórios | Atendido |
+| Documentação da API via OpenAPI/Swagger | Atendido como contrato estático (docs/openapi.yaml); falta uma UI interativa (Swagger UI) rodando junto da aplicação | Atendido — o Swagger UI roda junto da aplicação, sobre o contrato estático (spec 05-009); ver "Preparação do sistema para testes com Swagger" abaixo |
+| Organização de pacotes por domínio/funcionalidade, não por camada técnica | **Não atendido** — pacotes organizados por camada técnica: web/, service/, repository/, domain/, email/, captcha/ | Atendido — pacotes reorganizados por domínio (link/, login/, competition/, log/, email/, captcha/, common/); ver "Principais tarefas realizadas na Etapa 1" abaixo |
+| README com módulos, dependência entre eles e candidato a serviço independente | Parcial — a informação existe implicitamente, mas não está escrita no README nesse formato | Parcial — os módulos e as dependências entre eles estão documentados em docs/diagrams/modulos.md, não no README |
+| Tag etapa-1 | **Não atendido** | Atendido |
 
 ### **Principais tarefas realizadas na Etapa 1**
 
@@ -214,11 +217,11 @@ Para evitar cadastro de usuários usando emails temporários, usamos listas grat
 
 # Bibliografia
 
-ASPECT Oriented Programming (AOP) in Spring Framework. *GeeksforGeeks*, [20--]. Disponível em: <https://www.geeksforgeeks.org/advance-java/aspect-oriented-programming-aop-in-spring-framework/>. Acesso em: 5 out. 2026.
+ASPECT Oriented Programming (AOP) in Spring Framework. *GeeksforGeeks*, [20--]. Disponível em: https://www.geeksforgeeks.org/advance-java/aspect-oriented-programming-aop-in-spring-framework/. Acesso em: 5 out. 2026.
 
-GRAZIANO, Alfonso. **AI-Native Software Engineering**. Sebastopol, CA: O'Reilly Media, 2026. E-book. Versão preliminar (*early release*); publicação prevista para fev. 2027. Disponível em: <https://learning.oreilly.com/library/view/ai-native-software-engineering/0642572352530/>. Acesso em: 24 set. 2026.
+GRAZIANO, Alfonso. **AI-Native Software Engineering**. Sebastopol, CA: O'Reilly Media, 2026. E-book. Versão preliminar (*early release*); publicação prevista para fev. 2027. Disponível em: https://learning.oreilly.com/library/view/ai-native-software-engineering/0642572352530/. Acesso em: 24 set. 2026.
 
-SMART, John Ferguson. **BDD in Action**: Behavior-Driven Development for the Whole Software Lifecycle. Shelter Island, NY: Manning Publications, 2014. E-book. ISBN 978-1-61729-165-4. Disponível em: <https://learning.oreilly.com/library/view/bdd-in-action/9781617291654/>. Acesso em: 24 set. 2026.
+SMART, John Ferguson. **BDD in Action**: Behavior-Driven Development for the Whole Software Lifecycle. Shelter Island, NY: Manning Publications, 2014. E-book. ISBN 978-1-61729-165-4. Disponível em: https://learning.oreilly.com/library/view/bdd-in-action/9781617291654/. Acesso em: 24 set. 2026.
 
 [https://github.com/github/spec-kit/blob/main/templates/tasks-template.md ](https://github.com/github/spec-kit) Acessado 16/10/2026
 
