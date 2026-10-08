@@ -42,7 +42,7 @@ checklist nela.
 | ~~T015~~ | `app`: remover `SqsEmailSender`, `EmailMessage`, `EmailContentRenderer`, `RenderedEmail`, `templates/email/`, `spring-cloud-aws-starter-sqs` e a configuração de fila dos perfis; `email.sender` = `email-service` em `docker`/`staging`/`production`; `QueueLoggingAspect` passa a interceptar o `EmailServiceGateway` (sem logar a chave nem o corpo); remover `SqsEmailSenderTest`/`SqsEmailSenderDockerIntegrationTest` e ajustar `QueueLoggingAspectIntegrationTest`. T001 fica verde | T014 | | #119 |
 | ~~T016~~ | `docker-compose.yml`: healthcheck no `email-service`; `app` com `depends_on: email-service: condition: service_healthy` e `EMAIL_SERVICE_URL`; atualizar o comentário do `EMAIL_SERVICE_API_KEY` ("Nothing in app reads it yet"); `docker compose config -q` | T010 | [P] | #119 |
 | ~~T017~~ | `docker compose down -v` + subir `db`, `db-email-service`, `localstack`, `email-service`; `SPRING_PROFILES_ACTIVE=docker mvn -pl app -am verify` e `mvn -pl email-service -am verify` — T001 a T006 verdes, suítes Cucumber verdes | T015, T016, T003, T004, T005 | | #119 |
-| T018 | Conferir os 5 e-mails no SES Viewer do LocalStack com o fluxo real (convite, link de cadastro, 3 variações de login) e comparar com os renderizados pelo Thymeleaf antes da mudança. Registrar aqui | T017 | | #119 |
+| ~~T018~~ | Conferir os 5 e-mails no SES Viewer do LocalStack com o fluxo real (convite, link de cadastro, 3 variações de login) e comparar com os renderizados pelo Thymeleaf antes da mudança. Registrar aqui | T017 | | #119 |
 | ~~T019~~ | Documentação: `README.md` (o `app` depende do `email-service` para enviar e-mail; ordem de subida); `docs/context/iteracao-5.md` (seção 5 e "Decisões em aberto": `SqsEmailSender` substituído, decidido); diagrama de componentes/sequência afetado em `docs/diagrams/`, validando a renderização do Mermaid (constitution, "Diagramas Mermaid") | T017 | [P] | #119 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
@@ -122,7 +122,8 @@ Feito nesta rodada: T014, T015, o item (5) do T006 e a documentação do T019.
   (`SpringTemplateEngine`, assunto tirado do `<title>`, como fazia o `EmailContentRenderer`) e
   pelo SES (`POST /templates/{nome}/preview` do `email-service`, que chama o `TestRenderTemplate`).
   Nos 5 casos, o assunto e o texto visível são iguais (comparação sem tags, comentários e
-  diferenças de espaço). A conferência visual lado a lado fica com a Leila.
+  diferenças de espaço). Na conferência visual lado a lado, a Leila confirmou que os 5 estão
+  iguais (2026-10-08).
 - **T019**: a documentação entrou na segunda rodada (`0d91c20`). Faltava registrar a validação do
   Mermaid exigida pela constitution: os 5 blocos alterados pela PR (`classes.md` bloco 3,
   `modulos.md` blocos 9 e 10, `sequencia.md` blocos 6 e 10) foram renderizados pelo validador
