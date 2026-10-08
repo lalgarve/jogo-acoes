@@ -1,6 +1,6 @@
 # Spec: Fronteira síncrona entre `app` e `email-service` (Etapa 2)
 
-**Status:** em revisão
+**Status:** implementada
 **Issue:** [#119](https://github.com/lalgarve/jogo-acoes/issues/119) (sub-issue do épico
 [#117](https://github.com/lalgarve/jogo-acoes/issues/117))
 **Iteração:** iteration-5

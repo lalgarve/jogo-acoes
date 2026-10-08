@@ -1,7 +1,7 @@
 # Spec: Remover o perfil `sandbox` — testes sempre contra a infraestrutura real
 
 **Status:** rascunho
-**Issue:** #<a criar>
+**Issue:** [#139](https://github.com/lalgarve/jogo-acoes/issues/139)
 **Iteração:** iteration-5
 
 ## Resumo

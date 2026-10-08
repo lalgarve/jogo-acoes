@@ -1,7 +1,7 @@
 # Spec: Cobertura de testes do `app` depois da PR #120
 
-**Status:** rascunho
-**Issue:** #132
+**Status:** implementada
+**Issue:** [#132](https://github.com/lalgarve/jogo-acoes/issues/132)
 **Iteração:** iteration-5
 
 ## Resumo
