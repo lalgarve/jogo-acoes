@@ -1,6 +1,6 @@
 # API-KEY de teste do Serviço de E-mail
 
-Chave usada só nos ambientes `docker` e `sandbox` (ver `memory/constitution.md`, "Nomenclatura
+Chave usada só no ambiente `docker` (ver `memory/constitution.md`, "Nomenclatura
 de ambientes") para testar o Serviço de E-mail com a validação real de API-KEY da spec
 [05-030](../../../specs/05-030-validacao-api-key-servico-email/spec.md). **Nunca** usar estes
 valores em `staging`/`production`: estão versionados de propósito, não são segredo.
@@ -16,7 +16,7 @@ valores em `staging`/`production`: estão versionados de propósito, não são s
 A chave em texto puro só aparece uma vez, na saída do `generate`, e não dá para recuperá-la a
 partir do banco (só o hash HMAC-SHA256 fica gravado). Por isso o resultado da geração foi
 salvo em [`api-key-test-data.sql`](api-key-test-data.sql): restaurar esse dump num banco novo
-(volume do Docker recriado, Postgres do sandbox) torna a mesma chave válida de novo, sem gerar
+(volume do Docker recriado, por exemplo) torna a mesma chave válida de novo, sem gerar
 outra e sem atualizar todos os lugares que a usam. O hash só bate com o pepper acima — com
 outro pepper, a chave volta `NOT_FOUND`.
 
@@ -42,7 +42,7 @@ quantas vezes quiser. Depois, define o remetente do cliente `jogo-acoes` como
 `scripts/set-email-sender.sh`), o endereço que o LocalStack verifica na subida. Isso só acontece
 se o `email-service` já subiu alguma vez contra o banco (é o Flyway dele que cria a tabela
 `client_sender`); senão o script avisa e basta rodar de novo depois. Sem o container rodando, usa o `psql` local contra `localhost:5433`
-(sandbox); `--host`/`--port` mudam o destino.
+(um Postgres fora do Compose); `--host`/`--port` mudam o destino.
 
 ## Gerar uma chave nova (só se for de propósito)
 

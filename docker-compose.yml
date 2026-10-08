@@ -122,8 +122,8 @@ services:
       # the queue. The CI runner's Cucumber suites leave EMAIL_SENDER unset and use the stub.
       EMAIL_SERVICE_BASE_URL: http://email-service:8080/api
       EMAIL_SENDER: email-service
-      # Test API key for calling email-service as client "jogo-acoes" (spec 05-030) -- docker/
-      # sandbox only, versioned on purpose, not a secret. Matches the row restored by
+      # Test API key for calling email-service as client "jogo-acoes" (spec 05-030) -- docker
+      # only, versioned on purpose, not a secret. Matches the row restored by
       # scripts/test-api-key.sh (docker/postgres-email-service/test-data/README.md): without that
       # restore, email-service answers 401 and app refuses to start.
       EMAIL_SERVICE_API_KEY: dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU

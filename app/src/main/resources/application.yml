@@ -16,8 +16,10 @@ spring:
     locations: classpath:db/migration-jogo-acoes
   application:
     name: jogo-acoes
+  # Spec 05-035: every place this project runs has Docker, so `docker` is the default; staging
+  # and production always set SPRING_PROFILES_ACTIVE.
   profiles:
-    default: sandbox
+    default: docker
   jpa:
     open-in-view: false
     hibernate:
@@ -39,7 +41,7 @@ spring:
             read-timeout: 5000
 
 # Starting point, not a locked-in secret -- override via ALTCHA_SECRET in any environment
-# where the default matters (i.e. anywhere reachable from outside sandbox/docker).
+# where the default matters (i.e. anywhere reachable from outside docker).
 altcha:
   secret: ${ALTCHA_SECRET:dev-only-altcha-secret-change-me}
 
