@@ -19,7 +19,8 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 | Caminhos | `GET /players/{userId}` (`getPlayer`) e `GET /players?email=` (`findPlayerByEmail`), tag nova `player-directory` (ver linha abaixo). | em aberto (proposta) | O pedido original era `/competition/players/{userId}` e `/competition/players/email/{email}`. `/competitions/players/...` disputaria o template `/competitions/{competitionId}` e sugere que o recurso pertence a uma competição, o que não é o caso. E-mail no caminho exige escapar `+`/`@` e vaza dado pessoal em access log; como parâmetro de query também vai para o log, mas a alternativa sem log nenhum (corpo de `POST`) já é a busca da spec 05-039 com filtro de e-mail exato. Se a 05-039 ganhar esse filtro, `findPlayerByEmail` pode até ser dispensada. |
 | Tag no contrato | Tag nova `player-directory` no fim da lista de tags. | resolvida | A tag `players` hoje agrupa a gestão de jogadores *dentro* de uma competição (`/competitions/{id}/players/...`). Com `useTags=true` no gerador (`app/pom.xml`), cada tag vira uma interface Java: reaproveitar `players` poria as operações novas em `PlayersApi`, junto das de competição; a tag nova gera `PlayerDirectoryApi`, implementada só pelo controller desta spec, e uma seção própria no Swagger UI. |
 | Schema de resposta | `PlayerSummary { userId, name, email, ownedCount, publicCount, privateCount }`, contagens `integer` (`int64`). | resolvida | Reaproveitado sem mudança como item da lista na spec 05-039. |
-| Onde fica o cálculo das contagens | Módulo `competition`, num serviço novo `PlayerDirectoryService`, com consultas JPQL em `CompetitionRepository` (`countByCreator_Id`) e `ParticipationRepository` (contagem agrupada por `competition.type` filtrando `status = IN_COMPETITION`). Dados do usuário via `UserService`. | resolvida | As contagens são dados de `competition`, e `competition` já depende de `user` — a direção permitida. Colocar em `user` exigiria `user` → `competition`, um ciclo. Um módulo novo (`player/`) só para isso não teria repositório próprio e seria só um repasse. |
+| Onde fica o cálculo das contagens | Módulo `competition`, num serviço novo `PlayerDirectoryService`. | resolvida | As contagens são dados de `competition`, e `competition` já depende de `user` — a direção permitida. Colocar em `user` exigiria `user` → `competition`, um ciclo. Um módulo novo (`player/`) só para isso não teria repositório próprio e seria só um repasse. |
+| Como o resumo é consultado | Um único SELECT JPQL a partir de `User`, filtrado por `u.id = :id` ou `lower(u.email) = lower(:email)`, trazendo `u.id, u.name, u.email` e as três contagens como subconsultas correlacionadas (`select count(c) from Competition c where c.creator = u`; `select count(p) from Participation p where p.user = u and p.status = IN_COMPETITION and p.competition.type = PUBLIC`, idem `PRIVATE`), projetado direto num record. É a mesma consulta que a busca da spec 05-039 estende com filtros e paginação; o repositório onde ela mora é a decisão "Onde mora a consulta" do `plan.md` de lá, que vale para as duas specs. | resolvida | Substitui a ideia anterior de três consultas (usuário via `UserService`, `countByCreator_Id`, contagem agrupada de participações): uma ida ao banco em vez de três, e uma definição só das contagens para a consulta de um jogador e para a busca — as duas não podem divergir. |
 | Onde fica o controller | `competition/PlayerDirectoryController`, implementando a interface gerada da tag escolhida. | resolvida | Mesmo módulo do serviço. |
 | Autorização de `GET /players/{userId}` | `x-roles: [PLAYER, ADMINISTRATOR]` no contrato e só `authenticated()` no `SecurityConfigContributor`; a regra "jogador só vê o próprio" fica no serviço: se `!currentUserIsAdministrator() && userId != currentUser().getId()` → mesmo `404` de "não existe". | resolvida | A regra depende do valor do caminho, não só do papel — não cabe num `requestMatchers`. Responder `404` (e não `403`) não revela se o id existe. |
 | Autorização de `GET /players?email=` | `hasRole("ADMINISTRATOR")` em `CompetitionSecurityConfigContributor` para `GET /players` (sem id). | resolvida | Regra só por papel; jogador recebe `403` do próprio Spring Security. |
@@ -117,16 +118,16 @@ com ela se a escolha for outra.
   `PlayerSummary`.
 - `competition/PlayerDirectoryService.java` (novo).
 - `competition/PlayerDirectoryController.java` (novo).
-- `competition/CompetitionRepository.java`, `competition/ParticipationRepository.java`
-  (modificados) — consultas de contagem.
+- Repositório definido em "Onde mora a consulta" (spec 05-039) (modificado) — o SELECT do
+  resumo.
 - `competition/CompetitionSecurityConfigContributor.java` (modificado) — regras de `/players`.
 - `app/src/test/resources/features/view_player_profile.feature` (novo) e os steps
   correspondentes.
 
 ## Riscos e trade-offs
 
-- **Contagens por consulta, não armazenadas.** Duas consultas por resumo; barato para um
-  resumo só. A busca da spec 05-039 precisa delas para uma página inteira — ver o `plan.md` de
-  lá para como evitar N+1.
+- **Contagens calculadas, não armazenadas.** Três subconsultas correlacionadas num único
+  SELECT por resumo; barato para um usuário só, e o mesmo SELECT serve à página inteira da
+  busca (spec 05-039) sem N+1.
 - **O caminho `/players` é genérico.** Se no futuro existir um recurso "jogador dentro de uma
   competição" no nível raiz, os nomes vão competir. Hoje não há nada assim no contrato.
