@@ -35,6 +35,20 @@ implementação"), mesmo com desenho técnico claro na conversa, mesmo se a muda
 — "parecer simples" é julgamento da sessão, não permissão de quem pediu. Detalhe completo:
 `memory/constitution.md` → "Nunca começar a implementar sem pedido explícito".
 
+## Nunca abrir PR sem pedido explícito
+
+Já aconteceu: depois que a [PR #145](https://github.com/lalgarve/jogo-acoes/pull/145) foi
+mesclada sem um commit que tinha ficado para trás, a sessão recriou o branch e abriu sozinha a
+[PR #146](https://github.com/lalgarve/jogo-acoes/pull/146) — prematura, com specs que ainda
+tinham decisões em aberto, e sem ninguém ter pedido. O fluxo padrão é **commit e push no
+branch**; PR só quando pedirem explicitamente ("abre a PR", "pode abrir PR"). Recuperar algo
+que ficou de fora de um merge, ou continuar o trabalho depois de uma PR mesclada, **não** é
+pedido de PR nova. O mesmo vale para editar, mesclar ou fechar PR e para criar/editar Issue.
+
+`.claude/settings.json` reforça isso: as ferramentas de PR/Issue do GitHub estão em
+`permissions.ask`, então qualquer tentativa pede confirmação antes de executar. Não remover
+essas regras para "destravar" uma sessão.
+
 ## Baseline Java e upgrades de LTS
 
 Java/JDK 21 é a baseline suportada atualmente por este projeto. Não sugerir nem iniciar uma
