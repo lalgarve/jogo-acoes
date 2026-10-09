@@ -74,52 +74,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/CompetitionSummary'
 
-  /competitions/mine:
-    get:
-      tags: [my-competitions]
-      operationId: listMyCompetitions
-      summary: List the caller's own competitions, grouped by relationship
-      description: >
-        Requires a logged-in session (any authenticated role) — spec 05-004,
-        view_my_competitions.feature. Three fixed groups, always present even when empty.
-      x-roles: [PLAYER, ADMINISTRATOR]
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MyCompetitions'
-        '401': { description: Not logged in }
-
-  /competitions/{competitionId}:
-    get:
-      tags: [my-competitions]
-      operationId: getCompetitionDetail
-      summary: Get a competition's basic information and the caller's access level to it
-      description: >
-        Requires a logged-in session (any authenticated role); the caller's relationship to
-        the competition (participant, invited/requested-but-unconfirmed, administrator, or
-        none) decides `accessLevel`, not the route itself — see spec 05-004's
-        `CompetitionAccessResolver`. A player with no relationship to the competition gets
-        `404`, not `403`, so as not to reveal it exists (same pattern as
-        `requestOrConfirmEntry`).
-      x-roles: [PLAYER, ADMINISTRATOR]
-      parameters:
-        - name: competitionId
-          in: path
-          required: true
-          schema: { type: integer, format: int64 }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CompetitionDetail'
-        '401': { description: Not logged in }
-        '404': { description: "Competition not found, or the caller has no relationship to it" }
-
   /competitions/{competitionId}/invite-emails:
     post:
       tags: [competitions]
@@ -197,35 +151,6 @@ paths:
           description: Private competition (no visible entry point), or competition not found
         '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
-  /login-requests:
-    post:
-      tags: [login]
-      operationId: requestLoginLink
-      summary: Request a login link for an already-registered player or the administrator
-      description: >
-        Spec 05-005: `returnTo`, when present, is the page the caller was trying to reach
-        before being asked to log in — consuming the resulting link redirects there instead
-        of the role-based default. Must be a same-origin relative path (starts with a single
-        `/`, never `//` right after); anything else is silently ignored, falling back to the
-        default, since this endpoint requires no session and an unvalidated redirect target
-        would be an open redirect.
-      x-roles: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email]
-              properties:
-                email: { type: string, format: email }
-                returnTo:
-                  type: string
-                  description: Same-origin relative path to redirect to after login — see the operation description.
-      responses:
-        '202': { description: Accepted — link sent by e-mail if the address is known }
-        '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
-
   /login-links/{token}:
     get:
       tags: [login]
@@ -301,6 +226,35 @@ paths:
                 $ref: '#/components/schemas/LoginResult'
         '400': { description: Link invalid or expired }
 
+  /login-requests:
+    post:
+      tags: [login]
+      operationId: requestLoginLink
+      summary: Request a login link for an already-registered player or the administrator
+      description: >
+        Spec 05-005: `returnTo`, when present, is the page the caller was trying to reach
+        before being asked to log in — consuming the resulting link redirects there instead
+        of the role-based default. Must be a same-origin relative path (starts with a single
+        `/`, never `//` right after); anything else is silently ignored, falling back to the
+        default, since this endpoint requires no session and an unvalidated redirect target
+        would be an open redirect.
+      x-roles: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                returnTo:
+                  type: string
+                  description: Same-origin relative path to redirect to after login — see the operation description.
+      responses:
+        '202': { description: Accepted — link sent by e-mail if the address is known }
+        '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
+
   /competitions/{competitionId}/players:
     get:
       tags: [players]
@@ -350,6 +304,32 @@ paths:
                   items: { type: string, format: email }
       responses:
         '202': { description: "Accepted — players added with status e-mail not sent, then invited" }
+        '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
+
+  /competitions/{competitionId}/players/invite-emails:
+    post:
+      tags: [players]
+      operationId: resendPlayerInviteEmails
+      summary: Send or resend the invite e-mail to a group of players
+      x-roles: [ADMINISTRATOR]
+      parameters:
+        - name: competitionId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [participationIds]
+              properties:
+                participationIds:
+                  type: array
+                  items: { type: integer, format: int64 }
+      responses:
+        '202': { description: Accepted }
         '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /competitions/{competitionId}/players/{participationId}:
@@ -425,31 +405,51 @@ paths:
         '202': { description: Accepted }
         '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
-  /competitions/{competitionId}/players/invite-emails:
-    post:
-      tags: [players]
-      operationId: resendPlayerInviteEmails
-      summary: Send or resend the invite e-mail to a group of players
-      x-roles: [ADMINISTRATOR]
+  /competitions/mine:
+    get:
+      tags: [my-competitions]
+      operationId: listMyCompetitions
+      summary: List the caller's own competitions, grouped by relationship
+      description: >
+        Requires a logged-in session (any authenticated role) — spec 05-004,
+        view_my_competitions.feature. Three fixed groups, always present even when empty.
+      x-roles: [PLAYER, ADMINISTRATOR]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyCompetitions'
+        '401': { description: Not logged in }
+
+  /competitions/{competitionId}:
+    get:
+      tags: [my-competitions]
+      operationId: getCompetitionDetail
+      summary: Get a competition's basic information and the caller's access level to it
+      description: >
+        Requires a logged-in session (any authenticated role); the caller's relationship to
+        the competition (participant, invited/requested-but-unconfirmed, administrator, or
+        none) decides `accessLevel`, not the route itself — see spec 05-004's
+        `CompetitionAccessResolver`. A player with no relationship to the competition gets
+        `404`, not `403`, so as not to reveal it exists (same pattern as
+        `requestOrConfirmEntry`).
+      x-roles: [PLAYER, ADMINISTRATOR]
       parameters:
         - name: competitionId
           in: path
           required: true
           schema: { type: integer, format: int64 }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [participationIds]
-              properties:
-                participationIds:
-                  type: array
-                  items: { type: integer, format: int64 }
       responses:
-        '202': { description: Accepted }
-        '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompetitionDetail'
+        '401': { description: Not logged in }
+        '404': { description: "Competition not found, or the caller has no relationship to it" }
 
   /sessions:
     get:
