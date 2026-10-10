@@ -29,7 +29,7 @@ precisaria percorrer todas as competições.
   `privateCount`.
   - `ownedCount`: número de competições cujo criador é o usuário.
   - `publicCount` / `privateCount`: número de competições públicas / privadas em que o usuário
-    tem participação com status `IN_COMPETITION` (ver "Decisões em aberto").
+    tem participação com status `IN_COMPETITION` (ver "Decisões em aberto", resolvida).
 - `GET /players/{userId}`:
   - jogador (`PLAYER`): só o próprio `userId`. Qualquer outro id → `404`, sem distinguir "não
     existe" de "existe mas não é seu" (mesmo padrão de `getCompetitionDetail` e
@@ -58,12 +58,12 @@ precisaria percorrer todas as competições.
 
 ## Decisões em aberto
 
-- **O que `publicCount`/`privateCount` contam.** Proposta: só participações `IN_COMPETITION`
-  (entrada confirmada), em qualquer status de competição (aberta ou encerrada). Alternativas:
-  contar também convites/pedidos pendentes (`EMAIL_NOT_SENT`, `EMAIL_SENT`, `LINK_CLICKED`), ou
-  contar só competições ainda abertas. A definição escolhida vale também para o filtro por tipo
-  de competição da spec 05-039.
-- **O administrador aparece como "jogador"?** Proposta: sim — `/players/{userId}` aceita
-  qualquer usuário, e é o único jeito de o administrador ver o próprio `ownedCount`. O nome
-  `players` fica por consistência com o resto do contrato, que já chama de "player" todo usuário
-  que não está agindo como administrador.
+Nenhuma. Resolvidas na sessão de 2026-10-10 (propostas aceitas):
+
+- **O que `publicCount`/`privateCount` contam:** só participações `IN_COMPETITION` (entrada
+  confirmada), em competição de qualquer status (aberta ou encerrada). Convites e pedidos
+  pendentes (`EMAIL_NOT_SENT`, `EMAIL_SENT`, `LINK_CLICKED`) não contam. A mesma definição vale
+  para o filtro por tipo de competição da spec 05-039.
+- **O administrador aparece como "jogador":** sim — `/players/{userId}` aceita qualquer
+  usuário, e é o único jeito de o administrador ver o próprio `ownedCount`. O nome `players`
+  fica por consistência com o resto do contrato.

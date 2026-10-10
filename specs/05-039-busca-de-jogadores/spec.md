@@ -59,8 +59,9 @@ privadas?", "quem já criou competição?". Hoje a única listagem de jogadores 
 
 ## Decisões em aberto
 
-- **Filtro de e-mail exato.** Acrescentar um filtro `email` (igualdade) deixaria
-  `GET /players?email=` da spec 05-038 redundante e tiraria o e-mail da URL. Proposta: não
-  acrescentar agora; reavaliar se a 05-038 for implementada depois desta.
-- **Paginação por página ou por cursor.** Proposta: página/tamanho, porque o pedido inclui o
-  total e o volume esperado é pequeno. Ver `plan.md`.
+Nenhuma. Resolvidas na sessão de 2026-10-10 (propostas aceitas):
+
+- **Filtro de e-mail exato:** não entra nesta spec. A busca por e-mail continua sendo
+  `GET /players?email=` (spec 05-038).
+- **Paginação:** por página e tamanho (offset), porque o pedido inclui o total e o volume
+  esperado é pequeno. Ver `plan.md`.

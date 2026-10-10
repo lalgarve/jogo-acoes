@@ -16,7 +16,7 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 
 | Pergunta | Decisão | Status | Raciocínio |
 |---|---|---|---|
-| Caminhos | `GET /players/{userId}` (`getPlayer`) e `GET /players?email=` (`findPlayerByEmail`), tag nova `player-directory` (ver linha abaixo). | em aberto (proposta) | O pedido original era `/competition/players/{userId}` e `/competition/players/email/{email}`. `/competitions/players/...` disputaria o template `/competitions/{competitionId}` e sugere que o recurso pertence a uma competição, o que não é o caso. E-mail no caminho exige escapar `+`/`@` e vaza dado pessoal em access log; como parâmetro de query também vai para o log, mas a alternativa sem log nenhum (corpo de `POST`) já é a busca da spec 05-039 com filtro de e-mail exato. Se a 05-039 ganhar esse filtro, `findPlayerByEmail` pode até ser dispensada. |
+| Caminhos | `GET /players/{userId}` (`getPlayer`) e `GET /players?email=` (`findPlayerByEmail`), tag nova `player-directory` (ver linha abaixo). | resolvida (2026-10-10) | O pedido original era `/competition/players/{userId}` e `/competition/players/email/{email}`. `/competitions/players/...` disputaria o template `/competitions/{competitionId}` e sugere que o recurso pertence a uma competição, o que não é o caso. E-mail no caminho exige escapar `+`/`@` e vaza dado pessoal em access log; como parâmetro de query também vai para o log, mas a alternativa sem log nenhum (corpo de `POST`) já é a busca da spec 05-039 com filtro de e-mail exato. Se a 05-039 ganhar esse filtro, `findPlayerByEmail` pode até ser dispensada. |
 | Tag no contrato | Tag nova `player-directory` no fim da lista de tags. | resolvida | A tag `players` hoje agrupa a gestão de jogadores *dentro* de uma competição (`/competitions/{id}/players/...`). Com `useTags=true` no gerador (`app/pom.xml`), cada tag vira uma interface Java: reaproveitar `players` poria as operações novas em `PlayersApi`, junto das de competição; a tag nova gera `PlayerDirectoryApi`, implementada só pelo controller desta spec, e uma seção própria no Swagger UI. |
 | Schema de resposta | `PlayerSummary { userId, name, email, ownedCount, publicCount, privateCount }`, contagens `integer` (`int64`). | resolvida | Reaproveitado sem mudança como item da lista na spec 05-039. |
 | Onde fica o cálculo das contagens | Módulo `competition`, num serviço novo `PlayerDirectoryService`. | resolvida | As contagens são dados de `competition`, e `competition` já depende de `user` — a direção permitida. Colocar em `user` exigiria `user` → `competition`, um ciclo. Um módulo novo (`player/`) só para isso não teria repositório próprio e seria só um repasse. |
@@ -28,7 +28,7 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 | Onde fica o controller | `competition/PlayerDirectoryController`, implementando a interface gerada da tag escolhida. | resolvida | Mesmo módulo do serviço. |
 | Autorização de `GET /players/{userId}` | `x-roles: [PLAYER, ADMINISTRATOR]` no contrato e só `authenticated()` no `SecurityConfigContributor`; a regra "jogador só vê o próprio" fica no serviço: se `!currentUserIsAdministrator() && userId != currentUser().getId()` → mesmo `404` de "não existe". | resolvida | A regra depende do valor do caminho, não só do papel — não cabe num `requestMatchers`. Responder `404` (e não `403`) não revela se o id existe. |
 | Autorização de `GET /players?email=` | `hasRole("ADMINISTRATOR")` em `CompetitionSecurityConfigContributor` para `GET /players` (sem id). | resolvida | Regra só por papel; jogador recebe `403` do próprio Spring Security. |
-| Normalização do e-mail | `findByEmail` hoje compara exatamente. Comparar com `lower(email)` nessa consulta. | em aberto | Depende de como o e-mail é gravado na criação (se já é normalizado, não há nada a fazer). Verificar na implementação e registrar aqui. |
+| Normalização do e-mail | Comparar sempre com `lower(...)` dos dois lados (`lower(u.email) = lower(:email)`), independente de como o e-mail é gravado. `UserService.findByEmail`, que compara exatamente, não é reaproveitado aqui. | resolvida (2026-10-10) | A spec pede comparação sem diferenciar maiúsculas. Aplicar `lower` dos dois lados é correto mesmo que a gravação já normalize, então não depende de verificar isso na implementação. Com o volume atual, dispensa índice funcional em `lower(email)`. |
 | Exceções | Reaproveitar o tratamento de "não encontrado" já existente: o controller devolve `ResponseEntity.notFound()` a partir de um `Optional` vazio, como `SessionsController.revokeSession`. Nenhuma classe de exceção nova. | resolvida | Sem exceção nova, o critério de aceite da constitution fica restrito aos ramos `404`/`403`/`400`, todos cobertos por cenário. |
 
 ## Cenários Gherkin (`app/src/test/resources/features/view_player_profile.feature`, novo)
@@ -113,8 +113,8 @@ Feature: View player profile
     Then the system rejects the request as not logged in
 ```
 
-O cenário "Pending invitations are not counted" fixa a decisão em aberto do `spec.md`; muda junto
-com ela se a escolha for outra.
+O cenário "Pending invitations are not counted" fixa a definição das contagens resolvida no
+`spec.md` (só `IN_COMPETITION`).
 
 ## Estrutura de módulos/pacotes
 
