@@ -18,7 +18,7 @@ paginada — esta é a primeira, então o formato escolhido aqui vira o padrão 
 | Formato da resposta | `PlayerPage { total: int64, page: int32, size: int32, items: PlayerSummary[] }`. | resolvida | `total` foi pedido explicitamente; `page`/`size` ecoam o que foi aplicado (útil quando o cliente omitiu e valeu o padrão). |
 | Paginação | Página/tamanho (offset), tamanho máximo 100. | em aberto (proposta) | Volume esperado pequeno (usuários de um jogo de turma), e offset dá o `total` sem custo extra de modelagem. Cursor só valeria a pena com volume grande ou com dados mudando muito entre páginas — nenhum dos dois se aplica. |
 | Consulta | Dois SELECTs JPQL a partir de `User` por busca: (1) a página — o mesmo SELECT do resumo da spec 05-038 (`u.id, u.name, u.email` e as três contagens como subconsultas correlacionadas), agora com os filtros abaixo, `order by u.name, u.id` e `offset`/`limit`; (2) `count(u)` com os mesmos filtros, para `total`. | resolvida | Contagens no mesmo SELECT da página evitam N+1 (requisito não-funcional), e reaproveitar o SELECT da 05-038 garante que as contagens da busca e da consulta de um jogador não divergem. Considerado e descartado: juntar página e total num SELECT só com `count(*) over()` — é HQL específico do Hibernate (não JPQL padrão), e com a página vazia não volta linha nenhuma, então o caso "página além do fim" (que precisa do `total`) exigiria um `count` à parte de qualquer jeito. Filtros viram `exists (...)` correlacionados: tipo de competição → `exists` em `Participation` com `status = IN_COMPETITION` e `competition.type = :type`; dono → `exists`/`not exists` em `Competition` com `creator = u`; domínio → `lower(u.email) like concat('%@', lower(:domain))`. Filtro ausente vira `(:param is null or ...)`, ou a consulta é montada com `Specification`/Criteria se o JPQL com parâmetros nulos ficar ilegível — decidir na implementação. |
-| Onde mora a consulta | `ParticipationRepository` ou `CompetitionRepository`, no módulo `competition`, consultando a entidade `User` via JPQL. | em aberto (proposta) | A regra da spec 05-029 é sobre classes `*Repository` de outro módulo, e não é violada. Mas a consulta parte de `User` e acopla `competition` ao modelo de `user` mais do que hoje. A alternativa sem esse acoplamento (pedir os ids a `UserService` e filtrar em `competition`) não pagina corretamente quando os filtros estão nos dois lados. Registrar a escolha aqui e, se for a primeira, acrescentar o caso à seção correspondente de `docs/diagrams/modulos.md`. |
+| Onde mora a consulta | `competition/ParticipationRepository` — o mesmo método criado pela 05-038, estendido com filtros e paginação. | resolvida | Decidido e justificado no `plan.md` da 05-038 (linhas "Onde mora a consulta", "Subconsultas correlacionadas ou `LEFT JOIN` + `GROUP BY`", "View materializada com as contagens" e "Índices"), que valem para as duas specs. |
 | Índice para domínio de e-mail | Nenhum agora. | resolvida | `like '%@dominio'` não usa índice B-tree comum, mas o volume não justifica índice funcional. Reavaliar se a tabela crescer. |
 | Validação | Bean Validation gerada a partir do contrato (`minimum`/`maximum` em `page`/`size`, `pattern: '^[^@\s]+$'` e `minLength: 1` em `emailDomain`); `400` pelo tratamento já existente em `common/ApiExceptionHandler`. | resolvida | Nenhuma classe de exceção nova. Cada regra de `400` do `spec.md` tem um exemplo no cenário de entrada inválida (`Scenario Outline`). |
 | Autorização | `hasRole("ADMINISTRATOR")` para `POST /players/search` em `CompetitionSecurityConfigContributor`. | resolvida | Regra só por papel. |
@@ -111,16 +111,17 @@ nas colunas `public`/`private` é sempre `IN_COMPETITION`, conforme a definiçã
   `PlayerPage`.
 - `competition/PlayerDirectoryService.java` (modificado, criado pela 05-038) — `search(...)`.
 - `competition/PlayerDirectoryController.java` (modificado) — `searchPlayers`.
-- Repositório escolhido na decisão acima (modificado) — filtros e paginação no SELECT criado
-  pela 05-038, e o `count`.
+- `competition/ParticipationRepository.java` (modificado) — filtros e paginação no SELECT
+  criado pela 05-038, e o `count`.
 - `competition/CompetitionSecurityConfigContributor.java` (modificado).
 - `app/src/test/resources/features/search_players.feature` (novo) e os steps.
 
 ## Riscos e trade-offs
 
 - **Subconsultas correlacionadas por linha.** Três por usuário da página, executadas pelo banco
-  numa única ida. Aceitável até a casa dos milhares de usuários; acima disso, trocar por
-  `left join` com `group by`.
+  numa única ida e, com os índices da 05-038, por busca em índice. Aceitável até a casa dos
+  milhares de usuários; acima disso, reavaliar as alternativas descartadas no `plan.md` da
+  05-038 (`JOIN` com contagens pré-agregadas, view materializada).
 - **Offset com dados mudando entre páginas.** Um usuário criado entre a página 0 e a 1 pode
   deslocar o resultado. Aceito: o caso de uso é consulta administrativa, não sincronização.
 - **Primeira operação paginada do contrato.** Se o formato `PlayerPage` for virar padrão, vale
