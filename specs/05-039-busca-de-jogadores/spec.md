@@ -1,7 +1,7 @@
 # Spec: Busca de jogadores com filtros e paginação
 
 **Status:** rascunho
-**Issue:** —
+**Issue:** [#150](https://github.com/lalgarve/jogo-acoes/issues/150)
 **Iteração:** iteration-5
 **Depende de:** [`05-038-consulta-de-jogador`](../05-038-consulta-de-jogador/spec.md) — reaproveita
 o schema `PlayerSummary` e a definição das contagens.

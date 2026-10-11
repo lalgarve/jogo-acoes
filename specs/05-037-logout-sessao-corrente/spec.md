@@ -1,7 +1,7 @@
 # Spec: Logout da sessão corrente
 
 **Status:** rascunho
-**Issue:** —
+**Issue:** [#148](https://github.com/lalgarve/jogo-acoes/issues/148)
 **Iteração:** iteration-5
 **Depende de:** [`05-010-gestao-sessoes-ativas`](../05-010-gestao-sessoes-ativas/spec.md) (implementada)
 

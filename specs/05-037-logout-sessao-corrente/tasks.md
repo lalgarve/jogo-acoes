@@ -10,19 +10,19 @@ referenciadas abaixo (caminho `/sessions/current`, reaproveitamento do encerrame
 devem falhar de forma previsível (o caminho ainda não existe) antes do contrato e da
 implementação.
 
-Nenhuma Issue criada ainda — a coluna "Issue" é preenchida quando a Issue-épico existir.
+Todas as tarefas abaixo são acompanhadas como checklist na Issue-épico [#148](https://github.com/lalgarve/jogo-acoes/issues/148).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Acrescentar a `manage_active_sessions.feature` os três cenários do `plan.md` (logout do dispositivo atual; sessão encerrada some da lista vista pelo segundo dispositivo; logout sem estar logado), resolvendo como o cenário anônimo convive com o `Background` (`Rule` ou arquivo próprio, seguindo o padrão dos outros `.feature`). Escrever os passos novos em `ManageActiveSessionsSteps` chamando `DELETE /sessions/current` em JSON cru; rodar e confirmar que falham agora | — | | — |
-| T002 | Contrato: em `docs/openapi.yaml`, `DELETE /sessions/current` (`operationId: logoutCurrentSession`, tag `sessions`, `x-roles: [PLAYER, ADMINISTRATOR]`, respostas `204`/`401`), declarado logo depois de `/sessions` e antes de `/sessions/{sessionId}` | T001 | | — |
-| T003 | `LoginSessionRepository.findByHttpSessionIdAndEndedAtIsNull(String httpSessionId)` | T002 | [P] | — |
-| T004 | `SessionsService`: extrair de `revoke` um método privado `end(LoginSession)` (apaga a sessão HTTP pelo `SessionRepository` e grava `endedAt`) e criar `endCurrent()`, que busca pela sessão HTTP da requisição e chama `end`; sem `LOGIN_SESSION` correspondente, invalida a sessão HTTP mesmo assim | T003 | | — |
-| T005 | `SessionsController.logoutCurrentSession()` → `endCurrent()` e `204` | T004 | | — |
-| T006 | Testes fora do Gherkin: (a) o ramo "sessão autenticada sem `LOGIN_SESSION`" termina com a sessão HTTP invalidada e `204`; (b) `DELETE /sessions/{id}` com id numérico continua funcionando depois do caminho literal novo (regressão da colisão de caminhos) | T005 | | — |
-| T007 | Rodar `manage_active_sessions.feature` — confirmar verde | T001, T005 | | — |
-| T008 | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os ramos de erro adicionados ou alterados (`401` sem sessão, sessão sem `LOGIN_SESSION`); para cada um, apontar o teste que o exercita. Registrar a lista aqui | T006, T007 | | — |
-| T009 | Rodar a suíte completa (`mvn test`) — confirmar verde, nenhum teste existente alterado além dos novos | T008 | | — |
+| T001 | Acrescentar a `manage_active_sessions.feature` os três cenários do `plan.md` (logout do dispositivo atual; sessão encerrada some da lista vista pelo segundo dispositivo; logout sem estar logado), resolvendo como o cenário anônimo convive com o `Background` (`Rule` ou arquivo próprio, seguindo o padrão dos outros `.feature`). Escrever os passos novos em `ManageActiveSessionsSteps` chamando `DELETE /sessions/current` em JSON cru; rodar e confirmar que falham agora | — | | #148 |
+| T002 | Contrato: em `docs/openapi.yaml`, `DELETE /sessions/current` (`operationId: logoutCurrentSession`, tag `sessions`, `x-roles: [PLAYER, ADMINISTRATOR]`, respostas `204`/`401`), declarado logo depois de `/sessions` e antes de `/sessions/{sessionId}` | T001 | | #148 |
+| T003 | `LoginSessionRepository.findByHttpSessionIdAndEndedAtIsNull(String httpSessionId)` | T002 | [P] | #148 |
+| T004 | `SessionsService`: extrair de `revoke` um método privado `end(LoginSession)` (apaga a sessão HTTP pelo `SessionRepository` e grava `endedAt`) e criar `endCurrent()`, que busca pela sessão HTTP da requisição e chama `end`; sem `LOGIN_SESSION` correspondente, invalida a sessão HTTP mesmo assim | T003 | | #148 |
+| T005 | `SessionsController.logoutCurrentSession()` → `endCurrent()` e `204` | T004 | | #148 |
+| T006 | Testes fora do Gherkin: (a) o ramo "sessão autenticada sem `LOGIN_SESSION`" termina com a sessão HTTP invalidada e `204`; (b) `DELETE /sessions/{id}` com id numérico continua funcionando depois do caminho literal novo (regressão da colisão de caminhos) | T005 | | #148 |
+| T007 | Rodar `manage_active_sessions.feature` — confirmar verde | T001, T005 | | #148 |
+| T008 | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os ramos de erro adicionados ou alterados (`401` sem sessão, sessão sem `LOGIN_SESSION`); para cada um, apontar o teste que o exercita. Registrar a lista aqui | T006, T007 | | #148 |
+| T009 | Rodar a suíte completa (`mvn test`) — confirmar verde, nenhum teste existente alterado além dos novos | T008 | | #148 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
