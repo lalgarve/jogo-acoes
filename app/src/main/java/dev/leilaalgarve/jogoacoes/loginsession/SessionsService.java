@@ -39,16 +39,33 @@ public class SessionsService {
 
     /** @return {@code false} if no active session with that id belongs to this user -- the
      * caller turns that into a 404 that doesn't reveal which case it was. */
-    @SuppressWarnings("unchecked")
     public boolean revoke(Long sessionId, Long userId) {
         Optional<LoginSession> found = loginSessionRepository.findByIdAndUserId(sessionId, userId);
         if (found.isEmpty()) {
             return false;
         }
-        LoginSession session = found.get();
+        end(found.get());
+        return true;
+    }
+
+    /**
+     * Spec 05-037: ends the session making this request. An authenticated request always has a
+     * {@link LoginSession} in the normal flow (every login goes through
+     * {@code LoginLinkSessionService.establish}); if one is missing anyway, the HTTP session is
+     * still deleted -- the caller asked to be logged out, and failing would leave the device
+     * authenticated.
+     */
+    @SuppressWarnings("unchecked")
+    public void endCurrent() {
+        String httpSessionId = request.getSession().getId();
+        loginSessionRepository.findByHttpSessionIdAndEndedAtIsNull(httpSessionId)
+                .ifPresentOrElse(this::end, () -> sessionRepository.deleteById(httpSessionId));
+    }
+
+    @SuppressWarnings("unchecked")
+    private void end(LoginSession session) {
         sessionRepository.deleteById(session.getHttpSessionId());
         session.setEndedAt(LocalDateTime.now());
         loginSessionRepository.save(session);
-        return true;
     }
 }
