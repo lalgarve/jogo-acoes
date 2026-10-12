@@ -42,6 +42,16 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 Formato que o caderno usa: um bloco por corpo, completo, com marcadores `<...>` explicados antes
 do bloco. Datas e nomes finais são escolhidos na implementação.
 
+Listar todos os jogadores (roteiro 1, `POST /players/search`) — sem filtro, primeira página
+com o tamanho máximo:
+
+```json
+{
+  "page": 0,
+  "size": 100
+}
+```
+
 Pedido de link de login (roteiros 1, 2, 3, 7):
 
 ```json
@@ -154,4 +164,3 @@ mostrar que falta algum caso para os roteiros.
 - **Variação entre WSL e PowerShell**: dois scripts por função duplicam lógica. Aceito porque
   são curtos e a Leila usa os dois ambientes; um script Python único exigiria instalar o
   ambiente do `blackbox-tests` só para executar o caderno.
-- **Roteiro 1 depende da spec 05-039** (ver "Decisões em aberto" na `spec.md`).

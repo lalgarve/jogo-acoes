@@ -5,8 +5,8 @@
 **Iteração:** iteration-5
 **Substitui:** [`05-012-caderno-de-testes-etapa1`](../05-012-caderno-de-testes-etapa1/spec.md)
 **Depende de:** [`05-018-gerador-dados-teste`](../05-018-gerador-dados-teste/spec.md) (massa de
-dados), [`05-039-busca-de-jogadores`](../05-039-busca-de-jogadores/spec.md) (roteiro 1, ver
-"Decisões em aberto")
+dados), [`05-039-busca-de-jogadores`](../05-039-busca-de-jogadores/spec.md) (roteiro 1,
+`POST /players/search`)
 
 ## Resumo
 
@@ -76,7 +76,7 @@ Incorporados do rascunho da Leila (2026-10-12), com o texto final escrito na imp
 
 1. Pedir o e-mail de login do administrador.
 2. Clicar no link do e-mail de login do administrador.
-3. Listar todos os jogadores.
+3. Listar todos os jogadores (`POST /players/search`, sem filtro).
 4. Escolher três jogadores com números diferentes de competições públicas e privadas (usados
    nos roteiros seguintes como jogadores A, B e C).
 5. Fazer logout do administrador.
@@ -92,7 +92,8 @@ Incorporados do rascunho da Leila (2026-10-12), com o texto final escrito na imp
 6. Navegador 2: clicar no link do e-mail.
 7. Navegador 2: listar os dispositivos logados (duas sessões).
 8. Navegador 2: encerrar a sessão do navegador 1.
-9. Navegador 1: listar os dispositivos logados e verificar a mensagem de erro (`401`).
+9. Navegador 1: listar os dispositivos logados e verificar a mensagem de erro (`401`), porque
+   a sessão deste navegador foi encerrada no passo 8.
 10. Navegador 2: fazer logout.
 
 **3. Logar em mais dispositivos que o máximo permitido**
@@ -203,10 +204,9 @@ Execução:
 
 ## Decisões em aberto
 
-1. **Roteiro 1, "listar todos os jogadores"**: depende da busca de jogadores (spec 05-039,
-   ainda em rascunho). Hoje só existe `GET /players?email=` (spec 05-038), que consulta um
-   jogador por vez. Proposta: implementar a 05-039 antes do caderno; alternativa: o roteiro 1
-   consulta os três jogadores por e-mail, tirados da tabela da massa.
-2. **Roteiro 2, passo 9**: o rascunho diz "listar os dispositivos logados no navegador" sem dizer
-   qual. Entendemos que é o navegador 1 (cuja sessão foi encerrada), o que dá `401`. Se for o 2,
-   o passo verifica que só sobrou uma sessão.
+Nenhuma. Resolvidas com a Leila em 2026-10-12:
+
+- Roteiro 1, "listar todos os jogadores": usa a busca da spec 05-039 (`POST /players/search`),
+  mesclada no mesmo dia.
+- Roteiro 2, passo 9: a listagem é feita no navegador 1, cuja sessão foi encerrada, e deve dar
+  `401`.
