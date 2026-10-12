@@ -14,6 +14,7 @@ collide (every address is already unique per test -- spec 05-016).
 """
 
 import datetime
+import json
 import os
 import re
 import time
@@ -87,14 +88,28 @@ def last_email(email: str) -> LastEmail:
         raise NoEmailSentError(f"No e-mail sent to {email} yet")
 
     latest = matches[-1]  # `messages` comes back in send order.
-    html = latest["Body"]["html_part"] or ""
-    link_match = _LINK_PATTERN.search(html)
-    if link_match is None:
+    link = _link_of(latest)
+    if link is None:
         raise RuntimeError(f"Could not find a login link in the e-mail sent to {email}")
 
-    result = LastEmail(link=link_match.group(1), sent_at=datetime.datetime.fromisoformat(latest["Timestamp"]))
+    result = LastEmail(link=link, sent_at=datetime.datetime.fromisoformat(latest["Timestamp"]))
     httpx.delete(f"{LOCALSTACK_URL}/_aws/ses", params={"id": latest["Id"]}).raise_for_status()
     return result
+
+
+def _link_of(message: dict) -> str | None:
+    """Since spec 05-031 the e-mail is sent with SES `SendTemplatedEmail`, and LocalStack stores
+    those as `Template` + `TemplateData` (the variables), with no rendered `Body` -- the link is
+    the template's `link` variable. A rendered `Body` (plain `SendEmail`) is still read, so this
+    keeps working if the sending side ever changes back.
+    """
+    if "TemplateData" in message:
+        link = json.loads(message["TemplateData"] or "{}").get("link")
+        if link:
+            return link
+    html = (message.get("Body") or {}).get("html_part") or ""
+    link_match = _LINK_PATTERN.search(html)
+    return link_match.group(1) if link_match else None
 
 
 def last_email_link(email: str) -> str:

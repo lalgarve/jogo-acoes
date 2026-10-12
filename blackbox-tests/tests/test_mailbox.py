@@ -9,7 +9,7 @@ import uuid
 import httpx
 import pytest
 
-from common.blackbox_fixtures import ADMIN_EMAIL, NoEmailSentError, last_email, last_email_link
+from common.blackbox_fixtures import ADMIN_EMAIL, NoEmailSentError, _link_of, last_email, last_email_link
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8080/api")
 
@@ -33,3 +33,18 @@ def test_last_email_only_consumes_the_message_it_read():
     second = last_email(ADMIN_EMAIL)
 
     assert first.link != second.link
+
+
+def test_link_comes_from_template_data_for_templated_emails():
+    """Since spec 05-031 the e-mail is sent with SES `SendTemplatedEmail`, which LocalStack stores
+    as `Template` + `TemplateData`, without a rendered `Body` (spec 05-040 found the helper still
+    reading only `Body`)."""
+    message = {"Template": "jogo-acoes__login-link", "TemplateData": '{"name": "A", "link": "/login-links/abc"}'}
+
+    assert _link_of(message) == "/login-links/abc"
+
+
+def test_link_still_comes_from_a_rendered_body():
+    message = {"Body": {"html_part": '<a href="/login-links/xyz">entrar</a>'}}
+
+    assert _link_of(message) == "/login-links/xyz"

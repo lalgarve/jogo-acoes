@@ -17,8 +17,9 @@ import random
 import sys
 from collections.abc import Sequence
 
-from common.blackbox_fixtures import ADMIN_EMAIL, last_email
+from common.blackbox_fixtures import ADMIN_EMAIL
 from jogo_acoes_client import Client
+from jogo_acoes_client.api.players import list_players
 from jogo_acoes_client.models import Competition, CompetitionType
 
 from . import flows
@@ -62,14 +63,20 @@ def player_name(competition_code: str, index: int) -> str:
     return f"Seed {competition_code} Jogador {index}"
 
 
-def verify_clock(offset_days: int, checked_email: str) -> None:
+def verify_clock(admin_client: Client, offset_days: int, competition_id: int, checked_email: str) -> None:
+    """Checks the app's own "today" against `--clock-offset-days`, through the date the app
+    recorded when `checked_email` joined the competition (`joinedAt`, written with the app's
+    clock). The e-mail's SES timestamp can't be used for this: LocalStack stamps it with its own,
+    unshifted clock.
+    """
     expected_date = datetime.date.today() + datetime.timedelta(days=offset_days)
-    sent = last_email(checked_email)
-    if sent.sent_at.date() != expected_date:
+    players = list_players.sync(competition_id, client=admin_client) or []
+    joined_at = next((p.joined_at for p in players if p.email == checked_email), None)
+    if joined_at != expected_date:
         raise RuntimeError(
             f"app clock mismatch: expected the app's 'today' to be {expected_date} "
-            f"(offset {offset_days} from the real today), but its last e-mail was sent at "
-            f"{sent.sent_at} -- is the app really running with that clock offset? "
+            f"(offset {offset_days} from the real today), but {checked_email} joined on "
+            f"{joined_at} -- is the app really running with that clock offset? "
             f"(see scripts/blackbox-clock-offset.sh)"
         )
 
@@ -110,6 +117,7 @@ def create_catalog_competition(
 
 def seed_catalog_players(
     base_url: str,
+    admin_client: Client,
     code: str,
     spec: CompetitionSpec,
     competition: Competition,
@@ -133,7 +141,7 @@ def seed_catalog_players(
             flows.complete_invited_registration(base_url, email, name)
 
         if not clock_checked:
-            verify_clock(clock_offset_days, email)
+            verify_clock(admin_client, clock_offset_days, competition.id, email)
             clock_checked = True
     return spec.confirmed_count, clock_checked
 
@@ -200,7 +208,7 @@ def run(args: argparse.Namespace) -> dict[str, int]:
             counts["competitions"] += 1
 
             players_created, clock_checked = seed_catalog_players(
-                args.base_url, code, spec, competitions[code], args.clock_offset_days, clock_checked
+                args.base_url, admin_client, code, spec, competitions[code], args.clock_offset_days, clock_checked
             )
             counts["players"] += players_created
 
