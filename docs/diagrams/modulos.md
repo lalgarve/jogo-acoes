@@ -620,6 +620,7 @@ classDiagram
         <<interface>>
         +findByUserIdAndEndedAtIsNullOrderByCreatedAtAsc(Long) List~LoginSession~
         +findByIdAndUserId(Long, Long) Optional~LoginSession~
+        +findByHttpSessionIdAndEndedAtIsNull(String) Optional~LoginSession~
     }
     class LoginController {
         +consumeLoginLink(String, ...) ResponseEntity~LoginResult~
@@ -644,11 +645,13 @@ classDiagram
     class SessionsController {
         +listActiveSessions() ResponseEntity~List~Session~~
         +revokeSession(Long) ResponseEntity~Void~
+        +logoutCurrentSession() ResponseEntity~Void~
     }
     class SessionsService {
         +listActive(Long) List~LoginSession~
         +isCurrent(LoginSession) boolean
         +revoke(Long, Long) boolean
+        +endCurrent()
     }
     class ReturnToValidator {
         <<utility>>

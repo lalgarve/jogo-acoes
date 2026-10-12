@@ -13,4 +13,7 @@ public interface LoginSessionRepository extends JpaRepository<LoginSession, Long
     // exists but belongs to someone else comes back empty, same as a nonexistent id, which is
     // exactly the "don't reveal whether it exists" 404 the endpoint needs.
     Optional<LoginSession> findByIdAndUserId(Long id, Long userId);
+
+    // Spec 05-037's logout: the session making the request, found by its HTTP session id.
+    Optional<LoginSession> findByHttpSessionIdAndEndedAtIsNull(String httpSessionId);
 }

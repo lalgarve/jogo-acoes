@@ -20,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * exist in docs/openapi.yaml, raw JSON (no generated model), so this is expected to 404 until
  * the tasks after T001 land. The second scenario doubles as the promised end-to-end check for
  * spec 05-009 -- two simulated devices, two recognizably different device labels in the list.
+ * Spec 05-037 (T001) adds the `DELETE /sessions/current` steps, written the same way before the
+ * path exists.
  */
 public class ManageActiveSessionsSteps {
 
@@ -86,6 +88,37 @@ public class ManageActiveSessionsSteps {
     @When("they try to revoke that other player's session")
     public void they_try_to_revoke_that_other_player_s_session() {
         world.setLastResponse(world.request().when().delete("/sessions/{id}", otherPlayerSessionId));
+    }
+
+    @Given("the user is not logged in")
+    public void the_user_is_not_logged_in() {
+        // Trivially true -- the primary device hasn't made any request yet in this scenario.
+    }
+
+    @When("they log out of the current session")
+    public void they_log_out_of_the_current_session() {
+        world.setLastResponse(world.request().when().delete("/sessions/current"));
+    }
+
+    @When("they try to log out of the current session")
+    public void they_try_to_log_out_of_the_current_session() {
+        world.setLastResponse(world.request().when().delete("/sessions/current"));
+    }
+
+    @When("they list their active sessions from the second device")
+    public void they_list_their_active_sessions_from_the_second_device() {
+        world.setLastResponse(world.request(SECOND_DEVICE).when().get("/sessions"));
+    }
+
+    @Then("the second device's session still works for authenticated requests")
+    public void the_second_device_s_session_still_works_for_authenticated_requests() {
+        Response response = world.request(SECOND_DEVICE).when().get("/sessions");
+        assertThat(response.statusCode()).isEqualTo(200);
+    }
+
+    @Then("the system rejects the request as not logged in")
+    public void the_system_rejects_the_request_as_not_logged_in() {
+        assertThat(world.getLastResponse().statusCode()).isEqualTo(401);
     }
 
     @Then("the system shows one session, marked as the current one")

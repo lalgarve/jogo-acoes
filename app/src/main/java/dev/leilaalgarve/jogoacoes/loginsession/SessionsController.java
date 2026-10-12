@@ -33,6 +33,12 @@ public class SessionsController implements SessionsApi {
         return revoked ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
+    @Override
+    public ResponseEntity<Void> logoutCurrentSession() {
+        sessionsService.endCurrent();
+        return ResponseEntity.noContent().build();
+    }
+
 
     private Session toApiModel(LoginSession session) {
         return new Session()

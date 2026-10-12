@@ -472,6 +472,21 @@ paths:
                   $ref: '#/components/schemas/Session'
         '401': { description: Not logged in }
 
+  /sessions/current:
+    delete:
+      tags: [sessions]
+      operationId: logoutCurrentSession
+      summary: Log out of the current device
+      description: >
+        Spec 05-037: ends the session that made this request -- same effect as revoking it
+        through `revokeSession` (the HTTP session is deleted and the LOGIN_SESSION gets
+        `ended_at`), without the caller having to look up its own session id first. The
+        caller's other sessions (other devices) stay valid.
+      x-roles: [PLAYER, ADMINISTRATOR]
+      responses:
+        '204': { description: No Content }
+        '401': { description: Not logged in }
+
   /sessions/{sessionId}:
     delete:
       tags: [sessions]
