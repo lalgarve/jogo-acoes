@@ -1,6 +1,6 @@
 # Spec: Consulta de jogador (resumo por id e por e-mail)
 
-**Status:** rascunho
+**Status:** implementada (ver `tasks.md`)
 **Issue:** [#149](https://github.com/lalgarve/jogo-acoes/issues/149)
 **Iteração:** iteration-5
 

@@ -804,6 +804,8 @@ classDiagram
         +findByCompetition_Id(Long) List~Participation~
         +findByIdAndCompetition_Id(...) Optional~Participation~
         +findByUser_Id(Long) List~Participation~
+        +findPlayerSummaryById(Long) Optional~PlayerSummaryView~
+        +findPlayerSummaryByEmail(String) Optional~PlayerSummaryView~
     }
     class CompetitionService {
         +create(CompetitionCreateRequest) Competition
@@ -829,6 +831,13 @@ classDiagram
         +removePlayer(Long, Long)
         +resendInviteEmail(Long, Long)
         +resendInviteEmails(Long, List~Long~)
+    }
+    class PlayerDirectoryService {
+        +getPlayer(Long) Optional~PlayerSummaryView~
+        +findByEmail(String) Optional~PlayerSummaryView~
+    }
+    class PlayerSummaryView {
+        <<record>>
     }
     class CompetitionLinkHandler {
         +String KEY$
@@ -858,6 +867,10 @@ classDiagram
         +removePlayer(...) ResponseEntity~Void~
         +resendPlayerInviteEmail(...) ResponseEntity~Void~
         +resendPlayerInviteEmails(...) ResponseEntity~Void~
+    }
+    class PlayerDirectoryController {
+        +getPlayer(Long) ResponseEntity~PlayerSummary~
+        +findPlayerByEmail(String) ResponseEntity~PlayerSummary~
     }
     class ParticipationMapper {
         <<utility>>
@@ -907,6 +920,10 @@ classDiagram
     EntryRequestsController ..> ParticipationMapper : usa
     PlayersController --> PlayerManagementService
     PlayersController ..> ParticipationMapper : usa
+    PlayerDirectoryService --> ParticipationRepository
+    PlayerDirectoryService ..> CurrentUserService : usa (módulo loginsession)
+    PlayerDirectoryController --> PlayerDirectoryService
+    ParticipationRepository ..> PlayerSummaryView : projeta
 ```
 
 `CompetitionLinkHandler` cria o `User` na conclusão do registro (`complete()`) via
@@ -914,6 +931,14 @@ classDiagram
 só lê usuários já existentes via `user.UserService`, e descobre quem está logado via
 `loginsession.CurrentUserService` — nenhuma classe daqui toca um repositório de `user` (spec
 05-029).
+
+Uma exceção de forma, não de regra: o resumo de jogador (spec 05-038) é um `@Query` JPQL em
+`ParticipationRepository` que parte da entidade `User` (`from User u`) e conta participações e
+competições criadas em subconsultas correlacionadas. Nenhuma classe chama `UserRepository` — a
+consulta só referencia a entidade, como `Participation.user` e `Competition.creator` já fazem —,
+mas é a única consulta de `competition` que lê linhas de usuário que não têm participação
+nenhuma. Alternativa descartada: pedir os usuários a `UserService` e contar aqui, que não pagina
+corretamente na busca da spec 05-039 quando há filtros dos dois lados.
 
 As 5 exceções (`CompetitionNotFoundException`, `CompetitionValidationException`,
 `EntryRequestValidationException`, `PlayerNotFoundException`, `PlayerValidationException`) moram

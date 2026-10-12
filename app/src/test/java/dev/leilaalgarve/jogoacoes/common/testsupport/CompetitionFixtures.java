@@ -4,6 +4,7 @@ import dev.leilaalgarve.jogoacoes.competition.Competition;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionStatus;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionType;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionRepository;
+import dev.leilaalgarve.jogoacoes.user.User;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -44,7 +45,16 @@ public class CompetitionFixtures {
         return persist(type, status);
     }
 
+    /** Spec 05-038: a competition owned by a given creator (the other factories always create a new administrator). */
+    public Competition createdBy(User creator, CompetitionType type, CompetitionStatus status) {
+        return persist(type, status, creator);
+    }
+
     private Competition persist(CompetitionType type, CompetitionStatus status) {
+        return persist(type, status, userMother.administrator());
+    }
+
+    private Competition persist(CompetitionType type, CompetitionStatus status, User creator) {
         Competition competition = new Competition();
         competition.setName("Fixture competition " + UUID.randomUUID());
         competition.setType(type);
@@ -54,7 +64,7 @@ public class CompetitionFixtures {
         competition.setBuyFee(new BigDecimal("0.50"));
         competition.setSellFee(new BigDecimal("0.50"));
         competition.setStatus(status);
-        competition.setCreator(userMother.administrator());
+        competition.setCreator(creator);
         return competitionRepository.save(competition);
     }
 }
