@@ -15,5 +15,8 @@ public class CompetitionSecurityConfigContributor implements SecurityConfigContr
         registry.requestMatchers(HttpMethod.POST, "/competitions").hasRole("ADMINISTRATOR");
         registry.requestMatchers("/competitions/*/invite-emails", "/competitions/*/players", "/competitions/*/players/**")
                 .hasRole("ADMINISTRATOR");
+        // Spec 05-038: looking up by e-mail is administrator-only; GET /players/{userId} only
+        // needs a session (the own-profile rule is in PlayerDirectoryService).
+        registry.requestMatchers(HttpMethod.GET, "/players").hasRole("ADMINISTRATOR");
     }
 }

@@ -18,6 +18,7 @@ tags:
   - name: players
   - name: my-competitions
   - name: sessions
+  - name: player-directory
 
 paths:
   /competitions:
@@ -510,6 +511,57 @@ paths:
         '401': { description: Not logged in }
         '404': { description: "Session not found, or belongs to another player" }
 
+  /players:
+    get:
+      tags: [player-directory]
+      operationId: findPlayerByEmail
+      summary: Look up a player's summary by e-mail
+      description: >
+        Spec 05-038: case-insensitive match on the e-mail. Any user can be looked up, the
+        administrator included.
+      x-roles: [ADMINISTRATOR]
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema: { type: string, format: email }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerSummary'
+        '400': { description: E-mail missing or malformed }
+        '401': { description: Not logged in }
+        '403': { description: Not an administrator }
+        '404': { description: No user with that e-mail }
+
+  /players/{userId}:
+    get:
+      tags: [player-directory]
+      operationId: getPlayer
+      summary: Get a player's summary
+      description: >
+        Spec 05-038: a player can only see their own summary -- any other `userId` gets the
+        same `404` as a nonexistent one, without revealing whether it exists (same pattern as
+        `getCompetitionDetail`). The administrator can see anyone's.
+      x-roles: [PLAYER, ADMINISTRATOR]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerSummary'
+        '401': { description: Not logged in }
+        '404': { description: "User not found, or not the caller's own (player)" }
+
 components:
   parameters:
     # User-Agent Client Hints (spec 05-009) -- optional, low/high-entropy headers a Chromium
@@ -689,6 +741,20 @@ components:
         deviceLabel: { type: string }
         createdAt: { type: string, format: date-time }
         current: { type: boolean }
+
+    PlayerSummary:
+      description: >
+        Spec 05-038: `ownedCount` counts competitions the user created; `publicCount` and
+        `privateCount` count competitions of each type where the user's entry is confirmed
+        (`IN_COMPETITION`), open or closed -- pending invites and requests are not counted.
+      type: object
+      properties:
+        userId: { type: integer, format: int64 }
+        name: { type: string }
+        email: { type: string, format: email }
+        ownedCount: { type: integer, format: int64 }
+        publicCount: { type: integer, format: int64 }
+        privateCount: { type: integer, format: int64 }
 
     Error:
       type: object

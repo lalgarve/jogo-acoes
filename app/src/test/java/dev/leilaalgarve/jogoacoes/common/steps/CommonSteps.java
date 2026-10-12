@@ -1,9 +1,12 @@
 package dev.leilaalgarve.jogoacoes.common.steps;
 
 import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
 import dev.leilaalgarve.jogoacoes.common.testsupport.LoginHelper;
 import dev.leilaalgarve.jogoacoes.common.testsupport.ScenarioWorld;
 import dev.leilaalgarve.jogoacoes.common.testsupport.UserMother;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class CommonSteps {
 
@@ -33,5 +36,15 @@ public class CommonSteps {
             world.setCurrentUser(userMother.registeredPlayer());
         }
         loginHelper.loginAs(world, world.getCurrentUser());
+    }
+
+    @Then("the system denies access")
+    public void the_system_denies_access() {
+        assertThat(world.getLastResponse().statusCode()).isEqualTo(403);
+    }
+
+    @Then("the system rejects the request as invalid")
+    public void the_system_rejects_the_request_as_invalid() {
+        assertThat(world.getLastResponse().statusCode()).isEqualTo(400);
     }
 }

@@ -11,6 +11,7 @@ import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkInvalidException;
 import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkUsedOnAnotherDeviceException;
 
 import dev.leilaalgarve.jogoacoes.api.model.Error;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -84,5 +85,16 @@ public class ApiExceptionHandler {
                 .anyMatch(fieldError -> fieldError.getField().startsWith("email"));
         String message = emailFieldFailed ? "Invalid e-mail" : "Invalid request";
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new Error().message(message));
+    }
+
+    /**
+     * Bean Validation on a query or path parameter (the generated interfaces are
+     * {@code @Validated}) -- today only {@code GET /players?email=} with a malformed e-mail
+     * (spec 05-038). Generic message: unlike {@link #handleValidation}, no other parameter has a
+     * constraint yet to tell apart.
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Error> handleParameterValidation() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new Error().message("Invalid request"));
     }
 }
