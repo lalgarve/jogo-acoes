@@ -806,6 +806,7 @@ classDiagram
         +findByUser_Id(Long) List~Participation~
         +findPlayerSummaryById(Long) Optional~PlayerSummaryView~
         +findPlayerSummaryByEmail(String) Optional~PlayerSummaryView~
+        +searchPlayerSummaries(CompetitionType, String, Boolean, Pageable) Page~PlayerSummaryView~
     }
     class CompetitionService {
         +create(CompetitionCreateRequest) Competition
@@ -835,6 +836,7 @@ classDiagram
     class PlayerDirectoryService {
         +getPlayer(Long) Optional~PlayerSummaryView~
         +findByEmail(String) Optional~PlayerSummaryView~
+        +search(CompetitionType, String, Boolean, int, int) Page~PlayerSummaryView~
     }
     class PlayerSummaryView {
         <<record>>
@@ -871,6 +873,7 @@ classDiagram
     class PlayerDirectoryController {
         +getPlayer(Long) ResponseEntity~PlayerSummary~
         +findPlayerByEmail(String) ResponseEntity~PlayerSummary~
+        +searchPlayers(PlayerSearchRequest) ResponseEntity~PlayerPage~
     }
     class ParticipationMapper {
         <<utility>>
@@ -937,8 +940,9 @@ Uma exceção de forma, não de regra: o resumo de jogador (spec 05-038) é um `
 competições criadas em subconsultas correlacionadas. Nenhuma classe chama `UserRepository` — a
 consulta só referencia a entidade, como `Participation.user` e `Competition.creator` já fazem —,
 mas é a única consulta de `competition` que lê linhas de usuário que não têm participação
-nenhuma. Alternativa descartada: pedir os usuários a `UserService` e contar aqui, que não pagina
-corretamente na busca da spec 05-039 quando há filtros dos dois lados.
+nenhuma. A busca da spec 05-039 (`searchPlayerSummaries`) é o mesmo SELECT com filtros e
+paginação. Alternativa descartada: pedir os usuários a `UserService` e contar aqui, que não
+pagina corretamente na busca quando há filtros dos dois lados.
 
 As 5 exceções (`CompetitionNotFoundException`, `CompetitionValidationException`,
 `EntryRequestValidationException`, `PlayerNotFoundException`, `PlayerValidationException`) moram

@@ -38,10 +38,19 @@ public class UserMother {
         return registeredUserWithRole("player", RoleName.PLAYER);
     }
 
+    /** Spec 05-039: a player with a chosen name and e-mail -- the search filters by e-mail domain and orders by name. */
+    public User registeredPlayer(String name, String email) {
+        return registeredUser(name, email, RoleName.PLAYER);
+    }
+
     private User registeredUserWithRole(String emailLocalPart, String roleName) {
+        return registeredUser(emailLocalPart + " test user", TestEmails.unique(emailLocalPart), roleName);
+    }
+
+    private User registeredUser(String name, String email, String roleName) {
         User user = new User();
-        user.setName(emailLocalPart + " test user");
-        user.setEmail(TestEmails.unique(emailLocalPart));
+        user.setName(name);
+        user.setEmail(email);
         user.setRegistered(true);
         user = userRepository.save(user);
 
