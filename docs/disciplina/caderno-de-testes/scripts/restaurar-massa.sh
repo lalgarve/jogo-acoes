@@ -22,9 +22,10 @@ COMPOSE=(docker compose -f "$REPO/docker-compose.yml" -f "$REPO/docker-compose.b
 PSQL=("${COMPOSE[@]}" exec -T db psql -U jogo_acoes_admin -d jogo_acoes -v ON_ERROR_STOP=1 -q)
 
 echo "==> 1. Conferindo a versão do dump ($DUMP)"
-VERSAO_DUMP=$(sed -nE 's/^-- versao-flyway: ([0-9]+)$/\1/p' "$DUMP")
+# tr: no Windows o git faz checkout do dump com CRLF (.gitattributes).
+VERSAO_DUMP=$(tr -d '\r' < "$DUMP" | sed -nE 's/^-- versao-flyway: ([0-9]+)$/\1/p')
 VERSAO_REPO=$(ls "$MIGRATIONS" | sed -nE 's/^V([0-9]+)__.*/\1/p' | sort -n | tail -1)
-echo "    dump gerado na migration V$VERSAO_DUMP ($(sed -nE 's/^-- data-geracao: //p' "$DUMP")); repositório na V$VERSAO_REPO"
+echo "    dump gerado na migration V$VERSAO_DUMP ($(tr -d '\r' < "$DUMP" | sed -nE 's/^-- data-geracao: //p')); repositório na V$VERSAO_REPO"
 if [ "$VERSAO_DUMP" != "$VERSAO_REPO" ]; then
   echo "Erro: o dump é da migration V$VERSAO_DUMP, mas o repositório já está na V$VERSAO_REPO." >&2
   echo "      Gere a massa de novo com $SCRIPTS_DIR/gerar-massa.sh." >&2

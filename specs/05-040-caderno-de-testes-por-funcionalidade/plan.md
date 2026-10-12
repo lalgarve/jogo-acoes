@@ -130,7 +130,7 @@ Correção de e-mail (roteiro 6):
 
 ```json
 {
-  "email": "convidado1.corrigido@example.com"
+  "email": "convidado2.corrigido@example.com"
 }
 ```
 

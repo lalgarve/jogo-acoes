@@ -1,6 +1,6 @@
 # Spec: Caderno de testes por funcionalidade
 
-**Status:** rascunho
+**Status:** implementada (ver `tasks.md`)
 **Issue:** — (criar quando a spec for aprovada)
 **Iteração:** iteration-5
 **Substitui:** [`05-012-caderno-de-testes-etapa1`](../05-012-caderno-de-testes-etapa1/spec.md)

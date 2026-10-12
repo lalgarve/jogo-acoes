@@ -24,6 +24,8 @@ esse conflito de merge.
 | `uml/` | Fontes PlantUML (`.puml`) dos diagramas deste documento. |
 | `scripts/plantuml` | Launcher local (fixa JDK 11) para renderizar `uml/*.puml`. |
 | `image/` | Imagens/diagramas já renderizados, incluídos no `.tex` via `\includegraphics`. |
+| `caderno-de-testes.md` | Caderno de testes manuais, por funcionalidade do sistema (spec 05-040). |
+| `caderno-de-testes/` | Apoio do caderno: dump da massa de dados (`dados/`), cabeçalhos de dispositivo (`dispositivos/`) e scripts bash/PowerShell (`scripts/`). |
 
 ## Fluxo de edição: Markdown primeiro, `.tex` só no final
 
@@ -94,6 +96,16 @@ hífen preservado dentro de cada segmento para legibilidade). O `.tex`/PDF final
 gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-de-software_pd`).
 
 ## Log de decisões
+
+### Sessão 2026-10-12
+
+- Spec 05-040: `caderno-de-testes.md` reescrito por funcionalidade (login, competições), no lugar
+  da versão por Etapa da spec 05-012. Os roteiros 1–3 de login são da autora; os 4–7 de
+  competições foram acrescentados. Logs e `SELECT`s capturados sobre a massa restaurada do dump.
+- Pasta nova `caderno-de-testes/` com o dump da massa, os cabeçalhos de dispositivo e os
+  scripts. Os cookies que os scripts gravam ficam fora do git (`caderno-de-testes/.gitignore`).
+- O roteiro 3 registra uma falha do sistema: a sessão encerrada pelo limite de dispositivos
+  continua autenticada.
 
 ### Sessão 2026-10-08
 
