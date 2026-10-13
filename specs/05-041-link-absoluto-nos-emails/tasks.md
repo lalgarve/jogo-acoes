@@ -74,3 +74,20 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
   ("no e-mail ... reached SES on LocalStack"), pelo mesmo motivo do T007: a Lambda não está
   implantada no LocalStack deste container. O CI sobe o Compose completo e roda esse teste. A
   suíte `blackbox-tests` fica junto com o T007.
+
+## Execução da suíte blackbox no Windows (2026-10-13)
+
+Pendência de T007/T010 acima, rodada numa máquina Windows 11 com o Compose completo
+(`master` em `348335f`, PR #159 mesclada):
+
+- Ambiente recriado do zero (`docker compose -f docker-compose.yml -f docker-compose.blackbox.yml
+  down -v`, depois `up --build` na ordem da Issue #144 com `./scripts/test-api-key.sh restore`
+  antes e depois de subir o `email-service`). O `down -v` evita o bug ainda aberto da Issue #144
+  (templates que somem do SES quando só o LocalStack reinicia). `app` subiu com os perfis
+  `docker,blackbox`; o `email-lambda-builder` terminou normalmente.
+- Cliente regenerado de `docs/openapi.yaml` (Python 3.12.10, `.venv` local).
+- `pytest`: 29 verdes.
+- `behave`: 2 features, 2 cenários, 11 passos verdes (`manage_active_sessions`,
+  `public_competition_entry`), ambos dependentes de ler o link do e-mail no SES do LocalStack.
+- Conferência à parte: depois de um `POST /login-requests`, o e-mail no `GET /_aws/ses` traz
+  `http://localhost:8080/api/login-links/<token>`.
