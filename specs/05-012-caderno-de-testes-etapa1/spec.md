@@ -1,6 +1,6 @@
 # Spec: Caderno de testes — Etapa 1 (Swagger)
 
-**Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
+**Status:** substituída pela [05-040](../05-040-caderno-de-testes-por-funcionalidade/spec.md) (2026-10-12): o caderno passou a ser organizado por funcionalidade. Implementada antes disso (ver `tasks.md`); a versão por Etapa fica no histórico do git.
 **Issue:** [#62](https://github.com/lalgarve/jogo-acoes/issues/62)
 **Iteração:** iteration-5
 

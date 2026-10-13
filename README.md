@@ -292,8 +292,10 @@ curl http://localhost:4566/_aws/ses
 ```
 
 Ou, pra não ler JSON cru, `docker compose up` também sobe uma interface web sobre esses mesmos
-dados ([`ses-viewer`](https://github.com/veertech/localstack-aws-ses-email-viewer), Issue
-[#88](https://github.com/lalgarve/jogo-acoes/issues/88) — lista, renderiza e exporta (`.eml`) os
+dados ([`ses-viewer`](https://github.com/lalgarve/localstack-aws-ses-email-viewer), fork do
+[original](https://github.com/veertech/localstack-aws-ses-email-viewer) com suporte a e-mails
+de template, Issues [#88](https://github.com/lalgarve/jogo-acoes/issues/88) e
+[#156](https://github.com/lalgarve/jogo-acoes/issues/156) — lista, renderiza e exporta (`.eml`) os
 e-mails enviados):
 
 ```

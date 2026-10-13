@@ -1,0 +1,2 @@
+# Cookies de sessão gravados por login-jogador (spec 05-040) -- nunca versionar.
+cookie[0-9]*
