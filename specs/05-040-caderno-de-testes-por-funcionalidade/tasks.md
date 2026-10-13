@@ -138,7 +138,10 @@ Achados:
   `TypeError: Cannot read properties of undefined (reading 'html_part')`. Desde a spec 05-031 as
   mensagens chegam ao SES do LocalStack com `Template` + `TemplateData` e sem `Body`, formato que
   o visualizador não lê (Issue #156). O caminho principal do caderno para pegar o link, o `SELECT` em
-  `sent_email`, funciona, e `http://localhost:4566/_aws/ses` também.
+  `sent_email`, funciona, e `http://localhost:4566/_aws/ses` também. Corrigido: o
+  `docker-compose.yml` passou a montar o `ses-viewer` a partir do fork
+  `lalgarve/localstack-aws-ses-email-viewer`, que lê e-mails de template. Conferido com os quatro
+  templates do sistema.
 
 No navegador (Chromium do app Claude, no Windows), os passos 1 e 2 do roteiro 1 pelo Swagger UI
 funcionaram: `POST /login-requests` respondeu `202`, o token veio do `SELECT` em `sent_email` e

@@ -90,9 +90,11 @@ services:
   # Web UI over LocalStack's SES message store (Issue #88) -- same underlying data as
   # `GET /_aws/ses`, but rendered/browsable instead of raw JSON. Pure convenience, same
   # confinement as adminer above: never required for `mvn test`/CI, never in staging/production.
-  # No published image, so building straight from the upstream repo (git build context).
+  # No published image, so building straight from a git build context: a fork of
+  # veertech/localstack-aws-ses-email-viewer that also renders e-mails sent with
+  # SendTemplatedEmail (spec 05-031) -- upstream crashes on them (Issue #156).
   ses-viewer:
-    build: https://github.com/veertech/localstack-aws-ses-email-viewer.git
+    build: https://github.com/lalgarve/localstack-aws-ses-email-viewer.git
     depends_on:
       - localstack
     environment:
