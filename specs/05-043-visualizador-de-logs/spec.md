@@ -1,6 +1,6 @@
 # Spec: Visualizador de logs no ambiente Docker Compose
 
-**Status:** rascunho
+**Status:** aprovada
 **Issue:** — (criar quando a Leila pedir)
 **Iteração:** iteration-5
 
@@ -69,9 +69,9 @@ da spec 05-013, Adminer).
 
 ## Decisões em aberto
 
-1. **Ferramenta.** Recomendação: Dozzle (detalhe e alternativas em `plan.md`).
-2. **Alcance.** Só o Compose local (recomendado, mesmo alcance do Adminer) ou também
-   staging/produção.
-3. **Logs da `email-lambda`.** Os containers que o LocalStack cria para executar a Lambda
-   aparecem no Dozzle enquanto existem, mas somem quando o LocalStack os recicla. Recomendação:
-   aceitar assim e registrar no caderno, sem configuração extra.
+Nenhuma. A Leila aceitou as três recomendações em 2026-10-13 (detalhe em `plan.md`):
+
+1. **Ferramenta:** Dozzle.
+2. **Alcance:** só o Compose local.
+3. **Logs da `email-lambda`:** aceitar que somem quando o LocalStack recicla o container, sem
+   configuração extra; o caderno de testes registra essa limitação.

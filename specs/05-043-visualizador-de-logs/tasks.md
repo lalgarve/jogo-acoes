@@ -1,8 +1,8 @@
 # Tasks: Visualizador de logs no ambiente Docker Compose
 
 Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
-"Rastreamento de trabalho via Issues" em `memory/constitution.md`). Escritas supondo o Dozzle,
-a recomendação do `plan.md`; se a decisão for outra, estas tarefas são reescritas.
+"Rastreamento de trabalho via Issues" em `memory/constitution.md`). Ferramenta: Dozzle,
+decidida pela Leila em 2026-10-13 (`plan.md`).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
