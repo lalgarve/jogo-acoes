@@ -7,7 +7,7 @@ confirming). Each one talks to the real API via the generated client (`docs/open
 
 import datetime
 
-from common.blackbox_fixtures import last_email
+from common.blackbox_fixtures import last_email, token_from_link
 from common.device_profiles import DeviceProfile, WINDOWS_DESKTOP
 from jogo_acoes_client import Client
 from jogo_acoes_client.api.competitions import create_competition, decide_invite_email_timing
@@ -18,11 +18,6 @@ from jogo_acoes_client.models import Competition
 
 from . import factories
 
-
-def _token_from_link(link: str) -> str:
-    # last_email's link is a path like "/login-links/<token>" or
-    # "/login-links/<token>/registration" -- both share the same token as the second segment.
-    return link.strip("/").split("/")[1]
 
 
 def new_client(base_url: str) -> Client:
@@ -36,7 +31,7 @@ def admin_login(base_url: str, admin_email: str) -> Client:
         raise RuntimeError(f"admin login request failed: {response.status_code} {response.content!r}")
 
     link = last_email(admin_email).link
-    login_result = consume_login_link.sync(client=client, token=_token_from_link(link))
+    login_result = consume_login_link.sync(client=client, token=token_from_link(link))
     if login_result is None:
         raise RuntimeError("admin login link should already be a registered account")
     return client
@@ -93,7 +88,7 @@ def create_private_competition(
 
 def _consume_and_register(base_url: str, link: str, name: str, device: DeviceProfile) -> Client:
     client = new_client(base_url)
-    token = _token_from_link(link)
+    token = token_from_link(link)
 
     still_needs_registration = consume_login_link.sync_detailed(
         token=token,
@@ -158,7 +153,7 @@ def login_existing_player(base_url: str, email: str, device: DeviceProfile = WIN
     link = last_email(email).link
     login_result = consume_login_link.sync(
         client=client,
-        token=_token_from_link(link),
+        token=token_from_link(link),
         sec_ch_ua=device.sec_ch_ua,
         sec_ch_ua_platform=device.sec_ch_ua_platform,
         sec_ch_ua_platform_version=device.sec_ch_ua_platform_version,

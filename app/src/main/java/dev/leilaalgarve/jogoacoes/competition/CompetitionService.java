@@ -120,7 +120,7 @@ public class CompetitionService {
             EmailTemplate template = user != null ? EmailTemplate.LOGIN_LINK : EmailTemplate.INVITE;
             emailSender.send(new EmailRequest(userId, participation.getEmail(),
                     user != null ? user.getName() : null, competition.getName(), participation.getRequestType(),
-                    "/login-links/" + created.token(), template));
+                    created.url(), template));
 
             participation.setStatus(ParticipationStatus.EMAIL_SENT);
             participation.setFirstEmailSentDate(LocalDate.now());

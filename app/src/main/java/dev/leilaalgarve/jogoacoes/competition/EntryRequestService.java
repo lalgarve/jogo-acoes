@@ -127,7 +127,7 @@ public class EntryRequestService {
 
         String name = existingUser.map(User::getName).orElse(null);
         emailSender.send(new EmailRequest(userId, email, name, competition.getName(), RequestType.REQUEST,
-                "/login-links/" + created.token(), template));
+                created.url(), template));
 
         if (participation.getFirstEmailSentDate() == null) {
             participation.setFirstEmailSentDate(LocalDate.now());

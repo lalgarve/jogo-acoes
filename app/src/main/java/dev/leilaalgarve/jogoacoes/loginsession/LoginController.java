@@ -81,7 +81,7 @@ public class LoginController implements LoginApi {
         auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), user, "Login link issued to " + email);
 
         emailSender.send(new EmailRequest(user.getId(), email, user.getName(), null, null,
-                "/login-links/" + created.token(), EmailTemplate.LOGIN_LINK));
+                created.url(), EmailTemplate.LOGIN_LINK));
         return ResponseEntity.status(202).build();
     }
 

@@ -3,7 +3,7 @@ import uuid
 
 from behave import given, when, then
 
-from common.blackbox_fixtures import ADMIN_EMAIL, last_email_link
+from common.blackbox_fixtures import ADMIN_EMAIL, last_email_link, token_from_link
 from common.device_profiles import WINDOWS_DESKTOP
 from environment import new_client
 
@@ -20,11 +20,6 @@ from jogo_acoes_client.models import (
     RequestLoginLinkBody,
 )
 
-def _token_from_link(link: str) -> str:
-    # last_email_link returns a path like "/login-links/<token>" or
-    # "/login-links/<token>/registration" -- both share the same token as the second segment.
-    return link.strip("/").split("/")[1]
-
 
 @given('the administrator is logged in via the magic link sent to "{email}"')
 def step_admin_logs_in(context, email):
@@ -39,7 +34,7 @@ def step_admin_logs_in(context, email):
     link = last_email_link(email)
     login_result = consume_login_link.sync(
         client=context.admin_client,
-        token=_token_from_link(link),
+        token=token_from_link(link),
         sec_ch_ua=WINDOWS_DESKTOP.sec_ch_ua,
         sec_ch_ua_platform=WINDOWS_DESKTOP.sec_ch_ua_platform,
         sec_ch_ua_platform_version=WINDOWS_DESKTOP.sec_ch_ua_platform_version,
@@ -90,7 +85,7 @@ def step_registration_link_sent(context):
 
 @when("the player follows the registration link and registers with a name")
 def step_player_registers(context):
-    token = _token_from_link(context.registration_link)
+    token = token_from_link(context.registration_link)
 
     still_needs_registration = consume_login_link.sync_detailed(
         token=token,

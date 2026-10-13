@@ -23,3 +23,8 @@ spring:
 # A real ADMIN_EMAIL env var (docker-compose.blackbox.yml already sets one) still wins over this
 # default -- standard Spring Boot property precedence.
 ADMIN_EMAIL: success+admin@simulator.amazonses.com
+
+# Spec 05-041: base of the links sent by e-mail (absolute URL, including /api). The app's own
+# address in docker-compose.yml; env LINKS_BASE_URL overrides it.
+links:
+  base-url: ${LINKS_BASE_URL:http://localhost:8080/api}

@@ -20,3 +20,9 @@ email:
   sender: email-service
 email-service:
   base-url: ${EMAIL_SERVICE_BASE_URL}
+
+# Spec 05-041: base of the links sent by e-mail -- absolute URL including /api, from env
+# LINKS_BASE_URL with no default; the app doesn't start without it.
+# Not decided yet for staging.
+links:
+  base-url: ${LINKS_BASE_URL}
