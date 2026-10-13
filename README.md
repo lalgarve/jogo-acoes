@@ -167,6 +167,24 @@ num volume novo. Num volume antigo as tabelas continuam no `public` e o Flyway r
 schema novo, deixando as antigas órfãs. O sistema está em pré-produção, então não há dado a
 preservar (a chave de API de teste se restaura com `./scripts/test-api-key.sh restore`).
 
+## Endereços dos serviços
+
+Com `docker compose up` (e o overlay `blackbox`, quando indicado), cada serviço fica publicado
+no host em:
+
+| Serviço | Endereço | Observação |
+|---|---|---|
+| `app` (API) | `http://localhost:8080/api` | Contrato em `docs/openapi.yaml` |
+| Swagger UI do `app` | `http://localhost:8080/api/swagger-ui/index.html` | O pedido de login só passa sem captcha com o overlay `blackbox` |
+| `email-service` (API) | `http://localhost:8082/api` | Exige API-Key; sem Swagger UI (exemplos em "Envio de e-mail pelo Serviço de E-mail") |
+| `config-server` | `http://localhost:8888/{aplicação}/{perfil}` | Ex.: `/jogo-acoes/docker`; HTTP Basic `config` / `config-docker-not-a-secret` |
+| `ses-viewer` | `http://localhost:3005` | E-mails enviados pelo SES do LocalStack |
+| LocalStack | `http://localhost:4566` | SES em JSON: `GET /_aws/ses` |
+| Adminer | `http://localhost:8081` | Servidor `db` (usuário/senha `jogo_acoes_admin`) ou `db-email-service` (`email_service_admin`) |
+| PostgreSQL do `app` | `localhost:5432` | Banco `jogo_acoes` |
+| PostgreSQL do `email-service` | `localhost:5433` | Banco `email_service` |
+| JaCoCo (só `blackbox`) | `localhost:6300` | Usado por `scripts/blackbox-coverage.sh` |
+
 ## Ambiente de testes blackbox
 
 `blackbox` (spec 05-014) é um perfil empilhado sobre `docker` — nunca usado sozinho — pensado
