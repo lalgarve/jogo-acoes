@@ -29,7 +29,7 @@ de execuções reais.
 | ~~T012~~ | Escrever no caderno os roteiros de login 1–3, executando cada um sobre a massa restaurada e capturando logs e resultados de `SELECT` reais; JSON de cada corpo em bloco próprio | T009, T010, T011 | | |
 | ~~T013~~ | Escrever no caderno os roteiros de competições 4–7, do mesmo jeito | T011 | [P] | |
 | ~~T014~~ | Atualizar a spec 05-012 para "substituída pela 05-040" e registrar a mudança no log de `docs/disciplina/CLAUDE.md` (inclui a pasta `caderno-de-testes/` na tabela de arquivos) | T011 | [P] | |
-| T015 | Verificação final: executar o caderno inteiro do zero (volume novo, restaurar o dump, roteiros 1–7) no Windows, com os scripts no WSL e no PowerShell, e registrar abaixo o resultado de cada roteiro | T012, T013 | | |
+| ~~T015~~ | Verificação final: executar o caderno inteiro do zero (volume novo, restaurar o dump, roteiros 1–7) no Windows, com os scripts no WSL e no PowerShell, e registrar abaixo o resultado de cada roteiro | T012, T013 | | |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -97,5 +97,5 @@ caderno vêm dessas execuções. Diferenças em relação à spec, registradas n
 - roteiro 5: depois de mandar os convites pelo grupo, a competição continua `AWAITING_INVITES`;
   os convidados entram mesmo assim.
 
-**T015.** Pendente: executar o caderno do zero na máquina da Leila (Windows, WSL e PowerShell),
-incluindo `gerar-massa.sh` pelo Compose.
+**T015.** Executada pela Leila na máquina dela (Windows, WSL e PowerShell) em 2026-10-13: "Os
+testes foram rodados".
