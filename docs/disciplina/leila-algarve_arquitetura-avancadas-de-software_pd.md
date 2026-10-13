@@ -167,15 +167,15 @@ Nas especificações que modularizaram o sistema, registramos os riscos que a pr
 
 ## **Etapa 2 — Separação e Comunicação entre Serviços**
 
-Na tabela abaixo, a coluna "Antes" mostra a situação do projeto na tag `etapa-1`, de 30/09/2026. A coluna "Ao fim da Etapa 2" mostra a situação depois da separação do Serviço de E-mail.
+Na tabela abaixo, a coluna "Antes" mostra a situação do projeto na tag `etapa-1`, de 30/09/2026. A coluna "Ao fim da Etapa 2" mostra a situação na tag `etapa-2`, de 13/10/2026.
 
-| Requisito | Antes (tag `etapa-1`) | Ao fim da Etapa 2 |
+| Requisito | Antes (tag `etapa-1`) | Ao fim da Etapa 2 (tag `etapa-2`) |
 | :---- | :---- | :---- |
 | Serviço independente com responsabilidade própria e justificada | Parcial — só a função Lambda (`email-lambda/`), que consome a fila de e-mail; o `app` montava e publicava as mensagens | Atendido — o Serviço de E-mail (`email-service/`) cadastra templates e envia e-mails para qualquer aplicação cliente, com banco e schema próprios |
 | Comunicação síncrona via REST \+ OpenFeign | **Não atendido** — a única comunicação com outro serviço era assíncrona, pela fila SQS | Atendido — o `app` chama o Serviço de E-mail por REST, com um cliente OpenFeign e autenticação por API-Key |
 | DTOs de comunicação entre serviços | Parcial — só as mensagens da fila | Atendido — DTOs gerados a partir do contrato `docs/openapi-email-service.yaml`, sem código compartilhado entre os serviços |
 | Teste de disponibilidade/indisponibilidade do serviço | Não aplicável | Atendido — testes de integração contra o Serviço de E-mail real, inclusive com o serviço fora do ar |
-| Tag etapa-2 | **Não atendido** | **Não atendido** |
+| Tag etapa-2 | **Não atendido** | Atendido |
 
 ### **Principais tarefas realizadas na Etapa 2**
 
