@@ -101,7 +101,7 @@ docker compose up -d --wait db db-email-service localstack
 docker compose up -d --wait email-service
 ./scripts/test-api-key.sh restore
 docs/disciplina/caderno-de-testes/scripts/restaurar-massa.sh
-docker compose up -d app adminer ses-viewer
+docker compose up -d app adminer ses-viewer log-viewer
 ```
 
 O `test-api-key.sh restore` roda duas vezes pelo mesmo motivo do `README.md` ("Como rodar os
@@ -114,7 +114,11 @@ depois que o `email-service` sobe.
 | Adminer | `http://localhost:8081` (sistema PostgreSQL, servidor `db`, usuário e senha `jogo_acoes_admin`, base `jogo_acoes`) | rodar os `SELECT`s |
 | E-mails enviados (JSON) | `http://localhost:4566/_aws/ses` | ver os e-mails no SES do LocalStack |
 | Visualizador de e-mails | `http://localhost:3005` | mesma informação, em tela |
-| Logs da aplicação | `docker compose logs -f app` | conferir os trechos de log |
+| Visualizador de logs | `http://localhost:8083` | conferir os trechos de log: `app` e `email-service` juntos, com busca por texto; no terminal, `docker compose logs -f app email-service` |
+
+O visualizador de logs (Dozzle) mostra os logs que o Docker guarda e não armazena nada: depois de
+um `docker compose down`, os logs anteriores somem. Os containers da `email-lambda`, criados pelo
+LocalStack, aparecem enquanto existem e somem quando o LocalStack os recicla.
 
 O `search_path` do banco já aponta para o schema `jogo_acoes`, então os `SELECT`s funcionam sem
 prefixo.

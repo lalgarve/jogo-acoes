@@ -102,6 +102,26 @@ services:
     ports:
       - "3005:3005"
 
+  # Web UI over the containers' stdout logs (spec 05-043) -- replaces `docker compose logs -f app`
+  # in the caderno de testes: app and email-service merged in time order, with text search.
+  # Reads the logs live from the Docker daemon and stores nothing (no volume, no database), so
+  # `docker compose down` still discards them. Same confinement as adminer/ses-viewer above:
+  # never required for `mvn test`/CI, never in staging/production. The socket is the same one
+  # localstack already mounts, read-only here.
+  log-viewer:
+    image: amir20/dozzle:v8
+    environment:
+      DOZZLE_NO_ANALYTICS: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8083:8080"
+    healthcheck:
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   app:
     build: .
     depends_on:
