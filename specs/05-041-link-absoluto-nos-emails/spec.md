@@ -1,6 +1,6 @@
 # Spec: Link absoluto nos e-mails de login e convite
 
-**Status:** rascunho (decisões em aberto abaixo)
+**Status:** especificada, implementação não iniciada
 **Issue:** [#92](https://github.com/lalgarve/jogo-acoes/issues/92)
 **Iteração:** iteration-5
 
@@ -98,9 +98,10 @@ O critério de aceite inclui conferir no Windows que o link do e-mail abre como 
 
 ## Decisões em aberto
 
-1. **Nome da propriedade e da variável.** Proposta: `links.base-url` / `LINKS_BASE_URL`. Ver
-   `plan.md`.
-2. **Produção com padrão no arquivo ou só por variável.** Proposta: só por variável, sem padrão,
-   como `EMAIL_SERVICE_BASE_URL` (o `application-production.yml` não fixa endereços hoje). A
-   alternativa é fixar `https://jogoacoes.leilaalgarve.de/api` no `application-production.yml`.
-3. **Base de staging.** Fica sem valor até staging existir; o `app` em staging não sobe sem ela.
+Nenhuma. Resolvidas na sessão de 2026-10-13 (recomendações aceitas):
+
+1. **Nome da propriedade e da variável:** `links.base-url` / `LINKS_BASE_URL`. Ver `plan.md`.
+2. **Produção:** a base vem só da variável de ambiente, sem padrão no
+   `application-production.yml`, como `EMAIL_SERVICE_BASE_URL`. O valor esperado é
+   `https://jogoacoes.leilaalgarve.de/api`.
+3. **Staging:** fica sem base até o ambiente existir; o `app` em staging não sobe sem ela.
