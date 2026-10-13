@@ -1,8 +1,8 @@
 # Tasks: Spring Cloud Config Server
 
 Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
-"Rastreamento de trabalho via Issues" em `memory/constitution.md`). Pressupõe as recomendações
-de `spec.md` ("Decisões em aberto") aceitas; se alguma mudar, esta lista muda junto.
+"Rastreamento de trabalho via Issues" em `memory/constitution.md`). As decisões de `spec.md`/`plan.md`
+foram resolvidas em 2026-10-13; esta lista só quebra a implementação em passos.
 
 **Ordem:** verificações primeiro, falhando pelo motivo esperado; depois as correções.
 
@@ -15,7 +15,7 @@ de `spec.md` ("Decisões em aberto") aceitas; se alguma mudar, esta lista muda j
 | T005 | Mover `app/src/main/resources/application-{docker,staging,production}.yml` para `config-repo/jogo-acoes-{docker,staging,production}.yml`, valores e comentários iguais | T001 | | #<n> |
 | T006 | `app`: `spring-cloud-starter-config` e `spring-retry`; `application.yml` com `spring.config.import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}` (sem `optional:`), `spring.cloud.config.fail-fast: true`, `username`/`password` de `CONFIG_SERVER_USERNAME`/`CONFIG_SERVER_PASSWORD`; `src/test/resources/application.yml` com `spring.cloud.config.enabled: false` e sem import. Conferir que, sem perfil ativo, o cliente pede `/jogo-acoes/docker` (risco em `plan.md`). T001 do `app` fica verde | T005 | | #<n> |
 | T007 | `app`: `ConfigServerClientIntegrationTest` contra o `config-server` do Compose: o contexto sobe com o import ligado e uma propriedade que só existe em `jogo-acoes-docker.yml` (ex.: `links.base-url`) chega ao `Environment`; com `CONFIG_SERVER_URL` apontando para uma porta fechada, o contexto não sobe e a causa é a falha de buscar configuração | T006, T004 | | #<n> |
-| T008 | Mover `email-service/src/main/resources/application-{docker,production}.yml` para `config-repo/email-service-{docker,production}.yml` | T001 | [P] | #<n> |
+| T008 | Mover `email-service/src/main/resources/application-{docker,production}.yml` para `config-repo/email-service-{docker,production}.yml` e criar `config-repo/email-service-staging.yml` no formato do production (datasource, senha e pepper de variável de ambiente sem padrão, Flyway desligado, comentário autodescritivo dizendo que o ambiente ainda não existe) | T001 | [P] | #<n> |
 | T009 | `email-service`: BOM `spring-cloud-dependencies` 2025.1.3, `spring-cloud-starter-config`, `spring-retry`, mesmo import/`fail-fast`/credenciais de T006 e mesmo desligamento no arquivo de teste. T001 do `email-service` fica verde | T008 | | #<n> |
 | T010 | `email-service`: `ConfigServerClientIntegrationTest`, mesmo desenho de T007 (propriedade de `email-service-docker.yml`, ex.: `spring.cloud.aws.ses.endpoint`) | T009, T004 | | #<n> |
 | T011 | `config-server/Dockerfile` (mesmo padrão do `email-service`); `Dockerfile` do `app` e `email-service/Dockerfile` copiam também `config-server/pom.xml`. `docker-compose.yml`: serviço `config-server` (porta 8888, `config-repo/` montado somente leitura, `CONFIG_SERVER_USERNAME`/`PASSWORD` de teste, `JAVA_TOOL_OPTIONS: -Xmx128m`, healthcheck por `/dev/tcp`); `app` e `email-service` com `depends_on` `service_healthy` e `CONFIG_SERVER_URL`/credenciais | T006, T009 | | #<n> |

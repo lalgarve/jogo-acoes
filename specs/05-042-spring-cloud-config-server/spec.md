@@ -35,7 +35,7 @@ deixa de exigir rebuild da imagem.
   | Serviço | `spring.application.name` | Arquivos |
   |---|---|---|
   | `app` | `jogo-acoes` | `jogo-acoes-docker.yml`, `jogo-acoes-staging.yml`, `jogo-acoes-production.yml` |
-  | `email-service` | `email-service` | `email-service-docker.yml`, `email-service-production.yml` (e `-staging.yml` se o ambiente existir para ele) |
+  | `email-service` | `email-service` | `email-service-docker.yml`, `email-service-staging.yml`, `email-service-production.yml` |
 
 - O `app` e o `email-service` buscam a configuração no `config-server` ao subir, em todos os
   ambientes (`docker`, `staging`, `production`). O endereço do `config-server` vem de variável de
@@ -95,19 +95,18 @@ deixa de exigir rebuild da imagem.
 
 ## Decisões em aberto
 
-Recomendações já registradas em `plan.md`; precisam do aceite da autora antes da implementação.
+Nenhuma. Resolvidas na sessão de 2026-10-13 (detalhe em `plan.md`):
 
-1. **O `app` também migra para o Config Server?** Recomendação: sim, `app` e `email-service`
-   juntos. A decisão em aberto de `iteracao-5.md` foi escrita quando o Config Server seria só para
-   componentes novos (Serviço de E-mail, Admin); o Admin não vai existir, e manter o `app` fora
-   deixaria dois jeitos de configurar ambiente no mesmo repositório.
-2. **Onde o Config Server lê a configuração (backend)?** Recomendação: `native` (diretório
-   `config-repo/` deste repositório, montado no container) em todos os ambientes. Alternativa:
-   backend `git` apontando para este repositório. Ver `plan.md`.
-3. **Os testes automatizados dos clientes passam a buscar configuração no Config Server?**
-   Recomendação: não. A suíte de cada serviço continua com o próprio `src/test/resources/application.yml`
-   (que já substitui o principal) e desliga o import; um teste de integração por serviço sobe
-   contra o `config-server` real do Compose e prova que a configuração vem dele. Ver `plan.md`.
-4. **`email-service` em `staging`:** hoje ele não tem `application-staging.yml`. Recomendação:
-   não criar `email-service-staging.yml` até o ambiente existir, como a 05-041 fez com a base dos
-   links em staging.
+1. **O `app` também migra para o Config Server?** Sim, `app` e `email-service` juntos. A decisão
+   em aberto de `iteracao-5.md` foi escrita quando o Config Server seria só para componentes novos
+   (Serviço de E-mail, Admin); o Admin não vai existir, e manter o `app` fora deixaria dois jeitos
+   de configurar ambiente no mesmo repositório.
+2. **Onde o Config Server lê a configuração (backend)?** `native`: diretório `config-repo/` deste
+   repositório, montado no container, em todos os ambientes.
+3. **Os testes automatizados dos clientes buscam configuração no Config Server?** Não. A suíte de
+   cada serviço continua com o próprio `src/test/resources/application.yml` (que já substitui o
+   principal) e desliga o import; um teste de integração por serviço sobe contra o `config-server`
+   real do Compose e prova que a configuração vem dele.
+4. **`email-service` em `staging`:** hoje ele não tem `application-staging.yml`. Decisão da
+   autora: criar `email-service-staging.yml` junto com o `email-service-production.yml`, no mesmo
+   formato (tudo que é de infraestrutura e segredo vem de variável de ambiente, sem padrão).
