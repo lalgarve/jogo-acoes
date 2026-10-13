@@ -98,6 +98,12 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
 
 ## Log de decisões
 
+### Sessão 2026-10-13
+
+- Spec 05-043: `caderno-de-testes.md`, tabela de programas, troca `docker compose logs -f app`
+  pelo visualizador de logs (Dozzle, `http://localhost:8083`) e sobe o `log-viewer` junto do
+  Adminer e do `ses-viewer`. Os trechos de log já capturados nos roteiros não mudam.
+
 ### Sessão 2026-10-12
 
 - Spec 05-040: `caderno-de-testes.md` reescrito por funcionalidade (login, competições), no lugar

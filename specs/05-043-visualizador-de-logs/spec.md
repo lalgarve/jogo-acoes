@@ -1,6 +1,6 @@
 # Spec: Visualizador de logs no ambiente Docker Compose
 
-**Status:** aprovada
+**Status:** implementada, exceto a verificação manual T006 (ver `tasks.md`)
 **Issue:** — (criar quando a Leila pedir)
 **Iteração:** iteration-5
 

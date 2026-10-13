@@ -305,6 +305,16 @@ http://localhost:3005
 Ferramenta de conveniência só de dev, mesmo espírito do `adminer` — nunca entra em
 `staging`/`production`, nunca é exigida por `mvn test`/CI.
 
+Para acompanhar os logs de `app`, `email-service` e `localstack` no navegador, juntos e com busca
+por texto, `docker compose up` também sobe o visualizador de logs (Dozzle, spec
+[05-043](specs/05-043-visualizador-de-logs/spec.md)), mesmo espírito do `ses-viewer`:
+
+```
+http://localhost:8083
+```
+
+Ele não guarda nada: mostra o que o Docker tem, então `docker compose down` apaga os logs.
+
 ## Cadastro de templates do Serviço de E-mail
 
 Primeira feature do Serviço de E-mail (spec
