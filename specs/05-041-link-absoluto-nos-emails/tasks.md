@@ -19,11 +19,11 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
 | ~~T004~~ | `link/LinksProperties` (`@ConfigurationProperties("links")`, `@Validated`, `baseUrl` com `@NotBlank` e `@Pattern(regexp = "^https?://\\S+$")`) registrado com `@EnableConfigurationProperties` numa configuração do módulo `link`. `application-docker.yml`: `links.base-url: ${LINKS_BASE_URL:http://localhost:8080/api}`; `application-staging.yml` e `application-production.yml`: `links.base-url: ${LINKS_BASE_URL}`, sem padrão, com comentário dizendo o valor esperado em produção (`https://jogoacoes.leilaalgarve.de/api`). Nada em `application.yml` | T002 | | #92 |
 | ~~T005~~ | `LinkCreationResult` ganha `url`; `LinkService.create` monta `<base sem barra final>/login-links/<token>`. Confirmar T002 verde | T004 | | #92 |
 | ~~T006~~ | `LoginController`, `CompetitionService`, `EntryRequestService` e `PlayerManagementService` passam `created.url()` no `EmailRequest` em vez de `"/login-links/" + created.token()`. Confirmar T001 verde | T001, T005 | | #92 |
-| T007 | `blackbox-tests`: `_token_from_link` (`seed/flows.py` e `features/steps/public_competition_entry_steps.py`, usado também por `manage_active_sessions_steps.py`) passa a pegar o segmento depois de `/login-links/`, funcionando com link relativo e absoluto. Atualizar os comentários que dizem que o link é um caminho. Confirmar T003 verde e rodar a suíte `blackbox-tests` contra o `docker compose` | T003, T006 | | #92 |
+| ~~T007~~ | `blackbox-tests`: `_token_from_link` (`seed/flows.py` e `features/steps/public_competition_entry_steps.py`, usado também por `manage_active_sessions_steps.py`) passa a pegar o segmento depois de `/login-links/`, funcionando com link relativo e absoluto. Atualizar os comentários que dizem que o link é um caminho. Confirmar T003 verde e rodar a suíte `blackbox-tests` contra o `docker compose` | T003, T006 | | #92 |
 | ~~T008~~ | Documentação: em `docs/disciplina/caderno-de-testes.md`, trocar o texto "O link nos e-mails é relativo (Issue #92)" da seção "Como clicar no link do e-mail" (o link agora abre direto) e as saídas de exemplo que mostram `link /login-links/...` e o log do `SentEmailRepository.save`. Conferir o `README.md` pelo mesmo motivo. Os scripts `login-jogador.sh`/`.ps1` não mudam (já cortam pelo `/login-links/`) | T006 | [P] | #92 |
 | ~~T009~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os caminhos de erro adicionados (falha de validação/placeholder de `links.base-url` na inicialização); para cada um, apontar o teste de T002 que o exercita. Registrar a lista abaixo | T006 | | #92 |
-| T010 | Rodar a suíte completa (`mvn test`) e a `blackbox-tests` — confirmar verde | T007, T008, T009 | | #92 |
-| T011 | Verificação manual (Leila): com `docker compose up`, pedir login, abrir o e-mail no `ses-viewer` e conferir que o link faz o login ao ser aberto | T010 | | #92 |
+| ~~T010~~ | Rodar a suíte completa (`mvn test`) e a `blackbox-tests` — confirmar verde | T007, T008, T009 | | #92 |
+| ~~T011~~ | Verificação manual (Leila): com `docker compose up`, pedir login, abrir o e-mail no `ses-viewer` e conferir que o link faz o login ao ser aberto | T010 | | #92 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -74,3 +74,24 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
   ("no e-mail ... reached SES on LocalStack"), pelo mesmo motivo do T007: a Lambda não está
   implantada no LocalStack deste container. O CI sobe o Compose completo e roda esse teste. A
   suíte `blackbox-tests` fica junto com o T007.
+
+## Execução da suíte blackbox no Windows (2026-10-13)
+
+Pendência de T007/T010 acima, rodada numa máquina Windows 11 com o Compose completo
+(`master` em `348335f`, PR #159 mesclada):
+
+- Ambiente recriado do zero (`docker compose -f docker-compose.yml -f docker-compose.blackbox.yml
+  down -v`, depois `up --build` na ordem da Issue #144 com `./scripts/test-api-key.sh restore`
+  antes e depois de subir o `email-service`). O `down -v` evita o bug ainda aberto da Issue #144
+  (templates que somem do SES quando só o LocalStack reinicia). `app` subiu com os perfis
+  `docker,blackbox`; o `email-lambda-builder` terminou normalmente.
+- Cliente regenerado de `docs/openapi.yaml` (Python 3.12.10, `.venv` local).
+- `pytest`: 29 verdes.
+- `behave`: 2 features, 2 cenários, 11 passos verdes (`manage_active_sessions`,
+  `public_competition_entry`), ambos dependentes de ler o link do e-mail no SES do LocalStack.
+- Conferência à parte: depois de um `POST /login-requests`, o e-mail no `GET /_aws/ses` traz
+  `http://localhost:8080/api/login-links/<token>`.
+- Com isso T007 e T010 ficam concluídas (a `mvn test` completa já tinha sido rodada fora do
+  container da Claude).
+- **T011**: verificação manual feita pela Leila em 2026-10-13 (login pelo link do e-mail aberto
+  no `ses-viewer`).
