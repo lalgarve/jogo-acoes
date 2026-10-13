@@ -21,6 +21,7 @@ esse conflito de merge.
 | `alinhamento-projeto-disciplina.md` | Levantamento already-feito: mapeia o estado atual do projeto contra as quatro Etapas do enunciado. Histórico, não é o rascunho de entrega. |
 | `leila-algarve_arquitetura-avancadas-de-software_pd.md` | Rascunho de trabalho do conteúdo que vai para o PDF final — ver "Fluxo de edição" abaixo. Nome segue o formato `nomedoaluno_nomedadisciplina_pd` exigido pelo enunciado (ver "Nome do arquivo" abaixo). |
 | `leila-algarve.tex` | Fonte LaTeX (abnTeX2), gerada a partir do rascunho `.md` quando o conteúdo estabilizar. |
+| `referencias.bib` | Bibliografia em BibTeX (formato `abntex2cite`), consumida pelo `.tex`. Mantida desde já em paralelo à seção "Bibliografia" do rascunho `.md` (texto ABNT), porque as entradas são estáveis e não sofrem o problema de divergência do `.tex`. Livros lidos na O'Reilly entram como e-book, com `url` e `urlaccessdate`. |
 | `uml/` | Fontes PlantUML (`.puml`) dos diagramas deste documento. |
 | `scripts/plantuml` | Launcher local (fixa JDK 11) para renderizar `uml/*.puml`. |
 | `image/` | Imagens/diagramas já renderizados, incluídos no `.tex` via `\includegraphics`. |
