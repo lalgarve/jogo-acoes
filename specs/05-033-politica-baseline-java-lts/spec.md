@@ -53,6 +53,9 @@ baseline.
 
 - Java/JDK 21 é a baseline suportada para `app`, `email-service`, `email-lambda` e
   `blackbox-proxy`.
+  > **Nota (2026-10-08):** `blackbox-proxy` foi removido do projeto pela spec
+  > [05-037](../05-037-remover-blackbox-proxy/spec.md); a baseline vale para `app`,
+  > `email-service` e `email-lambda`.
 - A orientação de trabalho do repositório deve dizer que upgrades de LTS exigem pedido
   explícito.
 - A constituição deve registrar a baseline, o motivo da política e a exceção para

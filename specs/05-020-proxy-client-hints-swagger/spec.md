@@ -1,6 +1,6 @@
 # Spec: Proxy reverso de Client Hints para testar pelo Swagger UI
 
-**Status:** implementado
+**Status:** removido — ver "Por que este módulo foi removido" no final do arquivo
 **Issue:** [#76](https://github.com/lalgarve/jogo-acoes/issues/76)
 **Iteração:** iteration-5
 
@@ -116,3 +116,17 @@ restante do andaime `blackbox`, specs 05-014/05-018). Coberto por teste de integ
 
 Nenhuma — rodar via `scripts/blackbox-proxy.sh` (não entra em `docker-compose.yml`/
 `docker-compose.blackbox.yml` nesta v1) decidido em conversa; detalhamento em `plan.md`.
+
+## Por que este módulo foi removido
+
+O módulo foi implementado no commit `dbbd678` (2026-09-21), mas o projeto decidiu não usá-lo: os
+headers de dispositivo passaram a ser testados copiando o comando `curl` que o Swagger UI já
+gera e rodando-o num terminal, o que resolve o mesmo problema sem manter mais um processo no ar.
+O commit `cd7cc6b` (2026-09-30) só registrou essa escolha no README, e o módulo continuou sendo
+buildado e citado como ativo. A spec
+[05-037](../05-037-remover-blackbox-proxy/spec.md) ([Issue #123](https://github.com/lalgarve/jogo-acoes/issues/123))
+removeu `blackbox-proxy/`, `scripts/blackbox-proxy.sh` e as menções na documentação ativa. O
+código continua disponível no histórico do git.
+
+Este arquivo, o `plan.md` e o `tasks.md` ficam como registro histórico do desenho, mesmo com o
+módulo removido (mesmo padrão das specs 05-022 e 05-024).

@@ -7,11 +7,10 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY pom.xml .
 COPY email-service/pom.xml email-service/pom.xml
-# The reactor pom.xml lists app, email-lambda and blackbox-proxy as modules too -- Maven needs
+# The reactor pom.xml lists app and email-lambda as modules too -- Maven needs
 # to read their pom.xml even though -pl email-service below only builds/packages this module.
 COPY app/pom.xml app/pom.xml
 COPY email-lambda/pom.xml email-lambda/pom.xml
-COPY blackbox-proxy/pom.xml blackbox-proxy/pom.xml
 # api-key-validation (spec 05-030) is not on any registry this build reads: the script installs it
 # into ~/.m2 from the GitHub release. The BuildKit cache mount keeps ~/.m2 across builds, so the
 # release is downloaded once, like any Maven dependency -- every RUN that needs ~/.m2 mounts it.
