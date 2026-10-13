@@ -9,7 +9,14 @@ import uuid
 import httpx
 import pytest
 
-from common.blackbox_fixtures import ADMIN_EMAIL, NoEmailSentError, _link_of, last_email, last_email_link
+from common.blackbox_fixtures import (
+    ADMIN_EMAIL,
+    NoEmailSentError,
+    _link_of,
+    last_email,
+    last_email_link,
+    token_from_link,
+)
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8080/api")
 
@@ -48,3 +55,23 @@ def test_link_still_comes_from_a_rendered_body():
     message = {"Body": {"html_part": '<a href="/login-links/xyz">entrar</a>'}}
 
     assert _link_of(message) == "/login-links/xyz"
+
+
+def test_link_comes_from_template_data_when_absolute():
+    """Spec 05-041: the link in the e-mail is an absolute URL."""
+    link = "http://localhost:8080/api/login-links/abc"
+    message = {"Template": "jogo-acoes__login-link", "TemplateData": f'{{"name": "A", "link": "{link}"}}'}
+
+    assert _link_of(message) == link
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        "http://localhost:8080/api/login-links/abc",
+        "https://jogoacoes.leilaalgarve.de/api/login-links/abc/registration",
+        "/login-links/abc",
+    ],
+)
+def test_token_from_link_takes_the_segment_after_login_links(link):
+    assert token_from_link(link) == "abc"

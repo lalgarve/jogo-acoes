@@ -42,7 +42,9 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.flyway.enabled=false",
         // No default in application-production.yml either (spec 05-034): the real email-service
         // docker-compose.yml starts, with the test key from the test application.yml.
-        "email-service.base-url=http://localhost:8082/api"
+        "email-service.base-url=http://localhost:8082/api",
+        // Spec 05-041: no default in application-production.yml either; production's own value.
+        "links.base-url=https://jogoacoes.leilaalgarve.de/api"
 })
 @ActiveProfiles("production")
 @ExtendWith(OutputCaptureExtension.class)

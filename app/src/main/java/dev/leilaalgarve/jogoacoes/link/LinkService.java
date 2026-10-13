@@ -29,13 +29,16 @@ public class LinkService {
     private final LinkRouter linkRouter;
     private final LinkSessionService linkSessionService;
     private final ObjectMapper objectMapper;
+    private final LinksProperties linksProperties;
 
     public LinkService(LinkRecordRepository linkRecordRepository, LinkRouter linkRouter,
-                        LinkSessionService linkSessionService, ObjectMapper objectMapper) {
+                        LinkSessionService linkSessionService, ObjectMapper objectMapper,
+                        LinksProperties linksProperties) {
         this.linkRecordRepository = linkRecordRepository;
         this.linkRouter = linkRouter;
         this.linkSessionService = linkSessionService;
         this.objectMapper = objectMapper;
+        this.linksProperties = linksProperties;
     }
 
     @Transactional
@@ -49,7 +52,7 @@ public class LinkService {
         record.setEmailSentAt(LocalDateTime.now());
         record.setExpiresAt(LocalDateTime.now().plusDays(LINK_VALIDITY_DAYS));
         record = linkRecordRepository.save(record);
-        return new LinkCreationResult(record.getId(), record.getToken());
+        return new LinkCreationResult(record.getId(), record.getToken(), linksProperties.loginLinkUrl(record.getToken()));
     }
 
     @Transactional

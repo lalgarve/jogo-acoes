@@ -124,7 +124,7 @@ public class PlayerManagementService {
 
         emailSender.send(new EmailRequest(userId, participation.getEmail(),
                 user != null ? user.getName() : null, participation.getCompetition().getName(), participation.getRequestType(),
-                "/login-links/" + created.token(), templateFor(participation)));
+                created.url(), templateFor(participation)));
 
         if (participation.getFirstEmailSentDate() == null) {
             participation.setFirstEmailSentDate(LocalDate.now());

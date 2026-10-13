@@ -3,7 +3,7 @@ import uuid
 
 from behave import given, when, then
 
-from common.blackbox_fixtures import ADMIN_EMAIL, last_email_link
+from common.blackbox_fixtures import ADMIN_EMAIL, last_email_link, token_from_link
 from common.device_profiles import ANDROID_MOBILE, DeviceProfile, WINDOWS_DESKTOP
 from environment import new_client
 
@@ -19,9 +19,6 @@ from jogo_acoes_client.models import (
     RequestLoginLinkBody,
 )
 
-
-def _token_from_link(link: str) -> str:
-    return link.strip("/").split("/")[1]
 
 
 def _consume_login_link_expect_registered(client, token, device: DeviceProfile):
@@ -57,7 +54,7 @@ def step_registered_player_logged_in(context):
     admin_response = request_login_link.sync_detailed(client=admin_client, body=RequestLoginLinkBody(email=ADMIN_EMAIL))
     assert admin_response.status_code == 202, admin_response.content
     admin_link = last_email_link(ADMIN_EMAIL)
-    _consume_login_link_expect_registered(admin_client, _token_from_link(admin_link), WINDOWS_DESKTOP)
+    _consume_login_link_expect_registered(admin_client, token_from_link(admin_link), WINDOWS_DESKTOP)
 
     competition = create_competition.sync(
         client=admin_client,
@@ -80,7 +77,7 @@ def step_registered_player_logged_in(context):
     assert entry_response.status_code == 202, entry_response.content
 
     registration_link = last_email_link(context.player_email)
-    token = _token_from_link(registration_link)
+    token = token_from_link(registration_link)
     _consume_login_link_expect_new_player(context.player_client, token, WINDOWS_DESKTOP)
 
     registration = complete_registration.sync_detailed(
@@ -104,7 +101,7 @@ def step_log_in_on_second_device(context):
     assert response.status_code == 202, response.content
 
     link = last_email_link(context.player_email)
-    _consume_login_link_expect_registered(context.second_device_client, _token_from_link(link), ANDROID_MOBILE)
+    _consume_login_link_expect_registered(context.second_device_client, token_from_link(link), ANDROID_MOBILE)
 
 
 @when("they list their active sessions")

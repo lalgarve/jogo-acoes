@@ -42,7 +42,8 @@ class LinkServiceTest {
         record.setUsedAt(LocalDateTime.now().minusMinutes(1));
         when(linkRecordRepository.findByToken("some-token")).thenReturn(Optional.of(record));
 
-        LinkService linkService = new LinkService(linkRecordRepository, linkRouter, linkSessionService, jacksonObjectMapper());
+        LinkService linkService = new LinkService(linkRecordRepository, linkRouter, linkSessionService, jacksonObjectMapper(),
+                new LinksProperties("http://localhost:8080/api"));
 
         assertThatThrownBy(() -> linkService.complete("some-token", Map.of("name", "New Player")))
                 .isInstanceOf(LoginLinkInvalidException.class);

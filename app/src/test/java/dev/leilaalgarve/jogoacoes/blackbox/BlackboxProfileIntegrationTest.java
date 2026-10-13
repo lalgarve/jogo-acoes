@@ -27,7 +27,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * profile (spec 05-026) and has its own dedicated test, {@code AdministratorBootstrapTest},
  * instead of living here.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// links.base-url comes from application-docker.yml, which the real blackbox environment stacks
+// this profile on (docker,blackbox) but this test doesn't activate (spec 05-041).
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "links.base-url=http://localhost:8080/api")
 @ActiveProfiles("blackbox")
 class BlackboxProfileIntegrationTest {
 

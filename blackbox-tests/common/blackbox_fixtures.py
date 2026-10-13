@@ -112,6 +112,14 @@ def _link_of(message: dict) -> str | None:
     return link_match.group(1) if link_match else None
 
 
+def token_from_link(link: str) -> str:
+    """The token of a link sent by e-mail -- the segment right after `/login-links/`. Since spec
+    05-041 the link is an absolute URL (`http://localhost:8080/api/login-links/<token>`); a link
+    ending in `/registration` carries the same token.
+    """
+    return link.split("/login-links/", 1)[1].split("/")[0]
+
+
 def last_email_link(email: str) -> str:
     """Convenience wrapper over :func:`last_email` for callers that only need the link."""
     return last_email(email).link

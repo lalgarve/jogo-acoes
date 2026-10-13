@@ -1,6 +1,6 @@
 # Spec: Link absoluto nos e-mails de login e convite
 
-**Status:** especificada, implementação não iniciada
+**Status:** implementada, faltam a suíte blackbox-tests e a verificação manual (ver `tasks.md`)
 **Issue:** [#92](https://github.com/lalgarve/jogo-acoes/issues/92)
 **Iteração:** iteration-5
 

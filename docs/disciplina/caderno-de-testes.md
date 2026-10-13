@@ -119,9 +119,12 @@ depois que o `email-service` sobe.
 O `search_path` do banco já aponta para o schema `jogo_acoes`, então os `SELECT`s funcionam sem
 prefixo.
 
-**Como "clicar no link do e-mail".** O link nos e-mails é relativo (`/login-links/<token>`,
-Issue #92), então não abre direto do e-mail. O jeito mais rápido de pegá-lo é a tabela de
-e-mails enviados:
+**Como "clicar no link do e-mail".** O link nos e-mails é absoluto
+(`http://localhost:8080/api/login-links/<token>`, spec 05-041) e abre direto: no `ses-viewer`
+(`http://localhost:3005`), abrir o e-mail e clicar no link. O navegador chama
+`GET /login-links/{token}`, a sessão fica no cookie desse navegador e as chamadas seguintes no
+Swagger UI já saem autenticadas. O mesmo link aparece no campo `TemplateData` da mensagem em
+`http://localhost:4566/_aws/ses` e na tabela de e-mails enviados:
 
 ```sql
 SELECT link, template, sent_at
@@ -130,11 +133,6 @@ WHERE email = '<email do jogador>'
 ORDER BY id DESC
 LIMIT 1;
 ```
-
-Com o token (a parte depois de `/login-links/`), chamar `GET /login-links/{token}` pelo Swagger
-UI no mesmo navegador. A sessão fica no cookie desse navegador e as chamadas seguintes no
-Swagger UI já saem autenticadas. Em `http://localhost:4566/_aws/ses` o mesmo link aparece no
-campo `TemplateData` da mensagem.
 
 ## Login
 
@@ -162,7 +160,7 @@ DEBUG ... RepositoryLoggingAspect : <-- UserRepository.findByEmail returned {"em
 DEBUG ... RepositoryLoggingAspect : --> LinkRecordRepository.save({"email":"success+admin@simulator.amazonses.com", … "serviceKey":"login","token":"bc67c23f-…","usedAt":null,"userId":1})
 DEBUG ... EmailServiceLoggingAspect : --> email-service send login-link to success+admin@simulator.amazonses.com
 DEBUG ... EmailServiceLoggingAspect : <-- email-service accepted send bd88b744-…
-DEBUG ... RepositoryLoggingAspect : --> SentEmailRepository.save({"email":"success+admin@simulator.amazonses.com", … "link":"/login-links/bc67c23f-…","template":"LOGIN_LINK", …})
+DEBUG ... RepositoryLoggingAspect : --> SentEmailRepository.save({"email":"success+admin@simulator.amazonses.com", … "link":"http://localhost:8080/api/login-links/bc67c23f-…","template":"LOGIN_LINK", …})
 DEBUG ... ControllerLoggingAspect : <-- LoginController.requestLoginLink returned null
 ```
 
@@ -401,7 +399,7 @@ No PowerShell, `.\login-jogador.ps1 1 …` e `.\dispositivos-jogador.ps1 1`. Sa�
 ==> 2. Pedindo o link de login de success+seed-c6-jogador-1@simulator.amazonses.com (POST http://localhost:8080/api/login-requests)
     resposta: 202
 ==> 3. Lendo o e-mail no LocalStack (GET http://localhost:4566/_aws/ses)
-    tentativa 1: e-mail encontrado, link /login-links/0a89d671-9ec5-48d8-b7c9-b2c58b21a168
+    tentativa 1: e-mail encontrado, link http://localhost:8080/api/login-links/0a89d671-9ec5-48d8-b7c9-b2c58b21a168
 ==> 4. Fazendo o login como dispositivo 1 (GET http://localhost:8080/api/login-links/0a89d671-9ec5-48d8-b7c9-b2c58b21a168)
     resposta: 200 {"redirectTo":"/competitions/mine"}
     cookie de sessão gravado em …/caderno-de-testes/cookie1
