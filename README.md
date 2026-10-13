@@ -324,6 +324,11 @@ disparo que a AWS real usaria em produção, sem
 nenhum consumidor customizado no meio (verificado de ponta a ponta, ver Issue
 [#87](https://github.com/lalgarve/jogo-acoes/issues/87)).
 
+O `email-lambda-builder` só roda o Maven quando precisa: se `email-lambda/dist/function.zip` já
+existe e é mais novo que o `pom.xml` da raiz, o `email-lambda/pom.xml` e tudo em
+`email-lambda/src/`, ele sai na hora sem buildar. Pra forçar o rebuild, apague
+`email-lambda/dist/`.
+
 Pra confirmar que uma mensagem foi processada, direto na fila (deve zerar depois que a função
 processa o que estava pendente):
 

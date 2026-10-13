@@ -37,11 +37,24 @@ services:
     # needs to survive (function.zip, below) via a separate directory, and discard the rest of
     # this root-owned target/ before the container exits, instead of leaving it for the later
     # non-root build to collide with.
-    command: >
-      sh -c "mvn -B -pl email-lambda -am package -DskipTests &&
-             mkdir -p email-lambda/dist &&
-             cp email-lambda/target/function.zip email-lambda/dist/ &&
-             rm -rf email-lambda/target"
+    #
+    # Since target/ is discarded, Maven can never build incrementally here, so the build is
+    # skipped entirely when dist/function.zip is newer than everything it's built from: the
+    # parent POM and email-lambda's own POM and sources (it depends on no other reactor module).
+    # Delete email-lambda/dist/ to force a rebuild. ($$ escapes Compose's own interpolation.)
+    command:
+      - sh
+      - -c
+      - |
+        if [ -f email-lambda/dist/function.zip ] &&
+           [ -z "$$(find pom.xml email-lambda/pom.xml email-lambda/src -newer email-lambda/dist/function.zip -print -quit)" ]; then
+          echo 'email-lambda/dist/function.zip is up to date, skipping build'
+          exit 0
+        fi
+        mvn -B -pl email-lambda -am package -DskipTests &&
+          mkdir -p email-lambda/dist &&
+          cp email-lambda/target/function.zip email-lambda/dist/ &&
+          rm -rf email-lambda/target
 
   # Fake SQS+SES+Lambda for the docker profile (docs/context/iteracao-4.md, decisão 3 /
   # "Produtor: EmailSender real"): lets SqsEmailSender publish to a real queue in
