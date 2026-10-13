@@ -23,7 +23,7 @@ foram resolvidas em 2026-10-13; esta lista só quebra a implementação em passo
 | ~~T013~~ | Documentação: `README.md` (módulo novo, como subir, que rodar o `app` fora do Compose exige o `config-server`); `memory/constitution.md`, "Nomenclatura de ambientes" (o arquivo autodescritivo de cada ambiente passa a morar em `config-repo/`); `docs/context/iteracao-5.md` (fechar a decisão em aberto "o `app/` também migra para o Config Server?" apontando para esta spec) | T011 | [P] | #<n> |
 | ~~T014~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os caminhos de erro (Config Server inalcançável no cliente, `401` no servidor, credenciais ausentes no servidor fora do teste); para cada um, apontar o teste que o exercita. Registrar a lista abaixo | T007, T010, T011 | | #<n> |
 | T015 | Rodar a suíte completa dos três módulos e a `blackbox-tests` contra o `docker compose up` — confirmar verde | T012, T013, T014 | | #<n> |
-| T016 | Verificação manual (Leila): `docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up` (o pedido de login pelo Swagger só passa sem captcha no `blackbox`); `GET http://localhost:8888/jogo-acoes/docker` com e sem credencial; pedir um login e ver o e-mail no `ses-viewer`; parar o `config-server` e confirmar que `app` não sobe | T015 | | #<n> |
+| T016 | Verificação manual (Leila), seguindo o "Roteiro da verificação manual (T016)" abaixo | T015 | | #<n> |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -31,6 +31,29 @@ foram resolvidas em 2026-10-13; esta lista só quebra a implementação em passo
   ou uma Issue própria quando grande o suficiente para PR isolada.
 - Marcar o ID como concluído (`~~T001~~`) na mesma PR que resolve a task, junto com o registro da
   verificação (`memory/constitution.md`, "Rastreamento de trabalho via Issues").
+
+## Roteiro da verificação manual (T016)
+
+Todo comando `docker compose` leva os dois arquivos: `docker compose -f docker-compose.yml -f
+docker-compose.blackbox.yml ...`. Um comando só com o `docker-compose.yml` recria o `app` sem o
+perfil `blackbox`, e o captcha volta a valer.
+
+1. Subir o ambiente: `up -d`. Num volume novo do `db-email-service`, rodar antes
+   `./scripts/test-api-key.sh restore`, senão o `email-service` responde `401` e o `app` não sobe.
+2. Config Server:
+   - `curl -u config:config-docker-not-a-secret http://localhost:8888/jogo-acoes/docker` → `200`,
+     com `propertySources` vindo de `file:/config-repo/jogo-acoes-docker.yml` e `links.base-url`
+     ainda como `${LINKS_BASE_URL:...}` (o placeholder é resolvido no cliente).
+   - O mesmo `curl` sem `-u` → `401`.
+3. Login: no Swagger (`http://localhost:8080/api/swagger-ui/index.html`), `POST /login-requests`
+   com `{"email": "success+admin@simulator.amazonses.com"}` (o administrador semeado pelo
+   `blackbox`) → `202`. O e-mail com o link aparece no `ses-viewer` (`http://localhost:3005`).
+   Um endereço desconhecido também recebe `202`, mas nenhum e-mail é enviado.
+4. `app` sem Config Server: `stop config-server app` e depois `up --no-deps app`. Só parar o
+   `config-server` não derruba o `app` já de pé, e um `up app` sem `--no-deps` sobe o
+   `config-server` de novo pelo `depends_on`. O `app` faz as tentativas do cliente (6, o padrão) e
+   termina com `ConfigClientFailFastException` ("Could not locate PropertySource") no log.
+5. Voltar ao normal: `up -d`.
 
 ## Registro das verificações
 
