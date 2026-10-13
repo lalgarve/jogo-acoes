@@ -19,7 +19,7 @@ foram resolvidas em 2026-10-13; esta lista só quebra a implementação em passo
 | ~~T009~~ | `email-service`: BOM `spring-cloud-dependencies` 2025.1.3, `spring-cloud-starter-config`, `spring-retry`, mesmo import/`fail-fast`/credenciais de T006 e mesmo desligamento no arquivo de teste. T001 do `email-service` fica verde | T008 | | #<n> |
 | ~~T010~~ | `email-service`: `ConfigServerClientIntegrationTest`, mesmo desenho de T007 (propriedade de `email-service-docker.yml`, ex.: `spring.cloud.aws.ses.endpoint`) | T009, T004 | | #<n> |
 | ~~T011~~ | `config-server/Dockerfile` (mesmo padrão do `email-service`); `Dockerfile` do `app` e `email-service/Dockerfile` copiam também `config-server/pom.xml`. `docker-compose.yml`: serviço `config-server` (porta 8888, `config-repo/` montado somente leitura, `CONFIG_SERVER_USERNAME`/`PASSWORD` de teste, `JAVA_TOOL_OPTIONS: -Xmx128m`, healthcheck por `/dev/tcp`); `app` e `email-service` com `depends_on` `service_healthy` e `CONFIG_SERVER_URL`/credenciais | T006, T009 | | #<n> |
-| T012 | CI: subir `config-server` junto do resto do Compose antes dos `mvn verify`; passo `mvn -B -pl config-server -am verify`. Confirmar no CI que T003, T007 e T010 rodam (nenhum pulado) | T011 | | #<n> |
+| ~~T012~~ | CI: subir `config-server` junto do resto do Compose antes dos `mvn verify`; passo `mvn -B -pl config-server -am verify`. Confirmar no CI que T003, T007 e T010 rodam (nenhum pulado) | T011 | | #<n> |
 | ~~T013~~ | Documentação: `README.md` (módulo novo, como subir, que rodar o `app` fora do Compose exige o `config-server`); `memory/constitution.md`, "Nomenclatura de ambientes" (o arquivo autodescritivo de cada ambiente passa a morar em `config-repo/`); `docs/context/iteracao-5.md` (fechar a decisão em aberto "o `app/` também migra para o Config Server?" apontando para esta spec) | T011 | [P] | #<n> |
 | ~~T014~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os caminhos de erro (Config Server inalcançável no cliente, `401` no servidor, credenciais ausentes no servidor fora do teste); para cada um, apontar o teste que o exercita. Registrar a lista abaixo | T007, T010, T011 | | #<n> |
 | T015 | Rodar a suíte completa dos três módulos e a `blackbox-tests` contra o `docker compose up` — confirmar verde | T012, T013, T014 | | #<n> |
@@ -105,4 +105,10 @@ mesmos jars que as imagens empacotam.
   `email-service` 46 testes, verde (2 pulados no Cucumber, que já eram pulados antes). No `app`,
   278 testes: só falharam os 5 casos de `EmailServiceClientIntegrationTest.sendingRecordsEmailServiceIdAndReachesSesWithTheTemplate`
   ("no e-mail … reached SES on LocalStack"), porque a Lambda não está implantada aqui. Isso não
-  tem relação com esta spec. Falta rodar na CI (T012) e a `blackbox-tests`.
+  tem relação com esta spec. Falta rodar a `blackbox-tests`.
+- **T012** — CI disparada à mão no branch (run 257, commit `ac6278d`), verde. O passo
+  `Start config-server` construiu a imagem pelo `config-server/Dockerfile` e a subiu saudável. No
+  `app`, 278 testes, nenhum pulado, e "All coverage checks have been met". O `email-service` teve
+  46 testes (os 2 `@requires-real-ses` pulados, como antes, Issue #104), com `ConfigServerClientIntegrationTest`
+  e `EnvironmentConfigLocationTest` rodando. O `config-server` teve 11 testes e o `email-lambda`
+  passou.
