@@ -167,26 +167,70 @@ Nas especificações que modularizaram o sistema, registramos os riscos que a pr
 
 ## **Etapa 2 — Separação e Comunicação entre Serviços**
 
-| Requisito | Situação |
-| :---- | :---- |
-| Serviço independente com responsabilidade própria e justificada | Atendido — email-lambda/ já existe como aplicação separada |
-| Comunicação síncrona via REST \+ OpenFeign | **Não atendido** — a comunicação existente com email-lambda é assíncrona (fila SQS), não síncrona via Feign; nenhuma dependência Feign existe no projeto |
-| DTOs de comunicação entre serviços | Atendido dentro do que já existe (mensagens da fila), mas não no formato REST/Feign pedido |
-| Teste de disponibilidade/indisponibilidade do serviço | Não aplicável ainda, por depender da comunicação síncrona acima |
-| Tag etapa-2 | **Não atendido** |
+Na tabela abaixo, a coluna "Antes" mostra a situação do projeto na tag `etapa-1`, de 30/09/2026. A coluna "Ao fim da Etapa 2" mostra a situação depois da separação do Serviço de E-mail.
 
-*Observação: o que existe hoje (mensageria assíncrona) atende melhor ao espírito da Etapa 4 do que ao da Etapa 2, que pede explicitamente comunicação síncrona.*  
-*Atualização (planejamento posterior a este mapeamento): a extração deixou de ser um microsserviço isolado só para a checagem de MX/domínio descartável — vira um **Serviço de E-mail** reutilizável (ver docs/context/iteracao-5.md), com essa checagem como uma de suas responsabilidades entre outras (registro de templates, envio para aplicações clientes via API key). jogo-acoes consome esse serviço via OpenFeign, fechando o requisito de comunicação síncrona desta Etapa.*
-
-
+| Requisito | Antes (tag `etapa-1`) | Ao fim da Etapa 2 |
+| :---- | :---- | :---- |
+| Serviço independente com responsabilidade própria e justificada | Parcial — só a função Lambda (`email-lambda/`), que consome a fila de e-mail; o `app` montava e publicava as mensagens | Atendido — o Serviço de E-mail (`email-service/`) cadastra templates e envia e-mails para qualquer aplicação cliente, com banco e schema próprios |
+| Comunicação síncrona via REST \+ OpenFeign | **Não atendido** — a única comunicação com outro serviço era assíncrona, pela fila SQS | Atendido — o `app` chama o Serviço de E-mail por REST, com um cliente OpenFeign e autenticação por API-Key |
+| DTOs de comunicação entre serviços | Parcial — só as mensagens da fila | Atendido — DTOs gerados a partir do contrato `docs/openapi-email-service.yaml`, sem código compartilhado entre os serviços |
+| Teste de disponibilidade/indisponibilidade do serviço | Não aplicável | Atendido — testes de integração contra o Serviço de E-mail real, inclusive com o serviço fora do ar |
+| Tag etapa-2 | **Não atendido** | **Não atendido** |
 
 ### **Principais tarefas realizadas na Etapa 2**
 
+#### Serviço de E-mail
+
+Separamos o envio de e-mail da aplicação Jogo de Ações em um serviço próprio, o Serviço de E-mail (`email-service`). Escolhemos o e-mail porque ele é uma responsabilidade genérica: qualquer aplicação que envia e-mails precisa cadastrar mensagens, controlar o remetente e, nas etapas seguintes, verificar endereços e tratar falhas de entrega. O serviço não conhece competições nem jogadores; ele atende aplicações clientes, e o Jogo de Ações é a primeira delas.
+
+O serviço expõe uma API REST descrita no contrato `docs/openapi-email-service.yaml`, seguindo a mesma abordagem API-First da aplicação principal. Nesta etapa, ele oferece duas funcionalidades:
+
+* **Cadastro de templates.** Cada cliente cadastra os templates de e-mail que vai usar. O serviço sincroniza cada template com o Amazon SES, que passa a renderizar as mensagens, e permite pré-visualizar um template com variáveis de exemplo.
+* **Envio de e-mail.** O cliente pede o envio informando o template, o destinatário e as variáveis. O serviço valida o pedido, registra o envio, publica a mensagem na fila SQS e responde imediatamente com o identificador do envio. A função Lambda consome a fila e entrega a mensagem pelo SES. O remetente de cada cliente é fixo e definido pela equipe de operações, não pelo cliente.
+
+**Autenticação por API-Key.** Toda chamada ao serviço leva o cabeçalho `X-API-Key`. O serviço valida a chave com a biblioteca `api-key-validation`, desenvolvida por nós num projeto separado (`lalgarve/api-key`) para ser reaproveitada por outros serviços. A chave identifica o cliente, e com ela o serviço separa os templates e o remetente de cada um.
+
+**Persistência própria.** Cada serviço usa um schema próprio no PostgreSQL (`jogo_acoes`, `email_service` e `api_key`), e nenhum usa o schema `public`. As migrations e o histórico do Flyway de cada serviço também ficam separados. Assim, um serviço nunca lê nem escreve as tabelas do outro, mas todos podem rodar num único servidor PostgreSQL. Escolhemos essa organização porque, no início do projeto, a memória consumida por várias instâncias do banco é um custo importante.
+
+**O Jogo de Ações como cliente.** A aplicação deixou de montar e publicar as mensagens de e-mail. Removemos dela o envio pela fila e os templates em Thymeleaf. Agora, ao iniciar, a aplicação sincroniza os próprios templates no Serviço de E-mail e, a cada login, convite ou pedido de entrada, pede o envio por `POST /emails`. A aplicação continua registrando os e-mails enviados, agora com o identificador devolvido pelo serviço.
+
+#### Comunicação síncrona com OpenFeign
+
+Geramos o cliente OpenFeign e os DTOs a partir do contrato do Serviço de E-mail, com o OpenAPI Generator. Assim, a aplicação não importa nenhuma classe do serviço: os dois lados dependem só do contrato.
+
+Uma única classe da aplicação, `EmailServiceGateway`, usa esse cliente. Ela traduz as respostas de erro do serviço para exceções da própria aplicação, de modo que o restante do código não conhece o Feign nem os DTOs do serviço. Falhas de rede e respostas 5xx viram `EmailServiceUnavailableException`, que a aplicação devolve ao usuário como `503 Service Unavailable`. Uma chave rejeitada (401) vira `EmailServiceAuthenticationException`, que indica erro de configuração.
+
+**Indisponibilidade e repetição de chamadas.** Definimos tempos-limite de 2 segundos para conectar e de 5 segundos para ler a resposta. Quando o serviço está indisponível, o *gateway* repete a chamada até três vezes, mas somente nas operações idempotentes: consultar, cadastrar ou atualizar um template e pré-visualizá-lo. Repetir essas operações deixa o serviço no mesmo estado. Não repetimos o pedido de envio: se a resposta se perder depois que o serviço publicou a mensagem, uma nova tentativa enviaria o e-mail duas vezes. Decidimos tratar a idempotência do envio, com uma chave de idempotência, na Etapa 4, junto com o processamento assíncrono.
+
 #### Testes para mitigação de riscos na arquitetura
 
-Nesta etapa, reforçamos os limites entre os módulos de `app/`. Dividimos o antigo módulo `login` em três: `user`, com os dados de usuário e papéis; `loginsession`, com o pedido e o consumo do link de login e a gestão de sessões; e `loginsecurity`, com a configuração de segurança HTTP. Com a divisão, o risco passou a ser um módulo depender de outro contornando esses limites.
+Nesta etapa, reforçamos dois tipos de limite: entre os módulos de `app/`, que rodam no mesmo processo, e entre os serviços, que têm implantação própria. Registramos as regras das duas fronteiras no documento de princípios do projeto (`memory/constitution.md`): módulos se comunicam por serviços Java, e serviços se comunicam só por contrato.
+
+Dividimos o antigo módulo `login` em três: `user`, com os dados de usuário e papéis; `loginsession`, com o pedido e o consumo do link de login e a gestão de sessões; e `loginsecurity`, com a configuração de segurança HTTP. Com a divisão, o risco passou a ser um módulo depender de outro contornando esses limites.
 
 **Dependências entre módulos.** Dois testes com ArchUnit protegem os limites entre os módulos. O primeiro verifica que os módulos de base (`user`, `loginsecurity` e `link`) não dependem uns dos outros nem do módulo `loginsession`, que depende dos três. O segundo verifica que cada repositório só é acessado de dentro do próprio módulo, de modo que os módulos se comuniquem apenas por meio de serviços. Escrevemos esse segundo teste antes das correções: ele começou falhando, listando cada acesso indevido que precisávamos corrigir, e passou quando terminamos a refatoração.
+
+**Fronteira entre serviços.** Como a aplicação e o Serviço de E-mail estão no mesmo repositório e no mesmo projeto Maven, seria fácil reaproveitar uma classe de um no outro e acoplar os dois sem perceber. Proibimos a dependência Maven entre os dois módulos, e testes com ArchUnit, nos dois serviços, verificam que nenhum usa classes do outro. Na aplicação, outro teste verifica que só o `EmailServiceGateway` usa o cliente gerado. Testes de esquema verificam que cada serviço cria suas tabelas só no próprio schema.
+
+**Disponibilidade do Serviço de E-mail.** Os testes de integração do cliente rodam contra o Serviço de E-mail real, iniciado pelo Docker Compose, e não contra uma simulação. Eles verificam o envio de cada tipo de e-mail, a sincronização dos templates e a repetição das operações idempotentes, que precisa deixar o serviço no mesmo estado. Para a indisponibilidade, verificamos que a aplicação não inicia com uma API-Key que o serviço rejeita e que, com o serviço fora do ar, ela falha rapidamente com `EmailServiceUnavailableException`, em vez de esperar indefinidamente.
+
+**Testes sempre contra a infraestrutura real.** Removemos o banco H2 e o perfil `sandbox`, que permitiam rodar a aplicação sem Docker. Os testes de todos os módulos passaram a usar o PostgreSQL e o LocalStack do Docker Compose, e infraestrutura fora do ar faz o teste falhar. Uma regra de ArchUnit proíbe `Assumptions` do JUnit, para que nenhum teste seja pulado em silêncio.
+
+#### Outras melhorias na aplicação
+
+Além da separação do e-mail, completamos a API do jogo com novas operações, todas descritas primeiro no contrato OpenAPI:
+
+* encerramento da sessão do dispositivo em uso (*logout*);
+* resumo de um jogador, com as competições que criou e de que participa, consultado pelo próprio jogador ou pelo administrador, por identificador ou por e-mail;
+* busca paginada de jogadores pelo administrador, com filtros por tipo de competição, domínio do e-mail e criação de competições;
+* grupo de competições criadas pelo administrador na visão "minhas competições".
+
+Também melhoramos o código e o ambiente de testes:
+
+* retiramos o código de teste da aplicação de produção: a suíte Python lê os e-mails diretamente do LocalStack, e o primeiro administrador e o remetente de e-mail são criados a partir de variáveis de ambiente;
+* os e-mails passaram a levar links absolutos, com a base da URL definida por ambiente;
+* recuperamos a cobertura de testes, que havia caído com a troca do envio de e-mail;
+* refizemos o caderno de testes manuais por funcionalidade do sistema, com uma massa de dados pronta e scripts para restaurá-la.
 
 ## **Etapa 3 — Configuração e Execução dos Serviços**
 
