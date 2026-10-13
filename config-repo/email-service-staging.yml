@@ -1,0 +1,27 @@
+# Spec 05-042: served by config-server to email-service (spring.application.name=email-service) under profile
+# `staging`. No real secret here: outside docker they are placeholders email-service resolves itself.
+# Pre-production environment, not set up yet: same shape as email-service-production.yml, with
+# real infrastructure and data isolated from production. A separate team owns the schema and runs
+# migrations by hand; this service only ever holds the limited email_service_app role. No default
+# url/password: both must be provided by that team. No spring.cloud.aws.*.endpoint override here --
+# falls back to the real AWS default credentials/endpoint chain.
+# Schema and Flyway history names come from application.yml (spec 05-032): tables in schema
+# `email_service` (never public), history in `email_service.email_service_schema_history`, scripts from
+# db/migration-email-service. The team applying migrations by hand creates the schema and grants
+# email_service_app USAGE on it plus SELECT/INSERT/UPDATE/DELETE on its tables and sequences.
+# API_KEY_HMAC_PEPPER (spec 05-030) has no default here: it comes from the environment's secret
+# manager, and HmacPepperStartupCheck fails startup without it. The DB team also grants
+# email_service_app USAGE on schema api_key and SELECT on api_key.api_keys (keys are issued by the
+# api-key CLI with the admin role; this service only reads them).
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME:email_service_app}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: false
+
+logging:
+  level:
+    dev.leilaalgarve.jogoacoes.emailservice: INFO

@@ -34,6 +34,7 @@ class ArchitectureTest {
 
     private static final String BASE_PACKAGE = "dev.leilaalgarve.jogoacoes";
     private static final String EMAIL_SERVICE_PACKAGE = BASE_PACKAGE + ".emailservice..";
+    private static final String CONFIG_SERVER_PACKAGE = BASE_PACKAGE + ".configserver..";
     private static final String EMAIL_CLIENT_API_PACKAGE = BASE_PACKAGE + ".email.client.api..";
     private static final String JUNIT_ASSUMPTIONS = "org.junit.jupiter.api.Assumptions";
 
@@ -108,6 +109,17 @@ class ArchitectureTest {
         noClasses().should().resideInAPackage(EMAIL_SERVICE_PACKAGE)
                 .orShould().dependOnClassesThat().resideInAPackage(EMAIL_SERVICE_PACKAGE)
                 .check(importedClasses);
+    }
+
+    /**
+     * Spec 05-042: config-server is a separately deployable service too, under the same shared
+     * root package; app only talks to it over HTTP, through Spring Cloud Config's client.
+     */
+    @Test
+    void appDoesNotContainOrDependOnConfigServerClasses() {
+        noClasses().should().resideInAPackage(CONFIG_SERVER_PACKAGE)
+                .orShould().dependOnClassesThat().resideInAPackage(CONFIG_SERVER_PACKAGE)
+                .check(productionClasses());
     }
 
     /**

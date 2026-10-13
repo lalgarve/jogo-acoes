@@ -46,7 +46,7 @@ services:
   # Fake SQS+SES+Lambda for the docker profile (docs/context/iteracao-4.md, decisão 3 /
   # "Produtor: EmailSender real"): lets SqsEmailSender publish to a real queue in
   # docker-compose/CI without needing an actual AWS account. The init scripts create the queue
-  # application-docker.yml expects, verify the sender identity SES requires, and deploy
+  # email-service's email.queue-name expects, verify the sender identity SES requires, and deploy
   # email-lambda as a real Lambda function wired to that queue via a real event source mapping
   # -- the same trigger mechanism production would use, just running here instead of on AWS.
   localstack:
@@ -111,11 +111,20 @@ services:
       # otherwise, so email-service has to be accepting requests first.
       email-service:
         condition: service_healthy
+      # Spec 05-042: app reads its configuration from config-server on startup and fails fast
+      # otherwise.
+      config-server:
+        condition: service_healthy
     environment:
       # docker-compose only: the app owns the schema here, so it connects as the admin role
       # and runs Flyway itself. Staging/production use the limited jogo_acoes_app role
-      # instead — see application-staging.yml / application-production.yml.
+      # instead — see config-repo/jogo-acoes-staging.yml / jogo-acoes-production.yml.
       SPRING_PROFILES_ACTIVE: docker
+      # Spec 05-042: where app reads config-repo/jogo-acoes-docker.yml from, with
+      # config-server's test credentials (versioned on purpose, never a real secret).
+      CONFIG_SERVER_URL: http://config-server:8888
+      CONFIG_SERVER_USERNAME: config
+      CONFIG_SERVER_PASSWORD: config-docker-not-a-secret
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/jogo_acoes
       SPRING_DATASOURCE_USERNAME: jogo_acoes_admin
       SPRING_DATASOURCE_PASSWORD: jogo_acoes_admin
@@ -162,10 +171,21 @@ services:
       context: .
       dockerfile: email-service/Dockerfile
     depends_on:
-      - db-email-service
-      - localstack
+      db-email-service:
+        condition: service_started
+      localstack:
+        condition: service_started
+      # Spec 05-042: email-service reads its configuration from config-server on startup and
+      # fails fast otherwise.
+      config-server:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      # Spec 05-042: where email-service reads config-repo/email-service-docker.yml from, with
+      # config-server's test credentials (versioned on purpose, never a real secret).
+      CONFIG_SERVER_URL: http://config-server:8888
+      CONFIG_SERVER_USERNAME: config
+      CONFIG_SERVER_PASSWORD: config-docker-not-a-secret
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-email-service:5432/email_service
       SPRING_DATASOURCE_USERNAME: email_service_admin
       SPRING_DATASOURCE_PASSWORD: email_service_admin
@@ -174,7 +194,7 @@ services:
       # wire to email-lambda (same queue as app's).
       SPRING_CLOUD_AWS_SQS_ENDPOINT: http://localstack:4566
       EMAIL_QUEUE_NAME: jogo-acoes-email-commands
-      # Test pepper the test key was hashed with (same value as application-docker.yml); never a
+      # Test pepper the test key was hashed with (same value as config-repo/email-service-docker.yml); never a
       # real secret.
       API_KEY_HMAC_PEPPER: jogo-acoes-test-pepper-not-a-secret
     ports:
@@ -183,6 +203,31 @@ services:
     # context (Flyway, SES client) is ready. bash's /dev/tcp, since the JRE image has no curl.
     healthcheck:
       test: ["CMD", "bash", "-c", "</dev/tcp/localhost/8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # Spring Cloud Config Server (spec 05-042): serves app's and email-service's per-environment
+  # configuration from config-repo/, mounted read-only -- what it serves is exactly the checkout,
+  # branch included. Placeholders go out unresolved; each service resolves them itself. HTTP Basic
+  # with test credentials (versioned on purpose, never a real secret). Small heap: no database, no
+  # git clone, only a handful of YAML files.
+  config-server:
+    build:
+      context: .
+      dockerfile: config-server/Dockerfile
+    environment:
+      CONFIG_REPO_LOCATION: file:/config-repo/
+      CONFIG_SERVER_USERNAME: config
+      CONFIG_SERVER_PASSWORD: config-docker-not-a-secret
+      JAVA_TOOL_OPTIONS: -Xmx128m
+    volumes:
+      - ./config-repo:/config-repo:ro
+    ports:
+      - "8888:8888"
+    # Same check as email-service: an open port means the context is ready.
+    healthcheck:
+      test: ["CMD", "bash", "-c", "</dev/tcp/localhost/8888"]
       interval: 5s
       timeout: 3s
       retries: 30

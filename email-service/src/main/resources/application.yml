@@ -16,6 +16,12 @@ spring:
     locations: classpath:db/migration-email-service
   application:
     name: email-service
+  # Spec 05-042: everything that changes per environment (docker, staging, production) comes from
+  # config-server, which serves config-repo/email-service-<profile>.yml. Not optional: without
+  # config-server this service does not start (fail-fast), after the client's retries -- a read,
+  # so retrying is safe. The test suite replaces this file and switches the client off.
+  config:
+    import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}
   profiles:
     default: docker
   jpa:
@@ -26,6 +32,10 @@ spring:
       hibernate:
         default_schema: email_service
   cloud:
+    config:
+      fail-fast: true
+      username: ${CONFIG_SERVER_USERNAME}
+      password: ${CONFIG_SERVER_PASSWORD}
     aws:
       # spring-cloud-aws-starter-ses (and -sqs, spec 05-031) autoconfigure their clients
       # unconditionally -- without a resolvable region those beans fail to construct at all,

@@ -1,6 +1,6 @@
 # Spec: Spring Cloud Config Server
 
-**Status:** rascunho
+**Status:** implementada; faltam a CI, a suíte `blackbox-tests` e a verificação manual (ver `tasks.md`)
 **Issue:** #<a criar>
 **Iteração:** iteration-5 (Etapa 3 da disciplina)
 

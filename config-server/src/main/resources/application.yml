@@ -1,0 +1,23 @@
+# Spec 05-042: Spring Cloud Config Server for app (jogo-acoes) and email-service. Serves
+# config-repo/{application}-{profile}.yml as is: placeholders like ${SPRING_DATASOURCE_PASSWORD}
+# go out unresolved and each client resolves them against its own environment, so no secret ever
+# passes through here. No defaults below: docker-compose.yml sets them for the docker environment,
+# and staging/production must set them too -- this service does not start without them.
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  profiles:
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          # Directory with the config-repo/ files, e.g. file:/config-repo/ in docker-compose.yml.
+          search-locations: ${CONFIG_REPO_LOCATION}
+  security:
+    user:
+      name: ${CONFIG_SERVER_USERNAME}
+      password: ${CONFIG_SERVER_PASSWORD}

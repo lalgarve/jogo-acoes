@@ -16,6 +16,12 @@ spring:
     locations: classpath:db/migration-jogo-acoes
   application:
     name: jogo-acoes
+  # Spec 05-042: everything that changes per environment (docker, staging, production) comes from
+  # config-server, which serves config-repo/jogo-acoes-<profile>.yml. Not optional: without
+  # config-server the app does not start (fail-fast), after the client's retries -- a read, so
+  # retrying is safe. The test suites replace this file and switch the client off.
+  config:
+    import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}
   # Spec 05-035: every place this project runs has Docker, so `docker` is the default; staging
   # and production always set SPRING_PROFILES_ACTIVE.
   profiles:
@@ -31,6 +37,10 @@ spring:
     store-type: jdbc
     timeout: 30d
   cloud:
+    config:
+      fail-fast: true
+      username: ${CONFIG_SERVER_USERNAME}
+      password: ${CONFIG_SERVER_PASSWORD}
     # Spec 05-034: email-service's Feign clients are the only ones in app, so "default" is
     # theirs. No automatic retry here: EmailServiceGateway retries idempotent calls only.
     openfeign:
@@ -93,7 +103,7 @@ springdoc:
 # DEBUG for the whole application package, not just common.logging (spec 05-011) -- this is
 # what makes ControllerLoggingAspect/RepositoryLoggingAspect/EmailServiceLoggingAspect appear on the
 # console (they all log at DEBUG), and establishes the same convention for any future log
-# in the app. root stays at Spring Boot's own default (INFO). application-production.yml
+# in the app. root stays at Spring Boot's own default (INFO). config-repo/jogo-acoes-production.yml
 # overrides this back to INFO to suppress the three aspects there.
 logging:
   level:
