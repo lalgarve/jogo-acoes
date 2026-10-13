@@ -29,7 +29,7 @@ de execuções reais.
 | ~~T012~~ | Escrever no caderno os roteiros de login 1–3, executando cada um sobre a massa restaurada e capturando logs e resultados de `SELECT` reais; JSON de cada corpo em bloco próprio | T009, T010, T011 | | |
 | ~~T013~~ | Escrever no caderno os roteiros de competições 4–7, do mesmo jeito | T011 | [P] | |
 | ~~T014~~ | Atualizar a spec 05-012 para "substituída pela 05-040" e registrar a mudança no log de `docs/disciplina/CLAUDE.md` (inclui a pasta `caderno-de-testes/` na tabela de arquivos) | T011 | [P] | |
-| T015 | Verificação final: executar o caderno inteiro do zero (volume novo, restaurar o dump, roteiros 1–7) no Windows, com os scripts no WSL e no PowerShell, e registrar abaixo o resultado de cada roteiro | T012, T013 | | |
+| ~~T015~~ | Verificação final: executar o caderno inteiro do zero (volume novo, restaurar o dump, roteiros 1–7) no Windows, com os scripts no WSL e no PowerShell, e registrar abaixo o resultado de cada roteiro | T012, T013 | | |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -97,5 +97,53 @@ caderno vêm dessas execuções. Diferenças em relação à spec, registradas n
 - roteiro 5: depois de mandar os convites pelo grupo, a competição continua `AWAITING_INVITES`;
   os convidados entram mesmo assim.
 
-**T015.** Pendente: executar o caderno do zero na máquina da Leila (Windows, WSL e PowerShell),
-incluindo `gerar-massa.sh` pelo Compose.
+**T015.** Executado em 2026-10-12 na máquina da Leila (Windows 11, Docker Desktop 29.8),
+**só no Windows**, sem WSL, por decisão da Leila. `gerar-massa.sh` não foi testado: é bash e só
+serve para regenerar a massa. Os roteiros foram chamados pela API com o PowerShell 7, uma
+sessão web por "navegador", no lugar do Swagger UI.
+
+- Volume novo (`docker compose down -v`), infraestrutura pelo Compose,
+  `scripts/test-api-key.sh restore` pelo Git Bash (não há versão PowerShell).
+  `restaurar-massa.ps1` passou no PowerShell 7 com o volume novo e no Windows PowerShell 5.1 com
+  o banco já usado. Nos dois casos o Flyway validou as 9 migrations e o app subiu.
+- Roteiros 1, 2, 4, 6 e 7: resultados iguais aos do caderno, inclusive ids (12, 13, 23, 24,
+  37–41) e contagens. No roteiro 2 o rótulo do dispositivo é o `User-Agent` do PowerShell, já
+  que não há Client Hints; num navegador ele muda, como o caderno avisa.
+- Roteiro 3 com `login-jogador.ps1` e `dispositivos-jogador.ps1` no PowerShell 7: contagens 2, 3
+  e 3, e a sessão mais antiga fica fora da lista. O passo 5 continua falhando (`200` em vez de
+  `401`), como já registrado.
+- Roteiro 5: igual ao caderno. Uma primeira tentativa de confirmar a entrada deu `415`, mas o
+  defeito era do cliente: o `Invoke-WebRequest` manda
+  `Content-Type: application/x-www-form-urlencoded` num POST sem corpo. Com `curl.exe`, sem corpo,
+  a resposta foi `200` com `IN_COMPETITION`.
+- E-mail sem cadastro: `login-jogador.ps1` faz 5 tentativas e termina com erro no PowerShell 7 e
+  no 5.1.
+
+Achados:
+
+- **`dispositivos-jogador.ps1` não funciona no Windows PowerShell 5.1.** Responde `401` logo
+  depois de um login bem-sucedido. O 5.1 descarta o cabeçalho `Cookie` passado em `-Headers`.
+  O cookie gravado está certo: com ele, o mesmo script no PowerShell 7 e o `curl.exe` respondem
+  `200`, e no 5.1 funciona se o cookie for para um `-WebSession`. Decisão da Leila: não
+  corrigir. Os scripts do roteiro 3 funcionam só no PowerShell 7 (`pwsh`), apesar do cabeçalho
+  do script dizer 5.1 e 7.
+- **O primeiro e-mail depois de subir o ambiente demora uns 11 s.** É a partida a frio da Lambda
+  no LocalStack. Os 5×2 s do `login-jogador` não cobrem esse tempo. Nos roteiros não atrapalha,
+  porque o roteiro 1 já manda o primeiro e-mail pelo Swagger UI, mas um `login-jogador` rodado
+  logo depois de subir o ambiente pode falhar.
+- **A seção 3 da preparação do caderno só tem os comandos do WSL.** No Windows, o
+  `COMPOSE_FILE` usa `;` como separador, em vez de `:`, e o `test-api-key.sh` precisa do Git Bash.
+
+- **O `ses-viewer` não mostra os e-mails.** A página responde "Something broke!" e o log traz
+  `TypeError: Cannot read properties of undefined (reading 'html_part')`. Desde a spec 05-031 as
+  mensagens chegam ao SES do LocalStack com `Template` + `TemplateData` e sem `Body`, formato que
+  o visualizador não lê (Issue #156). O caminho principal do caderno para pegar o link, o `SELECT` em
+  `sent_email`, funciona, e `http://localhost:4566/_aws/ses` também.
+
+No navegador (Chromium do app Claude, no Windows), os passos 1 e 2 do roteiro 1 pelo Swagger UI
+funcionaram: `POST /login-requests` respondeu `202`, o token veio do `SELECT` em `sent_email` e
+`GET /login-links/{token}` respondeu `200` com `{"redirectTo":"/admin"}`. A sessão ficou no
+navegador: `GET /sessions` respondeu `200`, rótulo `Windows · Chromium 152`. O Adminer abre a tela
+de login. Antes disso, o Docker Desktop caiu e, depois de reiniciado, o `app` não subia (templates
+no banco do `email-service` e não no LocalStack, Issue #144); recomeçar do zero com
+`docker compose down -v` resolveu.
