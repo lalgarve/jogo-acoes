@@ -51,8 +51,8 @@ Nenhuma dependência nova entre módulos: os quatro pontos já dependem de `link
 2. Teste com `ApplicationContextRunner`: base ausente, `localhost:8080/api` e `/api` impedem o
    contexto de subir; `http://localhost:8080/api/` gera o link sem `//`.
 3. `blackbox-tests/tests/test_mailbox.py`: extração do token a partir de link absoluto.
-4. Manual (Leila, no Windows): com `docker compose up`, pedir login, abrir o e-mail no
-   `ses-viewer` e conferir que o link aparece com `/` e faz o login ao ser aberto.
+4. Manual (Leila): com `docker compose up`, pedir login, abrir o e-mail no `ses-viewer` e
+   conferir que o link faz o login ao ser aberto.
 
 ## Riscos e trade-offs
 
@@ -62,6 +62,3 @@ Nenhuma dependência nova entre módulos: os quatro pontos já dependem de `link
 - **Staging sem base definida.** O `app` em staging não sobe até alguém definir
   `LINKS_BASE_URL`. É o comportamento desejado (falhar cedo), mas precisa estar na lista de
   variáveis de quem montar staging.
-- **A barra invertida no Windows pode ter outra causa.** A análise da `spec.md` é inferência; se
-  a verificação manual 4 ainda mostrar `\` com o link absoluto, a causa está em quem exibe o
-  e-mail e vira Issue própria.

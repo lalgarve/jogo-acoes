@@ -34,28 +34,6 @@ SES do LocalStack confirma (exemplo de 2026-10-13):
 Os testes não pegaram isso porque quem consome o link (suíte `blackbox-tests`, scripts do caderno
 de testes) já conhece a URL da API e extrai só o token.
 
-### A barra invertida no Windows
-
-No Windows o fim do link apareceu com `\` em vez de `/`. O código do `app` não usa o separador
-do sistema: os quatro pontos acima concatenam a string literal `"/login-links/"`, e nenhum código
-de produção de `app`, `email-service` ou `email-lambda` usa `File.separator`, `Path` ou
-`FileSystems` (busca no master `8fc6db2`). O link sai igual em qualquer sistema operacional, como
-mostra o JSON acima, todo com `/`.
-
-Duas causas possíveis, ambas fora do código e ambas ligadas ao link ser relativo ou a como ele é
-lido (inferência, não reproduzida no Windows):
-
-1. **Cliente de e-mail tratando o caminho como arquivo.** Sem esquema (`http://`), um cliente no
-   Windows pode interpretar `/login-links/<token>` como caminho local e exibi-lo com `\`. Um link
-   absoluto `http(s)://` elimina essa interpretação.
-2. **Escape do JSON cru.** O `TemplateData` é uma string JSON dentro do JSON de
-   `GET /_aws/ses`, então o link termina em `5da2\"`: o `\` é o escape da aspa, não parte do
-   link. Copiar o link desse JSON à mão leva o `\` junto. Isso independe do sistema operacional e
-   do link ser absoluto; quem lê pelo `ses-viewer`, pelos scripts do caderno (que decodificam o
-   `TemplateData`) ou pela tabela `sent_email` não vê o `\`.
-
-O critério de aceite inclui conferir no Windows que o link do e-mail abre como URL.
-
 ## Requisitos funcionais
 
 - Todo link de acesso enviado por e-mail é uma URL absoluta: `<base>/login-links/{token}`, onde
@@ -74,10 +52,6 @@ O critério de aceite inclui conferir no Windows que o link do e-mail abre como 
   `http://localhost:8080/api` (sem `//login-links`).
 - O link gravado em `sent_email.link` (envio pelo stub) é o mesmo link absoluto enviado.
 
-## Requisitos não-funcionais
-
-- O link não depende do sistema operacional onde o `app` roda nem de onde o e-mail é lido.
-
 ## Critérios de aceite
 
 - Um e-mail de login pedido em `docker compose up` chega ao SES do LocalStack com
@@ -85,8 +59,6 @@ O critério de aceite inclui conferir no Windows que o link do e-mail abre como 
   (`GET /login-links/{token}`).
 - O mesmo vale para convite (competição privada), pedido de entrada em competição pública e
   inclusão de jogador por administrador.
-- No Windows, o link do e-mail aberto pelo `ses-viewer` (ou pelo `.eml` exportado) aparece com
-  `/` e abre a URL. Verificação manual da Leila.
 - Suíte `blackbox-tests` e scripts do caderno continuam passando com o link absoluto.
 
 ## Fora de escopo
