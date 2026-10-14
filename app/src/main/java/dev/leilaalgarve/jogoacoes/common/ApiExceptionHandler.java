@@ -7,6 +7,7 @@ import dev.leilaalgarve.jogoacoes.competition.exception.EntryRequestValidationEx
 import dev.leilaalgarve.jogoacoes.competition.exception.PlayerNotFoundException;
 import dev.leilaalgarve.jogoacoes.competition.exception.PlayerValidationException;
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceUnavailableException;
+import dev.leilaalgarve.jogoacoes.email.exception.RecipientDomainRejectedException;
 import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkInvalidException;
 import dev.leilaalgarve.jogoacoes.link.exception.LoginLinkUsedOnAnotherDeviceException;
 
@@ -70,6 +71,16 @@ public class ApiExceptionHandler {
     public ResponseEntity<Error> handleEmailServiceUnavailable() {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(new Error().message("The e-mail could not be sent right now, try again"));
+    }
+
+    /**
+     * Spec 05-047: email-service refused the address because its domain does not accept e-mail.
+     * The operation is undone like any failed send, and repeating it gets the same answer.
+     */
+    @ExceptionHandler(RecipientDomainRejectedException.class)
+    public ResponseEntity<Error> handleRecipientDomainRejected() {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
+                .body(new Error().message("The e-mail address domain does not accept e-mail"));
     }
 
     /**

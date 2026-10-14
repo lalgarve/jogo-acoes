@@ -25,6 +25,12 @@ spring:
       sqs:
         endpoint: ${SPRING_CLOUD_AWS_SQS_ENDPOINT:http://localhost:4566}
 
+# Spec 05-047: recipient domains are checked against docker-compose.yml's test DNS server
+# (docker/dns/), not the internet. staging/production leave this empty: the system resolver.
+email:
+  domain-check:
+    dns-servers: dns:53
+
 # Spec 05-030: HMAC pepper the api-key CLI hashed this environment's keys with (ApiKeyHasher reads
 # API_KEY_HMAC_PEPPER). Test value, versioned on purpose -- matches the test key's dump
 # (docker/postgres-email-service/test-data/README.md). An API_KEY_HMAC_PEPPER environment

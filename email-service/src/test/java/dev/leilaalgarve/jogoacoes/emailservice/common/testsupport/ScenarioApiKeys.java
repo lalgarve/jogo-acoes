@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Real API keys for a single scenario (spec 05-030, plan.md, "Chaves dos cenários Gherkin"):
@@ -39,6 +40,18 @@ public class ScenarioApiKeys {
     /** An active key for {@code clientName}: no expiration, not revoked. */
     public String issueActive(String clientName) {
         return issue(clientName, null, false);
+    }
+
+    /**
+     * Spec 05-048: an active key with exactly these permissions, as {@code generate --permissions}
+     * writes it. A key from {@link #issueActive} has none stored, so it gets the catalog's
+     * default ({@code email:send}), like every key issued before api-key 1.1.0.
+     */
+    public String issueActiveWithPermissions(String clientName, Set<String> permissions) {
+        String plaintext = generate();
+        ApiKey key = new ApiKey(clientName, hasher.hash(plaintext), Instant.now(), null, permissions);
+        issuedIds.add(repository.save(key).getId());
+        return plaintext;
     }
 
     public String issueExpired(String clientName) {
