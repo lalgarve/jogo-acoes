@@ -5,14 +5,14 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 
 **Ordem:** testes do comportamento novo primeiro, falhando pelo motivo esperado; depois as
 correções. Depende da spec 05-047 (zona de DNS de teste, `RecipientDomainVerifier`, `422` no
-`POST /emails`) e da spec `013-key-permissions` do `api-key` implementada e publicada (1.2.0),
+`POST /emails`) e da spec `013-key-permissions` do `api-key` implementada e publicada (1.1.0),
 que é pré-requisito.
 
 Issue-épico: a criar quando a spec for aprovada.
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | `api-key` 1.2.0 no `email-service` (`pom.xml`, `scripts/install-api-key-lib.sh`) e o catálogo `api-key.permissions` no `application.yml`. Cliente `operations` no `docker`: gerar a chave de teste com `generate --client operations --permissions disposable-email:admin`, salvar no dump de `docker/postgres-email-service/test-data/` (README com a chave em texto puro), `scripts/test-api-key.sh restore` restaura as duas. Trocar a linha `OPS_API_KEY=` da verificação manual abaixo pela chave gerada | `api-key` 013 publicada | [P] | — |
+| T001 | `api-key` 1.1.0 no `email-service` (`pom.xml`, `scripts/install-api-key-lib.sh`) e o catálogo `api-key.permissions` no `application.yml`. Cliente `operations` no `docker`: gerar a chave de teste com `generate --client operations --permissions disposable-email:admin`, salvar no dump de `docker/postgres-email-service/test-data/` (README com a chave em texto puro), `scripts/test-api-key.sh restore` restaura as duas. Trocar a linha `OPS_API_KEY=` da verificação manual abaixo pela chave gerada | `api-key` 013 publicada | [P] | — |
 | T002 | `disposable.test` (com MX) na zona de DNS de teste da 05-047 | spec 05-047 T001 | [P] | — |
 | T003 | `disposable_domains.feature` com os casos de `spec.md`, "Cenários", e os passos que gravam listas no S3 do LocalStack. Confirmar que falham (`404` nas rotas) | T001 | [P] | — |
 | T004 | `send_email.feature`: destinatário em domínio temporário e em subdomínio dele → `422`. Confirmar que falham (`202`) | T002 | [P] | — |

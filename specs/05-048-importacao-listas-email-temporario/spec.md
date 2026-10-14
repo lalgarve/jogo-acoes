@@ -109,7 +109,7 @@ domínios.
 
 Pré-requisito: a spec `013-key-permissions` do repositório
 [`lalgarve/api-key`](https://github.com/lalgarve/api-key) (branch
-`claude/issue-14-cli-permissions-spec-v1lgmo`), implementada e publicada (versão 1.2.0). Ela
+`claude/issue-14-cli-permissions-spec-v1lgmo`), implementada e publicada (versão 1.1.0). Ela
 dá a cada chave de API uma lista de permissões, tiradas de um catálogo configurado por serviço,
 e a biblioteca de validação devolve as permissões da chave válida.
 
@@ -121,7 +121,7 @@ e a biblioteca de validação devolve as permissões da chave válida.
   | `disposable-email:admin` | não | Administrar as listas de e-mail temporário (repositórios e execução do lote) |
 
 - Cada rota exige a sua permissão; uma chave válida sem ela recebe `403`.
-- O `jogo-acoes` continua com a chave de hoje: uma chave emitida antes da 1.2.0 recebe as
+- O `jogo-acoes` continua com a chave de hoje: uma chave emitida antes da 1.1.0 recebe as
   permissões padrão, ou seja, só `email:send`. Não administra as listas.
 - Operações recebe uma chave só com `disposable-email:admin`
   (`generate --client operations --permissions disposable-email:admin`). Não envia e-mail nem
