@@ -1,6 +1,6 @@
 # Spec: email-service recusa template com nome vazio ou em branco
 
-**Status:** implementada, falta a verificação manual (ver `tasks.md`)
+**Status:** implementada
 **Issue:** [#133](https://github.com/lalgarve/jogo-acoes/issues/133)
 **Iteração:** iteration-5
 
