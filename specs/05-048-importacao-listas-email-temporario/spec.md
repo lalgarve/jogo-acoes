@@ -36,7 +36,8 @@ domínios.
   - **Acrescentar repositório:** operações cadastra um repositório com endereço e descrição → o
     repositório aparece na lista, sem download e sem atualização ainda;
   - endereço repetido → `409`; endereço que não é `http`/`https` ou sem descrição → `400`;
-  - cliente sem permissão de operações → `403`; sem chave → `401`;
+  - chave sem a permissão `disposable-email:admin` (a do `jogo-acoes`) → `403`; sem chave → `401`;
+  - chave de operações (só `disposable-email:admin`) tentando enviar e-mail ou mudar template → `403`;
   - **Pedir a execução do lote:** com um repositório cadastrado → `202` com o identificador da
     execução; a execução termina `COMPLETED`; os domínios da lista estão na tabela; o repositório
     tem hora de último download e de última atualização;
@@ -104,10 +105,27 @@ domínios.
 - Um domínio temporário nunca entra na lista branca. Se já estava nela, a tabela de temporários
   vence (a consulta a ela vem antes).
 
-### Permissão
+### Permissões
 
-- As rotas de repositórios e de execução são só de operações (ver "Decisões em aberto", item 1).
-  Um cliente comum (como o `jogo-acoes`) recebe `403`.
+Pré-requisito: a spec `013-key-permissions` do repositório
+[`lalgarve/api-key`](https://github.com/lalgarve/api-key) (branch
+`claude/issue-14-cli-permissions-spec-v1lgmo`), implementada e publicada (versão 1.2.0). Ela
+dá a cada chave de API uma lista de permissões, tiradas de um catálogo configurado por serviço,
+e a biblioteca de validação devolve as permissões da chave válida.
+
+- O `email-service` configura um catálogo com duas permissões:
+
+  | Permissão | Padrão | O que libera |
+  |---|---|---|
+  | `email:send` | sim | Enviar e-mails e mudar os próprios templates (`/emails`, `/templates`, `/sender`) |
+  | `disposable-email:admin` | não | Administrar as listas de e-mail temporário (repositórios e execução do lote) |
+
+- Cada rota exige a sua permissão; uma chave válida sem ela recebe `403`.
+- O `jogo-acoes` continua com a chave de hoje: uma chave emitida antes da 1.2.0 recebe as
+  permissões padrão, ou seja, só `email:send`. Não administra as listas.
+- Operações recebe uma chave só com `disposable-email:admin`
+  (`generate --client operations --permissions disposable-email:admin`). Não envia e-mail nem
+  muda template.
 
 ## Requisitos não-funcionais
 
@@ -126,7 +144,7 @@ domínios.
 - Listas em outros formatos (JSON, CSV) e listas de permissão (*allowlist*) de terceiros.
 - Bloquear domínios temporários no cadastro do `jogo-acoes` antes de qualquer envio (o `422`
   chega pelo envio, como na 05-047).
-- Execução periódica automática (ver "Decisões em aberto", item 2).
+- Execução periódica automática (ver "Decisões em aberto", item 1).
 
 ## Decisões resolvidas
 
@@ -135,31 +153,27 @@ domínios.
 - **Tabela de repositórios** com endereço, descrição, último download e última atualização no
   banco (Leila, 2026-10-14).
 - **Cenários para acrescentar repositórios e pedir a execução do lote** (Leila, 2026-10-14).
+- **Operações se identifica por chave de API com permissões**, da spec `013-key-permissions` do
+  `api-key`, que é pré-requisito (Leila, 2026-10-14). Duas permissões: uma de administração das
+  listas e outra de enviar e-mails e mudar templates. Operações não tem permissão de enviar
+  e-mails.
 
 ## Decisões em aberto
 
 Cada uma tem uma recomendação, já usada nos requisitos e no `plan.md`; falta a confirmação da
 Leila.
 
-1. **Como operações se identifica.** Recomendação: uma chave de API emitida pela CLI do
-   `api-key` para um cliente de operações (no `docker`, o cliente `operations`, com chave de
-   teste no mesmo dump da chave do `jogo-acoes`), e a lista dos clientes de operações na
-   configuração do serviço (`email.operations-clients`). As rotas ficam no OpenAPI e no Swagger,
-   o que permite os cenários em Gherkin e o caderno de testes. Alternativa: scripts que escrevem
-   direto no banco (como `scripts/set-email-sender.sh`) e o lote rodando como processo separado
-   (`java -jar ... --spring.batch.job.name=...`); é o jeito clássico de lote, mas não dá
-   cenário pela API.
-2. **Execução periódica.** Recomendação: um agendamento diário configurável
+1. **Execução periódica.** Recomendação: um agendamento diário configurável
    (`email.disposable-domains.import-cron`), ligado em `staging`/`production` e desligado no
    `docker`, para os testes não dependerem de horário. A Leila pediu a execução sob pedido; o
    agendamento só evita alguém ter que lembrar.
-3. **Repositório inicial.** Recomendação: a migration já cadastra
+2. **Repositório inicial.** Recomendação: a migration já cadastra
    `https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf`
    ("disposable-email-domains, lista principal"), a fonte decidida no roadmap. Nos testes, a
    suíte apaga os repositórios antes de cada cenário.
-4. **Proteção contra uma lista que encolhe de repente.** Recomendação: só a lista vazia é
+3. **Proteção contra uma lista que encolhe de repente.** Recomendação: só a lista vazia é
    recusada. Uma regra de "não remover mais que X%" protege de um arquivo truncado, mas também
    trava uma limpeza legítima; fica para quando acontecer.
-5. **Subdomínios.** Recomendação: recusar também os subdomínios de um domínio da lista
+4. **Subdomínios.** Recomendação: recusar também os subdomínios de um domínio da lista
    (`x.mailinator.com`), como o próprio `disposable-email-domains` orienta. Custa até uma consulta
    por nível do domínio, com índice.

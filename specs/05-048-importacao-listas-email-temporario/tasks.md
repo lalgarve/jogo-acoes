@@ -5,21 +5,22 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 
 **Ordem:** testes do comportamento novo primeiro, falhando pelo motivo esperado; depois as
 correções. Depende da spec 05-047 (zona de DNS de teste, `RecipientDomainVerifier`, `422` no
-`POST /emails`).
+`POST /emails`) e da spec `013-key-permissions` do `api-key` implementada e publicada (1.2.0),
+que é pré-requisito.
 
 Issue-épico: a criar quando a spec for aprovada.
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Cliente `operations` no `docker`: gerar a chave de teste com a CLI do `api-key`, salvar no dump de `docker/postgres-email-service/test-data/` (README com a chave em texto puro), `scripts/test-api-key.sh restore` restaura as duas. Trocar a linha `OPS_API_KEY=` da verificação manual abaixo pela chave gerada | — | [P] | — |
+| T001 | `api-key` 1.2.0 no `email-service` (`pom.xml`, `scripts/install-api-key-lib.sh`) e o catálogo `api-key.permissions` no `application.yml`. Cliente `operations` no `docker`: gerar a chave de teste com `generate --client operations --permissions disposable-email:admin`, salvar no dump de `docker/postgres-email-service/test-data/` (README com a chave em texto puro), `scripts/test-api-key.sh restore` restaura as duas. Trocar a linha `OPS_API_KEY=` da verificação manual abaixo pela chave gerada | `api-key` 013 publicada | [P] | — |
 | T002 | `disposable.test` (com MX) na zona de DNS de teste da 05-047 | spec 05-047 T001 | [P] | — |
 | T003 | `disposable_domains.feature` com os casos de `spec.md`, "Cenários", e os passos que gravam listas no S3 do LocalStack. Confirmar que falham (`404` nas rotas) | T001 | [P] | — |
 | T004 | `send_email.feature`: destinatário em domínio temporário e em subdomínio dele → `422`. Confirmar que falham (`202`) | T002 | [P] | — |
 | T005 | `DisposableDomainLineProcessorTest` e `ImportDisposableDomainsJobTest`. Registrar que não compilam antes do pacote `disposable/` | — | [P] | — |
-| T006 | Contrato: tag `disposable-domains`, rotas, esquemas, `403`; `422` de `POST /emails` com os dois motivos | — | [P] | — |
+| T006 | Contrato: tag `disposable-domains`, rotas, esquemas, `403` em todas as rotas; `422` de `POST /emails` com os dois motivos | — | [P] | — |
 | T007 | Migrations (tabelas do Spring Batch e das listas, repositório inicial), starter do Spring Batch, `spring.batch.*`. Confirmar `SchemaLayoutTest` verde | — | | — |
 | T008 | Job (`downloadStep`, decisor, `importStep` com `ItemReader`/`ItemProcessor`/`ItemWriter`, `pruneStep`). Confirmar T005 verde | T005, T007 | | — |
-| T009 | Rotas de repositórios e de execução, `OperationsAuthorizationFilter`, `403`/`409` no `ApiExceptionHandler`, `email.operations-clients` e `email.disposable-domains.*` em `config-repo/` e no `application.yml` de teste. Confirmar T003 verde | T001, T003, T006, T008 | | — |
+| T009 | Rotas de repositórios e de execução, `PermissionInterceptor` (permissões em todas as rotas), `403`/`409` no `ApiExceptionHandler`, `email.disposable-domains.*` em `config-repo/` e no `application.yml` de teste. Confirmar T003 verde | T001, T003, T006, T008 | | — |
 | T010 | `DisposableDomainChecker` e a chamada em `RecipientDomainVerifier`. Confirmar T004 verde | T004, T007, spec 05-047 | | — |
 | T011 | Agendamento (`email.disposable-domains.import-cron`), desligado no `docker` e ligado em `staging`/`production` | T008 | [P] | — |
 | T012 | Documentação: `README.md` (cliente `operations`, como cadastrar repositório e pedir a execução); `docs/disciplina/caderno-de-testes.md`, seção do email-service, com os `curl` da verificação manual | T009 | [P] | — |
@@ -52,7 +53,8 @@ API_KEY=dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU
 OPS_API_KEY=
 ```
 
-(A linha `OPS_API_KEY=` recebe a chave de teste do cliente `operations` na T001.)
+(A linha `OPS_API_KEY=` recebe a chave de teste do cliente `operations`, só com
+`disposable-email:admin`, na T001.)
 
 1. Uma lista de teste servida pelo S3 do LocalStack:
    ```bash
@@ -79,12 +81,22 @@ OPS_API_KEY=
      -d '{"url":"http://localstack:4566/disposable-lists/lista.conf","description":"Lista de teste"}'
    ```
    Esperado: `409`.
-4. O `jogo-acoes` não usa as rotas de operações:
+4. O `jogo-acoes` (só `email:send`) não usa as rotas de operações:
    ```bash
    curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8082/api/disposable-domain-sources \
      -H "X-API-Key: $API_KEY"
    ```
    Esperado: `403`.
+   E operações (só `disposable-email:admin`) não envia e-mail:
+   ```bash
+   curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/emails \
+     -H "X-API-Key: $OPS_API_KEY" -H 'Content-Type: application/json' \
+     -d '{"templateName":"login-link","recipientEmail":"jogador@with-mx.test"}'
+   ```
+   Esperado:
+   ```
+   {"message":"Missing permission: email:send"} [403]
+   ```
 5. Pedir a execução do lote para esse repositório:
    ```bash
    EXECUTION_ID=$(curl -s -X POST http://localhost:8082/api/disposable-domain-imports \
