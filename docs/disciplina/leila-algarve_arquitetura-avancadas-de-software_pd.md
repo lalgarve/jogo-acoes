@@ -263,14 +263,10 @@ Para evitar cadastro de usuários usando emails temporários, usamos listas grat
 
 ASPECT Oriented Programming (AOP) in Spring Framework. *GeeksforGeeks*, [20--]. Disponível em: https://www.geeksforgeeks.org/advance-java/aspect-oriented-programming-aop-in-spring-framework/. Acesso em: 5 out. 2026.
 
+GITHUB. **Spec Kit**: tasks-template.md. [*S. l.*]: GitHub, 2026. Disponível em: https://github.com/github/spec-kit/blob/main/templates/tasks-template.md. Acesso em: 14 out. 2026.
+
 GRAZIANO, Alfonso. **AI-Native Software Engineering**. Sebastopol, CA: O'Reilly Media, 2026. E-book. Versão preliminar (*early release*); publicação prevista para fev. 2027. Disponível em: https://learning.oreilly.com/library/view/ai-native-software-engineering/0642572352530/. Acesso em: 24 set. 2026.
 
 SMART, John Ferguson. **BDD in Action**: Behavior-Driven Development for the Whole Software Lifecycle. Shelter Island, NY: Manning Publications, 2014. E-book. ISBN 978-1-61729-165-4. Disponível em: https://learning.oreilly.com/library/view/bdd-in-action/9781617291654/. Acesso em: 24 set. 2026.
 
-[https://github.com/github/spec-kit/blob/main/templates/tasks-template.md ](https://github.com/github/spec-kit) Acessado 16/10/2026
-
-https://www.techknow.com.br/post/spec-driven-development Acessado 16/102026
-
-
-
-
+WILDRIK. **Spec Driven Development**: o futuro de programar com IA (SDD). *techknow*, 25 abr. 2026. Disponível em: https://www.techknow.com.br/post/spec-driven-development. Acesso em: 14 out. 2026.
