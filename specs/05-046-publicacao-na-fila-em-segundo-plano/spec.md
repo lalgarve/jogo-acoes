@@ -97,8 +97,7 @@ Decisões da Leila (2026-10-14), ao revisar a spec 05-044:
 
 ### Desistência
 
-- Um envio que ainda não deu certo 24 horas depois do pedido passa para `FAILED` (ver "Decisões em
-  aberto", item 1). O serviço registra um `ERROR` no log com o `id` e o tipo de erro.
+- Um envio que ainda não deu certo 24 horas depois do pedido passa para `FAILED` (ver "Decisões resolvidas"). O serviço registra um `ERROR` no log com o `id` e o tipo de erro.
 - O `templateData` só fica gravado enquanto o envio está `PENDING`; é apagado quando ele vira
   `QUEUED` ou `FAILED` (pode ter dado pessoal; a 05-031 não gravava).
 
@@ -142,19 +141,17 @@ Decisões da Leila (2026-10-14), ao revisar a spec 05-044:
   na última hora não são recriados de novo (Leila, 2026-10-14).
 - **Tipo de erro e número de tentativas gravados no banco** (Leila, 2026-10-14).
 
+- **Desistência** (Leila, 2026-10-14): 24 horas depois do pedido, com espera de 1 s dobrando até
+  5 min entre tentativas. Valores configuráveis.
+- **Quem classifica o erro** (Leila, 2026-10-14): a `email-lambda`, que recebe a resposta do SES,
+  põe a mensagem na DLQ com o tipo. A redrive do SQS sozinha não diz o motivo da falha.
+- **Templates recriados na última hora** (Leila, 2026-10-14): coluna `ses_recreated_at` em
+  `email_template`, válida para todas as instâncias e depois de um reinício.
+
 ## Decisões em aberto
 
-Cada uma tem uma recomendação, já usada nos requisitos e no `plan.md`; falta a confirmação da
-Leila.
+Tem uma recomendação, já usada nos requisitos e no `plan.md`; falta a confirmação da Leila.
 
-1. **Quando desistir.** Recomendação: 24 horas depois do pedido, com espera de 1 s dobrando até
-   5 min entre tentativas. Um e-mail de login ou convite que sai um dia depois já não serve para
-   quem pediu. Valores configuráveis.
-2. **Quem classifica o erro.** Recomendação: a `email-lambda`, que é quem recebe a resposta do
-   SES, põe a mensagem na DLQ com o tipo. A redrive do SQS sozinha não diz o motivo da falha.
-3. **Onde fica a "lista dos templates recriados na última hora".** Recomendação: uma coluna
-   `ses_recreated_at` em `email_template`, e não uma lista em memória: vale para todas as
-   instâncias e sobrevive a um reinício.
-4. **Status na resposta.** Recomendação: `202` com `status: "PENDING"`, e o enum do contrato passa
+1. **Status na resposta.** Recomendação: `202` com `status: "PENDING"`, e o enum do contrato passa
    a ter `PENDING`, `QUEUED` e `FAILED` (os dois últimos só aparecem quando existir a consulta do
    envio).
