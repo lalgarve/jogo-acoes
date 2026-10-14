@@ -62,6 +62,53 @@ dos módulos — cada um mantém seu próprio *parent*/BOM):
 `mvn -pl email-lambda -am verify`, `mvn -pl email-service -am verify` ou
 `mvn -pl config-server -am verify`.
 
+### Módulos do sistema principal
+
+Dentro do `app/`, o código é organizado por domínio, um pacote por módulo em
+`dev.leilaalgarve.jogoacoes.<módulo>`:
+
+| Módulo | Responsabilidade | Depende de |
+|---|---|---|
+| `user` | Identidade: usuários, papéis e os serviços de leitura e criação de usuário | — |
+| `link` | Mecanismo genérico de link mágico (criar, consumir, invalidar) | — |
+| `captcha` | Verificação de prova de trabalho (ALTCHA) | — |
+| `loginsecurity` | Monta o `SecurityFilterChain` a partir das regras que cada módulo declara | — |
+| `log` | Log de auditoria imutável | `user` |
+| `email` | Cliente do Serviço de E-mail (envio e sincronização de templates) | `user`, `competition` |
+| `loginsession` | Pedido e consumo do link de login, sessões ativas, usuário logado | `user`, `link`, `loginsecurity`, `email`, `log` |
+| `competition` | Competições, participações, convites, pedidos de entrada, gerência de jogadores | `user`, `link`, `loginsession`, `loginsecurity`, `email`, `captcha`, `log` |
+| `bootstrap` | Cria o primeiro administrador ao subir | `user` |
+| `common` | Tradução das exceções de negócio em respostas HTTP | `captcha`, `competition`, `email`, `link`, `loginsecurity` |
+
+Os módulos só se falam por serviços, interfaces, entidades e enums; nenhum usa o repositório de
+outro (regra verificada pelo `ArchitectureTest`). O diagrama completo, com o que atravessa cada
+seta, está em [`docs/diagrams/modulos.md`](docs/diagrams/modulos.md).
+
+**Exemplo de dependência entre módulos.** Ao convidar um jogador para uma competição privada, o
+`competition` cria o link de convite pelo `LinkService` (módulo `link`) e pede o envio do convite
+pela interface `EmailSender` (módulo `email`). O `competition` não conhece a implementação do
+envio: o `email` é quem chama o Serviço de E-mail. No sentido contrário, o `link` não importa nada
+do `competition`. Quando o convidado abre o link, o `link` chama o `CompetitionLinkHandler`, que o
+`competition` registra como implementação da interface `LinkHandler`, declarada no `link`.
+
+### Serviço independente: o Serviço de E-mail
+
+O candidato a serviço independente identificado na Etapa 1 foi o envio de e-mail, e ele virou o
+`email-service/` na Etapa 2. A separação se justifica por quatro motivos:
+
+- **Responsabilidade sem relação com o jogo.** Cadastrar templates, validar o pedido de envio e
+  entregar pelo SES não depende de nenhuma regra de competição; qualquer aplicação pode ser cliente,
+  autenticada por API-Key.
+- **Infraestrutura própria.** Só ele fala com a fila SQS e com o SES; o `app` não conhece nenhum
+  dos dois.
+- **Dados próprios.** Templates e envios ficam no banco e no schema
+  do `email-service`, sem compartilhar entidades, repositórios nem migrations com o `app`.
+- **Ritmo de mudança diferente.** O serviço pode ser publicado e escalado sem republicar o jogo.
+
+O `app` chama o `email-service` de forma síncrona, por REST, com um cliente OpenFeign gerado do
+contrato [`docs/openapi-email-service.yaml`](docs/openapi-email-service.yaml). Nenhum dos dois
+depende do código Java do outro, regra verificada pelo `ArchitectureTest` de cada serviço.
+
 ## Como rodar os testes
 
 Os testes rodam contra a infraestrutura real do Docker Compose, que precisa estar de pé antes
