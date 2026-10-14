@@ -16,7 +16,7 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
 | ~~T003~~ | `docs/openapi-email-service.yaml`: `EmailTemplateCreateRequest.name` ganha `minLength: 1` e `pattern: '^[\s\S]*\S[\s\S]*$'`, com `description` dizendo que o nome não pode ser vazio nem só espaço em branco. Conferir no DTO gerado (`target/generated-sources`) que vieram `@Size(min = 1)` e `@Pattern`. Confirmar T001 e T002 verdes | T001, T002 | | #133 |
 | ~~T004~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os caminhos de erro novos (400 por `MethodArgumentNotValidException` para nome vazio e para nome em branco); apontar T001/T002 como os testes que os exercitam. Registrar abaixo | T003 | | #133 |
 | ~~T005~~ | Rodar a suíte do email-service (`mvn -pl email-service verify`) e a do `app` (`mvn -pl app -am verify`, que regenera o cliente Feign do mesmo contrato) e confirmar verde | T003 | | #133 |
-| T006 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T006)" abaixo e conferir os resultados esperados | T005 | | #133 |
+| ~~T006~~ | Verificação manual (Leila): rodar o roteiro "Verificação manual (T006)" abaixo e conferir os resultados esperados | T005 | | #133 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -101,3 +101,5 @@ Para derrubar: `docker compose down -v`.
   8082) e deram as saídas esperadas. A parte de subida (`docker compose up --build`) não rodou no
   container da Claude, que não constrói as imagens (Maven dentro do Docker sem acesso ao
   repositório); é a mesma sequência do caderno de testes.
+- **T006**: verificação manual feita pela Leila em 2026-10-14, com o roteiro acima: os testes
+  passaram.
