@@ -1,3 +1,5 @@
+# Spec 05-042: served by config-server to app (spring.application.name=jogo-acoes) under profile
+# `production`. No real secret here: outside docker they are placeholders app resolves itself.
 # Same rule as staging: a separate team owns the schema and runs migrations by hand.
 # The app only ever holds the limited jogo_acoes_app role and never runs Flyway itself. No
 # default url/password: both must be provided by that team, never hardcoded in the repo.

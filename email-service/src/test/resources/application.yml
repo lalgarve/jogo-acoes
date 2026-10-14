@@ -32,6 +32,15 @@ spring:
     table: email_service_schema_history
     locations: classpath:db/migration-email-service
   cloud:
+    # Spec 05-042: the suite runs on this file's own values, not on config-server's -- unlike
+    # src/main/resources/application.yml, there is no spring.config.import here.
+    # ConfigServerClientIntegrationTest switches it back on.
+    config:
+      enabled: false
+      # docker-compose.yml's test credentials for config-server, for the test that switches the
+      # client on. Versioned on purpose, never a real secret.
+      username: ${CONFIG_SERVER_USERNAME:config}
+      password: ${CONFIG_SERVER_PASSWORD:config-docker-not-a-secret}
     aws:
       credentials:
         access-key: test

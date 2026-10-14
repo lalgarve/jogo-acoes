@@ -39,6 +39,11 @@ jobs:
       - name: Start Postgres and LocalStack
         run: docker compose up -d --wait db db-email-service localstack
 
+      # Spec 05-042: config-server serves config-repo/ to email-service (read on startup), to each
+      # suite's ConfigServerClientIntegrationTest and to app's ProductionProfileSuppressesLoggingAspectsTest.
+      - name: Start config-server
+        run: docker compose up -d --wait config-server
+
       # Spec 05-034: EmailServiceClientIntegrationTest calls the real email-service (its own
       # Postgres, SES on the LocalStack above). The test API key of client jogo-acoes has to be
       # restored before app's tests use it (docker/postgres-email-service/test-data/README.md).
@@ -86,6 +91,11 @@ jobs:
           SPRING_PROFILES_ACTIVE: docker
         run: mvn -B -pl email-service -am verify
 
+      # Spec 05-042: config-server's own tests read the real config-repo/; no infrastructure needed.
+      - name: Run config-server tests
+        if: ${{ !cancelled() }}
+        run: mvn -B -pl config-server -am verify
+
       # Runs even if the coverage gate above failed the build, so the PR still shows the
       # actual percentage instead of just a red check with no explanation.
       - name: Comment coverage on the PR
@@ -99,7 +109,7 @@ jobs:
           title: 'Cobertura de testes (JaCoCo)'
           update-comment: true
 
-      - name: Stop Postgres, LocalStack and email-service
+      - name: Stop Postgres, LocalStack, config-server and email-service
         if: always()
         run: docker compose down -v
 

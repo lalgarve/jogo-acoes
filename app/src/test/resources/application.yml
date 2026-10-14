@@ -35,6 +35,15 @@ spring:
     store-type: jdbc
     timeout: 30d
   cloud:
+    # Spec 05-042: the suite runs on this file's own values, not on config-server's -- unlike
+    # src/main/resources/application.yml, there is no spring.config.import here.
+    # ConfigServerClientIntegrationTest (and the production-profile test) switch it back on.
+    config:
+      enabled: false
+      # docker-compose.yml's test credentials for config-server, for the tests that switch the
+      # client on. Versioned on purpose, never a real secret.
+      username: ${CONFIG_SERVER_USERNAME:config}
+      password: ${CONFIG_SERVER_PASSWORD:config-docker-not-a-secret}
     # Spec 05-034: email-service's Feign clients are the only ones in app, so "default" is
     # theirs. No automatic retry here: EmailServiceGateway retries idempotent calls only.
     openfeign:
@@ -46,6 +55,13 @@ spring:
 
 altcha:
   secret: test-secret
+
+# Spec 05-042: these two used to reach the suite from src/main/resources/application-docker.yml
+# (profile docker, the default); that file is now config-repo/jogo-acoes-docker.yml, which the
+# suite does not read. Same values.
+ADMIN_EMAIL: success+admin@simulator.amazonses.com
+links:
+  base-url: http://localhost:8080/api
 
 login:
   max-devices-per-user: 3

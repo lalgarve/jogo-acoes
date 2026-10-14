@@ -1,4 +1,6 @@
-# Same rule as app/src/main/resources/application-production.yml: a separate team owns the
+# Spec 05-042: served by config-server to email-service (spring.application.name=email-service) under profile
+# `production`. No real secret here: outside docker they are placeholders email-service resolves itself.
+# Same rule as jogo-acoes-production.yml: a separate team owns the
 # schema and runs migrations by hand; this app only ever holds the limited
 # email_service_app role. No default url/password: both must be provided by that team.
 # No spring.cloud.aws.ses.endpoint override here -- falls back to the real AWS default

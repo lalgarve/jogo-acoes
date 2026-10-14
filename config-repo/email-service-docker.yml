@@ -1,3 +1,5 @@
+# Spec 05-042: served by config-server to email-service (spring.application.name=email-service) under profile
+# `docker`. No real secret here: outside docker they are placeholders email-service resolves itself.
 # Real PostgreSQL in its own container (db-email-service, docker-compose.yml) -- own
 # database/roles, never shared with app's db (plan.md, "Banco de dados"). This service owns
 # its schema here and runs Flyway itself (admin role). See
@@ -13,7 +15,7 @@ spring:
   cloud:
     aws:
       # LocalStack (docker-compose.yml service, SES already enabled there for email-lambda) --
-      # fake credentials, same reasoning as app/src/main/resources/application-docker.yml.
+      # fake credentials, which LocalStack accepts as they are.
       credentials:
         access-key: test
         secret-key: test

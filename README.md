@@ -49,16 +49,18 @@ Detalhes de cada etapa estão em [`docs/roadmap.md`](docs/roadmap.md).
 ## Módulos
 
 Reator Maven multi-módulo (`pom.xml` na raiz é só um agregador, não é *parent* de nenhum
-dos três — cada módulo mantém seu próprio *parent*/BOM):
+dos módulos — cada um mantém seu próprio *parent*/BOM):
 
 | Módulo | Framework | O quê |
 |---|---|---|
 | `app/` | Spring Boot | O sistema principal (API, persistência, regras de negócio) |
 | `email-lambda/` | Quarkus | AWS Lambda que consome a fila de e-mail e envia via SES — ver "Pipeline de e-mail ponta a ponta em desenvolvimento" abaixo pra rodar como processo vivo localmente |
 | `email-service/` | Spring Boot | Serviço de E-mail (specs 05-025 e 05-031) — cadastro de templates sincronizado com o SES e envio de e-mail por template; ver "Cadastro de templates do Serviço de E-mail" e "Envio de e-mail pelo Serviço de E-mail" abaixo |
+| `config-server/` | Spring Cloud Config Server | Entrega a configuração de cada ambiente do `app` e do `email-service`, lida de `config-repo/` (spec 05-042); ver "Ambientes" abaixo |
 
-`mvn verify` na raiz builda os três. Pra rodar só um: `mvn -pl app -am verify`,
-`mvn -pl email-lambda -am verify` ou `mvn -pl email-service -am verify`.
+`mvn verify` na raiz builda todos. Pra rodar só um: `mvn -pl app -am verify`,
+`mvn -pl email-lambda -am verify`, `mvn -pl email-service -am verify` ou
+`mvn -pl config-server -am verify`.
 
 ## Como rodar os testes
 
@@ -68,6 +70,7 @@ Os testes rodam contra a infraestrutura real do Docker Compose, que precisa esta
 
 ```bash
 docker compose up -d --wait db db-email-service localstack
+docker compose up -d --wait config-server
 ./scripts/test-api-key.sh restore
 docker compose up -d --wait email-service
 ./scripts/test-api-key.sh restore
@@ -93,6 +96,16 @@ mvn -pl email-service -am verify
 mvn -pl email-lambda -am verify
 ```
 
+```bash
+mvn -pl config-server -am verify
+```
+
+As suítes do `app` e do `email-service` usam a própria configuração de teste
+(`src/test/resources/application.yml`), não a do `config-server`; só os testes que provam a
+leitura real dele (`ConfigServerClientIntegrationTest` nos dois, e o teste do perfil
+`production` no `app`) precisam do `config-server` de pé. O `config-server` testa os arquivos
+reais de `config-repo/` e não precisa de infraestrutura.
+
 O `email-lambda` não usa o Compose: o Quarkus sobe o próprio LocalStack pelo Dev Services, e só
 precisa do Docker.
 
@@ -105,7 +118,24 @@ que falta. Nesse caso, olhe primeiro o erro do primeiro contexto que falhou.
 ## Ambientes
 
 O perfil ativo do Spring é escolhido por `SPRING_PROFILES_ACTIVE` (ou `docker`, se nenhum for
-definido). Cada um tem seu arquivo `application-<nome>.yml` em `app/src/main/resources`:
+definido). A configuração de cada ambiente não fica dentro do jar: o `app` e o `email-service`
+buscam no `config-server` (Spring Cloud Config Server, spec 05-042), ao subir, o arquivo
+`config-repo/<aplicação>-<perfil>.yml` (`jogo-acoes-docker.yml`, `email-service-production.yml`
+etc.):
+
+| Variável | Para quê |
+|---|---|
+| `CONFIG_SERVER_URL` | Endereço do `config-server` (padrão `http://localhost:8888`) |
+| `CONFIG_SERVER_USERNAME`, `CONFIG_SERVER_PASSWORD` | HTTP Basic do `config-server`, sem padrão; no `docker-compose.yml`, credenciais de teste versionadas |
+
+Sem o `config-server`, o serviço não sobe: depois de algumas tentativas, falha na
+inicialização. Por isso rodar o `app` ou o `email-service` fora do Compose (`java -jar`,
+`mvn spring-boot:run`) exige o `config-server` de pé, como já exige o banco. Os arquivos de
+`config-repo/` não têm segredo: fora do `docker`, senhas e chaves aparecem só como
+`${VARIAVEL}`, resolvidas pelo próprio serviço com as variáveis de ambiente dele. Mudar um valor
+de ambiente não exige rebuild da imagem, só reiniciar o serviço.
+
+Perfis do `app`:
 
 | Perfil | Banco | Quando usar |
 |---|---|---|
@@ -136,6 +166,24 @@ Os scripts de `docker/postgres*/init/` (que criam o schema, os papéis e o `sear
 num volume novo. Num volume antigo as tabelas continuam no `public` e o Flyway recriaria tudo no
 schema novo, deixando as antigas órfãs. O sistema está em pré-produção, então não há dado a
 preservar (a chave de API de teste se restaura com `./scripts/test-api-key.sh restore`).
+
+## Endereços dos serviços
+
+Com `docker compose up` (e o overlay `blackbox`, quando indicado), cada serviço fica publicado
+no host em:
+
+| Serviço | Endereço | Observação |
+|---|---|---|
+| `app` (API) | `http://localhost:8080/api` | Contrato em `docs/openapi.yaml` |
+| Swagger UI do `app` | `http://localhost:8080/api/swagger-ui/index.html` | O pedido de login só passa sem captcha com o overlay `blackbox` |
+| `email-service` (API) | `http://localhost:8082/api` | Exige API-Key; sem Swagger UI (exemplos em "Envio de e-mail pelo Serviço de E-mail") |
+| `config-server` | `http://localhost:8888/{aplicação}/{perfil}` | Ex.: `/jogo-acoes/docker`; HTTP Basic `config` / `config-docker-not-a-secret` |
+| `ses-viewer` | `http://localhost:3005` | E-mails enviados pelo SES do LocalStack |
+| LocalStack | `http://localhost:4566` | SES em JSON: `GET /_aws/ses` |
+| Adminer | `http://localhost:8081` | Servidor `db` (usuário/senha `jogo_acoes_admin`) ou `db-email-service` (`email_service_admin`) |
+| PostgreSQL do `app` | `localhost:5432` | Banco `jogo_acoes` |
+| PostgreSQL do `email-service` | `localhost:5433` | Banco `email_service` |
+| JaCoCo (só `blackbox`) | `localhost:6300` | Usado por `scripts/blackbox-coverage.sh` |
 
 ## Ambiente de testes blackbox
 
@@ -275,6 +323,11 @@ publica (o `app/` pede o envio ao `email-service` por `POST /emails`) — o mesm
 disparo que a AWS real usaria em produção, sem
 nenhum consumidor customizado no meio (verificado de ponta a ponta, ver Issue
 [#87](https://github.com/lalgarve/jogo-acoes/issues/87)).
+
+O `email-lambda-builder` só roda o Maven quando precisa: se `email-lambda/dist/function.zip` já
+existe e é mais novo que o `pom.xml` da raiz, o `email-lambda/pom.xml` e tudo em
+`email-lambda/src/`, ele sai na hora sem buildar. Pra forçar o rebuild, apague
+`email-lambda/dist/`.
 
 Pra confirmar que uma mensagem foi processada, direto na fila (deve zerar depois que a função
 processa o que estava pendente):

@@ -382,6 +382,12 @@ topo explicando por que aquele ambiente existe, quem o opera e quais restriçõe
 (ex.: "este ambiente não roda migração de schema sozinho, uma equipe separada faz isso à
 mão").
 
+**Exemplo usado neste projeto** (spec `05-042-spring-cloud-config-server`): esses arquivos não
+ficam dentro dos artefatos. Moram em `config-repo/<aplicação>-<ambiente>.yml` e são entregues
+pelo `config-server` (Spring Cloud Config Server) a cada serviço quando ele sobe, sem nenhum
+segredo: fora do `docker`, senha e chave aparecem só como `${VARIAVEL}`, resolvida pelo próprio
+serviço.
+
 O perfil padrão (quando nenhum é escolhido explicitamente) é o mesmo em todos os serviços e
 vale também para os testes rodados à mão: o ambiente com a infraestrutura completa (`docker`,
 neste projeto). Rodar os testes na mão deve exigir a linha de comando mais simples possível.

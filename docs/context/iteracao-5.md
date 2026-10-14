@@ -97,7 +97,8 @@ grosso desta iteração.
 
 - Spring Cloud Config Server para os componentes novos (Serviço de E-mail, Admin) — decisão
   em aberto se `app/` também migra pra ele ou continua com profiles locais (`sandbox`/
-  `docker`/`staging`/`production` já bem estabelecidos).
+  `docker`/`staging`/`production` já bem estabelecidos). Resolvida na spec 05-042: o `app/`
+  também migra.
 - `docker-compose.yml` cobrindo tudo: `app`, Serviço de E-mail, Admin, Config Server, e o(s)
   banco(s) — cada serviço com persistência própria (ver "Banco de dados" na seção 3).
 
@@ -629,7 +630,8 @@ abaixo) foi resolvida pela implementação — vive em `LinkSessionService`
 
 ## Decisões em aberto (resumo)
 
-- `app/` também migra para o Config Server, ou mantém profiles locais?
+- ~~`app/` também migra para o Config Server, ou mantém profiles locais?~~ — resolvida na spec
+  05-042: o `app/` e o Serviço de E-mail leem a configuração de ambiente do `config-server`.
 - **Plano da autora (sessão 2026-09-18, ainda não uma spec)**: VictoriaLogs na Etapa 3, na mesma
   lógica do Spring Cloud Config Server — centralização de configuração de ambiente (Config
   Server) e centralização de log (VictoriaLogs), os dois cobrindo a mesma Etapa. A spec
