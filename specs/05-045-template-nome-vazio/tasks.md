@@ -15,7 +15,7 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
 | ~~T002~~ | Mesmo arquivo: cenário `Client registers a template with a whitespace-only name` (nome `" "`), com os passos de T001. Rodar e confirmar que falha hoje (201, ou 422 se o SES recusar o nome; registrar qual dos dois) | T001 | | #133 |
 | ~~T003~~ | `docs/openapi-email-service.yaml`: `EmailTemplateCreateRequest.name` ganha `minLength: 1` e `pattern: '^[\s\S]*\S[\s\S]*$'`, com `description` dizendo que o nome não pode ser vazio nem só espaço em branco. Conferir no DTO gerado (`target/generated-sources`) que vieram `@Size(min = 1)` e `@Pattern`. Confirmar T001 e T002 verdes | T001, T002 | | #133 |
 | ~~T004~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os caminhos de erro novos (400 por `MethodArgumentNotValidException` para nome vazio e para nome em branco); apontar T001/T002 como os testes que os exercitam. Registrar abaixo | T003 | | #133 |
-| T005 | Rodar a suíte do email-service (`mvn -pl email-service verify`) e a do `app` (`mvn -pl app -am verify`, que regenera o cliente Feign do mesmo contrato) e confirmar verde | T003 | | #133 |
+| ~~T005~~ | Rodar a suíte do email-service (`mvn -pl email-service verify`) e a do `app` (`mvn -pl app -am verify`, que regenera o cliente Feign do mesmo contrato) e confirmar verde | T003 | | #133 |
 | T006 | Verificação manual (Leila): com `docker compose up`, `POST /api/templates` com `{"name":"","subject":"s","body":"b"}` e com `{"name":" ","subject":"s","body":"b"}` respondem 400, e `GET /api/templates` não lista nenhum dos dois | T005 | | #133 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
@@ -50,5 +50,5 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
   ("no e-mail ... reached SES on LocalStack"): no container da Claude o LocalStack não consegue
   baixar a imagem de runtime da Lambda, então a `EmailLambda` fica no estado `Failed` e nenhum
   e-mail chega ao SES. É a mesma limitação registrada na 05-041 (T010) e não tem relação com esta
-  mudança. Falta rodar a suíte do `app` num ambiente com o Compose completo (CI ou máquina local)
-  para fechar a T005.
+  mudança. Fechada pelo CI da PR #168 (job `test`, run 38518538056, commit `6b129cb`), que sobe o
+  Compose completo e rodou verde as suítes do `app` e do email-service.
