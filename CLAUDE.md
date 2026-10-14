@@ -94,6 +94,10 @@ Boot, multi-módulo Maven:
 - Critério de aceite: toda classe de exceção criada tem um teste que a lança, e todo branch de
   exceção é exercitado ao menos uma vez; o que não der é justificado no `plan.md` e avisado no
   chat ao abrir a PR (constitution, "Critério de aceite: exceções e caminhos de erro").
+- Verificação manual: sempre com comandos prontos para colar (subida do ambiente com o overlay
+  `blackbox` e o `test-api-key.sh restore`, comandos com valores reais, resultado esperado de
+  cada um); nunca só "com `docker compose up`" (constitution, "Verificação manual: comandos
+  prontos para copiar").
 - Banco: cada serviço no próprio schema, nunca no `public`; migrations em
   `db/migration-<serviço>` e histórico do Flyway em `<schema>_schema_history` (seção "Banco de
   dados: um schema por serviço" da constitution, spec 05-032).

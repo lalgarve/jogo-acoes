@@ -533,6 +533,42 @@ ou uma transação que deveria ser desfeita e não é). Cobertura de linha não 
 classe de exceção pode estar coberta só pelo construtor. O template de `tasks.md`
 (`templates/tasks-template.md`) traz esta verificação como task própria.
 
+## Verificação manual: comandos prontos para copiar
+
+Toda verificação manual (task de `tasks.md`, critério de aceite de `spec.md`, item de PR) traz
+os comandos prontos para colar no terminal, do zero até o resultado, sem que quem verifica
+precise procurar nada em outro documento. Ela tem, nesta ordem:
+
+1. **Subir o ambiente**, num bloco de comandos a partir da raiz do repositório, com o ambiente
+   explícito. Neste projeto, o padrão é a sequência da seção 3 do caderno de testes
+   (`docs/disciplina/caderno-de-testes.md`), com o overlay `blackbox`:
+   ```bash
+   export COMPOSE_FILE=docker-compose.yml:docker-compose.blackbox.yml
+   docker compose up -d --wait --build db db-email-service localstack
+   ./scripts/test-api-key.sh restore
+   docker compose up -d --wait --build email-service
+   ./scripts/test-api-key.sh restore
+   docker compose up -d --wait --build app
+   ```
+   Só os serviços que a verificação usa; `--build` sempre que o código mudou, para não testar a
+   imagem antiga; `docker compose down -v` antes quando o estado anterior atrapalha.
+   **Nunca** escrever só "com `docker compose up`": sozinho ele não funciona, porque sem o
+   `test-api-key.sh restore` entre as subidas o `email-service` responde 401 e o `app` não sobe.
+2. **Os comandos da verificação** (`curl`, `SELECT`, script), com os valores reais já
+   preenchidos: portas, chave de API de teste, JSON do corpo. Nada de `<sua-chave>` para
+   completar.
+3. **O resultado esperado de cada comando** (status HTTP, trecho da resposta, linhas do
+   `SELECT`), logo abaixo dele, para comparar sem interpretar.
+4. **Como derrubar o ambiente**, quando a verificação deixa estado (ex.: `docker compose down -v`).
+
+Os comandos são em bash (WSL), como no caderno de testes. Quem implementa roda o bloco antes de
+entregar, quando o ambiente permite, e registra no `tasks.md` o que não conseguiu rodar.
+
+**Por quê**: verificações escritas como "com `docker compose up`, chamar o endpoint X" obrigavam
+a sair catando o comando de subida, a porta e a chave em outros lugares, e o `docker compose up`
+sozinho nem funciona neste projeto. Comando pronto torna a verificação repetível e rápida, e
+erros no roteiro aparecem para quem escreve, não para quem verifica.
+
 ## Código de teste/dev nunca dentro da aplicação
 
 Nenhum código que existe só para testar ou simular (endpoint de teste, seed de dados, poller de
