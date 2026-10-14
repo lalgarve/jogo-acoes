@@ -127,3 +127,32 @@ Feature: Send an e-mail from a registered template
       When they send the template "welcome" to "player@unavailable.test"
       Then the send is accepted as queued
       And the domain "unavailable.test" is not whitelisted
+
+  Rule: A disposable e-mail domain is rejected before the whitelist and DNS
+
+    Background:
+      Given a client authenticated with the API key "client-a"
+      And operations configured the sender address "no-reply@client-a.example" for them
+      And they already registered a template named "welcome"
+      And the domain "disposable.test" is on an imported disposable domain list
+
+    Scenario Outline: A disposable domain, or a domain under it, is rejected
+      When they send the template "welcome" to "player@<domain>"
+      Then the system rejects the send because the domain "<domain>" is a disposable e-mail domain
+      And nothing is put on the send queue
+      And no send is recorded
+      And the domain "<domain>" is not whitelisted
+
+      Examples:
+        | domain              |
+        | disposable.test     |
+        | sub.disposable.test |
+
+    Scenario: A disposable domain already on the whitelist is still rejected
+      Given the domain "disposable.test" is already whitelisted
+      When they send the template "welcome" to "player@disposable.test"
+      Then the system rejects the send because the domain "disposable.test" is a disposable e-mail domain
+
+    Scenario: A domain whose name only ends like a disposable one is not taken for it
+      When they send the template "welcome" to "player@mydisposable.test"
+      Then the system rejects the send because the domain "mydisposable.test" does not accept e-mail

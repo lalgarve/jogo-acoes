@@ -502,6 +502,52 @@ docker compose restart dns
 Em `staging` e `production`, `email.domain-check.dns-servers` fica vazio e o serviço usa o
 resolvedor do sistema.
 
+### Listas de domínios de e-mail temporário
+
+Spec [05-048](specs/05-048-importacao-listas-email-temporario/spec.md): um lote do Spring Batch
+dentro do `email-service` baixa listas públicas de domínios de e-mail temporário (Mailinator e
+afins) e guarda os domínios na tabela `email_service.disposable_domain`. O `POST /emails` recusa
+com `422` um destinatário desses domínios, ou de um subdomínio deles, antes da lista branca e do
+DNS da spec 05-047. Cada lista vem de um repositório cadastrado (`disposable_domain_source`), com
+endereço, descrição, hora do último download e hora da última atualização no banco; a migration
+já cadastra a lista principal do
+[`disposable-email-domains`](https://github.com/disposable-email-domains/disposable-email-domains).
+Em `staging` e `production` o lote roda todo dia às 4h
+(`email.disposable-domains.import-cron`); no `docker`, só quando operações pede.
+
+**Permissões.** Desde a `api-key` 1.1.0, cada chave tem permissões, e cada rota exige a sua:
+`email:send` para `/emails` e `/templates`, `disposable-email:admin` para as rotas das listas.
+Uma chave sem permissão gravada (a do `jogo-acoes`, emitida antes da 1.1.0) recebe só
+`email:send`. Operações usa uma chave só com `disposable-email:admin`, que não envia e-mail:
+
+```
+java -jar api-key-1.1.0.jar generate --client operations --permissions disposable-email:admin
+```
+
+No `docker`, `./scripts/test-api-key.sh restore` já restaura a chave de teste de operações,
+`dak_D9CebHAQ6cq2vAnYIomxJ1nX56qn_5dDRv2J-aHrQFc`
+([`docker/postgres-email-service/test-data/README.md`](docker/postgres-email-service/test-data/README.md)).
+
+Cadastrar um repositório e pedir a execução do lote para todos os repositórios (sem corpo) ou
+para um só (`{"sourceId": <id>}`):
+
+```bash
+OPS_API_KEY=dak_D9CebHAQ6cq2vAnYIomxJ1nX56qn_5dDRv2J-aHrQFc
+curl -s -X POST http://localhost:8082/api/disposable-domain-sources \
+  -H "X-API-Key: $OPS_API_KEY" -H 'Content-Type: application/json' \
+  -d '{"url":"https://example.org/disposable.conf","description":"Minha lista"}'
+curl -s -X POST http://localhost:8082/api/disposable-domain-imports -H "X-API-Key: $OPS_API_KEY"
+```
+
+O pedido responde `202` com o `executionId` de cada repositório; o lote roda em segundo plano.
+`GET /disposable-domain-imports/{executionId}` mostra a situação e as contagens (linhas lidas,
+ignoradas, domínios incluídos e removidos), e `GET /disposable-domain-sources` lista os
+repositórios com o resultado da última execução de cada um. Um repositório que falha (fora do
+ar, status diferente de `200`, maior que `email.disposable-domains.max-size`, lista vazia) não
+muda nada e não impede os outros. O roteiro 8 do
+[caderno de testes](docs/disciplina/caderno-de-testes.md) faz o caminho completo com uma lista
+servida pelo S3 do LocalStack, que é também como os testes do módulo servem as listas.
+
 ### O `app/` envia pelo Serviço de E-mail
 
 Desde a spec [05-034](specs/05-034-fronteira-sincrona-app-email-service/spec.md), o `app/`

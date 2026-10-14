@@ -127,14 +127,22 @@
       <artifactId>flyway-database-postgresql</artifactId>
     </dependency>
 
-    <!-- Spec 05-030: real API-KEY validation (lalgarve/api-key, release v1.0.1). Not on Maven
+    <!-- Spec 05-030: real API-KEY validation (lalgarve/api-key, release v1.1.0, with per-key
+         permissions since spec 05-048). Not on Maven
          Central nor on a registry this build reads: scripts/install-api-key-lib.sh installs it
          into ~/.m2 from the GitHub release first (plan.md, "Como distribuir api-key-validation
          para o build"). Only the auth package may use it (ArchitectureTest). -->
     <dependency>
       <groupId>dev.leilaalgarve.apikey</groupId>
       <artifactId>api-key-validation</artifactId>
-      <version>1.0.1</version>
+      <version>1.1.0</version>
+    </dependency>
+
+    <!-- Spec 05-048: the disposable-domain list import (Job, Steps, reader/processor/writer) and
+         its JDBC job repository, whose tables Flyway creates in schema email_service. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-batch-jdbc</artifactId>
     </dependency>
 
     <!-- Spec 05-047: MX/A/AAAA lookups of the recipient's domain against a configurable DNS

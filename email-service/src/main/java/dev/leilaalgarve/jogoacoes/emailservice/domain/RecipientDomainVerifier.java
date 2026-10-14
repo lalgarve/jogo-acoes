@@ -1,5 +1,6 @@
 package dev.leilaalgarve.jogoacoes.emailservice.domain;
 
+import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -9,7 +10,8 @@ import java.time.Instant;
 import java.util.Locale;
 
 /**
- * Checks that the recipient's domain accepts e-mail before a send is accepted (spec 05-047).
+ * Checks that the recipient's domain accepts e-mail before a send is accepted (spec 05-047) and
+ * is not a disposable e-mail domain (spec 05-048, checked first).
  * Whitelisted domains pass without DNS; any other is looked up, and an approved one joins the
  * whitelist. DNS that does not answer lets the send through without whitelisting the domain: a
  * send never fails because of infrastructure (same rule as spec 05-046). Only the domain is
@@ -22,15 +24,27 @@ public class RecipientDomainVerifier {
 
     private final ApprovedDomainRepository approvedDomains;
     private final DnsMailDomainLookup dns;
+    private final DisposableDomainChecker disposableDomains;
 
-    public RecipientDomainVerifier(ApprovedDomainRepository approvedDomains, DnsMailDomainLookup dns) {
+    public RecipientDomainVerifier(ApprovedDomainRepository approvedDomains, DnsMailDomainLookup dns,
+                                   DisposableDomainChecker disposableDomains) {
         this.approvedDomains = approvedDomains;
         this.dns = dns;
+        this.disposableDomains = disposableDomains;
     }
 
-    /** @throws RecipientDomainRejectedException when DNS says the domain does not accept e-mail */
+    /**
+     * @throws RecipientDomainRejectedException when the domain is a disposable e-mail domain, or
+     *                                          DNS says it does not accept e-mail
+     */
     public void verify(String recipientEmail) {
         String domain = domainOf(recipientEmail);
+        // Spec 05-048: before the whitelist, so a disposable domain is refused even if it was
+        // approved by DNS before it reached a list.
+        if (disposableDomains.isDisposable(domain)) {
+            log.info("Rejected recipient domain {}: disposable e-mail domain", domain);
+            throw RecipientDomainRejectedException.disposable(domain);
+        }
         if (approvedDomains.existsById(domain)) {
             return;
         }

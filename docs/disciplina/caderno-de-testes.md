@@ -1,6 +1,7 @@
 # Caderno de testes manuais
 
-Roteiros de teste manual organizados pelas funcionalidades do sistema: login e competições.
+Roteiros de teste manual organizados pelas funcionalidades do sistema: login, competições e as
+listas de domínios de e-mail temporário do Serviço de E-mail.
 Cada roteiro parte da massa de dados versionada em `caderno-de-testes/dados/` e traz, em cada
 passo, o corpo JSON pronto para copiar, a resposta esperada, o trecho de log que confirma que a
 chamada passou pelo controller e pelos repositórios certos, e o `SELECT` que confirma o estado
@@ -917,6 +918,172 @@ ORDER BY c.id;
  11 | [seed] C11 Copa privada em andamento         | IN_COMPETITION | INVITE       | 2026-09-12
 ```
 
+## Serviço de E-mail
+
+### Roteiro 8 — Importar uma lista de domínios de e-mail temporário
+
+**Objetivo:** operações cadastra um repositório de lista, pede a execução do lote (Spring Batch)
+e o envio para um domínio da lista passa a ser recusado (spec 05-048).
+
+**Pré-condições:** o sistema de pé como na "Preparação". O Serviço de E-mail não tem Swagger UI:
+os passos usam `curl` contra `http://localhost:8082/api`, com as duas chaves de teste
+(`docker/postgres-email-service/test-data/README.md`): a do `jogo-acoes`, que só envia e-mail, e
+a de operações, que só administra as listas. A lista é servida pelo S3 do LocalStack.
+
+```bash
+API_KEY=dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU
+OPS_API_KEY=dak_D9CebHAQ6cq2vAnYIomxJ1nX56qn_5dDRv2J-aHrQFc
+```
+
+**1. Publicar uma lista de teste.**
+
+```bash
+docker compose exec -T localstack awslocal s3 mb s3://disposable-lists
+printf '# lista de teste\ndisposable.test\n  OUTRO-TEMPORARIO.test \n\nlinha invalida\n' \
+  | docker compose exec -T localstack awslocal s3 cp - s3://disposable-lists/lista.conf
+```
+
+Resposta: `make_bucket: disposable-lists` (ou um erro de *bucket* já existente, se o roteiro já
+rodou antes) e nada no `cp`.
+
+**2. Cadastrar o repositório.** `POST /disposable-domain-sources`:
+
+```bash
+curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/disposable-domain-sources \
+  -H "X-API-Key: $OPS_API_KEY" -H 'Content-Type: application/json' \
+  -d '{"url":"http://localstack:4566/disposable-lists/lista.conf","description":"Lista de teste"}'
+```
+
+Resposta: `201`, sem `lastDownloadedAt` nem `lastUpdatedAt` (ficam vazios até a primeira
+execução):
+
+```json
+{"id":2,"url":"http://localstack:4566/disposable-lists/lista.conf","description":"Lista de teste","domainCount":0} [201]
+```
+
+Guardar o `id` (o mesmo `GET` lista todos; o repositório é o de descrição `Lista de teste`):
+
+```bash
+SOURCE_ID=$(curl -s -H "X-API-Key: $OPS_API_KEY" http://localhost:8082/api/disposable-domain-sources \
+  | grep -o '"id":[0-9]*,"url":"http://localstack:4566/disposable-lists/lista.conf"' | grep -o '^"id":[0-9]*' | grep -o '[0-9]*')
+echo "$SOURCE_ID"
+```
+
+O repositório `1` é o que a migration cadastra (a lista pública `disposable-email-domains`); este
+roteiro não o importa, porque ele baixa da internet.
+
+**3. Conferir as permissões.** O `jogo-acoes` não administra as listas, e operações não envia
+e-mail:
+
+```bash
+curl -s -w ' [%{http_code}]\n' http://localhost:8082/api/disposable-domain-sources -H "X-API-Key: $API_KEY"
+curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/emails \
+  -H "X-API-Key: $OPS_API_KEY" -H 'Content-Type: application/json' \
+  -d '{"templateName":"login-link","recipientEmail":"jogador@with-mx.test"}'
+```
+
+```
+{"message":"Missing permission: disposable-email:admin"} [403]
+{"message":"Missing permission: email:send"} [403]
+```
+
+```
+INFO ... PermissionInterceptor : Refused GET /api/disposable-domain-sources to client jogo-acoes: missing permission disposable-email:admin
+INFO ... PermissionInterceptor : Refused POST /api/emails to client operations: missing permission email:send
+```
+
+**4. Pedir a execução do lote.** `POST /disposable-domain-imports`, que responde `202` na hora;
+o lote roda em segundo plano. Depois, `GET /disposable-domain-imports/{executionId}`:
+
+```bash
+EXECUTION_ID=$(curl -s -X POST http://localhost:8082/api/disposable-domain-imports \
+  -H "X-API-Key: $OPS_API_KEY" -H 'Content-Type: application/json' \
+  -d "{\"sourceId\":$SOURCE_ID}" | grep -o '"executionId":[0-9]*' | grep -o '[0-9]*')
+sleep 3
+curl -s -H "X-API-Key: $OPS_API_KEY" http://localhost:8082/api/disposable-domain-imports/$EXECUTION_ID; echo
+```
+
+```json
+{"executionId":1,"sourceId":2,"status":"COMPLETED","read":5,"skipped":1,"added":2,"removed":0,"endTime":"2026-10-14T17:41:09.013707Z","startTime":"2026-10-14T17:41:08.731984Z"}
+```
+
+Cinco linhas lidas; o comentário e a linha em branco não contam como ignoradas, a
+`linha invalida` conta. Os três passos do *job*, e o aviso da linha ignorada:
+
+```
+INFO ... TaskExecutorJobLauncher : Job: [FlowJob: [name=importDisposableDomainsJob]] launched with the following parameters: [{JobParameter{name='sourceId', value=2, …
+INFO ... AbstractStep            : Executing step: [downloadStep]
+INFO ... AbstractStep            : Executing step: [importStep]
+WARN ... DisposableDomainLineProcessor : Skipped a line that is not a domain: linha invalida
+INFO ... AbstractStep            : Executing step: [pruneStep]
+INFO ... TaskExecutorJobLauncher : Job: [FlowJob: [name=importDisposableDomainsJob]] completed with the following parameters: …
+```
+
+No Adminer, servidor `db-email-service` (usuário e senha `email_service_admin`, base
+`email_service`):
+
+```sql
+SELECT domain FROM email_service.disposable_domain ORDER BY domain;
+```
+
+```
+        domain
+-----------------------
+ disposable.test
+ outro-temporario.test
+```
+
+**5. Pedir de novo, com a lista igual.** Repetir os comandos do passo 4:
+
+```json
+{"executionId":2,"sourceId":2,"status":"COMPLETED","read":0,"skipped":0,"added":0,"removed":0,"endTime":"…","exitMessage":"UNCHANGED","startTime":"…"}
+```
+
+Só o `downloadStep` roda. `GET /disposable-domain-sources` mostra `lastDownloadedAt` novo e
+`lastUpdatedAt` igual ao do passo 4:
+
+```bash
+curl -s -H "X-API-Key: $OPS_API_KEY" http://localhost:8082/api/disposable-domain-sources; echo
+```
+
+```json
+[{"id":2,"url":"http://localstack:4566/disposable-lists/lista.conf","description":"Lista de teste","domainCount":2,"lastDownloadedAt":"2026-10-14T17:41:12.066194Z","lastImport":{"executionId":2,"sourceId":2,"status":"COMPLETED","endTime":"2026-10-14T17:41:12.085256Z","exitMessage":"UNCHANGED"},"lastUpdatedAt":"2026-10-14T17:41:08.998515Z"}]
+```
+
+**6. Enviar para um domínio da lista.** `disposable.test` tem MX na zona de DNS de teste (spec
+05-047); quem recusa é a lista:
+
+```bash
+curl -s -o /dev/null -X POST http://localhost:8082/api/templates \
+  -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+  -d '{"name":"verificacao-temporario","subject":"Teste","body":"Teste"}'
+curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/emails \
+  -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+  -d '{"templateName":"verificacao-temporario","recipientEmail":"jogador@disposable.test"}'
+```
+
+```
+{"message":"Recipient domain is a disposable e-mail domain: disposable.test"} [422]
+```
+
+```
+INFO ... RecipientDomainVerifier : Rejected recipient domain disposable.test: disposable e-mail domain
+```
+
+**7. Tirar um domínio da lista e importar de novo.**
+
+```bash
+printf 'disposable.test\n' | docker compose exec -T localstack awslocal s3 cp - s3://disposable-lists/lista.conf
+```
+
+Repetir os comandos do passo 4:
+
+```json
+{"executionId":3,"sourceId":2,"status":"COMPLETED","read":1,"skipped":0,"added":0,"removed":1,"endTime":"…","startTime":"…"}
+```
+
+O `SELECT` do passo 4 mostra só `disposable.test`.
+
 ## Referências
 
 - Spec [05-040](../../specs/05-040-caderno-de-testes-por-funcionalidade/spec.md): este caderno.
@@ -926,3 +1093,5 @@ ORDER BY c.id;
 - Spec [05-011](../../specs/05-011-logging-aspectos/spec.md): os aspectos de log citados nos
   trechos de log.
 - Spec [05-039](../../specs/05-039-busca-de-jogadores/spec.md): busca de jogadores do roteiro 1.
+- Spec [05-048](../../specs/05-048-importacao-listas-email-temporario/spec.md): listas de domínios
+  de e-mail temporário e o lote que as importa (roteiro 8).

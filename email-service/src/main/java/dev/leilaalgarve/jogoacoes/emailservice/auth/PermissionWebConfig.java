@@ -1,0 +1,21 @@
+package dev.leilaalgarve.jogoacoes.emailservice.auth;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/** Spec 05-048: every route goes through {@link PermissionInterceptor}. */
+@Configuration
+public class PermissionWebConfig implements WebMvcConfigurer {
+
+    private final PermissionInterceptor permissionInterceptor;
+
+    public PermissionWebConfig(PermissionInterceptor permissionInterceptor) {
+        this.permissionInterceptor = permissionInterceptor;
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(permissionInterceptor);
+    }
+}

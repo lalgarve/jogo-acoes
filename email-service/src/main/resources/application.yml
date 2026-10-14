@@ -24,6 +24,14 @@ spring:
     import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}
   profiles:
     default: docker
+  # Spec 05-048: the import job of the disposable-domain lists. Its tables come from Flyway
+  # (V5), in schema email_service; nothing runs at startup -- an import starts on request or on
+  # email.disposable-domains.import-cron.
+  batch:
+    jdbc:
+      initialize-schema: never
+    job:
+      enabled: false
   jpa:
     open-in-view: false
     hibernate:
@@ -50,6 +58,21 @@ spring:
 # for now (plan.md, "Mesma fila ou fila nova").
 email:
   queue-name: ${EMAIL_QUEUE_NAME:jogo-acoes-email-commands}
+  disposable-domains:
+    # Spec 05-048: limits of one list download. import-cron "-" switches the daily import off;
+    # staging/production switch it on in config-repo.
+    download-timeout: 30s
+    max-size: 10MB
+    import-cron: "-"
+
+# Spec 05-048: permission catalog of this service's API keys (api-key 1.1.0), the same in every
+# environment. A key issued without permissions (every key before 1.1.0, the jogo-acoes one
+# included) gets the default: email:send only.
+api-key:
+  permissions:
+    - name: email:send
+      default: true
+    - name: disposable-email:admin
 
 logging:
   level:
