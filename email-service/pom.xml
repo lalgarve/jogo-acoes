@@ -137,6 +137,15 @@
       <version>1.0.1</version>
     </dependency>
 
+    <!-- Spec 05-047: MX/A/AAAA lookups of the recipient's domain against a configurable DNS
+         server (docker: the CoreDNS test zone). Tells "domain does not exist" apart from "no such
+         record" and from "no answer", which the JDK's JNDI DNS provider folds into exceptions. -->
+    <dependency>
+      <groupId>dnsjava</groupId>
+      <artifactId>dnsjava</artifactId>
+      <version>3.6.4</version>
+    </dependency>
+
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>

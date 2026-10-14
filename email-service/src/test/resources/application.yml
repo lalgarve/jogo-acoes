@@ -61,6 +61,11 @@ spring:
 # a scenario could read it back (see SendQueue).
 email:
   queue-name: email-service-send-test
+  # Spec 05-047: docker-compose.yml's test DNS server (docker/dns/), on the host port it publishes.
+  # A short timeout: one scenario waits on a server that never answers (unavailable.test).
+  domain-check:
+    dns-servers: localhost:1053
+    timeout: 1s
 
 logging:
   level:

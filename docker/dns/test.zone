@@ -1,0 +1,28 @@
+; Spec 05-047: one name per verification outcome. missing.test is absent on purpose (NXDOMAIN);
+; unavailable.test is served by its own block in the Corefile (never answers).
+$ORIGIN test.
+$TTL 60
+@               IN SOA   ns.test. admin.test. 1 3600 600 86400 60
+@               IN NS    ns.test.
+ns              IN A     192.0.2.1
+
+; MX -> approved by MX
+with-mx         IN MX    10 mail.with-mx.test.
+mail.with-mx    IN A     192.0.2.2
+
+; no MX, an address -> approved by A (RFC 5321 implicit MX)
+only-a          IN A     192.0.2.10
+
+; no MX, only IPv6 -> approved by AAAA
+only-aaaa       IN AAAA  2001:db8::10
+
+; null MX (RFC 7505) -> rejected, even with an address
+null-mx         IN MX    0 .
+null-mx         IN A     192.0.2.20
+
+; exists, no MX nor address -> rejected
+no-mail         IN TXT   "no mail here"
+
+; spec 05-048: has MX, but is on the disposable-domain lists the tests import
+disposable      IN MX    10 mail.disposable.test.
+mail.disposable IN A     192.0.2.30

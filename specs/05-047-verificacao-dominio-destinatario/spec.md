@@ -1,6 +1,6 @@
 # Spec: Verificação do domínio do destinatário por DNS (A e MX) com lista branca
 
-**Status:** em revisão
+**Status:** implementada (T001–T010 em `tasks.md`; falta a verificação manual T011)
 **Issue:** a criar
 **Iteração:** iteration-5
 

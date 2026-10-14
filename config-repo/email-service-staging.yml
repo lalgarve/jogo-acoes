@@ -25,3 +25,6 @@ spring:
 logging:
   level:
     dev.leilaalgarve.jogoacoes.emailservice: INFO
+
+# Spec 05-047: email.domain-check.dns-servers is not set, so recipient domains are checked with the
+# system resolver.

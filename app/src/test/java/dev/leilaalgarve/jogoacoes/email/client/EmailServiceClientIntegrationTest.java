@@ -10,6 +10,7 @@ import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceAuthenticationException;
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceRejectedException;
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceUnavailableException;
+import dev.leilaalgarve.jogoacoes.email.exception.RecipientDomainRejectedException;
 import jakarta.validation.ConstraintViolationException;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -132,6 +133,15 @@ class EmailServiceClientIntegrationTest {
         data.put("notInTheTemplate", "ignored");
 
         assertThat(gateway.sendEmail("login-link-invite", unique("data"), data)).isNotNull();
+    }
+
+    /** Spec 05-047: missing.test has no record in the test DNS (docker/dns/test.zone). */
+    @Test
+    void aRecipientDomainEmailServiceRejectsBecomesItsOwnException() {
+        assertThatThrownBy(() -> gateway.sendEmail("login-link-invite",
+                "jogador-" + UUID.randomUUID() + "@missing.test", completeLoginLinkInviteData()))
+                .isInstanceOf(RecipientDomainRejectedException.class)
+                .hasMessageContaining("missing.test");
     }
 
     static Stream<Arguments> incompleteTemplateData() {

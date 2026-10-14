@@ -1,6 +1,7 @@
 package dev.leilaalgarve.jogoacoes.emailservice.send;
 
 import dev.leilaalgarve.jogoacoes.emailservice.api.model.SendEmailRequest;
+import dev.leilaalgarve.jogoacoes.emailservice.domain.RecipientDomainVerifier;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateReference;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateService;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
@@ -21,6 +22,9 @@ import java.util.UUID;
  * fails, the row is rolled back and the client gets a 503, so there is never a recorded send that
  * never reached the queue (plan.md, "Falha ao publicar"). The reverse -- published, then the commit
  * fails -- leaves an e-mail without a row; accepted, it is rare.
+ *
+ * <p>The recipient's domain is checked last, after sender and template (spec 05-047): a request
+ * those reject never reaches DNS, and a rejected domain records and queues nothing.
  */
 @Service
 public class EmailSendService {
@@ -28,15 +32,18 @@ public class EmailSendService {
     private final ClientSenderRepository senderRepository;
     private final EmailSendRepository sendRepository;
     private final TemplateService templateService;
+    private final RecipientDomainVerifier recipientDomainVerifier;
     private final SqsTemplate sqsTemplate;
     private final String queueName;
 
     public EmailSendService(ClientSenderRepository senderRepository, EmailSendRepository sendRepository,
-                            TemplateService templateService, SqsTemplate sqsTemplate,
+                            TemplateService templateService, RecipientDomainVerifier recipientDomainVerifier,
+                            SqsTemplate sqsTemplate,
                             @Value("${email.queue-name}") String queueName) {
         this.senderRepository = senderRepository;
         this.sendRepository = sendRepository;
         this.templateService = templateService;
+        this.recipientDomainVerifier = recipientDomainVerifier;
         this.sqsTemplate = sqsTemplate;
         this.queueName = queueName;
     }
@@ -45,6 +52,7 @@ public class EmailSendService {
     public UUID send(String clientId, SendEmailRequest request) {
         ClientSender sender = senderRepository.findById(clientId).orElseThrow(SenderNotConfiguredException::new);
         TemplateReference template = templateService.reference(clientId, request.getTemplateName());
+        recipientDomainVerifier.verify(request.getRecipientEmail());
 
         EmailSend send = sendRepository.saveAndFlush(
                 new EmailSend(clientId, template.id(), request.getRecipientEmail(), Instant.now()));

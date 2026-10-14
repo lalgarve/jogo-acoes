@@ -1,6 +1,7 @@
 package dev.leilaalgarve.jogoacoes.emailservice.common;
 
 import dev.leilaalgarve.jogoacoes.emailservice.api.model.Error;
+import dev.leilaalgarve.jogoacoes.emailservice.domain.RecipientDomainRejectedException;
 import dev.leilaalgarve.jogoacoes.emailservice.send.EmailQueuePublishException;
 import dev.leilaalgarve.jogoacoes.emailservice.send.SenderNotConfiguredException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateAlreadyExistsException;
@@ -40,6 +41,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(SenderNotConfiguredException.class)
     public ResponseEntity<Error> handleSenderNotConfigured(SenderNotConfiguredException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new Error().message(ex.getMessage()));
+    }
+
+    /** Spec 05-047: the recipient's domain does not accept e-mail. */
+    @ExceptionHandler(RecipientDomainRejectedException.class)
+    public ResponseEntity<Error> handleRecipientDomainRejected(RecipientDomainRejectedException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(new Error().message(ex.getMessage()));
     }
 
     @ExceptionHandler(EmailQueuePublishException.class)

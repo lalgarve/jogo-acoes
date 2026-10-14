@@ -219,6 +219,13 @@ paths:
         asynchronously in email-lambda, and a later delivery failure (bounce, complaint) is not
         reported back by this endpoint. The returned id travels with the message as its
         correlationId (and as the SES message tag `correlationId`).
+
+        Before anything is recorded or queued, the recipient's domain must accept e-mail
+        (spec 05-047): a domain on the service's whitelist passes at once; any other is looked up
+        in DNS (MX, then A/AAAA when there is no MX) and, if approved, joins the whitelist. A
+        domain that does not exist, has neither MX nor address, or declares a null MX is
+        rejected with 422. When DNS does not answer, the send is accepted and the domain is not
+        whitelisted.
       requestBody:
         required: true
         content:
@@ -256,6 +263,14 @@ paths:
           description: >
             No sender address has been configured for the calling client yet (set by
             operations, not through this API) -- nothing was queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: >
+            The recipient's domain does not accept e-mail (spec 05-047) -- nothing was recorded
+            or queued
           content:
             application/json:
               schema:

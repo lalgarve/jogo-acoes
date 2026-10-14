@@ -12,6 +12,7 @@ import dev.leilaalgarve.jogoacoes.competition.exception.PlayerValidationExceptio
 import dev.leilaalgarve.jogoacoes.email.EmailRequest;
 import dev.leilaalgarve.jogoacoes.email.EmailSender;
 import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
+import dev.leilaalgarve.jogoacoes.email.exception.RecipientDomainRejectedException;
 import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
 import dev.leilaalgarve.jogoacoes.link.LinkService;
 import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
@@ -74,7 +75,7 @@ public class PlayerManagementService {
             participation.setStatus(ParticipationStatus.EMAIL_NOT_SENT);
             participation.setRequestType(RequestType.INVITE);
             participation = participationRepository.save(participation);
-            sendInviteEmail(participation);
+            sendInviteEmailUnlessDomainRejected(participation);
         }
     }
 
@@ -109,7 +110,20 @@ public class PlayerManagementService {
     @Transactional
     public void resendInviteEmails(Long competitionId, List<Long> participationIds) {
         for (Long participationId : participationIds) {
-            sendInviteEmail(findParticipation(competitionId, participationId));
+            sendInviteEmailUnlessDomainRejected(findParticipation(competitionId, participationId));
+        }
+    }
+
+    /**
+     * Spec 05-047: in a group, one address whose domain takes no e-mail doesn't stop the others;
+     * that player keeps its status (EmailServiceLoggingAspect logs it). Sent one at a time, the
+     * same rejection reaches the caller as 422.
+     */
+    private void sendInviteEmailUnlessDomainRejected(Participation participation) {
+        try {
+            sendInviteEmail(participation);
+        } catch (RecipientDomainRejectedException rejected) {
+            // keeps its status; the next participant is still invited
         }
     }
 
