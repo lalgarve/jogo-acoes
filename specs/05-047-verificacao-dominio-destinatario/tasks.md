@@ -94,11 +94,12 @@ API_KEY=dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU
    ```
    Esperado:
    ```
-       domain    | approved_by
-   --------------+-------------
-    only-a.test  | A
-    with-mx.test | MX
-   (2 rows)
+         domain          | approved_by
+   -------------------------+-------------
+    only-a.test             | A
+    simulator.amazonses.com | SEED
+    with-mx.test            | MX
+   (3 rows)
    ```
 8. Só dois envios gravados (os de `with-mx.test` e `only-a.test`):
    ```bash

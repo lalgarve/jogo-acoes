@@ -17,8 +17,9 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
   config-server.
 - Domínios de destinatário usados hoje nos testes e no caderno de testes:
   `simulator.amazonses.com`, `example.com`, `exemplo.com`, `acme.com`, `client-a.example`,
-  `jogo-acoes.example`. Todos precisam existir na zona de teste com MX, senão as suítes do `app`,
-  do `email-service` e o `blackbox-tests/` passam a receber `422`.
+  `jogo-acoes.example`. Os outros, fora o `simulator.amazonses.com` (na lista branca desde a
+  migration), precisam existir na zona de teste com MX, senão as suítes do `app`, do
+  `email-service` e o `blackbox-tests/` passam a receber `422`.
 - `app`: `EmailServiceGateway.translate` transforma qualquer 4xx que não seja `401` em
   `EmailServiceRejectedException`. Envios em `LoginController`, `EntryRequestService`,
   `PlayerManagementService` e `CompetitionService` (este num laço, um por participante).
@@ -29,8 +30,8 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 |---|---|---|---|
 | Biblioteca de DNS | `dnsjava` (`dnsjava:dnsjava`), `Lookup` com `SimpleResolver`/`ExtendedResolver`. | proposta | Distingue domínio inexistente (`HOST_NOT_FOUND`), domínio sem o registro (`TYPE_NOT_FOUND`) e falha (`TRY_AGAIN`/`UNRECOVERABLE`), aceita servidor e porta configuráveis e tempo máximo. O provedor JNDI do JDK também consulta, mas mistura esses casos em exceções genéricas. |
 | Servidor de DNS | `email.domain-check.dns-servers` (lista `host:porta`). Vazio = resolvedor do sistema (`/etc/resolv.conf`), usado em `staging`/`production`. No `docker`: `dns:53` em `config-repo/email-service-docker.yml`; na suíte de testes, `localhost:1053`. `email.domain-check.timeout` = `2s`. | proposta | A zona de teste só existe no Compose. |
-| DNS de teste no Compose | Serviço `dns` novo (`coredns/coredns`, versão fixa), com `docker/dns/Corefile` e `docker/dns/test.zone`, porta `127.0.0.1:1053->53` em UDP e TCP. Zona `test.` com: `with-mx.test` (MX), `only-a.test` (só A), `only-aaaa.test` (só AAAA), `null-mx.test` (MX `0 .` e A), `no-mail.test` (só TXT). `missing.test` não existe (NXDOMAIN). Bloco à parte `unavailable.test` com o plugin `erratic` (`drop 1`), que nunca responde. Zonas dos domínios já usados nos testes (lista acima), com MX. Nenhum encaminhamento para a internet. | proposta | Respostas determinísticas, sem depender da rede no CI. `.test` é reservado para teste (RFC 2606). O `erratic` dá o caso "DNS sem resposta" sem parar o container. |
-| Migration | `V<n>__create_approved_domain_table.sql`: `approved_domain (domain VARCHAR(253) PRIMARY KEY, approved_by VARCHAR(8) NOT NULL` (`MX`, `A`, `AAAA`)`, approved_at TIMESTAMP NOT NULL)`. | proposta | 253 = maior nome de domínio. Sistema em pré-produção, sem dado a migrar. |
+| DNS de teste no Compose | Serviço `dns` novo (`coredns/coredns`, versão fixa), com `docker/dns/Corefile` e `docker/dns/test.zone`, porta `127.0.0.1:1053->53` em UDP e TCP. Zona `test.` com: `with-mx.test` (MX), `only-a.test` (só A), `only-aaaa.test` (só AAAA), `null-mx.test` (MX `0 .` e A), `no-mail.test` (só TXT). `missing.test` não existe (NXDOMAIN). Bloco à parte `unavailable.test` com o plugin `erratic` (`drop 1`), que nunca responde. Zonas dos domínios já usados nos testes (lista acima, sem o `simulator.amazonses.com`), com MX. Nenhum encaminhamento para a internet. | proposta | Respostas determinísticas, sem depender da rede no CI. `.test` é reservado para teste (RFC 2606). O `erratic` dá o caso "DNS sem resposta" sem parar o container. |
+| Migration | `V<n>__create_approved_domain_table.sql`: `approved_domain (domain VARCHAR(253) PRIMARY KEY, approved_by VARCHAR(8) NOT NULL` (`MX`, `A`, `AAAA`, `SEED`)`, approved_at TIMESTAMP NOT NULL)`, e `INSERT` de `simulator.amazonses.com` com `approved_by = 'SEED'`. | proposta (o domínio do simulador: decidido, Leila, 2026-10-14) | 253 = maior nome de domínio. Sistema em pré-produção, sem dado a migrar. `SEED` separa o que a migration incluiu do que o DNS aprovou. |
 | Onde mora | Pacote novo `domain/` no `email-service`: `RecipientDomainVerifier` (serviço), `DnsMailDomainLookup` (consulta), `ApprovedDomain` + `ApprovedDomainRepository`, `RecipientDomainRejectedException`. `EmailSendService` chama `RecipientDomainVerifier.verify(recipientEmail)` depois de remetente e template. | proposta | Regra de módulos (05-029): o pacote `send` usa o serviço de `domain`, nunca o repositório. |
 | Ordem da consulta | MX; se `TYPE_NOT_FOUND`, A, depois AAAA. MX nulo (um único MX, prioridade 0, destino `.`) recusa. `HOST_NOT_FOUND` recusa sem consultar A. Resultado: `Approved(MX|A|AAAA)`, `Rejected(motivo)` ou `Unavailable`. | proposta | RFC 5321 (MX implícito) e RFC 7505 (MX nulo). AAAA: decisão em aberto 5. |
 | Gravação na lista branca | `INSERT ... ON CONFLICT (domain) DO NOTHING`, numa transação própria (`REQUIRES_NEW`), antes de gravar o envio. | proposta | Dois pedidos simultâneos não geram erro. A aprovação vale mesmo se o envio falhar depois: o DNS respondeu. |
@@ -68,7 +69,9 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
      `approved_domain` antes) → `202`. Prova que não houve consulta: pela zona, seria `422`;
    - `missing.test`, `no-mail.test`, `null-mx.test` → `422`, nada em `email_send`, nada na fila,
      nada em `approved_domain`;
-   - `unavailable.test` → `202` e nada em `approved_domain` (decisão em aberto 1).
+   - `unavailable.test` → `202` e nada em `approved_domain` (decisão em aberto 1);
+   - `success@simulator.amazonses.com` → `202`; a linha dele em `approved_domain` é `SEED`, sem
+     consulta (o domínio não está na zona de teste).
    Hoje: todos `202` e a tabela não existe.
 2. Os cenários que já existem em `send_email.feature` continuam verdes com `example.com` na zona.
 3. `DnsMailDomainLookupTest` (contra o CoreDNS do Compose): um teste por resultado (`MX`, `A`,
