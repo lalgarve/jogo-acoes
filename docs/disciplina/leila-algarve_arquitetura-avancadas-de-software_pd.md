@@ -234,15 +234,44 @@ Também melhoramos o código e o ambiente de testes:
 
 ## **Etapa 3 — Configuração e Execução dos Serviços**
 
-| Requisito | Situação |
-| :---- | :---- |
-| Profiles para ao menos dois ambientes | Atendido, além do mínimo — sandbox/docker/staging/production |
-| Configuração via variáveis de ambiente | Atendido (ex.: SPRING\_DATASOURCE\_URL, SPRING\_CLOUD\_AWS\_SQS\_ENDPOINT no docker-compose.yml) |
-| Banco relacional real fora do ambiente local de desenvolvimento | Atendido — PostgreSQL nos perfis docker/staging/production |
-| Cada serviço com persistência própria | Atendido para os serviços que existem hoje; a depender de como a Etapa 2 for resolvida, o novo serviço precisará da própria também |
-| Spring Cloud Config Server | **Não atendido** — não existe em nenhum lugar do projeto |
-| Containerização de cada aplicação | Parcial — há Dockerfile para a aplicação principal; falta para o(s) serviço(s) que ainda vão ser criados |
-| Orquestração via Docker Compose de todos os componentes (app, serviço, bancos, Config Server) | Parcial — docker-compose.yml hoje sobe app \+ banco \+ fila simulada, mas não um Config Server nem um segundo serviço |
+Na tabela abaixo, a coluna "Antes" mostra a situação do projeto na tag `etapa-2`, de 13/10/2026. A coluna "Ao fim da Etapa 3" mostra a situação na tag `etapa-3`, também de 13/10/2026.
+
+| Requisito | Antes (tag `etapa-2`) | Ao fim da Etapa 3 (tag `etapa-3`) |
+| :---- | :---- | :---- |
+| Profiles para ao menos dois ambientes | Atendido — `docker`, `staging` e `production` na aplicação; `docker` e `production` no Serviço de E-mail | Atendido — `docker`, `staging` e `production` nos dois serviços, com a configuração de cada ambiente servida pelo Config Server |
+| Configuração via variáveis de ambiente | Atendido — endereços, credenciais e segredos (ex.: SPRING\_DATASOURCE\_URL, API\_KEY\_HMAC\_PEPPER) | Atendido — segredos e endereços de infraestrutura continuam em variáveis de ambiente |
+| Banco relacional real fora do ambiente local de desenvolvimento | Atendido — PostgreSQL em todos os perfis, inclusive nos testes | Atendido |
+| Cada serviço com persistência própria | Atendido — um schema próprio por serviço; no Docker Compose, um container PostgreSQL para cada serviço | Atendido |
+| Spring Cloud Config Server | **Não atendido** | Atendido — serviço `config-server`, que lê a configuração do diretório `config-repo/` |
+| Containerização de cada aplicação | Atendido — Dockerfile da aplicação e do Serviço de E-mail; a função Lambda roda no LocalStack | Atendido — também o Dockerfile do `config-server` |
+| Orquestração via Docker Compose de todos os componentes (app, serviço, bancos, Config Server) | Parcial — faltava o Config Server | Atendido — aplicação, Serviço de E-mail, Config Server, bancos, LocalStack e ferramentas de apoio aos testes |
+| Tag etapa-3 | **Não atendido** | Atendido |
+
+### **Principais tarefas realizadas na Etapa 3**
+
+Boa parte dos requisitos desta etapa já estava atendida ao fim da Etapa 2: cada serviço tinha perfis por ambiente, banco PostgreSQL próprio e imagem Docker, e os testes já rodavam contra a infraestrutura real. Nesta etapa, concentramos o trabalho na centralização da configuração e no ambiente de execução.
+
+#### Configuração centralizada com Spring Cloud Config Server
+
+Criamos o serviço `config-server`, com imagem Docker própria, que entrega a configuração de cada serviço e de cada ambiente. Ao iniciar, a aplicação Jogo de Ações e o Serviço de E-mail pedem ao `config-server` a configuração correspondente ao próprio nome e ao perfil ativo, por exemplo `jogo-acoes/docker` ou `email-service/production`.
+
+**Onde fica a configuração.** Escolhemos o *backend* `native`: o `config-server` lê os arquivos de um diretório deste repositório, `config-repo/`, com um arquivo por serviço e ambiente (`jogo-acoes-docker.yml`, `email-service-production.yml` e assim por diante). A configuração continua versionada, mas separada do código. Retiramos dos artefatos dos serviços os arquivos de configuração por ambiente: no artefato fica só o que não muda entre ambientes, como o schema do banco, a pasta das migrations e os tempos-limite do cliente OpenFeign. Assim, mudar um valor de ambiente não exige gerar uma nova imagem.
+
+**Os dois serviços migraram juntos.** Cogitamos usar o Config Server só no serviço novo, mas isso deixaria dois jeitos de configurar ambiente no mesmo repositório. Migramos também a aplicação Jogo de Ações e, com a mudança, completamos o Serviço de E-mail com o ambiente `staging`, que ele ainda não tinha.
+
+**Segredos fora do `config-repo/`.** Senhas, API-Keys e o *pepper* usado no cálculo do HMAC das chaves continuam em variáveis de ambiente de cada serviço. O arquivo servido pelo `config-server` traz apenas a referência à variável, por exemplo `${SPRING_DATASOURCE_PASSWORD}`, e o próprio serviço resolve o valor. O acesso ao `config-server` exige autenticação HTTP Basic, com usuário e senha também definidos por variáveis de ambiente.
+
+**Falha rápida.** Se o `config-server` estiver fora do ar, a aplicação e o Serviço de E-mail não iniciam. Preferimos falhar na inicialização a subir um serviço com configuração parcial. No Docker Compose, os dois serviços só iniciam depois que o `config-server` está aceitando requisições.
+
+**Testes.** As suítes de testes de cada serviço não dependem do `config-server`: usam a própria configuração de teste e desligam a importação da configuração remota. Para provar que a integração funciona, cada serviço tem um teste de integração, `ConfigServerClientIntegrationTest`, que busca a configuração no `config-server` real, iniciado pelo Docker Compose. A integração contínua roda com o `config-server` de pé.
+
+#### Ambiente de execução
+
+O Docker Compose sobe todos os componentes do sistema: a aplicação Jogo de Ações, o Serviço de E-mail, o `config-server`, um banco PostgreSQL para cada serviço e o LocalStack, que simula o SQS, o SES e a função Lambda. Nesta etapa, também melhoramos o ambiente usado nos testes manuais:
+
+* adicionamos o Dozzle, um visualizador de logs no navegador. Ele mostra os logs de todos os containers, inclusive os gerados pelos aspectos de log da Etapa 1, e completa o Adminer, que mostra o banco, e o visualizador de e-mails;
+* tornamos a subida do ambiente mais rápida: o container que empacota a função Lambda só executa o build quando o código da função mudou;
+* documentamos no README o endereço de cada serviço e ferramenta, incluindo o Swagger UI.
 
 ## **Etapa 4 — Comunicação Assíncrona e Processamento em Lote**
 
