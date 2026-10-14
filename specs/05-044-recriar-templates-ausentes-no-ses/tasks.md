@@ -23,7 +23,7 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
 | ~~T010~~ | Documentação: `503` e descrições de `POST /templates`, `PUT /templates/{name}` e `POST /templates/{name}/preview` em `docs/openapi-email-service.yaml`; invariante novo em `specs/05-025-servico-email-templates/data-model.md` | T006, T007, T008 | [P] | #144 |
 | ~~T011~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: `SesUnavailableException`) e os branches de exceção adicionados ou alterados (`AlreadyExistsException` em `putTemplate` e em `createIfAbsent`, `TemplateDoesNotExistException` em `updateTemplate`, a nova tentativa do preview, `SdkClientException`/5xx no `SesTemplateClient`, o handler do `503`, falha de `ListTemplates` e de `createIfAbsent` na reconciliação e a nova rodada); para cada um, apontar o teste que o exercita. O que não tiver teste é justificado em `plan.md` (já previsto: `SesException` genérica não 5xx com o SES no ar) e avisado no chat ao abrir a PR. Registrar a lista aqui | T006–T009 | | #144 |
 | T012 | Rodar a suíte completa do `email-service` e `mvn -pl app -am verify` — confirmar verde | T010, T011 | | #144 |
-| T013 | Verificação manual (Leila): passos 1–4 da Issue #144 (`docker compose restart localstack` entre duas execuções da suíte do `app`); o `app` sobe na segunda sem `down -v` | T012 | | #144 |
+| T013 | Verificação manual (Leila), comandos em "Roteiro da T013" abaixo: passos 1–4 da Issue #144 (`docker compose restart localstack` entre duas execuções da suíte do `app`); o `app` sobe na segunda sem `down -v` | T012 | | #144 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -87,3 +87,54 @@ antes de qualquer mudança: `mvn -pl email-service -am verify`, 46 testes verdes
   `specs/05-046-publicacao-na-fila-em-segundo-plano/tasks.md`): o `app` subiu e sincronizou os
   templates contra o `email-service` desta branch; as falhas são da entrega pela Lambda, que não
   roda no container da Claude.
+
+## Roteiro da T013
+
+A partir da raiz do repositório. Sobe tudo com as imagens desta branch (o `rm -rf` força a
+Lambda a ser empacotada de novo):
+
+```bash
+rm -rf email-lambda/dist
+docker compose up -d --wait db db-email-service localstack
+./scripts/test-api-key.sh restore
+docker compose up -d --build --wait email-service
+./scripts/test-api-key.sh restore
+```
+
+Primeira execução da suíte do `app` (cadastra os templates no `email-service` e no SES):
+
+```bash
+mvn -pl app -am verify
+```
+
+Reiniciar só o LocalStack (o SES perde os templates; o banco do `email-service` continua com
+eles):
+
+```bash
+docker compose restart localstack
+docker compose exec localstack awslocal ses list-templates
+```
+
+Esperado: `list-templates` sem os templates `jogo-acoes__...`.
+
+Segunda execução da suíte do `app`, sem `docker compose down -v`:
+
+```bash
+mvn -pl app -am verify
+```
+
+Esperado: o `app` sobe (sem `404` no `PUT` nem `409` no `POST` dos templates, os erros da Issue
+#144).
+
+Opcional, para ver a recriação na subida do `email-service` (ela só roda quando o serviço sobe):
+repetir o `docker compose restart localstack` e então
+
+```bash
+docker compose restart email-service
+docker compose logs email-service | grep -E "Recreated template|reconciliation failed"
+docker compose exec localstack awslocal ses list-templates
+```
+
+Esperado: uma linha `Recreated template jogo-acoes__... on SES from the database` por template
+e todos de volta no `list-templates`.
+
