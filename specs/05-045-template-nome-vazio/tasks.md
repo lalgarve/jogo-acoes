@@ -16,7 +16,7 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
 | ~~T003~~ | `docs/openapi-email-service.yaml`: `EmailTemplateCreateRequest.name` ganha `minLength: 1` e `pattern: '^[\s\S]*\S[\s\S]*$'`, com `description` dizendo que o nome não pode ser vazio nem só espaço em branco. Conferir no DTO gerado (`target/generated-sources`) que vieram `@Size(min = 1)` e `@Pattern`. Confirmar T001 e T002 verdes | T001, T002 | | #133 |
 | ~~T004~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os caminhos de erro novos (400 por `MethodArgumentNotValidException` para nome vazio e para nome em branco); apontar T001/T002 como os testes que os exercitam. Registrar abaixo | T003 | | #133 |
 | ~~T005~~ | Rodar a suíte do email-service (`mvn -pl email-service verify`) e a do `app` (`mvn -pl app -am verify`, que regenera o cliente Feign do mesmo contrato) e confirmar verde | T003 | | #133 |
-| T006 | Verificação manual (Leila): com `docker compose up`, `POST /api/templates` com `{"name":"","subject":"s","body":"b"}` e com `{"name":" ","subject":"s","body":"b"}` respondem 400, e `GET /api/templates` não lista nenhum dos dois | T005 | | #133 |
+| T006 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T006)" abaixo e conferir os resultados esperados | T005 | | #133 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -24,6 +24,50 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
 - Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
   junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
   Issues").
+
+## Verificação manual (T006)
+
+Na raiz do repositório, no WSL, com o branch da PR #168 (ou o `master` depois do merge). Só o
+`email-service` é necessário; `--build` garante que a imagem tem a correção.
+
+```bash
+export COMPOSE_FILE=docker-compose.yml:docker-compose.blackbox.yml
+docker compose up -d --wait --build db-email-service localstack
+./scripts/test-api-key.sh restore
+docker compose up -d --wait --build email-service
+./scripts/test-api-key.sh restore
+API_KEY=dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU
+```
+
+1. Nome vazio:
+   ```bash
+   curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/templates \
+     -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+     -d '{"name":"","subject":"s","body":"b"}'
+   ```
+   Esperado:
+   ```
+   {"message":"name must match \"^[\\s\\S]*\\S[\\s\\S]*$\"; name size must be between 1 and 2147483647"} [400]
+   ```
+2. Nome só com espaço:
+   ```bash
+   curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/templates \
+     -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+     -d '{"name":" ","subject":"s","body":"b"}'
+   ```
+   Esperado:
+   ```
+   {"message":"name must match \"^[\\s\\S]*\\S[\\s\\S]*$\""} [400]
+   ```
+3. Nenhum dos dois foi criado:
+   ```bash
+   curl -s -H "X-API-Key: $API_KEY" http://localhost:8082/api/templates | grep -o '"name":"[^"]*"'
+   ```
+   Esperado: uma linha por template, nenhuma igual a `"name":""` ou `"name":" "`. Num volume
+   novo, sem o `app` ter subido, a saída é vazia; com o `app`, aparecem os templates dele
+   (`"name":"login-link"`, `"name":"invite"`, ...).
+
+Para derrubar: `docker compose down -v`.
 
 ## Registro da implementação (2026-10-14)
 
@@ -52,3 +96,8 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
   e-mail chega ao SES. É a mesma limitação registrada na 05-041 (T010) e não tem relação com esta
   mudança. Fechada pelo CI da PR #168 (job `test`, run 38518538056, commit `6b129cb`), que sobe o
   Compose completo e rodou verde as suítes do `app` e do email-service.
+- **Roteiro da T006** (2026-10-14): os três `curl` foram rodados contra o email-service com a
+  correção (Postgres e LocalStack do Compose, email-service com `java -jar` no host na porta
+  8082) e deram as saídas esperadas. A parte de subida (`docker compose up --build`) não rodou no
+  container da Claude, que não constrói as imagens (Maven dentro do Docker sem acesso ao
+  repositório); é a mesma sequência do caderno de testes.
