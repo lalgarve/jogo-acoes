@@ -300,7 +300,14 @@ components:
       type: object
       required: [name, subject, body]
       properties:
-        name: { type: string }
+        name:
+          type: string
+          minLength: 1
+          # At least one non-whitespace character anywhere (spec 05-045). Anchored and written
+          # with [\s\S] so OpenAPI (unanchored ECMA-262) and Java's @Pattern (whole-string
+          # match) read it the same way.
+          pattern: '^[\s\S]*\S[\s\S]*$'
+          description: Template name, unique per client. Must not be empty or whitespace only.
         subject: { type: string }
         body: { type: string }
         variablesSchema:

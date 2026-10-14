@@ -7,7 +7,12 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.restassured.response.Response;
+import software.amazon.awssdk.services.ses.SesClient;
+import software.amazon.awssdk.services.ses.model.ListTemplatesRequest;
+import software.amazon.awssdk.services.ses.model.ListTemplatesResponse;
+import software.amazon.awssdk.services.ses.model.TemplateMetadata;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -23,17 +28,20 @@ public class RegisterTemplatesSteps {
     private final EmailServiceScenarioWorld world;
     private final EmailTemplateRepository repository;
     private final ScenarioApiKeys apiKeys;
+    private final SesClient sesClient;
 
     private String previousSubject;
     private String previousBody;
     private String secondApiKey;
     private String otherApiKey;
+    private String lastRegisteredName;
 
     public RegisterTemplatesSteps(EmailServiceScenarioWorld world, EmailTemplateRepository repository,
-                                  ScenarioApiKeys apiKeys) {
+                                  ScenarioApiKeys apiKeys, SesClient sesClient) {
         this.world = world;
         this.repository = repository;
         this.apiKeys = apiKeys;
+        this.sesClient = sesClient;
     }
 
     // Spec 05-030: the quoted value is the client a real key is issued for (the api-key CLI's
@@ -76,6 +84,7 @@ public class RegisterTemplatesSteps {
 
     @When("they register a template named {string} with subject {string} and a valid body")
     public void they_register_a_template_with_subject_and_a_valid_body(String name, String subject) {
+        lastRegisteredName = name;
         world.setLastResponse(register(name, subject, VALID_BODY));
     }
 
@@ -186,6 +195,21 @@ public class RegisterTemplatesSteps {
         assertThat(repository.existsByClientIdAndName(world.getClientName(), name)).isFalse();
     }
 
+    @Then("the system rejects the registration because the name is blank")
+    public void the_system_rejects_the_registration_because_the_name_is_blank() {
+        assertThat(world.getLastResponse().statusCode()).isEqualTo(400);
+        assertThat(world.getLastResponse().jsonPath().getString("message")).startsWith("name ");
+    }
+
+    @Then("no template with that name is created")
+    public void no_template_with_that_name_is_created() {
+        assertThat(repository.existsByClientIdAndName(world.getClientName(), lastRegisteredName)).isFalse();
+        List<String> listed = world.request().when().get("/templates").then().statusCode(200)
+                .extract().jsonPath().getList("name", String.class);
+        assertThat(listed).doesNotContain(lastRegisteredName);
+        assertThat(sesTemplateNames()).doesNotContain(world.getClientName() + "__" + lastRegisteredName);
+    }
+
     @Then("the system rejects the registration because the name is already in use")
     public void the_system_rejects_the_registration_because_the_name_is_already_in_use() {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(409);
@@ -267,6 +291,18 @@ public class RegisterTemplatesSteps {
                 .body(Map.of("name", name, "subject", "Subject", "body", VALID_BODY))
                 .when().post("/templates");
         assertThat(response.statusCode()).isEqualTo(201);
+    }
+
+    private List<String> sesTemplateNames() {
+        List<String> names = new ArrayList<>();
+        String nextToken = null;
+        do {
+            ListTemplatesResponse response = sesClient.listTemplates(
+                    ListTemplatesRequest.builder().nextToken(nextToken).build());
+            response.templatesMetadata().stream().map(TemplateMetadata::name).forEach(names::add);
+            nextToken = response.nextToken();
+        } while (nextToken != null);
+        return names;
     }
 
     private Response register(String name, String subject, String body) {
