@@ -24,15 +24,16 @@ Feature: Send an e-mail from a registered template
 
     Scenario: Client sends an e-mail with template data
       When they send the template "welcome" to "player@example.com" with the variable "name" set to "Ada"
-      Then the send is accepted as queued
+      Then the send is accepted as pending
       And the send queue has one message for "player@example.com" whose correlation id is the returned id
       And that message asks SES to send the template "welcome" of "client-a" from "no-reply@client-a.example"
       And that message carries the variable "name" set to "Ada"
       And the send is recorded under the returned id
+      And the send is recorded as queued with no template data kept
 
     Scenario: Client sends an e-mail without template data
       When they send the template "welcome" to "player@example.com"
-      Then the send is accepted as queued
+      Then the send is accepted as pending
       And the send queue has one message for "player@example.com" whose correlation id is the returned id
       And that message carries no variables
 
@@ -65,8 +66,50 @@ Feature: Send an e-mail from a registered template
     Scenario: The send queue is unavailable
       Given the send queue is unavailable
       When they send the template "welcome" to "player@example.com"
-      Then the system answers that the service is unavailable
-      And no send is recorded
+      Then the send is accepted as pending
+      And the send is recorded as pending after a failed attempt with the error "QUEUE_UNAVAILABLE"
+      When the send queue is available again
+      Then the send queue has one message for "player@example.com" whose correlation id is the returned id
+      And the send is recorded as queued with no template data kept
+
+    Scenario: The service gives up on a send
+      Given the send queue is unavailable
+      When they send the template "welcome" to "player@example.com"
+      And the send is recorded as pending after a failed attempt with the error "QUEUE_UNAVAILABLE"
+      And the send was requested more than a day ago
+      Then the send is recorded as failed with the error "QUEUE_UNAVAILABLE" and no template data kept
+      When the send queue is available again
+      Then nothing is put on the send queue
+
+  Rule: email-service handles delivery errors from the dead-letter queue
+
+    Background:
+      Given a client authenticated with the API key "client-a"
+      And operations configured the sender address "no-reply@client-a.example" for them
+      And they already registered a template named "welcome"
+      And they sent the template "welcome" to "player@example.com" and it reached the send queue
+
+    Scenario: SES does not have the template
+      Given SES lost the template named "welcome"
+      When the dead-letter queue receives that send with the error "TEMPLATE_MISSING"
+      Then SES has the template named "welcome" again
+      And the send queue has one message for "player@example.com" whose correlation id is the returned id
+      And the send is recorded as queued after 1 attempt with the error "TEMPLATE_MISSING"
+
+    Scenario: SES rejected the e-mail
+      When the dead-letter queue receives that send with the error "SES_REJECTED"
+      Then the send is recorded as failed with the error "SES_REJECTED" and no template data kept
+      And nothing is put on the send queue
+
+    Scenario: SES was unavailable
+      When the dead-letter queue receives that send with the error "SES_UNAVAILABLE"
+      Then the send queue has one message for "player@example.com" whose correlation id is the returned id
+      And the send is recorded as queued after 1 attempt with the error "SES_UNAVAILABLE"
+
+    Scenario: SQS moved the message to the dead-letter queue without an error type
+      When the dead-letter queue receives that send with no error type
+      Then the send queue has one message for "player@example.com" whose correlation id is the returned id
+      And the send is recorded as queued after 1 attempt with the error "UNKNOWN"
 
   Rule: Every request requires an API key
 

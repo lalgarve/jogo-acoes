@@ -74,7 +74,7 @@ class SesTemplateReconcilerIntegrationTest {
 
         restart();
 
-        await().atMost(WAIT).untilAsserted(() -> {
+        await().atMost(WAIT).ignoreExceptions().untilAsserted(() -> {
             Template template = sesTemplate("welcome");
             assertThat(template.subjectPart()).isEqualTo("Subject of welcome");
             assertThat(template.htmlPart()).isEqualTo(BODY);
@@ -89,7 +89,7 @@ class SesTemplateReconcilerIntegrationTest {
 
         restart();
 
-        await().atMost(WAIT).untilAsserted(() -> names.forEach(name ->
+        await().atMost(WAIT).ignoreExceptions().untilAsserted(() -> names.forEach(name ->
                 assertThat(sesTemplate(name).subjectPart()).isEqualTo("Subject of " + name)));
     }
 
@@ -104,7 +104,7 @@ class SesTemplateReconcilerIntegrationTest {
 
         restart();
 
-        await().atMost(WAIT).untilAsserted(() -> {
+        await().atMost(WAIT).ignoreExceptions().untilAsserted(() -> {
             assertThat(sesTemplate("welcome").subjectPart()).isEqualTo("Subject of welcome");
             assertThat(output.getOut()).contains("WARN").contains(CLIENT + "__orphan");
         });
@@ -124,13 +124,13 @@ class SesTemplateReconcilerIntegrationTest {
             int port = context.getEnvironment().getRequiredProperty("local.server.port", Integer.class);
             RestAssured.given().port(port).basePath("/api").when().get("/templates")
                     .then().statusCode(401);
-            await().atMost(WAIT).untilAsserted(() ->
+            await().atMost(WAIT).ignoreExceptions().untilAsserted(() ->
                     assertThat(output.getOut()).contains("SES template reconciliation failed"));
             assertThat(sesHas("welcome")).isFalse();
 
             ses.open();
 
-            await().atMost(WAIT).untilAsserted(() ->
+            await().atMost(WAIT).ignoreExceptions().untilAsserted(() ->
                     assertThat(sesTemplate("welcome").subjectPart()).isEqualTo("Subject of welcome"));
         }
     }

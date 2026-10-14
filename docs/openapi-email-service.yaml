@@ -241,14 +241,15 @@ paths:
     post:
       tags: [emails]
       operationId: sendEmail
-      summary: Queue one email built from one of the calling client's own templates
+      summary: Accept one email built from one of the calling client's own templates
       description: >
         Looks up the template by name among the calling client's own templates and the
         sender address operations configured for the client, validates the request and
-        publishes one message to the SQS send queue (senderAddress/templateName/templateData,
-        rendered by SES at send time via
-        SendTemplatedEmail). Responds 202 as soon as the message is queued -- delivery happens
-        asynchronously in email-lambda, and a later delivery failure (bounce, complaint) is not
+        records the send as PENDING. Responds 202 right away: email-service publishes the
+        message (senderAddress/templateName/templateData, rendered by SES at send time via
+        SendTemplatedEmail) to the SQS send queue in the background, retrying while the queue
+        or SES is unavailable and giving up after 24 hours (spec 05-046). Neither SQS nor SES
+        being down fails this call. A later delivery failure (bounce, complaint) is not
         reported back by this endpoint. The returned id travels with the message as its
         correlationId (and as the SES message tag `correlationId`).
       requestBody:
@@ -259,7 +260,7 @@ paths:
               $ref: '#/components/schemas/SendEmailRequest'
       responses:
         '202':
-          description: Accepted -- the message is on the send queue
+          description: Accepted -- the send is recorded as PENDING and will be published to the send queue
           content:
             application/json:
               schema:
@@ -287,15 +288,7 @@ paths:
         '409':
           description: >
             No sender address has been configured for the calling client yet (set by
-            operations, not through this API) -- nothing was queued
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '503':
-          description: >
-            The message could not be published to the send queue -- nothing was sent, the
-            client may retry
+            operations, not through this API) -- nothing was recorded
           content:
             application/json:
               schema:
@@ -402,6 +395,10 @@ components:
             tag do SES
         status:
           type: string
-          enum: [QUEUED]
-          description: Único valor nesta spec -- a mensagem foi publicada na fila de envio
+          enum: [PENDING, QUEUED, FAILED]
+          description: >
+            Situação do envio (spec 05-046). A resposta do POST /emails é sempre PENDING: o envio
+            foi gravado e o email-service o publica na fila de envio em segundo plano. QUEUED: a
+            mensagem está na fila. FAILED: o email-service desistiu (o SES recusou o e-mail, ou ele
+            não saiu em 24 horas).
 

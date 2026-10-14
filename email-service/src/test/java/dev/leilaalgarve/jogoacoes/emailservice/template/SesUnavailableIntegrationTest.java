@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -22,9 +23,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Spec 05-044: with SES unreachable, template registration, update and preview answer 503 --
  * not the 422 that means "SES rejected this template" -- and nothing is stored. SES points at a
- * port nothing listens on.
+ * port nothing listens on. The context is closed afterwards: its background work (reconciliation,
+ * the dead-letter consumer of spec 05-046) would keep running with SES down next to the other
+ * suites, which share the same database and queues.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class SesUnavailableIntegrationTest {
 
     /** The versioned test key of client jogo-acoes (docker/postgres-email-service/test-data/README.md). */

@@ -103,3 +103,12 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
   fila de envio.
 - **Exceção sem teste possível:** falha do commit depois de publicar (precisaria derrubar o
   PostgreSQL no meio da transação). Justificada aqui.
+- **Branches sem teste, descobertos na implementação (2026-10-14):**
+  - `EmailQueuePublisher`: `SendMessage` falhando depois de `GetQueueUrl` dar certo (a fila some
+    entre as duas chamadas) e a interrupção da thread no meio da espera. O teste derruba a fila
+    antes da rodada, e cai no `catch` do `GetQueueUrl`; os dois `catch` levam ao mesmo
+    `queueUnavailable`.
+  - `EmailSendHandler`: `SesException` com status 5xx ou *throttling* (o LocalStack não responde
+    assim), `SesException` não classificada (sobe para a redrive) e falha ao publicar na DLQ
+    (sobe para a redrive). O caminho de SES sem resposta (`SdkClientException`) e os de template
+    ausente e e-mail recusado têm teste.

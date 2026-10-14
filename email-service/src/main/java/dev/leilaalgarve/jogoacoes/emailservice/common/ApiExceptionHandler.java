@@ -1,7 +1,6 @@
 package dev.leilaalgarve.jogoacoes.emailservice.common;
 
 import dev.leilaalgarve.jogoacoes.emailservice.api.model.Error;
-import dev.leilaalgarve.jogoacoes.emailservice.send.EmailQueuePublishException;
 import dev.leilaalgarve.jogoacoes.emailservice.send.SenderNotConfiguredException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.SesUnavailableException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateAlreadyExistsException;
@@ -47,11 +46,6 @@ public class ApiExceptionHandler {
     @ExceptionHandler(SenderNotConfiguredException.class)
     public ResponseEntity<Error> handleSenderNotConfigured(SenderNotConfiguredException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new Error().message(ex.getMessage()));
-    }
-
-    @ExceptionHandler(EmailQueuePublishException.class)
-    public ResponseEntity<Error> handleEmailQueuePublish(EmailQueuePublishException ex) {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new Error().message(ex.getMessage()));
     }
 
     /** Bean Validation on the generated request DTOs (required fields, {@code format: email}). */

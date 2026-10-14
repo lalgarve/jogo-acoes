@@ -50,11 +50,16 @@ do envio pelo `correlationId` como *message tag* do SES.
   com `correlationId` = `id`, `senderAddress` (o remetente do cliente),
   `recipientEmail`, `templateName` (o nome
   namespaced no SES, `<cliente>__<nome>`) e `templateData`, e responde `202` com
-  `{ id, status: "QUEUED" }`.
-- O `202` significa "enfileirado", não "entregue". Falha posterior de entrega (bounce,
+  `{ id, status: "QUEUED" }`. **Substituído pela spec
+  [05-046](../05-046-publicacao-na-fila-em-segundo-plano/spec.md):** o pedido aceito é gravado
+  como `PENDING` e o `202` responde `{ id, status: "PENDING" }`; a publicação na fila acontece em
+  segundo plano.
+- O `202` significa "enfileirado", não "entregue" (desde a 05-046, "aceito e gravado"). Falha posterior de entrega (bounce,
   complaint) não é devolvida por este endpoint.
 - Pedido malformado (campo obrigatório ausente, e-mail sintaticamente inválido) responde `400`.
-- Falha ao publicar na fila responde `503` e nada é enviado; o cliente pode repetir.
+- ~~Falha ao publicar na fila responde `503` e nada é enviado; o cliente pode repetir.~~
+  Substituído pela spec 05-046: fila ou SES fora do ar não falham o pedido; o `email-service`
+  tenta de novo e desiste depois de 24 horas.
 - Toda rota exige `X-API-Key`, validada conforme a spec
   [05-030](../05-030-validacao-api-key-servico-email/spec.md); sem chave válida, `401`.
 - A Lambda de e-mail passa a aceitar **só** a mensagem com template e envia por

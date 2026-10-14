@@ -1,6 +1,6 @@
 # Spec: Publicação na fila de envio em segundo plano
 
-**Status:** rascunho
+**Status:** implementada, falta a verificação manual (ver `tasks.md`)
 **Issue:** a criar (relacionada à [#144](https://github.com/lalgarve/jogo-acoes/issues/144))
 **Iteração:** iteration-5
 
@@ -147,11 +147,11 @@ Decisões da Leila (2026-10-14), ao revisar a spec 05-044:
   põe a mensagem na DLQ com o tipo. A redrive do SQS sozinha não diz o motivo da falha.
 - **Templates recriados na última hora** (Leila, 2026-10-14): coluna `ses_recreated_at` em
   `email_template`, válida para todas as instâncias e depois de um reinício.
+- **Status na resposta** (2026-10-14): `202` com `status: "PENDING"`; o enum do contrato tem
+  `PENDING`, `QUEUED` e `FAILED` (os dois últimos só aparecem quando existir a consulta do envio).
+  Era a recomendação; anunciada na thread antes do "Pode implementar" da Leila e implementada
+  assim.
 
 ## Decisões em aberto
 
-Tem uma recomendação, já usada nos requisitos e no `plan.md`; falta a confirmação da Leila.
-
-1. **Status na resposta.** Recomendação: `202` com `status: "PENDING"`, e o enum do contrato passa
-   a ter `PENDING`, `QUEUED` e `FAILED` (os dois últimos só aparecem quando existir a consulta do
-   envio).
+Nenhuma.

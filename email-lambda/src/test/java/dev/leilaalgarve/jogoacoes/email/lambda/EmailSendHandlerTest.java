@@ -12,6 +12,11 @@ import software.amazon.awssdk.services.ses.model.CreateTemplateRequest;
 import software.amazon.awssdk.services.ses.model.MessageTag;
 import software.amazon.awssdk.services.ses.model.Template;
 import software.amazon.awssdk.services.ses.model.VerifyEmailIdentityRequest;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
+import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -26,6 +31,7 @@ import java.util.UUID;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -52,8 +58,14 @@ class EmailSendHandlerTest {
     @Inject
     SesClient sesClient;
 
+    @Inject
+    SqsClient sqsClient;
+
     @ConfigProperty(name = "quarkus.ses.endpoint-override")
     String sesEndpoint;
+
+    @ConfigProperty(name = "email.dlq-name")
+    String dlqName;
 
     @Test
     void sendsTheTemplateFromTheClientSenderWithTheCorrelationIdTag() throws Exception {
@@ -89,6 +101,67 @@ class EmailSendHandlerTest {
 
         JsonNode sent = singleMessageSentBy(sender);
         assertThat(objectMapper.readTree(sent.get("TemplateData").asText())).isEqualTo(objectMapper.createObjectNode());
+    }
+
+    /** Spec 05-046: SES does not have the template -- the DLQ says so, and the invocation succeeds. */
+    @Test
+    void sendsAMissingTemplateToTheDeadLetterQueue() {
+        String sender = "no-reply+" + UUID.randomUUID() + "@client-a.example";
+        String correlationId = UUID.randomUUID().toString();
+        verify(sender);
+        String dlqUrl = emptyDeadLetterQueue();
+        SQSEvent event = eventWith(message(correlationId, sender, "success+player@simulator.amazonses.com",
+                "client-a__missing-" + UUID.randomUUID(), Map.of("name", "Ada")));
+
+        assertThatCode(() -> handler.handleRequest(event, null)).doesNotThrowAnyException();
+
+        Message dead = singleMessageOn(dlqUrl);
+        assertThat(dead.body()).isEqualTo(event.getRecords().get(0).getBody());
+        assertThat(dead.messageAttributes().get("errorType").stringValue()).isEqualTo("TEMPLATE_MISSING");
+        assertThat(dead.messageAttributes().get("errorMessage").stringValue()).isNotBlank();
+    }
+
+    /** Spec 05-046: SES refuses an unverified sender for good -- SES_REJECTED on the DLQ. */
+    @Test
+    void sendsARejectedEmailToTheDeadLetterQueue() {
+        String templateName = "client-a__welcome-" + UUID.randomUUID();
+        createTemplate(templateName);
+        String dlqUrl = emptyDeadLetterQueue();
+        SQSEvent event = eventWith(message(UUID.randomUUID().toString(),
+                "unverified+" + UUID.randomUUID() + "@client-a.example", "success+player@simulator.amazonses.com",
+                templateName, Map.of("name", "Ada")));
+
+        assertThatCode(() -> handler.handleRequest(event, null)).doesNotThrowAnyException();
+
+        assertThat(singleMessageOn(dlqUrl).messageAttributes().get("errorType").stringValue())
+                .isEqualTo("SES_REJECTED");
+    }
+
+    /** Spec 05-046: SES does not answer -- SES_UNAVAILABLE on the DLQ, the invocation succeeds. */
+    @Test
+    void sendsAnUnreachableSesToTheDeadLetterQueue() throws Exception {
+        String dlqUrl = emptyDeadLetterQueue();
+        EmailSendHandler unreachable = new EmailSendHandler();
+        unreachable.objectMapper = objectMapper;
+        unreachable.sqsClient = sqsClient;
+        unreachable.dlqName = dlqName;
+        try (java.net.ServerSocket socket = new java.net.ServerSocket(0);
+             SesClient deadSes = SesClient.builder()
+                     .endpointOverride(URI.create("http://localhost:" + socket.getLocalPort()))
+                     .region(software.amazon.awssdk.regions.Region.US_EAST_1)
+                     .credentialsProvider(software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider.create())
+                     .overrideConfiguration(c -> c.apiCallTimeout(java.time.Duration.ofSeconds(2)))
+                     .build()) {
+            socket.close();
+            unreachable.sesClient = deadSes;
+            SQSEvent event = eventWith(message(UUID.randomUUID().toString(), "no-reply@client-a.example",
+                    "player@example.com", "client-a__welcome", Map.of()));
+
+            assertThatCode(() -> unreachable.handleRequest(event, null)).doesNotThrowAnyException();
+        }
+
+        assertThat(singleMessageOn(dlqUrl).messageAttributes().get("errorType").stringValue())
+                .isEqualTo("SES_UNAVAILABLE");
     }
 
     @Test
@@ -130,6 +203,28 @@ class EmailSendHandlerTest {
 
         assertThatThrownBy(() -> handler.handleRequest(event, null))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private String emptyDeadLetterQueue() {
+        String url = sqsClient.createQueue(CreateQueueRequest.builder().queueName(dlqName).build()).queueUrl();
+        List<Message> left;
+        while (!(left = sqsClient.receiveMessage(ReceiveMessageRequest.builder().queueUrl(url)
+                .maxNumberOfMessages(10).build()).messages()).isEmpty()) {
+            left.forEach(m -> sqsClient.deleteMessage(DeleteMessageRequest.builder().queueUrl(url)
+                    .receiptHandle(m.receiptHandle()).build()));
+        }
+        return url;
+    }
+
+    private Message singleMessageOn(String queueUrl) {
+        List<Message> messages = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
+                .queueUrl(queueUrl)
+                .maxNumberOfMessages(10)
+                .waitTimeSeconds(2)
+                .messageAttributeNames("All")
+                .build()).messages();
+        assertThat(messages).hasSize(1);
+        return messages.get(0);
     }
 
     private void verify(String sender) {

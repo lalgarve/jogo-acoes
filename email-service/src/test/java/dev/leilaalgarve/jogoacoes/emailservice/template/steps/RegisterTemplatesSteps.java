@@ -13,10 +13,12 @@ import software.amazon.awssdk.services.ses.model.DeleteTemplateRequest;
 import software.amazon.awssdk.services.ses.model.GetTemplateRequest;
 import software.amazon.awssdk.services.ses.model.Template;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 public class RegisterTemplatesSteps {
 
@@ -254,11 +256,16 @@ public class RegisterTemplatesSteps {
         assertThat(template.htmlPart()).isEqualTo("Updated body {{name}}");
     }
 
+    /** Waits: after a dead-letter message (spec 05-046) the template comes back in the background. */
     @Then("SES has the template named {string} again")
     public void ses_has_the_template_again(String name) {
-        Template template = sesTemplate(name);
-        assertThat(template.subjectPart()).isEqualTo("Welcome!");
-        assertThat(template.htmlPart()).isEqualTo(VALID_BODY);
+        String sesName = sesName(name);
+        await().atMost(Duration.ofSeconds(15)).ignoreExceptions().untilAsserted(() -> {
+            Template template = sesClient.getTemplate(GetTemplateRequest.builder().templateName(sesName).build())
+                    .template();
+            assertThat(template.subjectPart()).isEqualTo("Welcome!");
+            assertThat(template.htmlPart()).isEqualTo(VALID_BODY);
+        });
     }
 
     @Then("SES has the template named {string} with the subject {string}")

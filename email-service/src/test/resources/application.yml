@@ -61,6 +61,14 @@ spring:
 # a scenario could read it back (see SendQueue).
 email:
   queue-name: email-service-send-test
+  # Spec 05-046: this suite's own dead-letter queue (DeadLetterQueue, test support), created on
+  # demand like the send queue. Short waits so retries happen within a scenario; the give-up
+  # scenario backdates the row instead of shortening give-up-after.
+  dlq-name: email-service-send-test-dlq
+  publisher:
+    poll-interval: 200ms
+    initial-delay: 200ms
+    max-delay: 1s
 
 logging:
   level:

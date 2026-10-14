@@ -83,4 +83,7 @@ antes de qualquer mudança: `mvn -pl email-service -am verify`, 46 testes verdes
     não valida a sintaxe, cenários `@requires-real-ses`) e falha de `createIfAbsent` dentro de uma
     rodada com `ListTemplates` bem-sucedido (precisaria o SES cair entre as duas chamadas).
 - **T012** (parcial): `mvn -pl email-service -am verify`: 57 testes, 55 verdes, 2 ignorados
-  (`@requires-real-ses`). A suíte do `app` fica junto com a da 05-046.
+  (`@requires-real-ses`). A suíte do `app` rodou junto com a da 05-046 (registro na T015 de
+  `specs/05-046-publicacao-na-fila-em-segundo-plano/tasks.md`): o `app` subiu e sincronizou os
+  templates contra o `email-service` desta branch; as falhas são da entrega pela Lambda, que não
+  roda no container da Claude.
