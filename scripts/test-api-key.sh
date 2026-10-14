@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Saves and restores email-service's test API key (spec 05-030) -- the `api_key` schema of the
-# email_service database, as written by the api-key CLI (lalgarve/api-key, release v1.0.1).
+# Saves and restores email-service's test API keys (spec 05-030; since spec 05-048 also the key of
+# client operations, with permission disposable-email:admin) -- the `api_key` schema of the
+# email_service database, as written by the api-key CLI (lalgarve/api-key, release v1.1.0).
 #
 # The plaintext key is printed only once by the CLI and can't be recovered from the database, so
 # the generated row is kept in docker/postgres-email-service/test-data/api-key-test-data.sql:

@@ -90,6 +90,20 @@ services:
       timeout: 5s
       retries: 10
 
+  # Spec 05-047: test DNS server (CoreDNS) email-service checks recipient domains against in the
+  # docker environment -- fixed zones in docker/dns/, nothing forwarded to the internet. Port 1053
+  # on the host for the email-service test suite, which runs outside Compose; inside Compose,
+  # email-service reaches it as dns:53. The image has no shell, so no healthcheck: it answers as
+  # soon as it is up.
+  dns:
+    image: coredns/coredns:1.11.3
+    command: ["-conf", "/etc/coredns/Corefile"]
+    volumes:
+      - ./docker/dns:/etc/coredns:ro
+    ports:
+      - "127.0.0.1:1053:53/udp"
+      - "127.0.0.1:1053:53/tcp"
+
   # Web UI to inspect the docker-compose Postgres without a local psql/client install (spec
   # 05-013) -- used, among other things, by the caderno de testes' (spec 05-012) verification
   # SELECTs. Local-only: no volume/state of its own, no other profile runs it.
@@ -207,6 +221,9 @@ services:
       db-email-service:
         condition: service_started
       localstack:
+        condition: service_started
+      # Spec 05-047: recipient domains are checked against this test DNS server.
+      dns:
         condition: service_started
       # Spec 05-042: email-service reads its configuration from config-server on startup and
       # fails fast otherwise.

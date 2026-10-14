@@ -7,6 +7,8 @@ import io.restassured.specification.RequestSpecification;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
+
 /**
  * Shared state for the step definitions of a single Cucumber scenario -- cucumber-spring
  * recreates this bean fresh per scenario ({@link ScenarioScope}), same pattern as app's own
@@ -37,6 +39,12 @@ public class EmailServiceScenarioWorld {
     public void authenticateAs(String clientName) {
         this.clientName = clientName;
         this.apiKey = apiKeys.issueActive(clientName);
+    }
+
+    /** Spec 05-048: {@code clientName} with a fresh key holding exactly {@code permissions}. */
+    public void authenticateAs(String clientName, Set<String> permissions) {
+        this.clientName = clientName;
+        this.apiKey = apiKeys.issueActiveWithPermissions(clientName, permissions);
     }
 
     public String getClientName() {

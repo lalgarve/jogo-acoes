@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs the api-key libraries (lalgarve/api-key, release v1.0.1) into the local Maven
+# Installs the api-key libraries (lalgarve/api-key, release v1.1.0) into the local Maven
 # repository (~/.m2), so email-service can depend on dev.leilaalgarve.apikey:api-key-validation
 # like any other artifact (spec 05-030, plan.md, "Como distribuir api-key-validation para o
 # build").
@@ -9,7 +9,7 @@
 # Packages, which requires a token even to read.
 #
 # Three artifacts are installed:
-#   api-key-parent      the parent POM, from pom.xml at tag v1.0.1 -- the POMs embedded in the
+#   api-key-parent      the parent POM, from pom.xml at tag v1.1.0 -- the POMs embedded in the
 #                       two jars inherit from it; without it Maven can't see their transitive
 #                       dependencies (spring-boot-starter-data-jpa)
 #   api-key-core        entity, repository, hasher (release asset, POM embedded in the jar)
@@ -18,7 +18,7 @@
 # Usage: ./scripts/install-api-key-lib.sh
 set -euo pipefail
 
-VERSION="1.0.1"
+VERSION="1.1.0"
 GROUP_ID="dev.leilaalgarve.apikey"
 REPO="lalgarve/api-key"
 RELEASE_URL="https://github.com/$REPO/releases/download/v$VERSION"

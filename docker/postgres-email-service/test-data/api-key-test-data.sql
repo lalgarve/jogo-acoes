@@ -17,14 +17,17 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+ALTER TABLE IF EXISTS ONLY api_key.api_key_permissions DROP CONSTRAINT IF EXISTS api_key_permissions_api_key_id_fkey;
 DROP INDEX IF EXISTS api_key.flyway_schema_history_s_idx;
 ALTER TABLE IF EXISTS ONLY api_key.api_key_schema_history DROP CONSTRAINT IF EXISTS flyway_schema_history_pk;
 ALTER TABLE IF EXISTS ONLY api_key.api_keys DROP CONSTRAINT IF EXISTS api_keys_pkey;
 ALTER TABLE IF EXISTS ONLY api_key.api_keys DROP CONSTRAINT IF EXISTS api_keys_key_hash_key;
+ALTER TABLE IF EXISTS ONLY api_key.api_key_permissions DROP CONSTRAINT IF EXISTS api_key_permissions_pkey;
 ALTER TABLE IF EXISTS api_key.api_keys ALTER COLUMN id DROP DEFAULT;
 DROP SEQUENCE IF EXISTS api_key.api_keys_id_seq;
 DROP TABLE IF EXISTS api_key.api_keys;
 DROP TABLE IF EXISTS api_key.api_key_schema_history;
+DROP TABLE IF EXISTS api_key.api_key_permissions;
 DROP SCHEMA IF EXISTS api_key;
 --
 -- Name: api_key; Type: SCHEMA; Schema: -; Owner: -
@@ -36,6 +39,16 @@ CREATE SCHEMA api_key;
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: api_key_permissions; Type: TABLE; Schema: api_key; Owner: -
+--
+
+CREATE TABLE api_key.api_key_permissions (
+    api_key_id bigint NOT NULL,
+    permission character varying(100) NOT NULL
+);
+
 
 --
 -- Name: api_key_schema_history; Type: TABLE; Schema: api_key; Owner: -
@@ -96,6 +109,15 @@ ALTER TABLE ONLY api_key.api_keys ALTER COLUMN id SET DEFAULT nextval('api_key.a
 
 
 --
+-- Data for Name: api_key_permissions; Type: TABLE DATA; Schema: api_key; Owner: -
+--
+
+COPY api_key.api_key_permissions (api_key_id, permission) FROM stdin;
+2	disposable-email:admin
+\.
+
+
+--
 -- Data for Name: api_key_schema_history; Type: TABLE DATA; Schema: api_key; Owner: -
 --
 
@@ -103,6 +125,7 @@ COPY api_key.api_key_schema_history (installed_rank, version, description, type,
 0	\N	<< Flyway Schema Creation >>	SCHEMA	"api_key"	\N	email_service_admin	2026-10-03 19:49:26.896126	0	t
 1	1	create api keys table	SQL	V1__create_api_keys_table.sql	1969127143	email_service_admin	2026-10-03 19:49:26.923462	7	t
 2	2	add revoked at to api keys	SQL	V2__add_revoked_at_to_api_keys.sql	1620673178	email_service_admin	2026-10-03 19:49:26.946137	1	t
+3	3	create api key permissions table	SQL	V3__create_api_key_permissions_table.sql	-385377097	email_service_admin	2026-10-14 17:22:13.237066	13	t
 \.
 
 
@@ -112,6 +135,7 @@ COPY api_key.api_key_schema_history (installed_rank, version, description, type,
 
 COPY api_key.api_keys (id, client_name, key_hash, created_at, expires_at, revoked_at) FROM stdin;
 1	jogo-acoes	4bb6a54721ac45965413acda0987800299242a3f237abae6584b5a81cf18b722	2026-10-03 19:49:29.138196	\N	\N
+2	operations	2203b95e1ba4a7380b6e4de38c690663091a7c1d5f3b130a56d8142e95235e8c	2026-10-14 17:22:15.571111	\N	\N
 \.
 
 
@@ -119,7 +143,15 @@ COPY api_key.api_keys (id, client_name, key_hash, created_at, expires_at, revoke
 -- Name: api_keys_id_seq; Type: SEQUENCE SET; Schema: api_key; Owner: -
 --
 
-SELECT pg_catalog.setval('api_key.api_keys_id_seq', 1, true);
+SELECT pg_catalog.setval('api_key.api_keys_id_seq', 2, true);
+
+
+--
+-- Name: api_key_permissions api_key_permissions_pkey; Type: CONSTRAINT; Schema: api_key; Owner: -
+--
+
+ALTER TABLE ONLY api_key.api_key_permissions
+    ADD CONSTRAINT api_key_permissions_pkey PRIMARY KEY (api_key_id, permission);
 
 
 --
@@ -151,6 +183,14 @@ ALTER TABLE ONLY api_key.api_key_schema_history
 --
 
 CREATE INDEX flyway_schema_history_s_idx ON api_key.api_key_schema_history USING btree (success);
+
+
+--
+-- Name: api_key_permissions api_key_permissions_api_key_id_fkey; Type: FK CONSTRAINT; Schema: api_key; Owner: -
+--
+
+ALTER TABLE ONLY api_key.api_key_permissions
+    ADD CONSTRAINT api_key_permissions_api_key_id_fkey FOREIGN KEY (api_key_id) REFERENCES api_key.api_keys(id) ON DELETE CASCADE;
 
 
 --

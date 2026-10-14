@@ -1,6 +1,8 @@
 package dev.leilaalgarve.jogoacoes.common.logging;
 
+import dev.leilaalgarve.jogoacoes.email.exception.RecipientDomainRejectedException;
 import org.aspectj.lang.annotation.AfterReturning;
+import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.slf4j.Logger;
@@ -33,5 +35,15 @@ public class EmailServiceLoggingAspect {
             returning = "id")
     public void logAfterSend(UUID id) {
         logger.debug("<-- email-service accepted send {}", id);
+    }
+
+    /**
+     * Spec 05-047: the recipient's domain does not accept e-mail. WARN because a group invite
+     * skips that player and goes on -- this line is the only trace of the skipped e-mail.
+     */
+    @AfterThrowing(pointcut = "execution(* dev.leilaalgarve.jogoacoes.email.client.EmailServiceGateway.sendEmail(..)) "
+            + "&& args(templateName, recipientEmail, ..)", throwing = "rejected")
+    public void logRejectedDomain(String templateName, String recipientEmail, RecipientDomainRejectedException rejected) {
+        logger.warn("<-- email-service rejected the domain of {} ({} not sent)", recipientEmail, templateName);
     }
 }

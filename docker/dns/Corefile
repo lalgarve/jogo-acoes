@@ -1,0 +1,25 @@
+# Spec 05-047: test DNS for the docker environment. email-service checks every recipient's domain
+# (MX, then A/AAAA) against this server instead of the internet, so the answers are fixed and
+# CI never depends on real DNS. Nothing is forwarded: a name outside these zones gets REFUSED,
+# which email-service treats as "DNS unavailable" (accepts the send, does not whitelist).
+
+# Never answers: the "DNS unavailable" case (spec 05-047, "Decisões resolvidas").
+unavailable.test:53 {
+    erratic {
+        drop 1
+    }
+}
+
+# Fixed cases for the email-service tests (.test is reserved for testing, RFC 2606).
+test:53 {
+    file /etc/coredns/test.zone
+    errors
+}
+
+# Domains the test suites, blackbox-tests and the caderno de testes already send to: one MX each,
+# from the same relative zone file. simulator.amazonses.com is not here -- it is whitelisted by
+# email-service's migration and never looked up.
+example.com:53 exemplo.com:53 acme.com:53 client-a.example:53 jogo-acoes.example:53 {
+    file /etc/coredns/mail-domain.zone
+    errors
+}
