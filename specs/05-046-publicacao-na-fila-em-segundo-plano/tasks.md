@@ -25,7 +25,7 @@ Issue-épico: a criar quando a spec for aprovada.
 | ~~T013~~ | Documentação: `specs/05-031-servico-email-envio/spec.md` aponta o que a 05-046 substituiu; comentário de `EmailSendHandler` sobre a redrive; nota em `docs/context/iteracao-4.md`, decisão 4, de que foi substituída pela 05-046 | T009, T012 | [P] | — |
 | ~~T014~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas e removidas (esperado: nenhuma criada, `EmailQueuePublishException` removida) e os branches de exceção adicionados ou alterados (falha de publicação; cada tipo de erro da DLQ, inclusive sem atributo e sem linha para o `correlationId`; falha do SES na recriação; desistência; cada `catch` da Lambda; commit que falha depois de publicar); para cada um, apontar o teste que o exercita. O que não tiver teste é justificado em `plan.md` (já previsto: commit que falha depois de publicar) e avisado no chat ao abrir a PR. Registrar a lista aqui | T010–T012 | | — |
 | T015 | Rodar a suíte completa do `email-service`, a do `email-lambda` e `mvn -pl app -am verify` (cliente Feign regenerado com o enum novo) — confirmar verde | T013, T014 | | — |
-| T016 | Verificação manual (Leila), comandos em "Roteiro da T016" abaixo: (a) apagar a fila de envio no LocalStack, pedir um login, conferir o envio `PENDING` com `QUEUE_UNAVAILABLE`, recriar a fila e ver o e-mail chegar no `ses-viewer`; (b) apagar um template do SES, pedir um login, conferir `TEMPLATE_MISSING` e `attempts` no banco, o template de volta no SES e o e-mail no `ses-viewer` | T015 | | — |
+| T016 | Verificação manual (Leila): rodar o roteiro "Roteiro da T016" abaixo e conferir os resultados esperados | T015 | | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -99,59 +99,139 @@ para a suíte do `app`, o `email-service` rodando no host (porta 8082) com o per
   limite de 0,2 s, com a máquina carregada; rodado sozinho, passou). Falta a confirmação num
   ambiente em que a Lambda roda (CI ou máquina local).
 
+- **Roteiros da T016 e da T013 da 05-044** (2026-10-14, reescritos conforme a seção
+  "Verificação manual: comandos prontos para copiar" do constitution): os `curl`, `psql` e
+  `awslocal` foram rodados contra o `email-service` desta branch (Postgres e LocalStack do Compose,
+  `email-service` com `java -jar` no host na porta 8082) e as saídas esperadas são as obtidas.
+  No passo 6 a mensagem `TEMPLATE_MISSING` foi posta na DLQ à mão, no lugar da Lambda. Não
+  rodaram no container da Claude: a subida com `--build` (o Maven não alcança o repositório de
+  dentro do Docker) e a entrega pela Lambda (passos 4 e 7: o LocalStack não baixa a imagem de
+  runtime da Lambda).
+
 ## Roteiro da T016
 
-A partir da raiz do repositório. Sobe tudo com as imagens desta branch (o `rm -rf` força a
-Lambda a ser empacotada de novo):
+Na raiz do repositório, no WSL, com o branch `claude/project-thread-kx436t` (ou o `master` depois
+do merge). Só o `email-service`, o LocalStack (com a Lambda) e o `ses-viewer` são necessários;
+`--build` garante que as imagens têm a mudança, e o `email-lambda-builder` empacota a Lambda de
+novo quando o código dela mudou.
 
 ```bash
-rm -rf email-lambda/dist
-docker compose up -d --wait db db-email-service localstack
+export COMPOSE_FILE=docker-compose.yml:docker-compose.blackbox.yml
+docker compose down -v
+docker compose up -d --wait --build db-email-service localstack
 ./scripts/test-api-key.sh restore
-docker compose up -d --build --wait email-service
+docker compose up -d --wait --build email-service
 ./scripts/test-api-key.sh restore
-docker compose up -d --build --wait app ses-viewer
+docker compose up -d --wait ses-viewer
+API_KEY=dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU
+curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/templates \
+  -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+  -d '{"name":"roteiro-t016","subject":"Roteiro T016","body":"<p>Oi {{name}}</p>"}'
 ```
 
-**(a) Fila de envio fora do ar.** Apagar a fila e pedir um login:
-
-```bash
-docker compose exec localstack sh -c 'awslocal sqs delete-queue --queue-url $(awslocal sqs get-queue-url --queue-name jogo-acoes-email-commands --query QueueUrl --output text)'
-curl -i -X POST http://localhost:8080/api/login-requests -H 'Content-Type: application/json' -d '{"email":"success+admin@simulator.amazonses.com"}'
-docker compose exec db-email-service psql -U email_service_admin -d email_service -c "select id, status, attempts, last_error_type, created_at from email_service.email_send order by created_at desc limit 3;"
+Esperado no último comando (as datas mudam):
+```
+{"body":"<p>Oi {{name}}</p>","createdAt":"...","name":"roteiro-t016","subject":"Roteiro T016","updatedAt":"..."} [201]
 ```
 
-Esperado: `202` no `curl`; o envio mais recente com `status = PENDING`, `last_error_type =
-QUEUE_UNAVAILABLE` e `attempts` crescendo a cada `select`. Recriar a fila (o script de subida do
-LocalStack, que também recoloca a *redrive policy*) e conferir de novo:
+**(a) Fila de envio fora do ar**
 
-```bash
-docker compose exec localstack sh /etc/localstack/init/ready.d/01-create-queue.sh
-docker compose exec db-email-service psql -U email_service_admin -d email_service -c "select id, status, attempts, last_error_type, queued_at from email_service.email_send order by created_at desc limit 3;"
-```
+1. Apagar a fila de envio e pedir um e-mail:
+   ```bash
+   docker compose exec localstack sh -c 'awslocal sqs delete-queue --queue-url $(awslocal sqs get-queue-url --queue-name jogo-acoes-email-commands --query QueueUrl --output text)'
+   curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/emails \
+     -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+     -d '{"templateName":"roteiro-t016","recipientEmail":"success+t016a@simulator.amazonses.com","templateData":{"name":"Ada"}}'
+   ```
+   Esperado (o `id` muda):
+   ```
+   {"id":"7d242c83-...","status":"PENDING"} [202]
+   ```
+   Antes da mudança, a resposta era `503`.
 
-Esperado: o envio com `status = QUEUED` e o e-mail no `ses-viewer` (`http://localhost:3005`). Se o
-e-mail não chegar, conferir se o mapeamento da Lambda sobreviveu à fila recriada:
-`docker compose exec localstack awslocal lambda list-event-source-mappings`.
+2. O envio está pendente, com o erro gravado:
+   ```bash
+   sleep 3
+   docker compose exec db-email-service psql -U email_service_admin -d email_service -c "select status, attempts, last_error_type, template_data is not null as keeps_template_data from email_service.email_send where recipient_email = 'success+t016a@simulator.amazonses.com';"
+   ```
+   Esperado (`attempts` cresce a cada vez que o comando é repetido):
+   ```
+    status  | attempts |  last_error_type  | keeps_template_data
+   ---------+----------+-------------------+---------------------
+    PENDING |        2 | QUEUE_UNAVAILABLE | t
+   (1 row)
+   ```
 
-**(b) Template sumiu do SES.** Apagar o template de login e pedir um login:
+3. Recriar a fila (o script de subida do LocalStack, que também recoloca a *redrive policy*) e
+   conferir o envio:
+   ```bash
+   docker compose exec localstack sh /etc/localstack/init/ready.d/01-create-queue.sh
+   sleep 10
+   docker compose exec db-email-service psql -U email_service_admin -d email_service -c "select status, attempts, last_error_type, template_data is not null as keeps_template_data from email_service.email_send where recipient_email = 'success+t016a@simulator.amazonses.com';"
+   ```
+   Esperado (o número de `attempts` varia; o JSON com o `QueueUrl` vem do script):
+   ```
+    status | attempts |  last_error_type  | keeps_template_data
+   --------+----------+-------------------+---------------------
+    QUEUED |        4 | QUEUE_UNAVAILABLE | f
+   (1 row)
+   ```
 
-```bash
-docker compose exec localstack awslocal ses delete-template --template-name jogo-acoes__login-link
-curl -i -X POST http://localhost:8080/api/login-requests -H 'Content-Type: application/json' -d '{"email":"success+admin@simulator.amazonses.com"}'
-```
+4. O e-mail chegou ao SES:
+   ```bash
+   sleep 10
+   curl -s 'http://localhost:4566/_aws/ses?email=no-reply@jogo-acoes.example' | grep -o 'success+t016a@simulator.amazonses.com' | head -1
+   ```
+   Esperado: `success+t016a@simulator.amazonses.com`. O e-mail também aparece no `ses-viewer`,
+   em `http://localhost:3005`. Se não aparecer, conferir se o gatilho da Lambda continua ligado
+   à fila recriada:
+   ```bash
+   docker compose exec localstack awslocal lambda list-event-source-mappings --query 'EventSourceMappings[].[EventSourceArn,State]' --output text
+   ```
+   Esperado: `arn:aws:sqs:us-east-1:000000000000:jogo-acoes-email-commands	Enabled`.
 
-Esperar uns segundos e conferir o banco, o template de volta no SES e o log do `email-service`:
+**(b) Template sumiu do SES**
 
-```bash
-docker compose exec db-email-service psql -U email_service_admin -d email_service -c "select id, status, attempts, last_error_type, last_error from email_service.email_send order by created_at desc limit 3;"
-docker compose exec db-email-service psql -U email_service_admin -d email_service -c "select name, ses_recreated_at from email_service.email_template where name = 'login-link';"
-docker compose exec localstack awslocal ses get-template --template-name jogo-acoes__login-link
-docker compose logs email-service | grep -E "TEMPLATE_MISSING|Recreated template"
-```
+5. Apagar o template do SES e pedir um e-mail:
+   ```bash
+   docker compose exec localstack awslocal ses delete-template --template-name jogo-acoes__roteiro-t016
+   curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/emails \
+     -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+     -d '{"templateName":"roteiro-t016","recipientEmail":"success+t016b@simulator.amazonses.com","templateData":{"name":"Ada"}}'
+   ```
+   Esperado: `{"id":"...","status":"PENDING"} [202]`.
 
-Esperado: o envio com `status = QUEUED`, `attempts = 1`, `last_error_type = TEMPLATE_MISSING`;
-`ses_recreated_at` preenchido; o template de volta no SES; no log, `Recreated template
-jogo-acoes__login-link on SES after a TEMPLATE_MISSING delivery error`; e o e-mail no
-`ses-viewer`.
+6. A Lambda não acha o template e põe a mensagem na DLQ com `TEMPLATE_MISSING`; o
+   `email-service` recria o template e publica de novo:
+   ```bash
+   sleep 15
+   docker compose exec db-email-service psql -U email_service_admin -d email_service -c "select status, attempts, last_error_type from email_service.email_send where recipient_email = 'success+t016b@simulator.amazonses.com';"
+   docker compose exec db-email-service psql -U email_service_admin -d email_service -c "select name, ses_recreated_at is not null as recreated from email_service.email_template where name = 'roteiro-t016';"
+   docker compose exec localstack awslocal ses get-template --template-name jogo-acoes__roteiro-t016 --query 'Template.SubjectPart' --output text
+   docker compose logs email-service | grep -E "TEMPLATE_MISSING|Recreated template jogo-acoes__roteiro-t016"
+   ```
+   Esperado:
+   ```
+    status | attempts | last_error_type
+   --------+----------+------------------
+    QUEUED |        1 | TEMPLATE_MISSING
+   (1 row)
 
+        name     | recreated
+   --------------+-----------
+    roteiro-t016 | t
+   (1 row)
+
+   Roteiro T016
+   ... TemplateService : Recreated template jogo-acoes__roteiro-t016 on SES after a TEMPLATE_MISSING delivery error
+   ... DeadLetterConsumer : Send ... was not delivered (TEMPLATE_MISSING): Template (jogo-acoes__roteiro-t016) does not exist ...
+   ```
+
+7. O e-mail chegou ao SES:
+   ```bash
+   sleep 10
+   curl -s 'http://localhost:4566/_aws/ses?email=no-reply@jogo-acoes.example' | grep -o 'success+t016b@simulator.amazonses.com' | head -1
+   ```
+   Esperado: `success+t016b@simulator.amazonses.com`, e o e-mail no `ses-viewer`.
+
+Para derrubar: `docker compose down -v`.

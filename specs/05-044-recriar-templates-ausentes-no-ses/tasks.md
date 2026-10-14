@@ -23,7 +23,7 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
 | ~~T010~~ | Documentação: `503` e descrições de `POST /templates`, `PUT /templates/{name}` e `POST /templates/{name}/preview` em `docs/openapi-email-service.yaml`; invariante novo em `specs/05-025-servico-email-templates/data-model.md` | T006, T007, T008 | [P] | #144 |
 | ~~T011~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: `SesUnavailableException`) e os branches de exceção adicionados ou alterados (`AlreadyExistsException` em `putTemplate` e em `createIfAbsent`, `TemplateDoesNotExistException` em `updateTemplate`, a nova tentativa do preview, `SdkClientException`/5xx no `SesTemplateClient`, o handler do `503`, falha de `ListTemplates` e de `createIfAbsent` na reconciliação e a nova rodada); para cada um, apontar o teste que o exercita. O que não tiver teste é justificado em `plan.md` (já previsto: `SesException` genérica não 5xx com o SES no ar) e avisado no chat ao abrir a PR. Registrar a lista aqui | T006–T009 | | #144 |
 | T012 | Rodar a suíte completa do `email-service` e `mvn -pl app -am verify` — confirmar verde | T010, T011 | | #144 |
-| T013 | Verificação manual (Leila), comandos em "Roteiro da T013" abaixo: passos 1–4 da Issue #144 (`docker compose restart localstack` entre duas execuções da suíte do `app`); o `app` sobe na segunda sem `down -v` | T012 | | #144 |
+| T013 | Verificação manual (Leila), rodar o roteiro "Roteiro da T013" abaixo e conferir os resultados esperados | T012 | | #144 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -88,53 +88,89 @@ antes de qualquer mudança: `mvn -pl email-service -am verify`, 46 testes verdes
   templates contra o `email-service` desta branch; as falhas são da entrega pela Lambda, que não
   roda no container da Claude.
 
+- **Roteiro da T013** (2026-10-14, reescrito conforme a seção "Verificação manual: comandos
+  prontos para copiar" do constitution): os passos 2, 4 e 5 foram rodados contra o
+  `email-service` desta branch (Postgres e LocalStack do Compose, `email-service` com `java -jar`
+  no host) e as saídas esperadas são as obtidas. Os passos 1 e 3 (o `app` em container) e a
+  subida com `--build` não rodaram no container da Claude, que não constrói as imagens.
+
 ## Roteiro da T013
 
-A partir da raiz do repositório. Sobe tudo com as imagens desta branch (o `rm -rf` força a
-Lambda a ser empacotada de novo):
+Na raiz do repositório, no WSL, com o branch `claude/project-thread-kx436t` (ou o `master` depois
+do merge). Começa de volume limpo; `--build` garante que as imagens têm a correção.
 
 ```bash
-rm -rf email-lambda/dist
-docker compose up -d --wait db db-email-service localstack
+export COMPOSE_FILE=docker-compose.yml:docker-compose.blackbox.yml
+docker compose down -v
+docker compose up -d --wait --build db db-email-service localstack
 ./scripts/test-api-key.sh restore
-docker compose up -d --build --wait email-service
+docker compose up -d --wait --build email-service
 ./scripts/test-api-key.sh restore
+docker compose up -d --wait --build app
+API_KEY=dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU
 ```
 
-Primeira execução da suíte do `app` (cadastra os templates no `email-service` e no SES):
+1. O `app` subiu e cadastrou os templates dele no SES:
+   ```bash
+   docker compose logs app | grep -c "Started JogoAcoesApplication"
+   docker compose exec localstack awslocal ses list-templates --query 'TemplatesMetadata[].Name' --output text
+   ```
+   Esperado: `1` e, na linha seguinte, os nomes `jogo-acoes__invite`, `jogo-acoes__login-link`,
+   ... separados por tabulação.
 
-```bash
-mvn -pl app -am verify
-```
+2. Reiniciar só o LocalStack. O SES perde os templates; o banco do `email-service` continua com
+   eles:
+   ```bash
+   docker compose restart localstack
+   docker compose exec localstack awslocal ses list-templates --query 'TemplatesMetadata[].Name' --output text
+   ```
+   Esperado: uma linha vazia (nenhum template no SES).
 
-Reiniciar só o LocalStack (o SES perde os templates; o banco do `email-service` continua com
-eles):
+3. Reiniciar o `app`, que sincroniza os templates de novo (o passo que falhava na Issue #144 com
+   `PUT` 404 e `POST` 409):
+   ```bash
+   docker compose restart app
+   sleep 30
+   docker compose logs app --since 2m | grep -E "Started JogoAcoesApplication|answered 409"
+   docker compose exec localstack awslocal ses list-templates --query 'TemplatesMetadata[].Name' --output text
+   ```
+   Esperado: uma linha com `Started JogoAcoesApplication` e nenhuma com `answered 409`; os
+   templates `jogo-acoes__...` de volta no SES. Se ainda não aparecer o `Started`, esperar mais
+   uns segundos e repetir o `logs`.
 
-```bash
-docker compose restart localstack
-docker compose exec localstack awslocal ses list-templates
-```
+4. Atualizar e pré-visualizar um template que o SES perdeu, direto no `email-service`:
+   ```bash
+   curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/templates \
+     -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+     -d '{"name":"roteiro-t013","subject":"Roteiro T013","body":"<p>Oi {{name}}</p>"}'
+   docker compose exec localstack awslocal ses delete-template --template-name jogo-acoes__roteiro-t013
+   curl -s -w ' [%{http_code}]\n' -X PUT http://localhost:8082/api/templates/roteiro-t013 \
+     -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+     -d '{"subject":"Roteiro T013 v2","body":"<p>Oi {{name}}</p>"}'
+   docker compose exec localstack awslocal ses delete-template --template-name jogo-acoes__roteiro-t013
+   curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/templates/roteiro-t013/preview \
+     -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+     -d '{"variables":{"name":"Ada"}}'
+   ```
+   Esperado (as datas mudam):
+   ```
+   {"body":"<p>Oi {{name}}</p>","createdAt":"...","name":"roteiro-t013","subject":"Roteiro T013","updatedAt":"..."} [201]
+   {"body":"<p>Oi {{name}}</p>","createdAt":"...","name":"roteiro-t013","subject":"Roteiro T013 v2","updatedAt":"..."} [200]
+   {"body":"<p>Oi Ada</p>","subject":"Roteiro T013 v2"} [200]
+   ```
+   Antes da correção, o `PUT` e o preview respondiam `404`.
 
-Esperado: `list-templates` sem os templates `jogo-acoes__...`.
+5. Recriação na subida do `email-service`:
+   ```bash
+   docker compose restart localstack
+   docker compose restart email-service
+   sleep 20
+   docker compose logs email-service --since 1m | grep "Recreated template"
+   docker compose exec localstack awslocal ses list-templates --query 'TemplatesMetadata[].Name' --output text
+   ```
+   Esperado: uma linha `... SesTemplateReconciler : Recreated template jogo-acoes__<nome> on SES
+   from the database` para cada template (os do `app` e o `roteiro-t013`), e todos eles no
+   `list-templates`. Se aparecer `SES template reconciliation failed, trying again in ...`, o
+   LocalStack ainda estava subindo: esperar uns segundos e repetir os dois últimos comandos.
 
-Segunda execução da suíte do `app`, sem `docker compose down -v`:
-
-```bash
-mvn -pl app -am verify
-```
-
-Esperado: o `app` sobe (sem `404` no `PUT` nem `409` no `POST` dos templates, os erros da Issue
-#144).
-
-Opcional, para ver a recriação na subida do `email-service` (ela só roda quando o serviço sobe):
-repetir o `docker compose restart localstack` e então
-
-```bash
-docker compose restart email-service
-docker compose logs email-service | grep -E "Recreated template|reconciliation failed"
-docker compose exec localstack awslocal ses list-templates
-```
-
-Esperado: uma linha `Recreated template jogo-acoes__... on SES from the database` por template
-e todos de volta no `list-templates`.
-
+Para derrubar: `docker compose down -v`.
