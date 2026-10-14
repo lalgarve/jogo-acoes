@@ -40,11 +40,16 @@ o `app` é recriado sem o perfil `blackbox` e o captcha volta.
 ### Passo 1 — Subir o ambiente
 
 ```
-docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up -d --build
 ```
 
+O `--build` é obrigatório: sem ele o Compose reaproveita imagens de `app`/`email-service`
+construídas antes desta spec, que ainda trazem o `application-docker.yml` no jar e nem conhecem o
+Config Server — a verificação passaria a testar o código antigo.
+
 **Esperado:** todos os containers de pé (`docker compose -f docker-compose.yml -f
-docker-compose.blackbox.yml ps`), inclusive `config-server` e `app`.
+docker-compose.blackbox.yml ps`), inclusive `config-server` e `app`, e o log do `app` com
+`Fetching config from server at : http://config-server:8888`.
 
 **Volume novo do `db-email-service`** (primeira vez, ou depois de um `down -v`): o
 `email-service` sai com `Schema validation: missing table [api_key.api_keys]` e o `app` fica em
