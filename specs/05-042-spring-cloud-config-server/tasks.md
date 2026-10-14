@@ -46,8 +46,26 @@ docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up -d
 **Esperado:** todos os containers de pé (`docker compose -f docker-compose.yml -f
 docker-compose.blackbox.yml ps`), inclusive `config-server` e `app`.
 
-Se o `app` não subir e o log dele mostrar `401` do `email-service`, a chave de API de teste não
-está no banco (volume novo). Rodar `./scripts/test-api-key.sh restore` e repetir o passo 1.
+**Volume novo do `db-email-service`** (primeira vez, ou depois de um `down -v`): o
+`email-service` sai com `Schema validation: missing table [api_key.api_keys]` e o `app` fica em
+`Created`. O schema `api_key` não vem do Flyway; quem cria é a restauração da chave de teste.
+Nessa primeira subida o Flyway já criou as tabelas do `email-service`, então basta restaurar e
+subir de novo:
+
+```
+./scripts/test-api-key.sh restore
+docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up -d
+```
+
+**`app` sai com `Template invite answered 409 on create and 404 on update`** (Issue #144): o
+LocalStack reiniciou e perdeu os templates do SES, que continuam no banco do `email-service`. Não
+apagar o volume (`down -v` leva junto a chave de API); esvaziar só os templates e os envios, e
+subir de novo — o `app` recria os templates no banco e no SES:
+
+```
+docker compose exec -T db-email-service psql -U email_service_admin -d email_service -c "TRUNCATE email_service.email_send, email_service.email_template"
+docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up -d
+```
 
 ### Passo 2 — Config Server com credencial
 
