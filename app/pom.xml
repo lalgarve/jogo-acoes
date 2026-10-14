@@ -312,6 +312,9 @@
               <library>spring-cloud</library>
               <apiPackage>dev.leilaalgarve.jogoacoes.email.client.api</apiPackage>
               <modelPackage>dev.leilaalgarve.jogoacoes.email.client.api.model</modelPackage>
+              <!-- Spec 05-048: only the routes app calls (permission email:send). The
+                   disposable-domains routes are operations' and app's key cannot call them. -->
+              <apisToGenerate>Templates,Emails</apisToGenerate>
               <generateApiTests>false</generateApiTests>
               <generateModelTests>false</generateModelTests>
               <configOptions>

@@ -12,8 +12,10 @@
 # email_service_app USAGE on it plus SELECT/INSERT/UPDATE/DELETE on its tables and sequences.
 # API_KEY_HMAC_PEPPER (spec 05-030) has no default here: it comes from the environment's secret
 # manager, and HmacPepperStartupCheck fails startup without it. The DB team also grants
-# email_service_app USAGE on schema api_key and SELECT on api_key.api_keys (keys are issued by the
-# api-key CLI with the admin role; this service only reads them).
+# email_service_app USAGE on schema api_key and SELECT on api_key.api_keys and, since api-key 1.1.0
+# (spec 05-048), api_key.api_key_permissions (keys are issued by the api-key CLI with the admin
+# role; this service only reads them). Spring Batch's tables and sequences (V5) are this
+# service's own, in schema email_service, covered by the grants above.
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL}
@@ -26,3 +28,12 @@ spring:
 logging:
   level:
     dev.leilaalgarve.jogoacoes.emailservice: INFO
+
+# Spec 05-047: email.domain-check.dns-servers is not set, so recipient domains are checked with the
+# system resolver.
+
+# Spec 05-048: the disposable-domain lists are imported every day at 04:00 (server time), on top
+# of the imports operations asks for.
+email:
+  disposable-domains:
+    import-cron: "0 0 4 * * *"

@@ -69,7 +69,7 @@ Os testes rodam contra a infraestrutura real do Docker Compose, que precisa esta
 (`.github/workflows/ci.yml`):
 
 ```bash
-docker compose up -d --wait db db-email-service localstack
+docker compose up -d --wait db db-email-service localstack dns
 docker compose up -d --wait config-server
 ./scripts/test-api-key.sh restore
 docker compose up -d --wait email-service
@@ -180,6 +180,7 @@ no host em:
 | `config-server` | `http://localhost:8888/{aplicação}/{perfil}` | Ex.: `/jogo-acoes/docker`; HTTP Basic `config` / `config-docker-not-a-secret` |
 | `ses-viewer` | `http://localhost:3005` | E-mails enviados pelo SES do LocalStack |
 | LocalStack | `http://localhost:4566` | SES em JSON: `GET /_aws/ses` |
+| DNS de teste | `127.0.0.1:1053` (UDP e TCP) | Zona `.test` da verificação do domínio do destinatário (spec 05-047) |
 | Adminer | `http://localhost:8081` | Servidor `db` (usuário/senha `jogo_acoes_admin`) ou `db-email-service` (`email_service_admin`) |
 | PostgreSQL do `app` | `localhost:5432` | Banco `jogo_acoes` |
 | PostgreSQL do `email-service` | `localhost:5433` | Banco `email_service` |
@@ -460,14 +461,92 @@ curl -X POST http://localhost:8082/api/emails \
 ```
 
 Resposta: `202 {"id": "<uuid>", "status": "QUEUED"}`. Template inexistente (ou de outro
-cliente) dá `404`, pedido malformado dá `400` e falha ao publicar na fila dá `503` (nada é
-enviado nem gravado; pode repetir). Repetir o mesmo pedido gera dois e-mails: idempotência fica
+cliente) dá `404`, pedido malformado dá `400`, domínio do destinatário que não recebe e-mail dá
+`422` (ver abaixo) e falha ao publicar na fila dá `503` (nada é enviado nem gravado; pode
+repetir). Repetir o mesmo pedido gera dois e-mails: idempotência fica
 para a Etapa 4.
 
 A Lambda só aceita mensagens com template.
 
 Os testes do módulo usam uma fila própria no LocalStack (`email-service-send-test`, criada pela
 própria suíte), para ler de volta a mensagem publicada antes que a Lambda a consuma.
+
+### Verificação do domínio do destinatário
+
+Spec [05-047](specs/05-047-verificacao-dominio-destinatario/spec.md): antes de gravar o envio,
+`POST /emails` confere se o domínio do destinatário recebe e-mail. Vale o registro MX (o MX nulo,
+`MX 0 .`, recusa); sem MX, vale um registro A ou AAAA. Domínio aprovado entra na lista branca
+(`email_service.approved_domain`) e não é consultado de novo; domínio sem nenhum desses registros
+dá `422` e nada é gravado nem enviado. Se o DNS não responder, o envio segue sem entrar na lista
+branca. `simulator.amazonses.com`, o domínio do simulador do SES, já vem na lista pela migration.
+No `app`, o `422` vira `422` no link de login e nos envios individuais; nos envios em grupo o
+jogador recusado é pulado e fica com o status que tinha.
+
+No Compose, o `email-service` consulta o serviço `dns` (CoreDNS, `docker/dns/`), publicado no
+host em `127.0.0.1:1053`, que é onde os testes do `email-service` o consultam. Ele responde só
+pelas zonas de `docker/dns/Corefile`: a zona `.test` (`docker/dns/test.zone`) tem um domínio
+para cada caso (`with-mx.test`, `only-a.test`, `only-aaaa.test`, `null-mx.test`, `no-mail.test`,
+`missing.test` sem registro nenhum e `unavailable.test`, que não responde), e
+`docker/dns/mail-domain.zone` dá MX aos domínios que os outros testes já usam (`example.com`,
+`exemplo.com`, `acme.com`, `client-a.example`, `jogo-acoes.example`). Qualquer outro domínio é
+recusado pelo servidor (`REFUSED`), o que conta como DNS sem resposta: o envio segue.
+
+Para um teste usar um domínio novo que precisa ser aprovado ou recusado, inclua o domínio na zona
+`.test` ou, se ele não terminar em `.test`, acrescente-o à lista de zonas do bloco
+`mail-domain.zone` no `Corefile`, e reinicie o serviço:
+
+```bash
+docker compose restart dns
+```
+
+Em `staging` e `production`, `email.domain-check.dns-servers` fica vazio e o serviço usa o
+resolvedor do sistema.
+
+### Listas de domínios de e-mail temporário
+
+Spec [05-048](specs/05-048-importacao-listas-email-temporario/spec.md): um lote do Spring Batch
+dentro do `email-service` baixa listas públicas de domínios de e-mail temporário (Mailinator e
+afins) e guarda os domínios na tabela `email_service.disposable_domain`. O `POST /emails` recusa
+com `422` um destinatário desses domínios, ou de um subdomínio deles, antes da lista branca e do
+DNS da spec 05-047. Cada lista vem de um repositório cadastrado (`disposable_domain_source`), com
+endereço, descrição, hora do último download e hora da última atualização no banco; a migration
+já cadastra a lista principal do
+[`disposable-email-domains`](https://github.com/disposable-email-domains/disposable-email-domains).
+Em `staging` e `production` o lote roda todo dia às 4h
+(`email.disposable-domains.import-cron`); no `docker`, só quando operações pede.
+
+**Permissões.** Desde a `api-key` 1.1.0, cada chave tem permissões, e cada rota exige a sua:
+`email:send` para `/emails` e `/templates`, `disposable-email:admin` para as rotas das listas.
+Uma chave sem permissão gravada (a do `jogo-acoes`, emitida antes da 1.1.0) recebe só
+`email:send`. Operações usa uma chave só com `disposable-email:admin`, que não envia e-mail:
+
+```
+java -jar api-key-1.1.0.jar generate --client operations --permissions disposable-email:admin
+```
+
+No `docker`, `./scripts/test-api-key.sh restore` já restaura a chave de teste de operações,
+`dak_D9CebHAQ6cq2vAnYIomxJ1nX56qn_5dDRv2J-aHrQFc`
+([`docker/postgres-email-service/test-data/README.md`](docker/postgres-email-service/test-data/README.md)).
+
+Cadastrar um repositório e pedir a execução do lote para todos os repositórios (sem corpo) ou
+para um só (`{"sourceId": <id>}`):
+
+```bash
+OPS_API_KEY=dak_D9CebHAQ6cq2vAnYIomxJ1nX56qn_5dDRv2J-aHrQFc
+curl -s -X POST http://localhost:8082/api/disposable-domain-sources \
+  -H "X-API-Key: $OPS_API_KEY" -H 'Content-Type: application/json' \
+  -d '{"url":"https://example.org/disposable.conf","description":"Minha lista"}'
+curl -s -X POST http://localhost:8082/api/disposable-domain-imports -H "X-API-Key: $OPS_API_KEY"
+```
+
+O pedido responde `202` com o `executionId` de cada repositório; o lote roda em segundo plano.
+`GET /disposable-domain-imports/{executionId}` mostra a situação e as contagens (linhas lidas,
+ignoradas, domínios incluídos e removidos), e `GET /disposable-domain-sources` lista os
+repositórios com o resultado da última execução de cada um. Um repositório que falha (fora do
+ar, status diferente de `200`, maior que `email.disposable-domains.max-size`, lista vazia) não
+muda nada e não impede os outros. O roteiro 8 do
+[caderno de testes](docs/disciplina/caderno-de-testes.md) faz o caminho completo com uma lista
+servida pelo S3 do LocalStack, que é também como os testes do módulo servem as listas.
 
 ### O `app/` envia pelo Serviço de E-mail
 

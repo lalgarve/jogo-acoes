@@ -102,7 +102,9 @@ paths:
                   enum: [now, later]
       responses:
         '204':
-          description: No Content
+          description: >
+            No Content. With timing now, a player whose e-mail domain does not accept e-mail
+            (spec 05-047) stays with e-mail not sent; the others are invited
         '401': { description: Not logged in }
         '403': { description: Not an administrator }
         '404': { description: Competition not found }
@@ -150,6 +152,7 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Private competition (no visible entry point), or competition not found
+        '422': { $ref: '#/components/responses/RecipientDomainRejected' }
         '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /login-links/{token}:
@@ -254,6 +257,7 @@ paths:
                   description: Same-origin relative path to redirect to after login — see the operation description.
       responses:
         '202': { description: Accepted — link sent by e-mail if the address is known }
+        '422': { $ref: '#/components/responses/RecipientDomainRejected' }
         '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /competitions/{competitionId}/players:
@@ -304,7 +308,7 @@ paths:
                   type: array
                   items: { type: string, format: email }
       responses:
-        '202': { description: "Accepted — players added with status e-mail not sent, then invited" }
+        '202': { description: "Accepted — players added with status e-mail not sent, then invited. A player whose e-mail domain does not accept e-mail (spec 05-047) stays with e-mail not sent; the others are invited" }
         '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /competitions/{competitionId}/players/invite-emails:
@@ -330,7 +334,7 @@ paths:
                   type: array
                   items: { type: integer, format: int64 }
       responses:
-        '202': { description: Accepted }
+        '202': { description: "Accepted. A player whose e-mail domain does not accept e-mail (spec 05-047) keeps its status; the others are invited" }
         '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /competitions/{competitionId}/players/{participationId}:
@@ -404,6 +408,7 @@ paths:
           schema: { type: integer, format: int64 }
       responses:
         '202': { description: Accepted }
+        '422': { $ref: '#/components/responses/RecipientDomainRejected' }
         '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /competitions/mine:
@@ -628,6 +633,14 @@ components:
     # and the caller can simply try again.
     EmailServiceUnavailable:
       description: The e-mail could not be sent right now (email-service unavailable); nothing was changed, try again
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+    # Spec 05-047: email-service checks the recipient's domain (DNS MX/A) before accepting a send.
+    # Nothing was changed; the same address gets the same answer.
+    RecipientDomainRejected:
+      description: The e-mail address domain does not accept e-mail; nothing was changed
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }

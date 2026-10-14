@@ -36,8 +36,10 @@ jobs:
       # compiling (docs/context/iteracao-4.md, "Produtor: EmailSender real") and email-service
       # registers templates in a real SES store. docker-compose.yml already defines all three
       # services with the init scripts the docker profile needs.
-      - name: Start Postgres and LocalStack
-        run: docker compose up -d --wait db db-email-service localstack
+      # Spec 05-047: dns is the test DNS server email-service checks recipient domains against
+      # (docker/dns/), also read directly by email-service's tests on localhost:1053.
+      - name: Start Postgres, LocalStack and the test DNS
+        run: docker compose up -d --wait db db-email-service localstack dns
 
       # Spec 05-042: config-server serves config-repo/ to email-service (read on startup), to each
       # suite's ConfigServerClientIntegrationTest and to app's ProductionProfileSuppressesLoggingAspectsTest.
