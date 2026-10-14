@@ -1,6 +1,6 @@
 # Spec: Verificação do domínio do destinatário por DNS (A e MX) com lista branca
 
-**Status:** rascunho
+**Status:** em revisão
 **Issue:** a criar
 **Iteração:** iteration-5
 
@@ -39,7 +39,7 @@ A segunda parte do anti-bounce (domínios de e-mail temporário) fica na spec
   - domínio inexistente → `422`, nada gravado, nada na fila, fora da lista branca;
   - domínio que existe sem MX nem A → `422`;
   - domínio com "MX nulo" (RFC 7505, declara que não recebe e-mail) → `422`;
-  - DNS sem resposta → ver "Decisões em aberto", item 1.
+  - DNS sem resposta → ver "Decisões resolvidas", DNS sem resposta.
 
 ## Requisitos funcionais
 
@@ -77,13 +77,13 @@ A segunda parte do anti-bounce (domínios de e-mail temporário) fica na spec
 - A lista branca já nasce com `simulator.amazonses.com`, o domínio do simulador de caixa postal
   do SES usado nos testes (`success@`, `bounce@`, ...). Ele é aceito sem consulta ao DNS em
   qualquer ambiente, inclusive no `docker`, onde o DNS de teste não conhece domínios da internet.
-- Nesta spec, um domínio aprovado continua aprovado (ver "Decisões em aberto", item 3).
+- Nesta spec, um domínio aprovado continua aprovado (ver "Decisões resolvidas").
 
 ### `jogo-acoes`
 
 - O `422` do `email-service` vira uma exceção própria no *gateway* do `app` (constitution,
   "Fronteira entre módulos e serviços") e uma resposta `422` do `app` para quem pediu o e-mail
-  (ver "Decisões em aberto", item 4).
+  (ver "Decisões resolvidas").
 
 ## Requisitos não-funcionais
 
@@ -99,7 +99,7 @@ A segunda parte do anti-bounce (domínios de e-mail temporário) fica na spec
 - Domínios de e-mail temporário: spec 05-048.
 - Conferir se a caixa postal existe (conversa SMTP com o servidor do domínio).
 - Uma rota para o cliente consultar um domínio sem enviar e-mail.
-- Rotas para operações listar ou editar a lista branca (ver "Decisões em aberto", item 2).
+- Rotas para operações listar ou editar a lista branca (ver "Decisões resolvidas").
 - Os eventos de *bounce* do SES (Iteração 6).
 
 ## Decisões resolvidas
@@ -110,31 +110,20 @@ A segunda parte do anti-bounce (domínios de e-mail temporário) fica na spec
 - **No Serviço de E-mail, dentro do envio** (`docs/context/iteracao-5.md`, seção 3; spec 05-031
   deixou para a Etapa 4).
 
+- **DNS sem resposta** (tempo esgotado, `SERVFAIL`): o envio é aceito, o domínio não entra na
+  lista branca e o serviço registra um `WARN`. Segue a regra da spec 05-046: o `POST /emails`
+  não falha por causa de infraestrutura fora do ar (Leila, 2026-10-14).
+- **Sem edição manual da lista branca nesta spec**: ela só cresce pelo DNS (fora o domínio do
+  simulador do SES, incluído pela migration); remover é um `DELETE` no banco. Um script no modelo
+  do `scripts/set-email-sender.sh` fica para quando aparecer um caso (Leila, 2026-10-14).
+- **Domínio aprovado não vence nesta spec**: quem avisa de um domínio que deixou de receber
+  e-mail é o *bounce* do SES (Iteração 6) (Leila, 2026-10-14).
+- **`jogo-acoes` e o `422`**: `EmailServiceGateway` traduz em `RecipientDomainRejectedException`
+  e o `app` responde `422` ("The e-mail address domain does not accept e-mail") no link de login,
+  no pedido de entrada e no convite individual. No convite em grupo, o endereço recusado não
+  derruba os outros: fica no log e o convite dele não é enviado (Leila, 2026-10-14).
+- **AAAA conta como A** no passo 2 (RFC 5321, "registro de endereço") (Leila, 2026-10-14).
+
 ## Decisões em aberto
 
-Cada uma tem uma recomendação, já usada nos requisitos e no `plan.md`; falta a confirmação da
-Leila.
-
-1. **DNS sem resposta (tempo esgotado, `SERVFAIL`).** Recomendação: aceitar o envio sem incluir o
-   domínio na lista branca e registrar um `WARN`. Segue a regra da spec 05-046: o `POST /emails`
-   não falha por causa de infraestrutura fora do ar, e o `jogo-acoes` não repete o pedido. O
-   risco é deixar passar um *bounce* enquanto o DNS estiver fora. A alternativa é `503`, que
-   perde o e-mail de login ou convite.
-2. **Operações pode incluir ou remover domínios à mão?** Recomendação: não nesta spec. A lista
-   branca só cresce pelo DNS (fora o domínio do simulador do SES, incluído pela migration); remover é um `DELETE` no banco, sem script. Se aparecer um caso
-   (domínio interno sem MX público, por exemplo), um script no mesmo modelo do
-   `scripts/set-email-sender.sh`.
-3. **O domínio aprovado vence?** Recomendação: não nesta spec. Um domínio que deixou de receber
-   e-mail continua na lista branca até alguém apagar; o *bounce* do SES (Iteração 6) é quem
-   avisa. A alternativa é uma nova consulta depois de N dias, com uma coluna a mais.
-4. **O que o `jogo-acoes` faz com o `422`.** Recomendação: `EmailServiceGateway` traduz o `422`
-   em `RecipientDomainRejectedException` e o `ApiExceptionHandler` do `app` responde `422` com a
-   mensagem "The e-mail address domain does not accept e-mail". Vale para o pedido de link de
-   login, para o pedido de entrada numa competição e para o convite individual. No convite em
-   grupo (`CompetitionService`, um envio por participante), recomendação: o endereço recusado
-   não derruba os outros; fica registrado no log e o convite dele não é enviado. Esse ponto pode
-   precisar de mudança na resposta do convite em grupo, e pode ir para uma spec do `app` se a
-   Leila preferir.
-5. **Registro AAAA (IPv6).** Recomendação: tratar AAAA como A no passo 2 (a RFC 5321 fala em
-   "registro de endereço"), mesmo a Leila tendo citado só A. Um domínio só com AAAA é raro, mas
-   recebe e-mail.
+Nenhuma.
