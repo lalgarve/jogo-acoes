@@ -43,6 +43,7 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 ## Estrutura de módulos/pacotes
 
 - `email-service/pom.xml`: starter do Spring Batch.
+- `specs/05-048-.../data-model.md`: DER das tabelas desta feature.
 - `email-service/src/main/resources/db/migration-email-service/V<n>__create_spring_batch_tables.sql`,
   `V<n+1>__create_disposable_domain_tables.sql`.
 - `email-service/src/main/java/.../disposable/` (novo): `DisposableDomainSource`,
