@@ -24,6 +24,18 @@ Feature: Register e-mail templates
       When they register another template named "welcome"
       Then the system rejects the registration because the name is already in use
 
+    # Spec 05-045 (Issue #133): an empty or whitespace-only name used to create a template that
+    # no route could reach afterward.
+    Scenario: Client registers a template with an empty name
+      When they register a template named "" with subject "Welcome!" and a valid body
+      Then the system rejects the registration because the name is blank
+      And no template with that name is created
+
+    Scenario: Client registers a template with a whitespace-only name
+      When they register a template named " " with subject "Welcome!" and a valid body
+      Then the system rejects the registration because the name is blank
+      And no template with that name is created
+
   Rule: A client updates an existing template
 
     Background:
