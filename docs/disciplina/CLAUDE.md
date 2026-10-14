@@ -110,6 +110,13 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
 - Versão 1 escrita antes da implementação da 05-048: passos com JSON e respostas esperadas do
   contrato e das specs. Logs e `SELECT`s entram na versão 2, capturados depois da implementação.
 - Só bash (WSL): os scripts do caderno de e-mail não têm versão PowerShell por enquanto.
+- Versão 2 do caderno de e-mail: roteiros executados com o serviço de verdade (LocalStack
+  Community local, com a `email-lambda`), logs e `SELECT`s preenchidos. Respostas acertadas onde
+  a versão 1 divergia do serviço: campos vazios não vêm no JSON, `skipped` conta só linhas
+  inválidas (comentário e linha em branco são filtrados), reimportação sem mudança termina com
+  `exitMessage` `UNCHANGED`. O aviso de que o `restore` falhava saiu: o dump já é o da CLI 1.1.0.
+- Falha registrada no roteiro 2: a pré-visualização devolve o assunto com acento corrompido
+  (`estÃ¡`), o corpo e o banco estão certos.
 
 ### Sessão 2026-10-13
 
