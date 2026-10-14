@@ -34,26 +34,68 @@ foram resolvidas em 2026-10-13; esta lista só quebra a implementação em passo
 
 ## Roteiro da verificação manual (T016)
 
-Todo comando `docker compose` leva os dois arquivos: `docker compose -f docker-compose.yml -f
-docker-compose.blackbox.yml ...`. Um comando só com o `docker-compose.yml` recria o `app` sem o
-perfil `blackbox`, e o captcha volta a valer.
+Comandos rodados da raiz do repositório. Todo `docker compose` leva os dois `-f`; sem o segundo,
+o `app` é recriado sem o perfil `blackbox` e o captcha volta.
 
-1. Subir o ambiente: `up -d`. Num volume novo do `db-email-service`, rodar antes
-   `./scripts/test-api-key.sh restore`, senão o `email-service` responde `401` e o `app` não sobe.
-2. Config Server:
-   - `curl -u config:config-docker-not-a-secret http://localhost:8888/jogo-acoes/docker` → `200`,
-     com `propertySources` vindo de `file:/config-repo/jogo-acoes-docker.yml` e `links.base-url`
-     ainda como `${LINKS_BASE_URL:...}` (o placeholder é resolvido no cliente).
-   - O mesmo `curl` sem `-u` → `401`.
-3. Login: no Swagger (`http://localhost:8080/api/swagger-ui/index.html`), `POST /login-requests`
-   com `{"email": "success+admin@simulator.amazonses.com"}` (o administrador semeado pelo
-   `blackbox`) → `202`. O e-mail com o link aparece no `ses-viewer` (`http://localhost:3005`).
-   Um endereço desconhecido também recebe `202`, mas nenhum e-mail é enviado.
-4. `app` sem Config Server: `stop config-server app` e depois `up --no-deps app`. Só parar o
-   `config-server` não derruba o `app` já de pé, e um `up app` sem `--no-deps` sobe o
-   `config-server` de novo pelo `depends_on`. O `app` faz as tentativas do cliente (6, o padrão) e
-   termina com `ConfigClientFailFastException` ("Could not locate PropertySource") no log.
-5. Voltar ao normal: `up -d`.
+### Passo 1 — Subir o ambiente
+
+```
+docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up -d
+```
+
+**Esperado:** todos os containers de pé (`docker compose -f docker-compose.yml -f
+docker-compose.blackbox.yml ps`), inclusive `config-server` e `app`.
+
+Se o `app` não subir e o log dele mostrar `401` do `email-service`, a chave de API de teste não
+está no banco (volume novo). Rodar `./scripts/test-api-key.sh restore` e repetir o passo 1.
+
+### Passo 2 — Config Server com credencial
+
+```
+curl -i -u config:config-docker-not-a-secret http://localhost:8888/jogo-acoes/docker
+```
+
+**Esperado:** `HTTP/1.1 200`. No JSON, a fonte `jogo-acoes-docker.yml` e a propriedade
+`links.base-url` com o valor `${LINKS_BASE_URL:http://localhost:8080/api}`, ainda sem resolver.
+
+### Passo 3 — Config Server sem credencial
+
+```
+curl -i http://localhost:8888/jogo-acoes/docker
+```
+
+**Esperado:** `HTTP/1.1 401`.
+
+### Passo 4 — Pedir um login e ver o e-mail
+
+1. Abrir `http://localhost:8080/api/swagger-ui/index.html`.
+2. Em `POST /login-requests`, enviar:
+   ```json
+   { "email": "success+admin@simulator.amazonses.com" }
+   ```
+3. Abrir `http://localhost:3005`.
+
+**Esperado:** resposta `202` no Swagger e, no `ses-viewer`, um e-mail novo para
+`success+admin@simulator.amazonses.com` com o link de login. (Outro endereço também recebe `202`,
+mas não gera e-mail: só esse administrador existe no ambiente `blackbox`.)
+
+### Passo 5 — `app` não sobe sem o Config Server
+
+```
+docker compose -f docker-compose.yml -f docker-compose.blackbox.yml stop config-server app
+docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up --no-deps app
+```
+
+**Esperado:** o log do `app` mostra tentativas de buscar a configuração e termina com
+`ConfigClientFailFastException` ("Could not locate PropertySource"); o container sai com erro.
+
+### Passo 6 — Voltar ao normal
+
+```
+docker compose -f docker-compose.yml -f docker-compose.blackbox.yml up -d
+```
+
+**Esperado:** `config-server` e `app` de pé de novo.
 
 ## Registro das verificações
 
