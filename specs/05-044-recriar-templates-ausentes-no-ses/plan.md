@@ -88,8 +88,8 @@ Nada sai do pacote `template` além do handler; nenhuma dependência nova.
 ## Riscos e trade-offs
 
 - **Templates podem faltar no SES por um tempo** depois da subida, até a reconciliação terminar.
-  Um envio nesse intervalo depende do que a 05-046 decidir (recomendação lá: a thread de
-  publicação confere o template no SES antes de pôr na fila).
+  Um envio nesse intervalo falha na `email-lambda`, chega pela DLQ como `TEMPLATE_MISSING` e é
+  recriado e publicado de novo (05-046).
 - **Conteúdo divergente não é detectado.** Comparar conteúdo exigiria um `GetTemplate` por
   template a cada subida.
 - **Sobrescrever no `POST`** apaga um template que alguém criou no SES por fora com o mesmo nome

@@ -81,8 +81,9 @@ A reconciliação na subida não é um cenário de cliente: é verificada por te
   "o SES recusou o template" (hoje os dois viram `422`). Ver "Decisões em aberto", item 3.
 - **Envio:** a publicação na fila SQS sai da chamada `POST /emails` e passa para uma thread do
   próprio serviço, com status e novas tentativas
-  (spec [05-046](../05-046-publicacao-na-fila-em-segundo-plano/spec.md)). O que essa thread faz
-  quando o template não está no SES é decidido na 05-046.
+  (spec [05-046](../05-046-publicacao-na-fila-em-segundo-plano/spec.md)). Quando a `email-lambda` encontra o
+  template ausente no SES, o erro chega ao `email-service` por uma DLQ e o template é recriado
+  ali, a partir do banco; a 05-046 especifica esse caminho.
 
 ## Requisitos não-funcionais
 
