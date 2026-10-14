@@ -1,0 +1,3 @@
+# Chaves geradas por scripts/gerar-chaves.sh e a CLI do api-key baixada por ele -- nunca versionar.
+chaves.env
+.cli/

@@ -27,6 +27,8 @@ esse conflito de merge.
 | `image/` | Imagens/diagramas já renderizados, incluídos no `.tex` via `\includegraphics`. |
 | `caderno-de-testes.md` | Caderno de testes manuais, por funcionalidade do sistema (spec 05-040). |
 | `caderno-de-testes/` | Apoio do caderno: dump da massa de dados (`dados/`), cabeçalhos de dispositivo (`dispositivos/`) e scripts bash/PowerShell (`scripts/`). |
+| `caderno-de-testes-email-service.md` | Caderno de testes manuais do Serviço de E-mail (chaves e permissões, templates, envio, listas de e-mail temporário), sobe só o `email-service`. |
+| `caderno-de-testes-email-service/` | Apoio desse caderno: listas de domínios de teste (`listas/`) e scripts bash (`scripts/`). As chaves geradas (`chaves.env`) e a CLI do `api-key` (`.cli/`) ficam fora do git. |
 
 ## Fluxo de edição: Markdown primeiro, `.tex` só no final
 
@@ -97,6 +99,17 @@ hífen preservado dentro de cada segmento para legibilidade). O `.tex`/PDF final
 gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-de-software_pd`).
 
 ## Log de decisões
+
+### Sessão 2026-10-14
+
+- Caderno novo, `caderno-de-testes-email-service.md`, no formato do caderno do `jogo-acoes`, só
+  para o Serviço de E-mail (specs 05-025, 05-031, 05-047 e 05-048). Separado do
+  `caderno-de-testes.md` porque sobe só o `email-service` e chama a API com `curl` (o serviço não
+  tem Swagger UI), com duas chaves criadas pelo próprio caderno, uma por permissão (`email:send`
+  e `disposable-email:admin`).
+- Versão 1 escrita antes da implementação da 05-048: passos com JSON e respostas esperadas do
+  contrato e das specs. Logs e `SELECT`s entram na versão 2, capturados depois da implementação.
+- Só bash (WSL): os scripts do caderno de e-mail não têm versão PowerShell por enquanto.
 
 ### Sessão 2026-10-13
 
