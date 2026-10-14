@@ -74,6 +74,9 @@ A segunda parte do anti-bounce (domínios de e-mail temporário) fica na spec
   que aprovou.
 - Dois pedidos ao mesmo tempo para o mesmo domínio novo aprovam o domínio uma vez só, sem erro
   para nenhum dos dois.
+- A lista branca já nasce com `simulator.amazonses.com`, o domínio do simulador de caixa postal
+  do SES usado nos testes (`success@`, `bounce@`, ...). Ele é aceito sem consulta ao DNS em
+  qualquer ambiente, inclusive no `docker`, onde o DNS de teste não conhece domínios da internet.
 - Nesta spec, um domínio aprovado continua aprovado (ver "Decisões em aberto", item 3).
 
 ### `jogo-acoes`
@@ -102,6 +105,8 @@ A segunda parte do anti-bounce (domínios de e-mail temporário) fica na spec
 ## Decisões resolvidas
 
 - **Verificação por registros A e MX, com lista branca dos aprovados** (Leila, 2026-10-14).
+- **O domínio do simulador do SES (`simulator.amazonses.com`) já entra na lista branca**
+  (Leila, 2026-10-14).
 - **No Serviço de E-mail, dentro do envio** (`docs/context/iteracao-5.md`, seção 3; spec 05-031
   deixou para a Etapa 4).
 
@@ -116,7 +121,7 @@ Leila.
    risco é deixar passar um *bounce* enquanto o DNS estiver fora. A alternativa é `503`, que
    perde o e-mail de login ou convite.
 2. **Operações pode incluir ou remover domínios à mão?** Recomendação: não nesta spec. A lista
-   branca só cresce pelo DNS; remover é um `DELETE` no banco, sem script. Se aparecer um caso
+   branca só cresce pelo DNS (fora o domínio do simulador do SES, incluído pela migration); remover é um `DELETE` no banco, sem script. Se aparecer um caso
    (domínio interno sem MX público, por exemplo), um script no mesmo modelo do
    `scripts/set-email-sender.sh`.
 3. **O domínio aprovado vence?** Recomendação: não nesta spec. Um domínio que deixou de receber

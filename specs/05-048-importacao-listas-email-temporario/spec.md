@@ -1,6 +1,6 @@
 # Spec: Importação em lote das listas de domínios de e-mail temporário
 
-**Status:** rascunho
+**Status:** em revisão
 **Issue:** a criar
 **Iteração:** iteration-5 (Etapa 4 da disciplina: processamento em lote)
 
@@ -144,7 +144,6 @@ e a biblioteca de validação devolve as permissões da chave válida.
 - Listas em outros formatos (JSON, CSV) e listas de permissão (*allowlist*) de terceiros.
 - Bloquear domínios temporários no cadastro do `jogo-acoes` antes de qualquer envio (o `422`
   chega pelo envio, como na 05-047).
-- Execução periódica automática (ver "Decisões em aberto", item 1).
 
 ## Decisões resolvidas
 
@@ -158,22 +157,18 @@ e a biblioteca de validação devolve as permissões da chave válida.
   listas e outra de enviar e-mails e mudar templates. Operações não tem permissão de enviar
   e-mails.
 
+- **Execução periódica**: agendamento diário configurável
+  (`email.disposable-domains.import-cron`), ligado em `staging`/`production` e desligado no
+  `docker`, além da execução sob pedido (Leila, 2026-10-14).
+- **Repositório inicial**: a migration cadastra
+  `https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf`
+  ("disposable-email-domains, lista principal"). Nos testes, a suíte apaga os repositórios antes
+  de cada cenário (Leila, 2026-10-14).
+- **Lista que encolhe**: só a lista vazia é recusada; sem regra de porcentagem por enquanto
+  (Leila, 2026-10-14).
+- **Subdomínios**: os subdomínios de um domínio da lista (`x.mailinator.com`) também são
+  recusados (Leila, 2026-10-14).
+
 ## Decisões em aberto
 
-Cada uma tem uma recomendação, já usada nos requisitos e no `plan.md`; falta a confirmação da
-Leila.
-
-1. **Execução periódica.** Recomendação: um agendamento diário configurável
-   (`email.disposable-domains.import-cron`), ligado em `staging`/`production` e desligado no
-   `docker`, para os testes não dependerem de horário. A Leila pediu a execução sob pedido; o
-   agendamento só evita alguém ter que lembrar.
-2. **Repositório inicial.** Recomendação: a migration já cadastra
-   `https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf`
-   ("disposable-email-domains, lista principal"), a fonte decidida no roadmap. Nos testes, a
-   suíte apaga os repositórios antes de cada cenário.
-3. **Proteção contra uma lista que encolhe de repente.** Recomendação: só a lista vazia é
-   recusada. Uma regra de "não remover mais que X%" protege de um arquivo truncado, mas também
-   trava uma limpeza legítima; fica para quando acontecer.
-4. **Subdomínios.** Recomendação: recusar também os subdomínios de um domínio da lista
-   (`x.mailinator.com`), como o próprio `disposable-email-domains` orienta. Custa até uma consulta
-   por nível do domínio, com índice.
+Nenhuma.
