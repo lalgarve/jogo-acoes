@@ -6,12 +6,12 @@ decidida pela Leila em 2026-10-13 (`plan.md`).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| ~~T001~~ | Verificação primeiro: rodar `docker compose up -d --wait log-viewer` e registrar que falha (serviço inexistente) | — | | — |
-| ~~T002~~ | Adicionar o serviço `log-viewer` ao `docker-compose.yml`: imagem `amir20/dozzle` com versão maior fixada, `/var/run/docker.sock:/var/run/docker.sock:ro`, porta `8083:8080`, healthcheck com o comando `healthcheck` do Dozzle e comentário no mesmo estilo dos de `adminer`/`ses-viewer` | T001 | | — |
-| ~~T003~~ | Repetir `docker compose up -d --wait log-viewer` e registrar que passa (healthcheck verde); conferir com `docker stats --no-stream` a memória em repouso (RNF1) | T002 | | — |
-| ~~T004~~ | Conferir que a CI não sobe o serviço novo (`.github/workflows/ci.yml` só nomeia `db`, `db-email-service`, `localstack`, `email-service`) | T002 | [P] | — |
-| ~~T005~~ | Atualizar `docs/disciplina/caderno-de-testes.md`, tabela "Ferramentas": "Logs da aplicação" passa a apontar `http://localhost:8083`, com `docker compose logs -f app` como alternativa | T002 | [P] | — |
-| T006 | Verificação manual (Leila registra): com o ambiente de pé, executar o Roteiro 1 do caderno (login do administrador) e conferir no visualizador as linhas dos aspectos de `app` e `email-service` juntas, em ordem de tempo, e a busca pelo e-mail do administrador (RF2–RF4), no Windows | T003, T005 | | — |
+| ~~T001~~ | Verificação primeiro: rodar `docker compose up -d --wait log-viewer` e registrar que falha (serviço inexistente) | — | | #166 |
+| ~~T002~~ | Adicionar o serviço `log-viewer` ao `docker-compose.yml`: imagem `amir20/dozzle` com versão maior fixada, `/var/run/docker.sock:/var/run/docker.sock:ro`, porta `8083:8080`, healthcheck com o comando `healthcheck` do Dozzle e comentário no mesmo estilo dos de `adminer`/`ses-viewer` | T001 | | #166 |
+| ~~T003~~ | Repetir `docker compose up -d --wait log-viewer` e registrar que passa (healthcheck verde); conferir com `docker stats --no-stream` a memória em repouso (RNF1) | T002 | | #166 |
+| ~~T004~~ | Conferir que a CI não sobe o serviço novo (`.github/workflows/ci.yml` só nomeia `db`, `db-email-service`, `localstack`, `email-service`) | T002 | [P] | #166 |
+| ~~T005~~ | Atualizar `docs/disciplina/caderno-de-testes.md`, tabela "Ferramentas": "Logs da aplicação" passa a apontar `http://localhost:8083`, com `docker compose logs -f app` como alternativa | T002 | [P] | #166 |
+| ~~T006~~ | Verificação manual (Leila registra): com o ambiente de pé, executar o Roteiro 1 do caderno (login do administrador) e conferir no visualizador as linhas dos aspectos de `app` e `email-service` juntas, em ordem de tempo, e a busca pelo e-mail do administrador (RF2–RF4), no Windows | T003, T005 | | #166 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -39,3 +39,8 @@ decidida pela Leila em 2026-10-13 (`plan.md`).
   linha "Visualizador de logs" na tabela (com `docker compose logs -f app email-service` como
   alternativa) e nota sobre o que o Dozzle não guarda (logs somem depois de
   `docker compose down`; containers da Lambda somem quando o LocalStack os recicla).
+
+## Registro da verificação manual (T006)
+
+- **T006**: feita pela Leila, que informou em 2026-10-14 ter concluído todos os testes da
+  verificação manual. A implementação (T001–T005) foi mesclada na PR #163.
