@@ -16,7 +16,8 @@ import java.util.List;
 /**
  * Orchestrates template registration: SES is always called before the database is touched
  * (data-model.md, "Invariantes") -- a row only exists here once SES has confirmed the template
- * is valid.
+ * is valid. The database is the source of truth: whatever SES lost is recreated from the row
+ * (spec 05-044).
  */
 @Service
 public class TemplateService {
@@ -48,7 +49,9 @@ public class TemplateService {
             throw new TemplateAlreadyExistsException(request.getName());
         }
         String sesTemplateName = sesTemplateClient.namespacedName(clientId, request.getName());
-        sesTemplateClient.createTemplate(sesTemplateName, request.getSubject(), request.getBody());
+        // Overwrites a template SES still has under this name with no row here (spec 05-044):
+        // the <client>__ prefix belongs to this service.
+        sesTemplateClient.putTemplate(sesTemplateName, request.getSubject(), request.getBody());
 
         EmailTemplate entity = new EmailTemplate(clientId, request.getName(), request.getSubject(),
                 request.getBody(), toJson(request.getVariablesSchema()), sesTemplateName, Instant.now());
@@ -66,7 +69,14 @@ public class TemplateService {
     public TemplatePreviewResponse preview(String clientId, String name, TemplatePreviewRequest request) {
         EmailTemplate entity = findOrThrow(clientId, name);
         String templateDataJson = toJsonRequired(request.getVariables());
-        String rawMime = sesTemplateClient.testRenderTemplate(entity.getSesTemplateName(), templateDataJson);
+        String rawMime;
+        try {
+            rawMime = sesTemplateClient.testRenderTemplate(entity.getSesTemplateName(), templateDataJson);
+        } catch (TemplateNotFoundException e) {
+            // The row exists, so SES lost it (spec 05-044): recreate it from the row, render once more.
+            sesTemplateClient.createIfAbsent(entity.getSesTemplateName(), entity.getSubject(), entity.getBody());
+            rawMime = sesTemplateClient.testRenderTemplate(entity.getSesTemplateName(), templateDataJson);
+        }
         MimeRenderedTemplateParser.RenderedTemplate rendered = mimeParser.parse(rawMime);
         return new TemplatePreviewResponse().subject(rendered.subject()).body(rendered.body());
     }

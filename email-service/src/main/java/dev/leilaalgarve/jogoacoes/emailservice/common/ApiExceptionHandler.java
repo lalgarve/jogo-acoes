@@ -3,6 +3,7 @@ package dev.leilaalgarve.jogoacoes.emailservice.common;
 import dev.leilaalgarve.jogoacoes.emailservice.api.model.Error;
 import dev.leilaalgarve.jogoacoes.emailservice.send.EmailQueuePublishException;
 import dev.leilaalgarve.jogoacoes.emailservice.send.SenderNotConfiguredException;
+import dev.leilaalgarve.jogoacoes.emailservice.template.SesUnavailableException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateAlreadyExistsException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateNotFoundException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateRejectedBySesException;
@@ -35,6 +36,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(TemplateRenderFailedException.class)
     public ResponseEntity<Error> handleTemplateRenderFailed(TemplateRenderFailedException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(new Error().message(ex.getMessage()));
+    }
+
+    /** Spec 05-044: SES unreachable or failing on its side -- the request may succeed later. */
+    @ExceptionHandler(SesUnavailableException.class)
+    public ResponseEntity<Error> handleSesUnavailable(SesUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new Error().message(ex.getMessage()));
     }
 
     @ExceptionHandler(SenderNotConfiguredException.class)

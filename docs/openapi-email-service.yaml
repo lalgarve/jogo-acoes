@@ -58,7 +58,9 @@ paths:
       description: >
         Fails with 409 if a template with this name already exists for the calling client, or
         with 422 if SES rejects the template (CreateTemplate call) — e.g. invalid Handlebars
-        syntax. The SES error message is passed through in the response.
+        syntax. The SES error message is passed through in the response. If SES still has a
+        template under this name with no record in this service (left over from a failed
+        registration), it is overwritten (spec 05-044). 503 when SES is unavailable.
       requestBody:
         required: true
         content:
@@ -86,6 +88,14 @@ paths:
                 $ref: '#/components/schemas/Error'
         '422':
           description: SES rejected the template -- message carries the reason SES returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            SES could not be reached, or failed on its side (5xx, throttling) -- nothing was
+            stored; the client may retry
           content:
             application/json:
               schema:
@@ -127,6 +137,11 @@ paths:
       tags: [templates]
       operationId: updateTemplate
       summary: Update an existing template and re-sync it to SES (UpdateTemplate)
+      description: >
+        The template's record in this service is the source of truth: if SES no longer has it
+        (e.g. LocalStack restarted, or it was deleted outside this service), it is recreated on
+        SES with the new content (spec 05-044). 404 only means this client has no template with
+        this name.
       requestBody:
         required: true
         content:
@@ -158,6 +173,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            SES could not be reached, or failed on its side (5xx, throttling) -- nothing was
+            stored; the client may retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /templates/{name}/preview:
     parameters:
@@ -170,7 +193,8 @@ paths:
       operationId: previewTemplate
       summary: >
         Render a registered template with sample data via SES TestRenderTemplate -- never sends
-        an email.
+        an email. If SES no longer has the template, it is recreated from this service's record
+        and rendered again (spec 05-044).
       requestBody:
         required: true
         content:
@@ -200,6 +224,14 @@ paths:
           description: >
             SES could not render the template with the given variables (e.g. a variable
             referenced by the template is missing) -- message carries the reason SES returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            SES could not be reached, or failed on its side (5xx, throttling) -- nothing was
+            stored; the client may retry
           content:
             application/json:
               schema:

@@ -38,6 +38,9 @@ não conhece o domínio de `jogo-acoes`, só o `client_id` opaco de quem chama).
   `CreateTemplate`/`UpdateTemplate` ao SES ter retornado sucesso — nunca antes. Isso evita uma
   linha no banco apontar para um template que não existe de fato no SES (ver `plan.md`, "Ordem
   das operações").
+- O banco é a fonte da verdade: um template que o SES perdeu é recriado a partir da linha, em
+  segundo plano depois da subida e no `PUT`/preview que o encontra ausente (spec
+  [05-044](../05-044-recriar-templates-ausentes-no-ses/spec.md)).
 - `ses_template_name` nunca muda depois de criado, mesmo que o esquema de namespacing evolua no
   futuro — uma migração de dados trataria isso explicitamente, não é um valor recalculado em
   tempo de leitura.

@@ -7,6 +7,11 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.restassured.response.Response;
+import software.amazon.awssdk.services.ses.SesClient;
+import software.amazon.awssdk.services.ses.model.CreateTemplateRequest;
+import software.amazon.awssdk.services.ses.model.DeleteTemplateRequest;
+import software.amazon.awssdk.services.ses.model.GetTemplateRequest;
+import software.amazon.awssdk.services.ses.model.Template;
 
 import java.util.List;
 import java.util.Map;
@@ -23,6 +28,7 @@ public class RegisterTemplatesSteps {
     private final EmailServiceScenarioWorld world;
     private final EmailTemplateRepository repository;
     private final ScenarioApiKeys apiKeys;
+    private final SesClient sesClient;
 
     private String previousSubject;
     private String previousBody;
@@ -30,10 +36,11 @@ public class RegisterTemplatesSteps {
     private String otherApiKey;
 
     public RegisterTemplatesSteps(EmailServiceScenarioWorld world, EmailTemplateRepository repository,
-                                  ScenarioApiKeys apiKeys) {
+                                  ScenarioApiKeys apiKeys, SesClient sesClient) {
         this.world = world;
         this.repository = repository;
         this.apiKeys = apiKeys;
+        this.sesClient = sesClient;
     }
 
     // Spec 05-030: the quoted value is the client a real key is issued for (the api-key CLI's
@@ -72,6 +79,24 @@ public class RegisterTemplatesSteps {
     public void they_already_registered_a_template(String name) {
         Response response = register(name, "Welcome!", VALID_BODY);
         assertThat(response.statusCode()).isEqualTo(201);
+    }
+
+    // Spec 05-044: what a LocalStack restart (or a deletion outside email-service) does to SES,
+    // leaving the database row in place.
+    @Given("SES lost the template named {string}")
+    public void ses_lost_the_template_named(String name) {
+        sesClient.deleteTemplate(DeleteTemplateRequest.builder().templateName(sesName(name)).build());
+    }
+
+    @Given("SES already has a template named {string} with no record")
+    public void ses_already_has_a_template_with_no_record(String name) {
+        sesClient.createTemplate(CreateTemplateRequest.builder()
+                .template(Template.builder()
+                        .templateName(sesName(name))
+                        .subjectPart("Left over")
+                        .htmlPart("Left over {{name}}")
+                        .build())
+                .build());
     }
 
     @When("they register a template named {string} with subject {string} and a valid body")
@@ -222,6 +247,27 @@ public class RegisterTemplatesSteps {
         assertThat(response.jsonPath().getString("body")).isEqualTo(previousBody);
     }
 
+    @Then("SES has the template named {string} with the new content")
+    public void ses_has_the_template_with_the_new_content(String name) {
+        Template template = sesTemplate(name);
+        assertThat(template.subjectPart()).isEqualTo("Updated subject");
+        assertThat(template.htmlPart()).isEqualTo("Updated body {{name}}");
+    }
+
+    @Then("SES has the template named {string} again")
+    public void ses_has_the_template_again(String name) {
+        Template template = sesTemplate(name);
+        assertThat(template.subjectPart()).isEqualTo("Welcome!");
+        assertThat(template.htmlPart()).isEqualTo(VALID_BODY);
+    }
+
+    @Then("SES has the template named {string} with the subject {string}")
+    public void ses_has_the_template_with_the_subject(String name, String subject) {
+        Template template = sesTemplate(name);
+        assertThat(template.subjectPart()).isEqualTo(subject);
+        assertThat(template.htmlPart()).isEqualTo(VALID_BODY);
+    }
+
     @Then("the system returns the rendered subject and body")
     public void the_system_returns_the_rendered_subject_and_body() {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(200);
@@ -254,6 +300,15 @@ public class RegisterTemplatesSteps {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(401);
         assertThat(world.getLastResponse().jsonPath().getString("message"))
             .isEqualTo("Missing or invalid X-API-Key");
+    }
+
+    /** Same namespacing as SesTemplateClient.namespacedName, spelled out: it is what SES sees. */
+    private String sesName(String name) {
+        return world.getClientName() + "__" + name;
+    }
+
+    private Template sesTemplate(String name) {
+        return sesClient.getTemplate(GetTemplateRequest.builder().templateName(sesName(name)).build()).template();
     }
 
     private void rememberCurrentContent(String name) {
