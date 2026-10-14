@@ -1,7 +1,7 @@
 # Spec: Visualizador de logs no ambiente Docker Compose
 
-**Status:** implementada, exceto a verificação manual T006 (ver `tasks.md`)
-**Issue:** — (criar quando a Leila pedir)
+**Status:** implementada (T001–T006 feitas; ver `tasks.md`)
+**Issue:** [#166](https://github.com/lalgarve/jogo-acoes/issues/166)
 **Iteração:** iteration-5
 
 ## Resumo
