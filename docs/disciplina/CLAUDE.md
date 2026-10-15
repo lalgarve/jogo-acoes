@@ -20,13 +20,16 @@ esse conflito de merge.
 |---|---|
 | `alinhamento-projeto-disciplina.md` | Levantamento already-feito: mapeia o estado atual do projeto contra as quatro Etapas do enunciado. Histórico, não é o rascunho de entrega. |
 | `leila-algarve_arquitetura-avancadas-de-software_pd.md` | Rascunho de trabalho do conteúdo que vai para o PDF final — ver "Fluxo de edição" abaixo. Nome segue o formato `nomedoaluno_nomedadisciplina_pd` exigido pelo enunciado (ver "Nome do arquivo" abaixo). |
-| `leila-algarve.tex` | Fonte LaTeX (abnTeX2), gerada a partir do rascunho `.md` quando o conteúdo estabilizar. |
+| `leila-algarve_arquitetura-avancadas-de-software_pd.tex` | Fonte LaTeX (abnTeX2), **gerada** por `scripts/md2tex.py` a partir do rascunho `.md` e dos dois apêndices. Não editar à mão: mudar o `.md` (ou o script) e gerar de novo. |
 | `referencias.bib` | Bibliografia em BibTeX (formato `abntex2cite`), consumida pelo `.tex`. Mantida desde já em paralelo à seção "Bibliografia" do rascunho `.md` (texto ABNT), porque as entradas são estáveis e não sofrem o problema de divergência do `.tex`. Livros lidos na O'Reilly entram como e-book, com `url` e `urlaccessdate`. |
 | `uml/` | Fontes PlantUML (`.puml`) dos diagramas deste documento. |
 | `scripts/plantuml` | Launcher local (fixa JDK 11) para renderizar `uml/*.puml`. |
+| `scripts/build-pdf.sh` | Gera o `.tex` e compila o PDF no WSL (`pdflatex`, `bibtex`, `pdflatex`, `pdflatex`), mostrando erros, páginas e linhas fora da margem. Precisa de `texlive-publishers` e `texlive-lang-portuguese`. |
+| `scripts/md2tex.py` | Gera o `.tex` a partir dos `.md` (`python3 scripts/md2tex.py`, a partir desta pasta). Entende só o subconjunto de Markdown que os rascunhos usam. |
 | `image/` | Imagens/diagramas já renderizados, incluídos no `.tex` via `\includegraphics`. |
 | `caderno-de-testes.md` | Caderno de testes manuais, por funcionalidade do sistema (spec 05-040). |
 | `caderno-de-testes/` | Apoio do caderno: dump da massa de dados (`dados/`), cabeçalhos de dispositivo (`dispositivos/`) e scripts bash/PowerShell (`scripts/`). |
+| `apendice-a-caderno-de-testes.md`, `apendice-b-caderno-de-testes-email-service.md` | Versões resumidas dos dois cadernos (sem logs nem `SELECT`s), que viram os apêndices A e B do PDF. Quando um caderno mudar, atualizar o apêndice correspondente. |
 | `caderno-de-testes-email-service.md` | Caderno de testes manuais do Serviço de E-mail (chaves e permissões, templates, envio, listas de e-mail temporário), sobe só o `email-service`. |
 | `caderno-de-testes-email-service/` | Apoio desse caderno: listas de domínios de teste (`listas/`) e scripts bash (`scripts/`). As chaves geradas (`chaves.env`) e a CLI do `api-key` (`.cli/`) ficam fora do git. |
 
@@ -100,6 +103,56 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
 
 ## Log de decisões
 
+### Sessão 2026-10-15 (continuação) — tag `etapa-4` e `.tex`
+
+- Tag anotada `etapa-4` ("Fim da Etapa 4") criada em `6552d1c`, merge da PR #176 no `master`, que
+  já inclui o Spring Batch (PR #171) e a correção do acento no preview (PR #175). Mesmo padrão das
+  tags anteriores. Tabela da Etapa 4 do rascunho atualizada (tag atendida).
+- `.tex` gerado por `scripts/md2tex.py`. Compilado na sessão com `pdflatex` + `bibtex` no WSL,
+  com o abnTeX2 e o `babel` em português baixados do CTAN só para o teste (o WSL não os tem):
+  47 páginas, sem erro. Depois, `texlive-publishers` e `texlive-lang-portuguese` instalados no
+  WSL e `scripts/build-pdf.sh` criado: o PDF passa a ser gerado no WSL, com a hifenização do
+  português (o teste com os pacotes do CTAN usava a do inglês). O MiKTeX continua servindo.
+- `\nocite{*}` não serve com o `abntex2cite`: ele também lê o `abntex2-options.bib` e lista as
+  entradas de opção como referências. O script gera `\nocite{...}` com as chaves do
+  `referencias.bib` e `\citeoption{abnt-full-initials=yes}` (nomes por extenso, como no `.md`).
+- `referencias.bib`: o ano `[20--]` virou a macro `\decadaprovavel` (o colchete literal quebrava
+  o rótulo do `\bibitem` e imprimia a chave); GitHub como autor `{{GITHUB}}` (o campo `org` não é
+  usado pelo estilo); subtítulo do Smart entre chaves para manter as maiúsculas.
+- Figuras com `[H]` (pacote `float`): o texto diz "abaixo"/"a seguir", então a figura fica onde
+  aparece. Fonte das figuras: "elaborada pela autora".
+- Autor na capa: `Leila Algarve` — conferir se a autora quer o nome completo.
+- `.gitignore` desta pasta ignora os auxiliares do LaTeX gerados pelo MiKTeX (não o PDF).
+
+### Sessão 2026-10-15
+
+- Só pode ser entregue um PDF: os dois cadernos de testes (`caderno-de-testes.md` e
+  `caderno-de-testes-email-service.md`) entram nele como **apêndices** (material da própria
+  autora; "anexo", na ABNT, é material de terceiros). Convertidos por último, junto com o resto
+  (ver "Fluxo de edição").
+- Dados da folha de rosto: Instituto Infnet; MBA em Engenharia de Software com Java; disciplina
+  Arquiteturas Avançadas de Software com Microserviços e Spring Framework; professor Elberth
+  Moraes. Cidade e ano ainda não confirmados.
+- Seção "Conclusão" acrescentada ao rascunho, antes da bibliografia, a partir de três pontos da
+  autora (módulos revelando oportunidades de padrões, isolamento de repositórios, testes
+  manuais achando problemas de ambiente e documentação). Acrescentados: verificação das regras
+  por ArchUnit, API-First, SDD/BDD com IA e as pendências.
+- Sem resumo e sem citações no texto: a bibliografia sai inteira com `\nocite{*}`.
+- Seção "Repositório e versões entregues" no começo do rascunho; no `.tex`, logo depois do
+  sumário. Traz o repositório, a *tag* de cada etapa (`etapa-4` ainda não existe), o
+  repositório do `api-key` e os links dos cadernos completos.
+- Cadernos de testes entram **resumidos** nos apêndices; cada apêndice começa com o link para o
+  `.md` completo no GitHub.
+- Ferramentas de IA (Claude/Claude Code, GitHub Copilot, Google no modo IA) listadas no fim de
+  "Metodologia de desenvolvimento". O uso de cada uma foi escrito pela sessão a partir do
+  histórico do repositório (branches `copilot/*`); o do Google ("pesquisa") é suposição, a
+  confirmar com a autora.
+- Folha de rosto: Rio de Janeiro, 2026.
+- Apêndices escritos: `apendice-a-caderno-de-testes.md` e
+  `apendice-b-caderno-de-testes-email-service.md`. Mantêm objetivo, pré-condições, passos com o
+  corpo JSON e resultado esperado de cada roteiro; tiram os trechos de log, os `SELECT`s e as
+  respostas longas (decisão da autora).
+
 ### Sessão 2026-10-14
 
 - Caderno novo, `caderno-de-testes-email-service.md`, no formato do caderno do `jogo-acoes`, só
@@ -121,6 +174,17 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
 - Etapa 3 escrita no rascunho: tabela antes/depois (tags `etapa-2` → `etapa-3`) e principais
   tarefas (Config Server, ambiente de execução). Resolve a pendência da sessão 2026-10-08: a
   tabela não lista mais o perfil `sandbox`.
+- Início da geração do PDF, pela bibliografia. As duas referências que estavam no rascunho só
+  como link solto (template `tasks-template.md` do Spec Kit e o artigo do techknow sobre SDD)
+  foram formatadas em ABNT na seção "Bibliografia" do `.md` e acrescentadas ao
+  `referencias.bib` (`github-speckit-tasks`, `wildrik2026sdd`). Seção do `.md` reordenada em
+  ordem alfabética.
+- Data de acesso dessas duas: o rascunho dizia "16/10/2026", data futura nesta sessão. A
+  autora confirmou que o mês estava errado: o certo é 16 set. 2026.
+- Nenhuma referência é citada no corpo do texto ainda; no `.tex`, ou entram citações
+  (`\cite`/`\citeonline`) ou a lista sai com `\nocite{*}`.
+- abnTeX2 não está instalado no TeX do WSL (`kpsewhich abntex2.cls` vazio) — a compilação
+  continua no MiKTeX do Windows.
 
 ### Sessão 2026-10-13
 

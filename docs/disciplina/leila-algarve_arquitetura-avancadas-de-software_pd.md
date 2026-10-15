@@ -1,5 +1,23 @@
 # **Projeto Jogo de Ações**
 
+# Repositório e versões entregues
+
+O código, as especificações e a documentação do projeto estão no repositório https://github.com/lalgarve/jogo-acoes. Cada etapa da disciplina está marcada por uma *tag*, que guarda o estado do repositório ao fim da etapa:
+
+| Etapa | *Tag* |
+| :---- | :---- |
+| Etapa 1 — Organização Arquitetural | https://github.com/lalgarve/jogo-acoes/tree/etapa-1 |
+| Etapa 2 — Separação e Comunicação entre Serviços | https://github.com/lalgarve/jogo-acoes/tree/etapa-2 |
+| Etapa 3 — Configuração e Execução dos Serviços | https://github.com/lalgarve/jogo-acoes/tree/etapa-3 |
+| Etapa 4 — Comunicação Assíncrona e Processamento em Lote | https://github.com/lalgarve/jogo-acoes/tree/etapa-4 |
+
+A biblioteca de validação de API-Key usada pelo Serviço de E-mail foi desenvolvida em um repositório separado: https://github.com/lalgarve/api-key.
+
+Os apêndices trazem versões resumidas dos cadernos de testes manuais. As versões completas, com todos os passos, respostas, trechos de log e consultas ao banco, estão no repositório:
+
+* Jogo de Ações: https://github.com/lalgarve/jogo-acoes/blob/master/docs/disciplina/caderno-de-testes.md
+* Serviço de E-mail: https://github.com/lalgarve/jogo-acoes/blob/master/docs/disciplina/caderno-de-testes-email-service.md
+
 # **Introdução**
 
 Um jogo de simulação de investimentos em bolsa: administradores criam competições — públicas (qualquer jogador pode pedir entrada) ou privadas (só quem é convidado por e-mail). Os jogadores, em uma competição por tempo determinado, começam com o mesmo saldo e, no final, se determina quem conseguiu a melhor performance. O escopo do projeto no contexto da disciplina inclui:
@@ -66,6 +84,12 @@ Usamos:
 
 Começamos a usar SDD na Iteração 5 do projeto. Os métodos anteriores (cenários BDD, TDD e API-First) continuam em uso sempre que relevantes. No TDD, a IA cria os testes primeiro e verifica que eles falham antes da implementação. Também usamos diagramas sempre que necessário. Por exemplo, na incepção do projeto, pedimos a criação de um diagrama DER para verificar o modelo sugerido e visualizar melhor as modificações necessárias. Definimos os diagramas em texto, o que facilita a interpretação e a edição, e há várias ferramentas gratuitas para isso. No código, escolhemos o Mermaid.js, por ser suportado nativamente pelo GitHub. Neste documento, geramos os diagramas com PlantUML, porque as imagens geradas podem ser incluídas no LaTeX. 
 
+
+Usamos três ferramentas de IA no projeto:
+
+* Claude, da Anthropic, pelo Claude Code: a principal ferramenta, usada para escrever as especificações, implementar o código e os testes, revisar o código e redigir a documentação;
+* GitHub Copilot: implementação de algumas especificações e respostas a comentários de revisão nas *pull requests*;
+* Google, no modo IA: pesquisa.
 
 # Refatoração dos cenários BDD
 
@@ -275,14 +299,14 @@ O Docker Compose sobe todos os componentes do sistema: a aplicação Jogo de Aç
 
 ## **Etapa 4 — Comunicação Assíncrona e Processamento em Lote**
 
-Na tabela abaixo, a coluna "Antes" mostra a situação do projeto na tag `etapa-3`, de 13/10/2026. A coluna "Ao fim da Etapa 4" mostra a situação no repositório em 14/10/2026.
+Na tabela abaixo, a coluna "Antes" mostra a situação do projeto na tag `etapa-3`, de 13/10/2026. A coluna "Ao fim da Etapa 4" mostra a situação na tag `etapa-4`, de 14/10/2026.
 
-| Requisito | Antes (tag `etapa-3`) | Ao fim da Etapa 4 |
+| Requisito | Antes (tag `etapa-3`) | Ao fim da Etapa 4 (tag `etapa-4`) |
 | :---- | :---- | :---- |
 | Mensageria assíncrona real (produtor/fila/consumidor) | Atendido — o Serviço de E-mail publica cada pedido de envio numa fila SQS, consumida pela função Lambda, que entrega pelo SES | Atendido |
 | Tecnologia de mensageria \= a definida pelo professor em aula | A confirmar — o enunciado cita RabbitMQ como exemplo; o projeto usa Amazon SQS | A confirmar |
 | Processamento em lote com Spring Batch (Job/Step/ItemReader/ItemProcessor/ItemWriter) | **Não atendido** | Atendido — importação das listas de domínios de e-mail temporário no Serviço de E-mail |
-| Tag etapa-4 | **Não atendido** | **Não atendido** |
+| Tag etapa-4 | **Não atendido** | Atendido |
 
 ### **Principais tarefas realizadas na Etapa 4**
 
@@ -317,18 +341,37 @@ O `ItemWriter` faz *upsert*: gravar a mesma lista de novo não duplica nenhum do
 **Permissões por chave de API.** Administrar as listas é tarefa da equipe de operações, não das aplicações clientes. Para separar os dois papéis, acrescentamos permissões às chaves na biblioteca de API-Key (versão 1.1.0). O Serviço de E-mail define duas permissões: `email:send`, para enviar e-mails e manter os próprios templates, e `disposable-email:admin`, para administrar as listas. A chave do Jogo de Ações tem só a primeira, e a chave de operações, só a segunda. Uma chave sem a permissão exigida pela rota recebe `403`.
 
 
+# Conclusão
+
+Separar o código em módulos por domínio, mesmo sem mudar nenhuma lógica, já nos mostrou onde a arquitetura podia melhorar e onde aplicar padrões de projeto. Com as classes agrupadas por funcionalidade, ficou visível que o mecanismo genérico de link tinha uma chave estrangeira para a competição, ou seja, que um módulo de base conhecia um caso de uso específico. Corrigimos isso invertendo a dependência: o módulo de link passou a definir a interface `LinkHandler`, e o módulo de competição a implementa, como qualquer outro consumidor. A mesma separação mostra o próximo passo: o módulo de competição continua complexo. É o maior da aplicação, com 27 classes e cerca de 1.500 linhas de código, o dobro do segundo maior, e reúne responsabilidades que provavelmente podem ser divididas em submódulos, como o pedido de entrada em competições, a gestão dos jogadores de uma competição e a busca de jogadores pelo administrador. Na organização anterior, por camada técnica, nenhuma dessas questões chamava atenção, porque as classes ficavam diluídas entre os pacotes `service`, `repository` e `domain`.
+
+Proibir o acesso direto a repositórios de outro módulo também melhorou o código. Para cumprir a regra, cada módulo precisou declarar, num serviço público, o que oferece aos demais. O levantamento feito para essa mudança encontrou a consulta do usuário logado copiada em cinco lugares e a criação de usuário com papel copiada em dois; as cópias foram substituídas por um serviço único. Além disso, o que cada serviço precisa de outro módulo passou a estar escrito na sua lista de dependências, e não espalhado em consultas ao banco.
+
+As regras de arquitetura só se mantiveram porque são verificadas a cada build. Os testes com ArchUnit impedem um módulo de acessar o repositório de outro, impedem a aplicação e o Serviço de E-mail de compartilharem classes e garantem que cada módulo registre as próprias regras de segurança. Sem essa verificação, bastaria uma importação feita por descuido, ou sugerida pela ferramenta de IA, para desfazer a separação sem que ninguém percebesse.
+
+Os testes manuais encontraram problemas que os testes automáticos não mostravam, inclusive no ambiente e na documentação. Executar os cadernos de testes revelou, por exemplo:
+
+* que uma sessão encerrada pelo limite de dispositivos continuava autenticada;
+* que o assunto de um template com acentos voltava com os caracteres trocados na pré-visualização;
+* que a aplicação deixava de iniciar quando o LocalStack era recriado e o Serviço de E-mail mantinha no banco templates que o SES já não tinha;
+* comandos e respostas da documentação que não correspondiam mais ao sistema.
+
+Os testes automáticos rodam sempre num ambiente limpo e verificam o que foi previsto; os manuais usam o sistema como um usuário usaria, num ambiente que acumula estado entre uma execução e outra. Os dois tipos de teste se complementam.
+
+Seguir a abordagem API-First nos dois serviços também simplificou a separação. Como a aplicação e o Serviço de E-mail dependem apenas do contrato OpenAPI, cada um pôde mudar por dentro sem afetar o outro, e o cliente OpenFeign e os DTOs foram gerados a partir do contrato, sem código compartilhado.
+
+Por fim, desenvolver com IA a partir de especificações escritas antes do código, com BDD e SDD, deu bons resultados. Cada mudança partiu de uma especificação revisada, com as decisões técnicas e as tarefas registradas, o que nos permitiu retomar o trabalho entre sessões e revisar com cuidado o código gerado.
+
+Ficam pendentes a falha de sessão encontrada no caderno de testes, a recriação automática de templates ausentes no SES e a confirmação de que o Amazon SQS é aceito no lugar da tecnologia de mensageria vista em aula.
+
 # Bibliografia
 
 ASPECT Oriented Programming (AOP) in Spring Framework. *GeeksforGeeks*, [20--]. Disponível em: https://www.geeksforgeeks.org/advance-java/aspect-oriented-programming-aop-in-spring-framework/. Acesso em: 5 out. 2026.
+
+GITHUB. **Spec Kit**: tasks-template.md. [*S. l.*]: GitHub, 2026. Disponível em: https://github.com/github/spec-kit/blob/main/templates/tasks-template.md. Acesso em: 16 set. 2026.
 
 GRAZIANO, Alfonso. **AI-Native Software Engineering**. Sebastopol, CA: O'Reilly Media, 2026. E-book. Versão preliminar (*early release*); publicação prevista para fev. 2027. Disponível em: https://learning.oreilly.com/library/view/ai-native-software-engineering/0642572352530/. Acesso em: 24 set. 2026.
 
 SMART, John Ferguson. **BDD in Action**: Behavior-Driven Development for the Whole Software Lifecycle. Shelter Island, NY: Manning Publications, 2014. E-book. ISBN 978-1-61729-165-4. Disponível em: https://learning.oreilly.com/library/view/bdd-in-action/9781617291654/. Acesso em: 24 set. 2026.
 
-[https://github.com/github/spec-kit/blob/main/templates/tasks-template.md ](https://github.com/github/spec-kit) Acessado 16/10/2026
-
-https://www.techknow.com.br/post/spec-driven-development Acessado 16/102026
-
-
-
-
+WILDRIK. **Spec Driven Development**: o futuro de programar com IA (SDD). *techknow*, 25 abr. 2026. Disponível em: https://www.techknow.com.br/post/spec-driven-development. Acesso em: 16 set. 2026.
