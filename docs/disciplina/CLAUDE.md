@@ -105,8 +105,8 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
   foram formatadas em ABNT na seção "Bibliografia" do `.md` e acrescentadas ao
   `referencias.bib` (`github-speckit-tasks`, `wildrik2026sdd`). Seção do `.md` reordenada em
   ordem alfabética.
-- Data de acesso dessas duas: o rascunho dizia "16/10/2026", data futura nesta sessão; usada
-  14 out. 2026 (dia em que os links foram conferidos). Ajustar se a autora tiver outra data.
+- Data de acesso dessas duas: o rascunho dizia "16/10/2026", data futura nesta sessão. A
+  autora confirmou que o mês estava errado: o certo é 16 set. 2026.
 - Nenhuma referência é citada no corpo do texto ainda; no `.tex`, ou entram citações
   (`\cite`/`\citeonline`) ou a lista sai com `\nocite{*}`.
 - abnTeX2 não está instalado no TeX do WSL (`kpsewhich abntex2.cls` vazio) — a compilação
