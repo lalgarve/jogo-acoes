@@ -113,8 +113,17 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
   autora (módulos revelando oportunidades de padrões, isolamento de repositórios, testes
   manuais achando problemas de ambiente e documentação). Acrescentados: verificação das regras
   por ArchUnit, API-First, SDD/BDD com IA e as pendências.
-- Ainda em aberto para o `.tex`: resumo, citações no texto vs. `\nocite{*}`, onde citar o
-  repositório e as tags, cadernos inteiros vs. resumidos.
+- Sem resumo e sem citações no texto: a bibliografia sai inteira com `\nocite{*}`.
+- Seção "Repositório e versões entregues" no começo do rascunho; no `.tex`, logo depois do
+  sumário. Traz o repositório, a *tag* de cada etapa (`etapa-4` ainda não existe), o
+  repositório do `api-key` e os links dos cadernos completos.
+- Cadernos de testes entram **resumidos** nos apêndices; cada apêndice começa com o link para o
+  `.md` completo no GitHub.
+- Ferramentas de IA (Claude/Claude Code, GitHub Copilot, Google no modo IA) listadas no fim de
+  "Metodologia de desenvolvimento". O uso de cada uma foi escrito pela sessão a partir do
+  histórico do repositório (branches `copilot/*`); o do Google ("pesquisa") é suposição, a
+  confirmar com a autora.
+- Ainda em aberto: cidade e ano da folha de rosto.
 
 ### Sessão 2026-10-14
 

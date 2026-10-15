@@ -1,5 +1,23 @@
 # **Projeto Jogo de Ações**
 
+# Repositório e versões entregues
+
+O código, as especificações e a documentação do projeto estão no repositório https://github.com/lalgarve/jogo-acoes. Cada etapa da disciplina está marcada por uma *tag*, que guarda o estado do repositório ao fim da etapa:
+
+| Etapa | *Tag* |
+| :---- | :---- |
+| Etapa 1 — Organização Arquitetural | https://github.com/lalgarve/jogo-acoes/tree/etapa-1 |
+| Etapa 2 — Separação e Comunicação entre Serviços | https://github.com/lalgarve/jogo-acoes/tree/etapa-2 |
+| Etapa 3 — Configuração e Execução dos Serviços | https://github.com/lalgarve/jogo-acoes/tree/etapa-3 |
+| Etapa 4 — Comunicação Assíncrona e Processamento em Lote | https://github.com/lalgarve/jogo-acoes/tree/etapa-4 |
+
+A biblioteca de validação de API-Key usada pelo Serviço de E-mail foi desenvolvida em um repositório separado: https://github.com/lalgarve/api-key.
+
+Os apêndices trazem versões resumidas dos cadernos de testes manuais. As versões completas, com todos os passos, respostas, trechos de log e consultas ao banco, estão no repositório:
+
+* Jogo de Ações: https://github.com/lalgarve/jogo-acoes/blob/master/docs/disciplina/caderno-de-testes.md
+* Serviço de E-mail: https://github.com/lalgarve/jogo-acoes/blob/master/docs/disciplina/caderno-de-testes-email-service.md
+
 # **Introdução**
 
 Um jogo de simulação de investimentos em bolsa: administradores criam competições — públicas (qualquer jogador pode pedir entrada) ou privadas (só quem é convidado por e-mail). Os jogadores, em uma competição por tempo determinado, começam com o mesmo saldo e, no final, se determina quem conseguiu a melhor performance. O escopo do projeto no contexto da disciplina inclui:
@@ -66,6 +84,12 @@ Usamos:
 
 Começamos a usar SDD na Iteração 5 do projeto. Os métodos anteriores (cenários BDD, TDD e API-First) continuam em uso sempre que relevantes. No TDD, a IA cria os testes primeiro e verifica que eles falham antes da implementação. Também usamos diagramas sempre que necessário. Por exemplo, na incepção do projeto, pedimos a criação de um diagrama DER para verificar o modelo sugerido e visualizar melhor as modificações necessárias. Definimos os diagramas em texto, o que facilita a interpretação e a edição, e há várias ferramentas gratuitas para isso. No código, escolhemos o Mermaid.js, por ser suportado nativamente pelo GitHub. Neste documento, geramos os diagramas com PlantUML, porque as imagens geradas podem ser incluídas no LaTeX. 
 
+
+Usamos três ferramentas de IA no projeto:
+
+* Claude, da Anthropic, pelo Claude Code: a principal ferramenta, usada para escrever as especificações, implementar o código e os testes, revisar o código e redigir a documentação;
+* GitHub Copilot: implementação de algumas especificações e respostas a comentários de revisão nas *pull requests*;
+* Google, no modo IA: pesquisa.
 
 # Refatoração dos cenários BDD
 
