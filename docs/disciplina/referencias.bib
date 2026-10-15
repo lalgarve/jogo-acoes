@@ -2,10 +2,14 @@
 % Livros lidos na plataforma O'Reilly: referência como documento online
 % (campos url e urlaccessdate), não como cópia física.
 
+% Década provável no padrão ABNT ([20--]), por macro e não por texto literal: o abntex2-alf
+% troca "-" por "--" no ano e copia o ano para o rótulo do \bibitem[...], onde um "]" o fecha.
+@preamble{ "\providecommand{\decadaprovavel}[1]{[#1\mbox{-}\mbox{-}]}" }
+
 @book{smart2014bdd,
   author        = {Smart, John Ferguson},
   title         = {{BDD} in Action},
-  subtitle      = {Behavior-Driven Development for the Whole Software Lifecycle},
+  subtitle      = {{Behavior-Driven Development for the Whole Software Lifecycle}},
   publisher     = {Manning Publications},
   address       = {Shelter Island, NY},
   year          = {2014},
@@ -30,13 +34,13 @@
 @misc{geeksforgeeks-aop-spring,
   title         = {Aspect Oriented Programming ({AOP}) in {Spring} Framework},
   howpublished  = {GeeksforGeeks},
-  year          = {[20--]},
+  year          = {\decadaprovavel{20}},
   url           = {https://www.geeksforgeeks.org/advance-java/aspect-oriented-programming-aop-in-spring-framework/},
   urlaccessdate = {5 out. 2026}
 }
 
 @misc{github-speckit-tasks,
-  author        = {{GitHub}},
+  author        = {{GITHUB}},
   title         = {Spec Kit},
   subtitle      = {tasks-template.md},
   howpublished  = {GitHub},

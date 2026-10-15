@@ -299,14 +299,14 @@ O Docker Compose sobe todos os componentes do sistema: a aplicação Jogo de Aç
 
 ## **Etapa 4 — Comunicação Assíncrona e Processamento em Lote**
 
-Na tabela abaixo, a coluna "Antes" mostra a situação do projeto na tag `etapa-3`, de 13/10/2026. A coluna "Ao fim da Etapa 4" mostra a situação no repositório em 14/10/2026.
+Na tabela abaixo, a coluna "Antes" mostra a situação do projeto na tag `etapa-3`, de 13/10/2026. A coluna "Ao fim da Etapa 4" mostra a situação na tag `etapa-4`, de 14/10/2026.
 
-| Requisito | Antes (tag `etapa-3`) | Ao fim da Etapa 4 |
+| Requisito | Antes (tag `etapa-3`) | Ao fim da Etapa 4 (tag `etapa-4`) |
 | :---- | :---- | :---- |
 | Mensageria assíncrona real (produtor/fila/consumidor) | Atendido — o Serviço de E-mail publica cada pedido de envio numa fila SQS, consumida pela função Lambda, que entrega pelo SES | Atendido |
 | Tecnologia de mensageria \= a definida pelo professor em aula | A confirmar — o enunciado cita RabbitMQ como exemplo; o projeto usa Amazon SQS | A confirmar |
 | Processamento em lote com Spring Batch (Job/Step/ItemReader/ItemProcessor/ItemWriter) | **Não atendido** | Atendido — importação das listas de domínios de e-mail temporário no Serviço de E-mail |
-| Tag etapa-4 | **Não atendido** | **Não atendido** |
+| Tag etapa-4 | **Não atendido** | Atendido |
 
 ### **Principais tarefas realizadas na Etapa 4**
 

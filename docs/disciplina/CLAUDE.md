@@ -20,10 +20,11 @@ esse conflito de merge.
 |---|---|
 | `alinhamento-projeto-disciplina.md` | Levantamento already-feito: mapeia o estado atual do projeto contra as quatro Etapas do enunciado. Histórico, não é o rascunho de entrega. |
 | `leila-algarve_arquitetura-avancadas-de-software_pd.md` | Rascunho de trabalho do conteúdo que vai para o PDF final — ver "Fluxo de edição" abaixo. Nome segue o formato `nomedoaluno_nomedadisciplina_pd` exigido pelo enunciado (ver "Nome do arquivo" abaixo). |
-| `leila-algarve.tex` | Fonte LaTeX (abnTeX2), gerada a partir do rascunho `.md` quando o conteúdo estabilizar. |
+| `leila-algarve_arquitetura-avancadas-de-software_pd.tex` | Fonte LaTeX (abnTeX2), **gerada** por `scripts/md2tex.py` a partir do rascunho `.md` e dos dois apêndices. Não editar à mão: mudar o `.md` (ou o script) e gerar de novo. |
 | `referencias.bib` | Bibliografia em BibTeX (formato `abntex2cite`), consumida pelo `.tex`. Mantida desde já em paralelo à seção "Bibliografia" do rascunho `.md` (texto ABNT), porque as entradas são estáveis e não sofrem o problema de divergência do `.tex`. Livros lidos na O'Reilly entram como e-book, com `url` e `urlaccessdate`. |
 | `uml/` | Fontes PlantUML (`.puml`) dos diagramas deste documento. |
 | `scripts/plantuml` | Launcher local (fixa JDK 11) para renderizar `uml/*.puml`. |
+| `scripts/md2tex.py` | Gera o `.tex` a partir dos `.md` (`python3 scripts/md2tex.py`, a partir desta pasta). Entende só o subconjunto de Markdown que os rascunhos usam. |
 | `image/` | Imagens/diagramas já renderizados, incluídos no `.tex` via `\includegraphics`. |
 | `caderno-de-testes.md` | Caderno de testes manuais, por funcionalidade do sistema (spec 05-040). |
 | `caderno-de-testes/` | Apoio do caderno: dump da massa de dados (`dados/`), cabeçalhos de dispositivo (`dispositivos/`) e scripts bash/PowerShell (`scripts/`). |
@@ -100,6 +101,26 @@ hífen preservado dentro de cada segmento para legibilidade). O `.tex`/PDF final
 gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-de-software_pd`).
 
 ## Log de decisões
+
+### Sessão 2026-10-15 (continuação) — tag `etapa-4` e `.tex`
+
+- Tag anotada `etapa-4` ("Fim da Etapa 4") criada em `6552d1c`, merge da PR #176 no `master`, que
+  já inclui o Spring Batch (PR #171) e a correção do acento no preview (PR #175). Mesmo padrão das
+  tags anteriores. Tabela da Etapa 4 do rascunho atualizada (tag atendida).
+- `.tex` gerado por `scripts/md2tex.py`. Compilado na sessão com `pdflatex` + `bibtex` no WSL,
+  com o abnTeX2 e o `babel` em português baixados do CTAN só para o teste (o WSL não os tem):
+  47 páginas, sem erro. A compilação de entrega continua no MiKTeX (`pdflatex`, `bibtex`,
+  `pdflatex`, `pdflatex`).
+- `\nocite{*}` não serve com o `abntex2cite`: ele também lê o `abntex2-options.bib` e lista as
+  entradas de opção como referências. O script gera `\nocite{...}` com as chaves do
+  `referencias.bib` e `\citeoption{abnt-full-initials=yes}` (nomes por extenso, como no `.md`).
+- `referencias.bib`: o ano `[20--]` virou a macro `\decadaprovavel` (o colchete literal quebrava
+  o rótulo do `\bibitem` e imprimia a chave); GitHub como autor `{{GITHUB}}` (o campo `org` não é
+  usado pelo estilo); subtítulo do Smart entre chaves para manter as maiúsculas.
+- Figuras com `[H]` (pacote `float`): o texto diz "abaixo"/"a seguir", então a figura fica onde
+  aparece. Fonte das figuras: "elaborada pela autora".
+- Autor na capa: `Leila Algarve` — conferir se a autora quer o nome completo.
+- `.gitignore` desta pasta ignora os auxiliares do LaTeX gerados pelo MiKTeX (não o PDF).
 
 ### Sessão 2026-10-15
 

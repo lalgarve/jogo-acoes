@@ -1,0 +1,11 @@
+# Arquivos auxiliares do LaTeX gerados ao compilar o .tex (MiKTeX)
+*.aux
+*.bbl
+*.blg
+*.brf
+*.idx
+*.lof
+*.log
+*.out
+*.toc
+*.synctex.gz
