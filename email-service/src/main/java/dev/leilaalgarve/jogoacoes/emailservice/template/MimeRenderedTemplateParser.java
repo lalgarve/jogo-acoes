@@ -15,13 +15,20 @@ import java.util.Properties;
  * docs) -- parsed here with Jakarta Mail instead of hand-rolled parsing, since
  * {@link MimeMessage#getSubject()} also decodes RFC 2047 encoded-word syntax for non-ASCII
  * subjects.
+ *
+ * <p>LocalStack sends the Subject header as raw UTF-8 instead (no encoded-word), which Jakarta
+ * Mail reads as ISO-8859-1 by default; {@code mail.mime.allowutf8} reads it as UTF-8 and still
+ * decodes RFC 2047 (spec 05-051). {@link Session#getInstance} rather than
+ * {@code getDefaultInstance}, which keeps the JVM's first session and ignores later properties.
  */
 @Component
 public class MimeRenderedTemplateParser {
 
     public RenderedTemplate parse(String rawMime) {
         try {
-            Session session = Session.getDefaultInstance(new Properties());
+            Properties properties = new Properties();
+            properties.setProperty("mail.mime.allowutf8", "true");
+            Session session = Session.getInstance(properties);
             MimeMessage message =
                     new MimeMessage(session, new ByteArrayInputStream(rawMime.getBytes(StandardCharsets.UTF_8)));
             return new RenderedTemplate(message.getSubject(), extractBody(message));

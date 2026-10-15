@@ -117,6 +117,9 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
   `exitMessage` `UNCHANGED`. O aviso de que o `restore` falhava saiu: o dump já é o da CLI 1.1.0.
 - Falha registrada no roteiro 2: a pré-visualização devolve o assunto com acento corrompido
   (`estÃ¡`), o corpo e o banco estão certos.
+- Etapa 3 escrita no rascunho: tabela antes/depois (tags `etapa-2` → `etapa-3`) e principais
+  tarefas (Config Server, ambiente de execução). Resolve a pendência da sessão 2026-10-08: a
+  tabela não lista mais o perfil `sandbox`.
 
 ### Sessão 2026-10-13
 
