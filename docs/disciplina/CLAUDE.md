@@ -100,6 +100,9 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
 
 ### Sessão 2026-10-14
 
+- Etapa 3 escrita no rascunho: tabela antes/depois (tags `etapa-2` → `etapa-3`) e principais
+  tarefas (Config Server, ambiente de execução). Resolve a pendência da sessão 2026-10-08: a
+  tabela não lista mais o perfil `sandbox`.
 - Início da geração do PDF, pela bibliografia. As duas referências que estavam no rascunho só
   como link solto (template `tasks-template.md` do Spec Kit e o artigo do techknow sobre SDD)
   foram formatadas em ABNT na seção "Bibliografia" do `.md` e acrescentadas ao
