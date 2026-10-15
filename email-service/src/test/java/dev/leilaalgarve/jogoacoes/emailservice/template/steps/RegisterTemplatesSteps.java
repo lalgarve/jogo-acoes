@@ -82,6 +82,12 @@ public class RegisterTemplatesSteps {
         assertThat(response.statusCode()).isEqualTo(201);
     }
 
+    @Given("they already registered a template named {string} with subject {string} and body {string}")
+    public void they_already_registered_a_template_with_subject_and_body(String name, String subject, String body) {
+        Response response = register(name, subject, body);
+        assertThat(response.statusCode()).isEqualTo(201);
+    }
+
     @When("they register a template named {string} with subject {string} and a valid body")
     public void they_register_a_template_with_subject_and_a_valid_body(String name, String subject) {
         lastRegisteredName = name;
@@ -251,6 +257,19 @@ public class RegisterTemplatesSteps {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(200);
         assertThat(world.getLastResponse().jsonPath().getString("subject")).isNotBlank();
         assertThat(world.getLastResponse().jsonPath().getString("body")).isNotBlank();
+    }
+
+    // Spec 05-051: compared exactly, not just non-blank, so a subject decoded with the wrong
+    // charset (LocalStack's TestRenderTemplate returns it as raw UTF-8 in the MIME header) fails.
+    @Then("the rendered subject is {string}")
+    public void the_rendered_subject_is(String subject) {
+        assertThat(world.getLastResponse().statusCode()).isEqualTo(200);
+        assertThat(world.getLastResponse().jsonPath().getString("subject")).isEqualTo(subject);
+    }
+
+    @Then("the rendered body is {string}")
+    public void the_rendered_body_is(String body) {
+        assertThat(world.getLastResponse().jsonPath().getString("body")).isEqualTo(body);
     }
 
     @Then("no e-mail is sent")
