@@ -27,6 +27,7 @@ esse conflito de merge.
 | `image/` | Imagens/diagramas já renderizados, incluídos no `.tex` via `\includegraphics`. |
 | `caderno-de-testes.md` | Caderno de testes manuais, por funcionalidade do sistema (spec 05-040). |
 | `caderno-de-testes/` | Apoio do caderno: dump da massa de dados (`dados/`), cabeçalhos de dispositivo (`dispositivos/`) e scripts bash/PowerShell (`scripts/`). |
+| `apendice-a-caderno-de-testes.md`, `apendice-b-caderno-de-testes-email-service.md` | Versões resumidas dos dois cadernos (sem logs nem `SELECT`s), que viram os apêndices A e B do PDF. Quando um caderno mudar, atualizar o apêndice correspondente. |
 | `caderno-de-testes-email-service.md` | Caderno de testes manuais do Serviço de E-mail (chaves e permissões, templates, envio, listas de e-mail temporário), sobe só o `email-service`. |
 | `caderno-de-testes-email-service/` | Apoio desse caderno: listas de domínios de teste (`listas/`) e scripts bash (`scripts/`). As chaves geradas (`chaves.env`) e a CLI do `api-key` (`.cli/`) ficam fora do git. |
 
@@ -123,7 +124,11 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
   "Metodologia de desenvolvimento". O uso de cada uma foi escrito pela sessão a partir do
   histórico do repositório (branches `copilot/*`); o do Google ("pesquisa") é suposição, a
   confirmar com a autora.
-- Ainda em aberto: cidade e ano da folha de rosto.
+- Folha de rosto: Rio de Janeiro, 2026.
+- Apêndices escritos: `apendice-a-caderno-de-testes.md` e
+  `apendice-b-caderno-de-testes-email-service.md`. Mantêm objetivo, pré-condições, passos com o
+  corpo JSON e resultado esperado de cada roteiro; tiram os trechos de log, os `SELECT`s e as
+  respostas longas (decisão da autora).
 
 ### Sessão 2026-10-14
 
