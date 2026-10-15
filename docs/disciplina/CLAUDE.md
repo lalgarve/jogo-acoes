@@ -24,6 +24,7 @@ esse conflito de merge.
 | `referencias.bib` | Bibliografia em BibTeX (formato `abntex2cite`), consumida pelo `.tex`. Mantida desde já em paralelo à seção "Bibliografia" do rascunho `.md` (texto ABNT), porque as entradas são estáveis e não sofrem o problema de divergência do `.tex`. Livros lidos na O'Reilly entram como e-book, com `url` e `urlaccessdate`. |
 | `uml/` | Fontes PlantUML (`.puml`) dos diagramas deste documento. |
 | `scripts/plantuml` | Launcher local (fixa JDK 11) para renderizar `uml/*.puml`. |
+| `scripts/build-pdf.sh` | Gera o `.tex` e compila o PDF no WSL (`pdflatex`, `bibtex`, `pdflatex`, `pdflatex`), mostrando erros, páginas e linhas fora da margem. Precisa de `texlive-publishers` e `texlive-lang-portuguese`. |
 | `scripts/md2tex.py` | Gera o `.tex` a partir dos `.md` (`python3 scripts/md2tex.py`, a partir desta pasta). Entende só o subconjunto de Markdown que os rascunhos usam. |
 | `image/` | Imagens/diagramas já renderizados, incluídos no `.tex` via `\includegraphics`. |
 | `caderno-de-testes.md` | Caderno de testes manuais, por funcionalidade do sistema (spec 05-040). |
@@ -109,8 +110,9 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
   tags anteriores. Tabela da Etapa 4 do rascunho atualizada (tag atendida).
 - `.tex` gerado por `scripts/md2tex.py`. Compilado na sessão com `pdflatex` + `bibtex` no WSL,
   com o abnTeX2 e o `babel` em português baixados do CTAN só para o teste (o WSL não os tem):
-  47 páginas, sem erro. A compilação de entrega continua no MiKTeX (`pdflatex`, `bibtex`,
-  `pdflatex`, `pdflatex`).
+  47 páginas, sem erro. Depois, `texlive-publishers` e `texlive-lang-portuguese` instalados no
+  WSL e `scripts/build-pdf.sh` criado: o PDF passa a ser gerado no WSL, com a hifenização do
+  português (o teste com os pacotes do CTAN usava a do inglês). O MiKTeX continua servindo.
 - `\nocite{*}` não serve com o `abntex2cite`: ele também lê o `abntex2-options.bib` e lista as
   entradas de opção como referências. O script gera `\nocite{...}` com as chaves do
   `referencias.bib` e `\citeoption{abnt-full-initials=yes}` (nomes por extenso, como no `.md`).
