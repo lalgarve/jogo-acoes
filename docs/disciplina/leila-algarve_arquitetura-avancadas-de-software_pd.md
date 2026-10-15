@@ -317,6 +317,29 @@ O `ItemWriter` faz *upsert*: gravar a mesma lista de novo não duplica nenhum do
 **Permissões por chave de API.** Administrar as listas é tarefa da equipe de operações, não das aplicações clientes. Para separar os dois papéis, acrescentamos permissões às chaves na biblioteca de API-Key (versão 1.1.0). O Serviço de E-mail define duas permissões: `email:send`, para enviar e-mails e manter os próprios templates, e `disposable-email:admin`, para administrar as listas. A chave do Jogo de Ações tem só a primeira, e a chave de operações, só a segunda. Uma chave sem a permissão exigida pela rota recebe `403`.
 
 
+# Conclusão
+
+Separar o código em módulos por domínio, mesmo sem mudar nenhuma lógica, já nos mostrou onde a arquitetura podia melhorar. Com as classes agrupadas por funcionalidade, ficou visível que o mecanismo genérico de link tinha uma chave estrangeira para a competição, ou seja, que um módulo de base conhecia um caso de uso específico. Corrigimos isso invertendo a dependência: o módulo de link passou a definir a interface `LinkHandler`, e o módulo de competição a implementa, como qualquer outro consumidor. Na organização anterior, por camada técnica, esse acoplamento ficava diluído entre os pacotes `service`, `repository` e `domain` e não chamava atenção.
+
+Proibir o acesso direto a repositórios de outro módulo também melhorou o código. Para cumprir a regra, cada módulo precisou declarar, num serviço público, o que oferece aos demais. O levantamento feito para essa mudança encontrou a consulta do usuário logado copiada em cinco lugares e a criação de usuário com papel copiada em dois; as cópias foram substituídas por um serviço único. Além disso, o que cada serviço precisa de outro módulo passou a estar escrito na sua lista de dependências, e não espalhado em consultas ao banco.
+
+As regras de arquitetura só se mantiveram porque são verificadas a cada build. Os testes com ArchUnit impedem um módulo de acessar o repositório de outro, impedem a aplicação e o Serviço de E-mail de compartilharem classes e garantem que cada módulo registre as próprias regras de segurança. Sem essa verificação, bastaria uma importação feita por descuido, ou sugerida pela ferramenta de IA, para desfazer a separação sem que ninguém percebesse.
+
+Os testes manuais encontraram problemas que os testes automáticos não mostravam, inclusive no ambiente e na documentação. Executar os cadernos de testes revelou, por exemplo:
+
+* que uma sessão encerrada pelo limite de dispositivos continuava autenticada;
+* que o assunto de um template com acentos voltava com os caracteres trocados na pré-visualização;
+* que a aplicação deixava de iniciar quando o LocalStack era recriado e o Serviço de E-mail mantinha no banco templates que o SES já não tinha;
+* comandos e respostas da documentação que não correspondiam mais ao sistema.
+
+Os testes automáticos rodam sempre num ambiente limpo e verificam o que foi previsto; os manuais usam o sistema como um usuário usaria, num ambiente que acumula estado entre uma execução e outra. Os dois tipos de teste se complementam.
+
+Seguir a abordagem API-First nos dois serviços também simplificou a separação. Como a aplicação e o Serviço de E-mail dependem apenas do contrato OpenAPI, cada um pôde mudar por dentro sem afetar o outro, e o cliente OpenFeign e os DTOs foram gerados a partir do contrato, sem código compartilhado.
+
+Por fim, desenvolver com IA a partir de especificações escritas antes do código, com BDD e SDD, deu bons resultados. Cada mudança partiu de uma especificação revisada, com as decisões técnicas e as tarefas registradas, o que nos permitiu retomar o trabalho entre sessões e revisar com cuidado o código gerado.
+
+Ficam pendentes a falha de sessão encontrada no caderno de testes, a recriação automática de templates ausentes no SES e a confirmação de que o Amazon SQS é aceito no lugar da tecnologia de mensageria vista em aula.
+
 # Bibliografia
 
 ASPECT Oriented Programming (AOP) in Spring Framework. *GeeksforGeeks*, [20--]. Disponível em: https://www.geeksforgeeks.org/advance-java/aspect-oriented-programming-aop-in-spring-framework/. Acesso em: 5 out. 2026.

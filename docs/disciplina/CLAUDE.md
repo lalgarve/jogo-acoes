@@ -100,6 +100,22 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
 
 ## Log de decisões
 
+### Sessão 2026-10-15
+
+- Só pode ser entregue um PDF: os dois cadernos de testes (`caderno-de-testes.md` e
+  `caderno-de-testes-email-service.md`) entram nele como **apêndices** (material da própria
+  autora; "anexo", na ABNT, é material de terceiros). Convertidos por último, junto com o resto
+  (ver "Fluxo de edição").
+- Dados da folha de rosto: Instituto Infnet; MBA em Engenharia de Software com Java; disciplina
+  Arquiteturas Avançadas de Software com Microserviços e Spring Framework; professor Elberth
+  Moraes. Cidade e ano ainda não confirmados.
+- Seção "Conclusão" acrescentada ao rascunho, antes da bibliografia, a partir de três pontos da
+  autora (módulos revelando oportunidades de padrões, isolamento de repositórios, testes
+  manuais achando problemas de ambiente e documentação). Acrescentados: verificação das regras
+  por ArchUnit, API-First, SDD/BDD com IA e as pendências.
+- Ainda em aberto para o `.tex`: resumo, citações no texto vs. `\nocite{*}`, onde citar o
+  repositório e as tags, cadernos inteiros vs. resumidos.
+
 ### Sessão 2026-10-14
 
 - Caderno novo, `caderno-de-testes-email-service.md`, no formato do caderno do `jogo-acoes`, só
