@@ -74,3 +74,13 @@ Para derrubar: `docker compose down -v`.
   passo do corpo também verde.
 - **T003** (2026-10-15): nenhuma classe de exceção criada e nenhum branch de exceção
   adicionado ou alterado; o `catch` do parser (`IllegalStateException`) ficou igual.
+- **T004** (2026-10-15, em aberto): a suíte do email-service está verde (ver T002). A do `app`
+  (`mvn -pl app -am verify`) rodou uma vez inteira com 284 testes e 1 falha:
+  `EmailServiceClientIntegrationTest.previewWithIncompleteDataIsRejectedWithoutRetrying[1]`,
+  por tempo (`0.2218486S` contra o limite de `0.2S`), no primeiro caso, o mais frio. Esses
+  testes falam com o email-service do Compose (imagem antiga, sem esta correção) e o template
+  deles não tem acento, então não exercitam esta mudança. A nova rodada só dessa classe não deu
+  resultado: no meio dela o ambiente do Compose foi recriado de fora desta sessão
+  (`db`, `db-email-service` e `localstack` recriados, email-service não), e todos os 37 testes
+  falharam na subida com `409`/`404` no template `invite` (banco e SES fora de sincronia).
+  Falta rodar `mvn -pl app -am verify` de novo com o ambiente recriado do zero.
