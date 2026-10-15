@@ -115,8 +115,9 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
   a versão 1 divergia do serviço: campos vazios não vêm no JSON, `skipped` conta só linhas
   inválidas (comentário e linha em branco são filtrados), reimportação sem mudança termina com
   `exitMessage` `UNCHANGED`. O aviso de que o `restore` falhava saiu: o dump já é o da CLI 1.1.0.
-- Falha registrada no roteiro 2: a pré-visualização devolve o assunto com acento corrompido
-  (`estÃ¡`), o corpo e o banco estão certos.
+- Falha encontrada no roteiro 2: a pré-visualização devolvia o assunto com acento corrompido
+  (`estÃ¡`). Corrigida pela spec 05-051 (PR #175); o roteiro 2 foi refeito em 2026-10-15 com o
+  serviço corrigido, e o caderno traz a resposta certa com uma nota sobre a falha.
 - Etapa 3 escrita no rascunho: tabela antes/depois (tags `etapa-2` → `etapa-3`) e principais
   tarefas (Config Server, ambiente de execução). Resolve a pendência da sessão 2026-10-08: a
   tabela não lista mais o perfil `sandbox`.

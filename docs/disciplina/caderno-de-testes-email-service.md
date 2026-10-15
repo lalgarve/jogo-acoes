@@ -399,13 +399,20 @@ ORDER BY id;
   1 | caderno-envio | boas-vindas | {{nome}}, sua conta está pronta |                  | 2026-10-14 23:31:05.309157 | 2026-10-14 23:31:13.136965
 ```
 
-Repetir o passo 4: o assunto deveria voltar `"Maria, sua conta está pronta"`.
+Repetir o passo 4: o assunto volta com o acento certo:
 
-> **Falha encontrada na execução de 2026-10-14.** O assunto da pré-visualização volta com o
-> acento corrompido, `"Maria, sua conta estÃ¡ pronta"`; o corpo (`Olá, Maria! Sua conta está
-> pronta.`) e o assunto gravado no banco estão certos. Os bytes UTF-8 do assunto são lidos como
-> ISO-8859-1 em algum ponto entre o `TestRenderTemplate` do SES do LocalStack e o
-> `MimeRenderedTemplateParser`. O roteiro fica com a resposta correta como esperada.
+```json
+{
+  "subject": "Maria, sua conta está pronta",
+  "body": "<p>Olá, Maria! Sua conta está pronta.</p><p><a href=\"http://localhost:8080/api/login-links/exemplo\">Entrar</a></p>"
+}
+```
+
+A primeira execução, em 2026-10-14, achou aqui uma falha: o assunto voltava `"Maria, sua conta
+estÃ¡ pronta"`. O `TestRenderTemplate` do LocalStack devolve o cabeçalho `Subject` em UTF-8 cru,
+sem a codificação RFC 2047, e o `MimeRenderedTemplateParser` lia esses bytes como ISO-8859-1.
+Corrigida pela spec 05-051 (PR #175) e conferida
+de novo em 2026-10-15.
 
 **6. Alterar, consultar e pré-visualizar um template que não existe.**
 
