@@ -10,8 +10,8 @@ começar a implementar sem pedido explícito").
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
 | ~~T001~~ | `register_templates.feature`, regra "A client previews a template without sending an e-mail": cenário `Client previews a template with accented characters in the subject and body` (assunto `{{name}}, sua conta está pronta`, corpo `<p>Olá, {{name}}! Sua conta está pronta.</p>`, pré-visualização com `name = Ada`) e os passos novos em `RegisterTemplatesSteps`. Rodar contra o LocalStack e confirmar que falha pelo assunto | — | | — |
-| T002 | `MimeRenderedTemplateParser`: `Session.getInstance` com `mail.mime.allowutf8=true` no lugar de `Session.getDefaultInstance(new Properties())`; Javadoc atualizado (UTF-8 cru do LocalStack, RFC 2047 continua aceito). Confirmar T001 verde | T001 | | — |
-| T003 | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os branches de exceção adicionados ou alterados (esperado: nenhum; o `catch` do parser fica igual). Registrar abaixo | T002 | | — |
+| ~~T002~~ | `MimeRenderedTemplateParser`: `Session.getInstance` com `mail.mime.allowutf8=true` no lugar de `Session.getDefaultInstance(new Properties())`; Javadoc atualizado (UTF-8 cru do LocalStack, RFC 2047 continua aceito). Confirmar T001 verde | T001 | | — |
+| ~~T003~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os branches de exceção adicionados ou alterados (esperado: nenhum; o `catch` do parser fica igual). Registrar abaixo | T002 | | — |
 | T004 | Rodar `mvn -pl email-service -am verify` e `mvn -pl app -am verify` e confirmar verde | T002 | | — |
 | T005 | Caderno do email-service (`docs/disciplina/caderno-de-testes-email-service.md`, roteiro 2, passo 5): tirar a nota "Falha encontrada na execução de 2026-10-14" quando a correção estiver no `master` | T004 | | — |
 | T006 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T006)" abaixo e conferir os resultados esperados | T004 | | — |
@@ -68,3 +68,9 @@ Para derrubar: `docker compose down -v`.
   pronta"`, `but was: "Ada, sua conta estÃ¡ pronta"` (bytes conferidos no relatório do
   surefire). O passo do corpo não chega a rodar porque o do assunto falha antes; o corpo já sai
   certo hoje (diagnóstico do `plan.md`).
+- **T002** (2026-10-15): `MimeRenderedTemplateParser` passou a usar
+  `Session.getInstance` com `mail.mime.allowutf8=true`. `mvn -pl email-service -am verify`:
+  122 testes, 0 falhas, 2 pulados (`@requires-real-ses`); o cenário de T001 passou, com o
+  passo do corpo também verde.
+- **T003** (2026-10-15): nenhuma classe de exceção criada e nenhum branch de exceção
+  adicionado ou alterado; o `catch` do parser (`IllegalStateException`) ficou igual.
