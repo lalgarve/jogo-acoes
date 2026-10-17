@@ -51,8 +51,10 @@ openapi-python-client generate --path ../docs/openapi.yaml --output-path generat
 pip install -e generated_client/
 ```
 
-`openapi-python-client-config.yaml` só fixa o nome do pacote gerado (`jogo_acoes_client`) —
-sem ele, a ferramenta deriva um nome estranho a partir do `title` do contrato (que tem acento).
+`openapi-python-client-config.yaml` só fixa os nomes do pacote (`jogo_acoes_client`) e do projeto
+(`jogo-acoes-client`) gerados. Sem ele, a ferramenta deriva os dois do `title` do contrato
+(`Jogo de Ações API`), mantendo o `ç` e o `õ` e ainda partindo a palavra no meio
+(`jogo-de-açõ-es-api-client`), um nome que o `pip` recusa.
 
 ## Instalar as dependências da própria suíte
 
