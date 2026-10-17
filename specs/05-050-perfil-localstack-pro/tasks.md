@@ -39,6 +39,44 @@ No ambiente de nuvem da Claude (Docker 29.8), em 2026-10-17:
 dentro do container não confiam no certificado do proxy). Por isso as etapas a partir do
 `email-service` e o Pro com token válido ficam para T005 e T006.
 
+### LocalStack Pro com token válido, fora do Compose (2026-10-17, segunda sessão)
+
+Para contornar o proxy, a aplicação subiu sem o script e sem o overlay: o LocalStack Pro num
+container com rede `host` (alcança o proxy da sessão e ativa a licença), o resto como abaixo.
+Isso prova que a aplicação funciona com o Pro no lugar do Community; **não** cobre o caminho
+`docker-up.sh` + overlay, que continua em T006.
+
+- **Montagem:**
+  - build no host: `scripts/install-api-key-lib.sh` e `mvn -B package -DskipTests`;
+  - `db`, `db-email-service` e `dns` pelo `docker-compose.yml`;
+  - LocalStack Pro (`localstack/localstack-pro:4`, 4.14.0) com `--network host`, `HTTPS_PROXY` e
+    a CA do proxy montada, os scripts de `docker/localstack/init/` e o `function.zip`;
+    `LAMBDA_DOCKER_NETWORK=bridge` e `LAMBDA_DOCKER_FLAGS="--add-host
+    localhost.localstack.cloud:host-gateway"` para o Lambda;
+  - `config-server`, `email-service` (porta 8082) e `app` (perfis `docker,blackbox`) com
+    `java -jar` no host, com as variáveis do `docker-compose.yml` trocando nomes de serviço por
+    `localhost`, na ordem `restore` → `email-service` → `restore` → `app`.
+- **Resultado:**
+  - licença ativada (`Successfully requested and activated new license ... student`),
+    `_localstack/info` com `"edition": "pro"` e `"is_license_activated": true`;
+  - init completo: fila criada, `ses.VerifyEmailIdentity => 200`, `EmailLambda` `Active`,
+    *event source mapping* `Enabled`;
+  - os 5 templates `jogo-acoes__*` no SES depois da subida do `app`;
+  - `POST /api/login-requests` com `success+admin@simulator.amazonses.com`: `202` e, em ~10 s,
+    1 mensagem no SES com template `jogo-acoes__login-link` e o link de login;
+  - suíte de caixa-preta: `behave` 2/2 cenários (11 passos) e `pytest` 29/29.
+- **Problemas encontrados no caminho** (do ambiente de nuvem ou da montagem, não da spec):
+  - `LAMBDA_DOCKER_NETWORK=host` não funciona: "Unable to detect IP address ... in network host";
+  - recriar o LocalStack com o banco do `email-service` já preenchido deixa o SES sem templates
+    (`TemplateDoesNotExistException` no Lambda); resolvido subindo tudo do zero;
+  - na primeira rodada, 2 cenários do `behave` falharam porque um e-mail de um teste manual
+    anterior ficou no SES e a suíte leu um link já invalidado; passaram depois de
+    `DELETE /_aws/ses`;
+  - o cliente Python gerado era recusado pelo `pip` (`jogo-de-açõ-es-api-client`); corrigido
+    neste branch com `project_name_override` em `blackbox-tests/openapi-python-client-config.yaml`.
+
+A receita completa para sessões de nuvem virou a spec 05-052.
+
 ## Verificação manual
 
 Na raiz do repositório, no WSL, com o branch da implementação.
