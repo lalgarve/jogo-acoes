@@ -31,3 +31,7 @@ blackbox-tests/__pycache__/
 blackbox-tests/**/__pycache__/
 blackbox-tests/.pytest_cache/
 blackbox-tests/*.egg-info/
+
+# scripts/docker-up.sh's local configuration (spec 05-050) -- holds the LocalStack license token;
+# docker-up.conf.example is the committed template.
+docker-up.conf

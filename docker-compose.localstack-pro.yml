@@ -1,0 +1,15 @@
+# Spec 05-050 -- overlay, never used alone: `docker compose -f docker-compose.yml -f
+# docker-compose.localstack-pro.yml up` (or LOCALSTACK_PRO=true in docker-up.conf, read by
+# scripts/docker-up.sh). Swaps LocalStack Community for LocalStack Pro, same major version, same
+# services, ports and init scripts. Opt-in: Pro needs a license, so docker-compose.yml itself keeps
+# the Community image, which starts without one -- anyone without a token still runs the whole
+# stack, and CI never needs a secret.
+#
+# The token comes from the environment of whoever runs Compose, never from the repository. Without
+# it, Compose refuses to start anything with this overlay, instead of LocalStack starting and
+# quitting with exit code 55 ("License activation failed").
+services:
+  localstack:
+    image: localstack/localstack-pro:4
+    environment:
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:?LOCALSTACK_AUTH_TOKEN is required with docker-compose.localstack-pro.yml (set it in docker-up.conf or export it)}
