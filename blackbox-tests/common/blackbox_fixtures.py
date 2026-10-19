@@ -29,9 +29,12 @@ LOCALSTACK_URL = os.environ.get("LOCALSTACK_URL", "http://localhost:4566")
 # The real pipeline (app -> SQS -> Lambda event source mapping -> SES) is asynchronous --
 # measured delivery delay ranges from under a second up to ~4s (worse on the Lambda's first,
 # "cold" invocation). A single immediate read races this and fails almost every time, so
-# `last_email` polls instead of reading once.
+# `last_email` polls instead of reading once. The cold invocation is the long one: 19s measured on
+# 2026-10-19 between the send reaching the queue and SES, plus up to a second of email-service's
+# background publisher (spec 05-046). A shorter timeout fails the first scenario after start-up,
+# and its late e-mail is then read by the next scenario as if it were its own.
 _POLL_INTERVAL_SECONDS = 0.3
-_POLL_TIMEOUT_SECONDS = 10
+_POLL_TIMEOUT_SECONDS = 30
 
 # Every template that sends a link embeds it as <a href="...login-links...">. Matches whether
 # the href is a relative path or a full absolute URL (Issue #92 tracks fixing which one it is).
