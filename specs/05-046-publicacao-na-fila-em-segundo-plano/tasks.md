@@ -27,6 +27,8 @@ Issue-épico: a criar quando a spec for aprovada.
 | ~~T017~~ | Merge de `development` neste branch (`plan.md`, "Integração com 05-047/05-048"): `V4__add_delivery_state.sql` → `V7__add_delivery_state.sql`; resolver os conflitos mantendo a verificação do domínio no pedido e o fluxo `PENDING`. Confirmar `SchemaLayoutTest` verde | T014 | | — |
 | ~~T018~~ | `send_email.feature`: nas `Rule`s das specs 05-047 e 05-048, os casos aceitos esperam `202 PENDING` e depois `QUEUED`; os recusados continuam `422`, sem linha em `email_send` e sem nada na fila; "The DNS server does not answer" espera `202 PENDING`. Confirmar verdes | T017 | | — |
 | ~~T019~~ | `app`: conferir que o `422` de domínio (`RecipientDomainRejectedException`) continua traduzido no *gateway* com a resposta `202 PENDING` do `email-service`; `mvn -pl app -am verify` verde | T017 | [P] | — |
+| T020 | CI: aplicar a opção escolhida para isolar a suíte do `email-service` do container (`plan.md`, decisão em aberto) e confirmar o CI verde numa PR para `development` | T017 | | — |
+| T021 | Caixa-preta: aplicar a opção escolhida para a primeira entrega lenta (`plan.md`, decisão em aberto) e confirmar a suíte verde logo depois de uma subida do zero | T017 | [P] | — |
 | ~~T015~~ | Rodar a suíte completa do `email-service`, a do `email-lambda` e `mvn -pl app -am verify` (cliente Feign regenerado com o enum novo) — confirmar verde | T013, T014, T017–T019 | | — |
 | T016 | Verificação manual (Leila): rodar o roteiro "Roteiro da T016" abaixo e conferir os resultados esperados | T015 | | — |
 
@@ -121,19 +123,21 @@ DNS de teste do Compose, `config-server`/`email-service`/`app` com `java -jar` n
 - **T019**: `mvn -pl app -am verify`: 284 testes verdes, piso de cobertura atendido.
 - **T015**: `email-service`: 144 testes, 142 verdes e 2 ignorados (`@requires-real-ses`).
   `email-lambda`: 10 verdes. Suíte de caixa-preta (`scripts/cloud-blackbox-tests.sh`): `behave`
-  2/2 e `pytest` 29/29, inclusive logo depois da subida.
+  2/2 e `pytest` 29/29 com o Lambda já quente (ver o achado 2).
 - **Achado 1, CI**: com o `email-service` de pé, a suíte do `email-service` falhou (rajada da DLQ
   com 4 de 10 mensagens, desistência com `SES_REJECTED` no lugar de `QUEUE_UNAVAILABLE`, envio
   aceito sem mensagem na fila de teste). O publicador do serviço que está rodando lê o mesmo
   banco e publica os envios `PENDING` criados pela suíte na fila dele. O CI deixava o container
   do `email-service` no ar durante essa suíte e falharia do mesmo jeito; a implementação de
-  2026-10-14 nunca tinha rodado no CI. Correção: passo "Stop the email-service container" no
-  `ci.yml`, depois dos testes do `app` (`plan.md`). Com o serviço parado, 144 testes como acima.
+  2026-10-14 nunca tinha rodado no CI. Com o serviço parado, 144 testes como acima. Uma correção
+  no `ci.yml` (parar o container) chegou a ser commitada sem decisão da Leila e foi revertida; as
+  opções estão em `plan.md`, decisão em aberto, e a aplicação é a T020.
 - **Achado 2, suíte de caixa-preta**: a primeira rodada depois da subida falhou. A primeira
   entrega levou 19 s da fila ao SES (partida a frio do Lambda), passando do limite de 10 s de
-  `last_email`; o e-mail atrasado foi lido pelo cenário seguinte, com um link já invalidado.
-  `_POLL_TIMEOUT_SECONDS` passou para 30 s (`plan.md`). Conferido de novo com uma subida do zero:
-  verde na primeira rodada.
+  `last_email`; o e-mail atrasado foi lido pelo cenário seguinte, com um link já invalidado. Nas
+  rodadas seguintes, com o Lambda já quente, passou. Um aumento do limite para 30 s chegou a ser
+  commitado sem decisão da Leila e foi revertido; as opções estão em `plan.md`, decisão em
+  aberto, e a aplicação é a T021.
 
 - **Roteiros da T016 e da T013 da 05-044** (2026-10-14, reescritos conforme a seção
   "Verificação manual: comandos prontos para copiar" do constitution): os `curl`, `psql` e

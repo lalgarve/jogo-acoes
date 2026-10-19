@@ -1,7 +1,7 @@
 # Spec: Publicação na fila de envio em segundo plano
 
-**Status:** implementada, integrada às specs 05-047 e 05-048; falta a verificação manual (ver
-`tasks.md`)
+**Status:** implementada, integrada às specs 05-047 e 05-048; faltam duas decisões sobre o
+ambiente de teste (`plan.md`), as T020/T021 e a verificação manual (ver `tasks.md`)
 **Issue:** a criar (relacionada à [#144](https://github.com/lalgarve/jogo-acoes/issues/144))
 **Iteração:** iteration-5
 
