@@ -24,10 +24,10 @@ Issue-épico: a criar quando a spec for aprovada.
 | ~~T012~~ | `EmailSendHandler`: classifica as exceções do SES e publica na DLQ com `errorType`/`errorMessage`. Confirmar T005 verde | T005, T007 | | — |
 | ~~T013~~ | Documentação: `specs/05-031-servico-email-envio/spec.md` aponta o que a 05-046 substituiu; comentário de `EmailSendHandler` sobre a redrive; nota em `docs/context/iteracao-4.md`, decisão 4, de que foi substituída pela 05-046 | T009, T012 | [P] | — |
 | ~~T014~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas e removidas (esperado: nenhuma criada, `EmailQueuePublishException` removida) e os branches de exceção adicionados ou alterados (falha de publicação; cada tipo de erro da DLQ, inclusive sem atributo e sem linha para o `correlationId`; falha do SES na recriação; desistência; cada `catch` da Lambda; commit que falha depois de publicar); para cada um, apontar o teste que o exercita. O que não tiver teste é justificado em `plan.md` (já previsto: commit que falha depois de publicar) e avisado no chat ao abrir a PR. Registrar a lista aqui | T010–T012 | | — |
-| T017 | Merge de `development` neste branch (`plan.md`, "Integração com 05-047/05-048"): `V4__add_delivery_state.sql` → `V7__add_delivery_state.sql`; resolver os conflitos mantendo a verificação do domínio no pedido e o fluxo `PENDING`. Confirmar `SchemaLayoutTest` verde | T014 | | — |
-| T018 | `send_email.feature`: nas `Rule`s das specs 05-047 e 05-048, os casos aceitos esperam `202 PENDING` e depois `QUEUED`; os recusados continuam `422`, sem linha em `email_send` e sem nada na fila; "The DNS server does not answer" espera `202 PENDING`. Confirmar verdes | T017 | | — |
-| T019 | `app`: conferir que o `422` de domínio (`RecipientDomainRejectedException`) continua traduzido no *gateway* com a resposta `202 PENDING` do `email-service`; `mvn -pl app -am verify` verde | T017 | [P] | — |
-| T015 | Rodar a suíte completa do `email-service`, a do `email-lambda` e `mvn -pl app -am verify` (cliente Feign regenerado com o enum novo) — confirmar verde | T013, T014, T017–T019 | | — |
+| ~~T017~~ | Merge de `development` neste branch (`plan.md`, "Integração com 05-047/05-048"): `V4__add_delivery_state.sql` → `V7__add_delivery_state.sql`; resolver os conflitos mantendo a verificação do domínio no pedido e o fluxo `PENDING`. Confirmar `SchemaLayoutTest` verde | T014 | | — |
+| ~~T018~~ | `send_email.feature`: nas `Rule`s das specs 05-047 e 05-048, os casos aceitos esperam `202 PENDING` e depois `QUEUED`; os recusados continuam `422`, sem linha em `email_send` e sem nada na fila; "The DNS server does not answer" espera `202 PENDING`. Confirmar verdes | T017 | | — |
+| ~~T019~~ | `app`: conferir que o `422` de domínio (`RecipientDomainRejectedException`) continua traduzido no *gateway* com a resposta `202 PENDING` do `email-service`; `mvn -pl app -am verify` verde | T017 | [P] | — |
+| ~~T015~~ | Rodar a suíte completa do `email-service`, a do `email-lambda` e `mvn -pl app -am verify` (cliente Feign regenerado com o enum novo) — confirmar verde | T013, T014, T017–T019 | | — |
 | T016 | Verificação manual (Leila): rodar o roteiro "Roteiro da T016" abaixo e conferir os resultados esperados | T015 | | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
@@ -101,6 +101,39 @@ para a suíte do `app`, o `email-service` rodando no host (porta 8082) com o per
   nada é entregue) e 1 de `previewWithIncompleteDataIsRejectedWithoutRetrying` (0,30 s contra o
   limite de 0,2 s, com a máquina carregada; rodado sozinho, passou). Falta a confirmação num
   ambiente em que a Lambda roda (CI ou máquina local).
+
+## Registro da integração com as specs 05-047 e 05-048 (2026-10-19)
+
+Na sessão de nuvem da Claude, com `scripts/cloud-up.sh` (spec 05-052: LocalStack Pro, Postgres e
+DNS de teste do Compose, `config-server`/`email-service`/`app` com `java -jar` no host).
+
+- **T017**: merge de `development` (55 commits). Migration renumerada para
+  `V7__add_delivery_state.sql`; o Flyway aplica V1–V7 num banco novo. Conflitos resolvidos:
+  `EmailSendService` (remetente, template e `RecipientDomainVerifier.verify` antes de gravar
+  `PENDING`), `ApiExceptionHandler` (fica o `422` de domínio, sai o `503`),
+  `docs/openapi-email-service.yaml` (`POST /emails` com `422` e sem `503`), os dois
+  `application.yml` (chaves das três specs juntas) e `RegisterTemplatesSteps` (passos das duas
+  linhas).
+- **T018**: nas `Rule`s da 05-047, os cinco "the send is accepted as queued" viraram "the send is
+  accepted as pending" seguido de "the send is recorded as queued with no template data kept".
+  Os casos recusados (05-047 e 05-048) continuam `422`, sem linha em `email_send` e sem nada na
+  fila, sem mudança.
+- **T019**: `mvn -pl app -am verify`: 284 testes verdes, piso de cobertura atendido.
+- **T015**: `email-service`: 144 testes, 142 verdes e 2 ignorados (`@requires-real-ses`).
+  `email-lambda`: 10 verdes. Suíte de caixa-preta (`scripts/cloud-blackbox-tests.sh`): `behave`
+  2/2 e `pytest` 29/29, inclusive logo depois da subida.
+- **Achado 1, CI**: com o `email-service` de pé, a suíte do `email-service` falhou (rajada da DLQ
+  com 4 de 10 mensagens, desistência com `SES_REJECTED` no lugar de `QUEUE_UNAVAILABLE`, envio
+  aceito sem mensagem na fila de teste). O publicador do serviço que está rodando lê o mesmo
+  banco e publica os envios `PENDING` criados pela suíte na fila dele. O CI deixava o container
+  do `email-service` no ar durante essa suíte e falharia do mesmo jeito; a implementação de
+  2026-10-14 nunca tinha rodado no CI. Correção: passo "Stop the email-service container" no
+  `ci.yml`, depois dos testes do `app` (`plan.md`). Com o serviço parado, 144 testes como acima.
+- **Achado 2, suíte de caixa-preta**: a primeira rodada depois da subida falhou. A primeira
+  entrega levou 19 s da fila ao SES (partida a frio do Lambda), passando do limite de 10 s de
+  `last_email`; o e-mail atrasado foi lido pelo cenário seguinte, com um link já invalidado.
+  `_POLL_TIMEOUT_SECONDS` passou para 30 s (`plan.md`). Conferido de novo com uma subida do zero:
+  verde na primeira rodada.
 
 - **Roteiros da T016 e da T013 da 05-044** (2026-10-14, reescritos conforme a seção
   "Verificação manual: comandos prontos para copiar" do constitution): os `curl`, `psql` e

@@ -1,7 +1,7 @@
 # Spec: Publicação na fila de envio em segundo plano
 
-**Status:** implementada sem a verificação do domínio do destinatário (specs 05-047 e 05-048, que
-chegaram ao `development` depois); falta integrar (T017–T019) e a verificação manual (ver `tasks.md`)
+**Status:** implementada, integrada às specs 05-047 e 05-048; falta a verificação manual (ver
+`tasks.md`)
 **Issue:** a criar (relacionada à [#144](https://github.com/lalgarve/jogo-acoes/issues/144))
 **Iteração:** iteration-5
 
