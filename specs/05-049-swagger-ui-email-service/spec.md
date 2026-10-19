@@ -1,7 +1,7 @@
 # Spec: Swagger UI no Serviço de E-mail
 
 **Status:** rascunho
-**Issue:** a criar
+**Issue:** [#188](https://github.com/lalgarve/jogo-acoes/issues/188)
 **Iteração:** iteration-5
 
 ## Resumo
@@ -64,12 +64,12 @@ comportamento da API de e-mail (mesmo caso do Swagger UI do `app`, que também n
 - Mudar o Swagger UI do `app`.
 - Interface web própria para operações (listas de e-mail temporário).
 
+## Decisões resolvidas
+
+- **Só no `docker`** (Leila, 2026-10-19): o Swagger UI e o contrato servido por ele ficam
+  ligados só no ambiente `docker` e desligados em `staging` e `production`, pelo `config-repo`.
+  Alternativa descartada: ligado em todos os ambientes, como o do `app`.
+
 ## Decisões em aberto
 
-- **Em quais ambientes o Swagger UI fica ligado.** O do `app` fica ligado em todos, inclusive
-  `staging` e `production`. Opções para o `email-service`:
-  1. igual ao `app`, em todos os ambientes;
-  2. só no `docker`, desligado em `staging` e `production` pelo `config-repo`.
-
-  Nas duas, as chamadas pela tela exigem a chave; a diferença é só se a tela e o contrato ficam
-  abertos fora do ambiente de teste.
+Nenhuma.

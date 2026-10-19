@@ -9,9 +9,9 @@ Issue-épico: a criar quando a spec for aprovada.
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Resolver a decisão em aberto de `spec.md` (ambientes) e registrar com commit `decision:` | — | | — |
+| ~~T001~~ | Resolver a decisão em aberto de `spec.md` (ambientes) e registrar com commit `decision:` | — | | — |
 | T002 | `SwaggerUiAccessTest` (`plan.md`, "Decisões de arquitetura", linha "Teste"). Confirmar que falha com `401` na tela e no contrato | — | [P] | — |
-| T003 | `email-service/pom.xml` (springdoc e cópia do contrato), bloco `springdoc` no `application.yml`, `shouldNotFilter` no `ApiKeyAuthenticationFilter`; `config-repo/` se T001 decidir "só `docker`". Confirmar T002 verde e a suíte do serviço verde | T001, T002 | | — |
+| T003 | `email-service/pom.xml` (springdoc e cópia do contrato), bloco `springdoc` no `application.yml`, `shouldNotFilter` no `ApiKeyAuthenticationFilter`; `config-repo/` (desligado em `staging` e `production`, T001). Confirmar T002 verde e a suíte do serviço verde | T001, T002 | | — |
 | T004 | `README.md`: endereço do Swagger UI do `email-service` | T003 | [P] | — |
 | T005 | Caderno de testes do Serviço de E-mail: passos de chamada à API no Swagger UI (JSON em bloco ` ```json `, chave no **Authorize**), endereço na tabela de programas; `chamar.sh` sai ou fica como alternativa | T003 | [P] | — |
 | T006 | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): nenhuma classe de exceção nova; o branch novo é o `shouldNotFilter` (caminho liberado e caminho da API barrado), coberto pela T002. Registrar aqui | T003 | | — |

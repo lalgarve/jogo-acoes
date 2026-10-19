@@ -33,7 +33,7 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 | Contrato servido | `maven-resources-plugin` copia `../docs/openapi-email-service.yaml` para `static/` com o nome `openapi.yaml` (`copy-resources` com renomeação pelo `maven-antrun-plugin` ou `copy-rename`; conferir na implementação o jeito mais simples) | proposta | Mesmo arquivo que o gerador de código lê: o contrato da tela nunca diverge do implementado. Nome `openapi.yaml` igual ao do `app`. |
 | Configuração do springdoc | Bloco `springdoc` no `application.yml` do serviço, igual ao do `app`: `packages-to-scan: dev.leilaalgarve.jogoacoes.emailservice.__no_annotation_scanning__`, `swagger-ui.url: ${server.servlet.context-path}/openapi.yaml`, `swagger-ui.persist-authorization: true` | proposta | As duas primeiras pelos motivos registrados no `app`. `persist-authorization` guarda a chave no navegador entre recargas (requisito da chave na tela). |
 | Rotas abertas | `ApiKeyAuthenticationFilter.shouldNotFilter`: `true` para o `servletPath` igual a `/openapi.yaml` ou `/swagger-ui.html`, ou começando com `/swagger-ui/` ou `/v3/api-docs` | proposta | O filtro é o único ponto que barra; o `PermissionInterceptor` já deixa passar rota sem permissão mapeada. Lista fechada de caminhos, em vez de "tudo que não é API", para nenhuma rota nova nascer aberta por engano. |
-| Ambientes | Ver `spec.md`, "Decisões em aberto". Se for só `docker`: `springdoc.swagger-ui.enabled: false` em `config-repo/email-service-staging.yml` e `-production.yml`, e o filtro continua liberando os caminhos (sem a tela, eles respondem `404`) | em aberto | — |
+| Ambientes | Só `docker`: `springdoc.swagger-ui.enabled: false` e `springdoc.api-docs.enabled: false` em `config-repo/email-service-staging.yml` e `-production.yml`; o filtro continua liberando os caminhos (sem a tela e sem o contrato, eles respondem `404`) | resolvida (Leila, 2026-10-19) | Fora do ambiente de teste, nem a tela nem o contrato ficam abertos. |
 | Teste | `SwaggerUiAccessTest` (JUnit, contexto Spring na porta aleatória, RestAssured, mesma infraestrutura dos testes do serviço): `GET /api/swagger-ui.html` e `GET /api/openapi.yaml` sem chave → `200` (o YAML com `title: Serviço de E-mail`); `GET /api/v3/api-docs/swagger-config` sem chave → `200`; `GET /api/templates` sem chave → `401`; `GET /api/v3/api-docs` sem chave → sem nenhuma rota do serviço (nada gerado pelas anotações) | proposta | Cobre os três cenários de `spec.md`. Constitution, "Testes: preferir real a fake": servidor de verdade, sem mock do filtro. |
 
 ## Estrutura de módulos/pacotes
@@ -42,8 +42,7 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 - `email-service/src/main/resources/application.yml`: bloco `springdoc`.
 - `email-service/src/main/java/.../auth/ApiKeyAuthenticationFilter.java`: `shouldNotFilter`.
 - `email-service/src/test/java/.../common/SwaggerUiAccessTest.java`.
-- `config-repo/email-service-staging.yml`, `-production.yml`: só se a decisão de ambientes for
-  "só `docker`".
+- `config-repo/email-service-staging.yml`, `-production.yml`: Swagger UI e contrato desligados.
 - `README.md`: endereço do Swagger UI do `email-service` ao lado do do `app`.
 - `docs/disciplina/caderno-de-testes-email-service.md`: os passos de chamada à API passam para o
   Swagger UI; `chamar.sh` sai do caderno (ou fica como alternativa, ver "Riscos").
@@ -59,8 +58,6 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 
 - **Rota aberta por engano.** Um caminho novo que comece com `/swagger-ui/` ou `/v3/api-docs`
   ficaria sem chave. Aceitável: são prefixos do springdoc, nenhuma rota do serviço usa.
-- **Contrato público fora do `docker`** (se a decisão for ligar em todos os ambientes): o
-  contrato já está no repositório; a tela não dá acesso a nada sem chave.
 - **Ids entre passos no caderno.** No Swagger UI, o id de um repositório ou de uma execução é
   copiado à mão da resposta para o passo seguinte, como o id de competição no caderno do
   `jogo-acoes`. O `esperar-importacao.sh` continua como atalho para a espera da importação.
