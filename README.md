@@ -265,6 +265,32 @@ num volume novo. Num volume antigo as tabelas continuam no `public` e o Flyway r
 schema novo, deixando as antigas órfãs. O sistema está em pré-produção, então não há dado a
 preservar (a chave de API de teste se restaura com `./scripts/test-api-key.sh restore`).
 
+### Numa sessão do Claude Code na nuvem
+
+Numa sessão de nuvem da Claude, nem o `docker compose up` nem o `docker-up.sh` funcionam: a sessão
+só sai para a internet por um proxy em `127.0.0.1`, que os containers da rede do Compose não
+alcançam (o Maven dos `Dockerfile`s não baixa dependências e o LocalStack Pro não ativa a licença).
+Lá, o ambiente sobe com outros scripts (spec 05-052):
+
+```
+./scripts/cloud-up.sh               # compila no host e sobe tudo do zero, com LocalStack Pro
+./scripts/cloud-up.sh --no-build    # sobe de novo com os artefatos já compilados
+./scripts/cloud-blackbox-tests.sh   # roda a suíte blackbox-tests/ (behave e pytest)
+./scripts/cloud-down.sh             # derruba tudo, com os volumes
+```
+
+O `cloud-up.sh` compila no host, sobe `db`, `db-email-service` e `dns` pelo `docker-compose.yml`, o
+LocalStack Pro num container com a rede do host e `config-server`, `email-service` e `app` (perfis
+`docker,blackbox`) com `java -jar`, nos mesmos endereços da tabela abaixo. Precisa do
+`LOCALSTACK_AUTH_TOKEN` nas variáveis do ambiente de nuvem; sem ele, para com erro (não troca para
+o LocalStack Community). Logs e PIDs ficam em `/tmp/jogo-acoes-cloud` (ou em
+`JOGO_ACOES_CLOUD_DIR`). Toda subida começa do zero, porque um LocalStack novo ao lado de um banco
+do `email-service` já preenchido fica sem os templates no SES. Fora da nuvem, o script recusa
+rodar e indica o `docker-up.sh`.
+
+As variáveis dos serviços ficam copiadas no `cloud-up.sh`: ao mudar uma variável de `app`,
+`email-service`, `config-server` ou `localstack` nos `docker-compose*.yml`, mude lá também.
+
 ## Endereços dos serviços
 
 Com `docker compose up` (e o overlay `blackbox`, quando indicado), cada serviço fica publicado

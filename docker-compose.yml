@@ -1,3 +1,6 @@
+# Spec 05-052: in a Claude Code cloud session, scripts/cloud-up.sh runs config-server, email-service
+# and app with `java -jar` and LocalStack with `docker run`, copying these services' variables. When
+# a variable of localstack, config-server, email-service or app changes here, change it there too.
 services:
   db:
     image: postgres:16
