@@ -7,7 +7,7 @@ Issue-épico: a criar.
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Ter o `project_name_override` do cliente gerado neste branch: pelo merge da spec 05-050 em `master` (commit `12924d7`) ou trazendo o commit para cá | — | [P] | — |
+| T001 | Ter o `project_name_override` do cliente gerado neste branch: esperar o merge da PR #178 (spec 05-050) em `development` e fazer merge de `development` aqui. Decisão da Leila (2026-10-19): a correção fica só naquela PR, sem copiar o commit | — | [P] | — |
 | T002 | `scripts/cloud-down.sh`: encerrar os processos Java pelos PIDs gravados, remover o LocalStack e os containers do Lambda, `docker compose down -v`; idempotente | — | [P] | — |
 | T003 | `scripts/cloud-up.sh`: checagem da sessão de nuvem, `cloud-down.sh`, `dockerd`, build (`--no-build`), Compose, LocalStack com espera do init, `restore`/`email-service`/`restore`/`app` com espera e log em caso de falha | T002 | | — |
 | T004 | `scripts/cloud-blackbox-tests.sh`: venv e cliente gerado na pasta de estado, `DELETE /_aws/ses`, `behave` e `pytest` | T001 | [P] | — |
