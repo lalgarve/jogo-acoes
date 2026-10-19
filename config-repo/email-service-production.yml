@@ -37,3 +37,10 @@ logging:
 email:
   disposable-domains:
     import-cron: "0 0 4 * * *"
+
+# Spec 05-049: the Swagger UI and the contract it serves are for the docker environment only.
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
