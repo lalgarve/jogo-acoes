@@ -202,6 +202,57 @@ Para rodar localmente com Postgres real:
 docker compose up
 ```
 
+### Subir o ambiente inteiro com `scripts/docker-up.sh`
+
+`docker compose up` sozinho não deixa o ambiente pronto: a chave de API de teste precisa ser
+restaurada antes do `email-service` e de novo depois dele (senão o `email-service` responde 401
+e o `app` não sobe). O script `scripts/docker-up.sh` (spec
+[05-050](specs/05-050-perfil-localstack-pro/spec.md)) faz essa sequência na ordem certa, com as
+opções lidas de um arquivo de configuração:
+
+```
+./scripts/docker-up.sh           # sobe tudo
+./scripts/docker-up.sh --reset   # docker compose down -v antes: bancos vazios
+```
+
+Sem configurar nada, ele usa o modelo versionado `docker-up.conf.example`: overlay `blackbox`,
+LocalStack Community (sem token), rebuild das imagens e as ferramentas web (Adminer,
+`ses-viewer`, `log-viewer`). Para mudar alguma opção, copie o modelo para o arquivo local, que
+não é versionado (`.gitignore`), e edite a cópia:
+
+```
+cp docker-up.conf.example docker-up.conf
+```
+
+| Chave | Padrão do modelo | O que faz |
+|---|---|---|
+| `BLACKBOX` | `true` | Empilha `docker-compose.blackbox.yml` (captcha aceito, administrador semeado, JaCoCo) |
+| `LOCALSTACK_PRO` | `false` | Usa o LocalStack Pro (`docker-compose.localstack-pro.yml`) no lugar do Community |
+| `LOCALSTACK_AUTH_TOKEN` | vazio | Token da licença do LocalStack, só com `LOCALSTACK_PRO=true`; vazio, vale o `LOCALSTACK_AUTH_TOKEN` exportado no shell |
+| `BUILD` | `true` | `--build`: reconstrói as imagens a partir do checkout |
+| `TOOLS` | `true` | Sobe também `adminer`, `ses-viewer` e `log-viewer` |
+
+No fim, o script mostra o `export COMPOSE_FILE=...` com os mesmos arquivos, para os outros
+comandos `docker compose` (`logs`, `exec`, `down`) no mesmo shell.
+
+#### LocalStack Pro (opcional)
+
+O `docker-compose.yml` usa o LocalStack Community (`localstack/localstack:4`), que sobe sem
+conta nem token: quem não tem licença roda tudo normalmente, e o CI também. Quem tem licença
+pode usar o LocalStack Pro (`localstack/localstack-pro:4`, mesma versão) com
+`LOCALSTACK_PRO=true` e o token em `docker-up.conf` (o token vem do
+[painel do LocalStack](https://app.localstack.cloud); nunca no `docker-up.conf.example`).
+
+Sem o script, o overlay também funciona direto, com o token exportado:
+
+```
+export LOCALSTACK_AUTH_TOKEN=<seu token>
+docker compose -f docker-compose.yml -f docker-compose.localstack-pro.yml up
+```
+
+Sem token, o Compose recusa o comando com esse overlay. Com token inválido, o LocalStack Pro para
+na subida (`License activation failed!` no log dele); o `docker-up.sh` mostra essas linhas.
+
 **Ao atualizar de uma versão anterior à spec 05-032**, recrie os volumes uma vez:
 
 ```
