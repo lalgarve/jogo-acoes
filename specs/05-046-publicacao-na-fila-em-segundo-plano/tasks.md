@@ -6,7 +6,7 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 **Ordem:** testes do comportamento novo primeiro, falhando pelo motivo esperado; depois as
 correções. Depende da spec 05-044 (`SesTemplateClient.createIfAbsent`) para a T011.
 
-Issue-épico: a criar quando a spec for aprovada.
+Issue-épico: [#185](https://github.com/lalgarve/jogo-acoes/issues/185).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
