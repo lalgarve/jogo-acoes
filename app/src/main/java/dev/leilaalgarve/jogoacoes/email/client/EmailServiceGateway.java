@@ -11,6 +11,7 @@ import dev.leilaalgarve.jogoacoes.email.client.api.model.TemplatePreviewResponse
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceAuthenticationException;
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceRejectedException;
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceUnavailableException;
+import dev.leilaalgarve.jogoacoes.email.exception.RecipientDomainRejectedException;
 import feign.FeignException;
 import feign.RetryableException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -49,6 +50,8 @@ public class EmailServiceGateway {
      * Asks email-service to send one e-mail from one of app's templates and returns the id it
      * gave the send (202). Never retried: POST /emails has no idempotency until Stage 4, so a
      * retry after a lost response could send the e-mail twice (spec 05-034).
+     *
+     * @throws RecipientDomainRejectedException when the recipient's domain does not accept e-mail
      */
     public UUID sendEmail(String templateName, String recipientEmail, Map<String, Object> templateData) {
         requireName(templateName);
@@ -56,6 +59,10 @@ public class EmailServiceGateway {
             return emails.sendEmail(new SendEmailRequest()
                             .templateName(templateName).recipientEmail(recipientEmail).templateData(templateData))
                     .getBody().getId();
+        } catch (FeignException.UnprocessableEntity e) {
+            // Spec 05-047: the only 422 POST /emails answers -- the recipient's domain.
+            throw new RecipientDomainRejectedException("email-service rejected the recipient's domain on POST /emails ("
+                    + templateName + "): " + e.contentUTF8(), e);
         } catch (FeignException e) {
             throw translate("POST /emails (" + templateName + ")", e);
         }

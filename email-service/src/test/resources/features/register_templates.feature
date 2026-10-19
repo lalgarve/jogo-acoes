@@ -69,6 +69,12 @@ Feature: Register e-mail templates
       Then the system returns the rendered subject and body
       And no e-mail is sent
 
+    Scenario: Client previews a template with accented characters in the subject and body
+      Given they already registered a template named "welcome-pt" with subject "{{name}}, sua conta está pronta" and body "<p>Olá, {{name}}! Sua conta está pronta.</p>"
+      When they preview the template named "welcome-pt" with sample data
+      Then the rendered subject is "Ada, sua conta está pronta"
+      And the rendered body is "<p>Olá, Ada! Sua conta está pronta.</p>"
+
     Scenario: Client tries to preview a template that does not exist
       When they try to preview a template named "missing"
       Then the system shows an error that the template does not exist

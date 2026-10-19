@@ -19,7 +19,8 @@ import java.io.IOException;
 /**
  * Validates {@code X-API-Key} with the api-key library on every request (spec 05-030,
  * alternative A of its HTTP integration guide). A valid key's client name goes into the
- * {@link #CLIENT_NAME_ATTRIBUTE} request attribute, which {@link ClientIdentityResolver} reads.
+ * {@link #CLIENT_NAME_ATTRIBUTE} request attribute, which {@link ClientIdentityResolver} reads, and its
+ * permissions into {@link #PERMISSIONS_ATTRIBUTE} (spec 05-048).
  *
  * <p>Every rejection answers the same 401 body, whatever the reason (plan.md, "Política de
  * resposta"): a caller never learns whether a key existed once. The exact reason is logged, the
@@ -30,6 +31,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     public static final String API_KEY_HEADER = "X-API-Key";
     public static final String CLIENT_NAME_ATTRIBUTE = "apiKey.clientName";
+    /** Spec 05-048: the valid key's permissions, which {@link PermissionInterceptor} checks. */
+    public static final String PERMISSIONS_ATTRIBUTE = "apiKey.permissions";
 
     private static final Logger log = LoggerFactory.getLogger(ApiKeyAuthenticationFilter.class);
 
@@ -47,6 +50,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         switch (validator.validate(request.getHeader(API_KEY_HEADER))) {
             case ApiKeyValidationResult.Valid valid -> {
                 request.setAttribute(CLIENT_NAME_ATTRIBUTE, valid.clientName());
+                request.setAttribute(PERMISSIONS_ATTRIBUTE, valid.permissions());
                 filterChain.doFilter(request, response);
             }
             case ApiKeyValidationResult.Invalid invalid -> {

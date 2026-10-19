@@ -1,6 +1,11 @@
 package dev.leilaalgarve.jogoacoes.emailservice.common;
 
 import dev.leilaalgarve.jogoacoes.emailservice.api.model.Error;
+import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainImportAlreadyRunningException;
+import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainImportNotFoundException;
+import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainSourceAlreadyExistsException;
+import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainSourceNotFoundException;
+import dev.leilaalgarve.jogoacoes.emailservice.domain.RecipientDomainRejectedException;
 import dev.leilaalgarve.jogoacoes.emailservice.send.SenderNotConfiguredException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.SesUnavailableException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateAlreadyExistsException;
@@ -45,6 +50,24 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(SenderNotConfiguredException.class)
     public ResponseEntity<Error> handleSenderNotConfigured(SenderNotConfiguredException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new Error().message(ex.getMessage()));
+    }
+
+    /** Spec 05-047/05-048: the recipient's domain does not accept e-mail, or is disposable. */
+    @ExceptionHandler(RecipientDomainRejectedException.class)
+    public ResponseEntity<Error> handleRecipientDomainRejected(RecipientDomainRejectedException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(new Error().message(ex.getMessage()));
+    }
+
+    @ExceptionHandler({DisposableDomainSourceNotFoundException.class, DisposableDomainImportNotFoundException.class})
+    public ResponseEntity<Error> handleDisposableDomainNotFound(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Error().message(ex.getMessage()));
+    }
+
+    /** Spec 05-048: the URL is already registered, or an import of the repository is running. */
+    @ExceptionHandler({DisposableDomainSourceAlreadyExistsException.class,
+            DisposableDomainImportAlreadyRunningException.class})
+    public ResponseEntity<Error> handleDisposableDomainConflict(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new Error().message(ex.getMessage()));
     }
 

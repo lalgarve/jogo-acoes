@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Serviço de E-mail
-  version: "0.2.0"
+  version: "0.3.0"
   description: >
     Contrato API-first do Serviço de E-mail (Iteração 5). Escrito antes de qualquer
     controller — a implementação do módulo `email-service` segue este contrato.
@@ -15,9 +15,18 @@ info:
       (SendTemplatedEmail). O endpoint responde assim que a mensagem é enfileirada, não quando
       o e-mail é entregue.
 
+    - Domínios de e-mail temporário (specs/05-048-importacao-listas-email-temporario): cadastro
+      dos repositórios de listas e execução do lote (Spring Batch) que as importa; o envio
+      recusa destinatários desses domínios.
+
     Autenticação por API-KEY validada pela biblioteca `api-key-validation`
     (specs/05-030-validacao-api-key-servico-email): formato, hash, expiração e revogação. O
     cliente dono dos templates e dos envios é aquele para o qual a chave foi emitida.
+
+    Permissões (api-key 1.1.0, spec 05-048): cada chave tem permissões, e cada rota exige a sua.
+    `email:send` (padrão das chaves emitidas antes da 1.1.0) libera `/templates` e `/emails`;
+    `disposable-email:admin` libera `/disposable-domain-sources` e
+    `/disposable-domain-imports`. Chave válida sem a permissão da rota recebe 403.
 servers:
   - url: /api
 
@@ -26,6 +35,10 @@ tags:
     description: Cadastro e pré-visualização de templates (spec 05-025)
   - name: emails
     description: Envio de e-mail a partir de um template cadastrado (spec 05-031)
+  - name: disposable-domains
+    description: >
+      Repositórios das listas de domínios de e-mail temporário e execução do lote que as importa
+      (spec 05-048). Exige a permissão disposable-email:admin.
 
 security:
   - ApiKeyAuth: []
@@ -51,6 +64,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/MissingEmailSendPermission'
     post:
       tags: [templates]
       operationId: createTemplate
@@ -80,6 +95,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/MissingEmailSendPermission'
         '409':
           description: A template with this name already exists for this client
           content:
@@ -127,6 +144,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/MissingEmailSendPermission'
         '404':
           description: No template with this name for this client
           content:
@@ -161,6 +180,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/MissingEmailSendPermission'
         '404':
           description: No template with this name for this client
           content:
@@ -214,6 +235,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/MissingEmailSendPermission'
         '404':
           description: No template with this name for this client
           content:
@@ -252,6 +275,16 @@ paths:
         being down fails this call. A later delivery failure (bounce, complaint) is not
         reported back by this endpoint. The returned id travels with the message as its
         correlationId (and as the SES message tag `correlationId`).
+
+        Before anything is recorded or queued, the recipient's domain must accept e-mail
+        (spec 05-047): a domain on the service's whitelist passes at once; any other is looked up
+        in DNS (MX, then A/AAAA when there is no MX) and, if approved, joins the whitelist. A
+        domain that does not exist, has neither MX nor address, or declares a null MX is
+        rejected with 422. When DNS does not answer, the send is accepted and the domain is not
+        whitelisted.
+
+        Before the whitelist and DNS (spec 05-048): a domain on the imported disposable e-mail
+        lists, or any subdomain of one, is rejected with 422.
       requestBody:
         required: true
         content:
@@ -279,6 +312,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/MissingEmailSendPermission'
         '404':
           description: No template with this name for this client
           content:
@@ -293,8 +328,167 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '422':
+          description: >
+            The recipient's domain does not accept e-mail (spec 05-047), or it is (or is under) a
+            disposable e-mail domain imported by the batch (spec 05-048) -- nothing was recorded
+            or queued. The message says which.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /disposable-domain-sources:
+    get:
+      tags: [disposable-domains]
+      operationId: listDisposableDomainSources
+      summary: List the repositories of disposable e-mail domain lists
+      responses:
+        '200':
+          description: Every repository, with its last download, last database update and last import
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DisposableDomainSource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/MissingDisposableEmailAdminPermission'
+    post:
+      tags: [disposable-domains]
+      operationId: createDisposableDomainSource
+      summary: Add a repository of a disposable e-mail domain list
+      description: >
+        The URL points at a plain-text file, one domain per line (the format of
+        disposable-email-domains); blank lines and lines starting with # are ignored. Nothing is
+        downloaded until an import runs.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisposableDomainSourceCreateRequest'
+      responses:
+        '201':
+          description: Created -- not downloaded yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisposableDomainSource'
+        '400':
+          description: URL missing or not http/https, or description missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/MissingDisposableEmailAdminPermission'
+        '409':
+          description: A repository with this URL already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /disposable-domain-imports:
+    post:
+      tags: [disposable-domains]
+      operationId: startDisposableDomainImport
+      summary: Run the import of one repository, or of all of them
+      description: >
+        Starts one execution of the batch per repository and answers at once; the imports run in
+        the background. Each execution downloads the list, and when it changed since the last
+        import that updated the database, adds the new domains and removes the ones that left
+        it. A repository that fails changes nothing and does not stop the others.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisposableDomainImportRequest'
+      responses:
+        '202':
+          description: Accepted -- one execution per repository
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisposableDomainImportStarted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/MissingDisposableEmailAdminPermission'
+        '404':
+          description: No repository with this sourceId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: An import of one of these repositories is already running -- nothing was started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /disposable-domain-imports/{executionId}:
+    parameters:
+      - name: executionId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [disposable-domains]
+      operationId: getDisposableDomainImport
+      summary: Status and counts of one import execution
+      responses:
+        '200':
+          description: The execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisposableDomainImport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/MissingDisposableEmailAdminPermission'
+        '404':
+          description: No import execution with this id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
+  responses:
+    Unauthorized:
+      description: Missing or invalid X-API-Key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    MissingEmailSendPermission:
+      description: >
+        The key is valid but lacks the permission email:send (spec 05-048) -- message
+        "Missing permission: email:send"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    MissingDisposableEmailAdminPermission:
+      description: >
+        The key is valid but lacks the permission disposable-email:admin (spec 05-048) -- message
+        "Missing permission: disposable-email:admin"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
@@ -409,3 +603,85 @@ components:
             mensagem está na fila. FAILED: o email-service desistiu (o SES recusou o e-mail, ou ele
             não saiu em 24 horas).
 
+    DisposableDomainSourceCreateRequest:
+      type: object
+      required: [url, description]
+      properties:
+        url:
+          type: string
+          maxLength: 2048
+          pattern: '^https?://\S+$'
+          description: Address of the list file, http or https
+        description:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '.*\S.*'
+
+    DisposableDomainSource:
+      type: object
+      required: [id, url, description, domainCount]
+      properties:
+        id: { type: integer, format: int64 }
+        url: { type: string }
+        description: { type: string }
+        lastDownloadedAt:
+          type: string
+          format: date-time
+          description: Last successful download, even when the list had not changed; null before the first
+        lastUpdatedAt:
+          type: string
+          format: date-time
+          description: Last import that added or removed a domain of this repository; null before the first
+        domainCount:
+          type: integer
+          format: int64
+          description: Domains this repository has in the table now
+        lastImport:
+          description: Latest import of this repository; null before the first
+          allOf:
+            - $ref: '#/components/schemas/DisposableDomainImportSummary'
+
+    DisposableDomainImportSummary:
+      type: object
+      required: [executionId, sourceId, status]
+      properties:
+        executionId: { type: integer, format: int64 }
+        sourceId: { type: integer, format: int64 }
+        status: { type: string, description: "STARTING, STARTED, COMPLETED, FAILED, STOPPED, ..." }
+        endTime: { type: string, format: date-time }
+        exitMessage: { type: string }
+
+    DisposableDomainImportRequest:
+      type: object
+      properties:
+        sourceId:
+          type: integer
+          format: int64
+          description: Only this repository; absent means every repository
+
+    DisposableDomainImportStarted:
+      type: object
+      required: [imports]
+      properties:
+        imports:
+          type: array
+          items:
+            $ref: '#/components/schemas/DisposableDomainImportSummary'
+
+    DisposableDomainImport:
+      type: object
+      required: [executionId, sourceId, status, read, skipped, added, removed]
+      properties:
+        executionId: { type: integer, format: int64 }
+        sourceId: { type: integer, format: int64 }
+        status: { type: string, description: "STARTING, STARTED, COMPLETED, FAILED, STOPPED, ..." }
+        startTime: { type: string, format: date-time }
+        endTime: { type: string, format: date-time }
+        read: { type: integer, format: int64, description: Lines read from the list }
+        skipped: { type: integer, format: int64, description: Lines that are not a domain (blank lines and comments are not counted) }
+        added: { type: integer, format: int64, description: Domains this repository gained }
+        removed: { type: integer, format: int64, description: Domains this repository lost }
+        exitMessage:
+          type: string
+          description: Why it failed, or UNCHANGED when the list had not changed

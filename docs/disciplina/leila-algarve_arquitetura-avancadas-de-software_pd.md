@@ -1,5 +1,23 @@
 # **Projeto Jogo de Ações**
 
+# Repositório e versões entregues
+
+O código, as especificações e a documentação do projeto estão no repositório https://github.com/lalgarve/jogo-acoes. Cada etapa da disciplina está marcada por uma *tag*, que guarda o estado do repositório ao fim da etapa:
+
+| Etapa | *Tag* |
+| :---- | :---- |
+| Etapa 1 — Organização Arquitetural | https://github.com/lalgarve/jogo-acoes/tree/etapa-1 |
+| Etapa 2 — Separação e Comunicação entre Serviços | https://github.com/lalgarve/jogo-acoes/tree/etapa-2 |
+| Etapa 3 — Configuração e Execução dos Serviços | https://github.com/lalgarve/jogo-acoes/tree/etapa-3 |
+| Etapa 4 — Comunicação Assíncrona e Processamento em Lote | https://github.com/lalgarve/jogo-acoes/tree/etapa-4 |
+
+A biblioteca de validação de API-Key usada pelo Serviço de E-mail foi desenvolvida em um repositório separado: https://github.com/lalgarve/api-key.
+
+Os apêndices trazem versões resumidas dos cadernos de testes manuais. As versões completas, com todos os passos, respostas, trechos de log e consultas ao banco, estão no repositório:
+
+* Jogo de Ações: https://github.com/lalgarve/jogo-acoes/blob/master/docs/disciplina/caderno-de-testes.md
+* Serviço de E-mail: https://github.com/lalgarve/jogo-acoes/blob/master/docs/disciplina/caderno-de-testes-email-service.md
+
 # **Introdução**
 
 Um jogo de simulação de investimentos em bolsa: administradores criam competições — públicas (qualquer jogador pode pedir entrada) ou privadas (só quem é convidado por e-mail). Os jogadores, em uma competição por tempo determinado, começam com o mesmo saldo e, no final, se determina quem conseguiu a melhor performance. O escopo do projeto no contexto da disciplina inclui:
@@ -67,6 +85,12 @@ Usamos:
 Começamos a usar SDD na Iteração 5 do projeto. Os métodos anteriores (cenários BDD, TDD e API-First) continuam em uso sempre que relevantes. No TDD, a IA cria os testes primeiro e verifica que eles falham antes da implementação. Também usamos diagramas sempre que necessário. Por exemplo, na incepção do projeto, pedimos a criação de um diagrama DER para verificar o modelo sugerido e visualizar melhor as modificações necessárias. Definimos os diagramas em texto, o que facilita a interpretação e a edição, e há várias ferramentas gratuitas para isso. No código, escolhemos o Mermaid.js, por ser suportado nativamente pelo GitHub. Neste documento, geramos os diagramas com PlantUML, porque as imagens geradas podem ser incluídas no LaTeX. 
 
 
+Usamos três ferramentas de IA no projeto:
+
+* Claude, da Anthropic, pelo Claude Code: a principal ferramenta, usada para escrever as especificações, implementar o código e os testes, revisar o código e redigir a documentação;
+* GitHub Copilot: implementação de algumas especificações e respostas a comentários de revisão nas *pull requests*;
+* Google, no modo IA: pesquisa.
+
 # Refatoração dos cenários BDD
 
 Mesmo com uma metodologia e uma sintaxe novas para nós, ao definir os passos dos cenários Gherkin, percebemos, ao fim da Iteração 1, que vários cenários repetiam os mesmos passos para preencher os campos válidos: um cenário para cada campo inválido testado. Isso contrariava o princípio de reúso. Resolvemos o problema com uma fábrica (*Object Mother*) e um *builder*, este gerado automaticamente a partir do arquivo `openapi.yaml`.
@@ -109,7 +133,7 @@ Na tabela abaixo, a coluna "Antes" mostra a situação do projeto no levantament
 | Duas ou mais consultas Spring Data além do CRUD básico | Atendido — bem mais que duas, em vários repositórios | Atendido |
 | Documentação da API via OpenAPI/Swagger | Atendido como contrato estático (docs/openapi.yaml); falta uma UI interativa (Swagger UI) rodando junto da aplicação | Atendido — o Swagger UI roda junto da aplicação, sobre o contrato estático (spec 05-009); ver "Preparação do sistema para testes com Swagger" abaixo |
 | Organização de pacotes por domínio/funcionalidade, não por camada técnica | **Não atendido** — pacotes organizados por camada técnica: web/, service/, repository/, domain/, email/, captcha/ | Atendido — pacotes reorganizados por domínio (link/, login/, competition/, log/, email/, captcha/, common/); ver "Principais tarefas realizadas na Etapa 1" abaixo |
-| README com módulos, dependência entre eles e candidato a serviço independente | Parcial — a informação existe implicitamente, mas não está escrita no README nesse formato | Parcial — os módulos e as dependências entre eles estão documentados em docs/diagrams/modulos.md, não no README |
+| README com módulos, dependência entre eles e candidato a serviço independente | Parcial — a informação existe implicitamente, mas não está escrita no README nesse formato | Atendido — o README lista os módulos de `app/` com as dependências entre eles, traz um exemplo de dependência e justifica o Serviço de E-mail como serviço independente (seções completadas depois da tag, na Issue #172) |
 | Tag etapa-1 | **Não atendido** | Atendido |
 
 ### **Principais tarefas realizadas na Etapa 1**
@@ -234,43 +258,120 @@ Também melhoramos o código e o ambiente de testes:
 
 ## **Etapa 3 — Configuração e Execução dos Serviços**
 
-| Requisito | Situação |
-| :---- | :---- |
-| Profiles para ao menos dois ambientes | Atendido, além do mínimo — sandbox/docker/staging/production |
-| Configuração via variáveis de ambiente | Atendido (ex.: SPRING\_DATASOURCE\_URL, SPRING\_CLOUD\_AWS\_SQS\_ENDPOINT no docker-compose.yml) |
-| Banco relacional real fora do ambiente local de desenvolvimento | Atendido — PostgreSQL nos perfis docker/staging/production |
-| Cada serviço com persistência própria | Atendido para os serviços que existem hoje; a depender de como a Etapa 2 for resolvida, o novo serviço precisará da própria também |
-| Spring Cloud Config Server | **Não atendido** — não existe em nenhum lugar do projeto |
-| Containerização de cada aplicação | Parcial — há Dockerfile para a aplicação principal; falta para o(s) serviço(s) que ainda vão ser criados |
-| Orquestração via Docker Compose de todos os componentes (app, serviço, bancos, Config Server) | Parcial — docker-compose.yml hoje sobe app \+ banco \+ fila simulada, mas não um Config Server nem um segundo serviço |
+Na tabela abaixo, a coluna "Antes" mostra a situação do projeto na tag `etapa-2`, de 13/10/2026. A coluna "Ao fim da Etapa 3" mostra a situação na tag `etapa-3`, também de 13/10/2026.
+
+| Requisito | Antes (tag `etapa-2`) | Ao fim da Etapa 3 (tag `etapa-3`) |
+| :---- | :---- | :---- |
+| Profiles para ao menos dois ambientes | Atendido — `docker`, `staging` e `production` na aplicação; `docker` e `production` no Serviço de E-mail | Atendido — `docker`, `staging` e `production` nos dois serviços, com a configuração de cada ambiente servida pelo Config Server |
+| Configuração via variáveis de ambiente | Atendido — endereços, credenciais e segredos (ex.: SPRING\_DATASOURCE\_URL, API\_KEY\_HMAC\_PEPPER) | Atendido — segredos e endereços de infraestrutura continuam em variáveis de ambiente |
+| Banco relacional real fora do ambiente local de desenvolvimento | Atendido — PostgreSQL em todos os perfis, inclusive nos testes | Atendido |
+| Cada serviço com persistência própria | Atendido — um schema próprio por serviço; no Docker Compose, um container PostgreSQL para cada serviço | Atendido |
+| Spring Cloud Config Server | **Não atendido** | Atendido — serviço `config-server`, que lê a configuração do diretório `config-repo/` |
+| Containerização de cada aplicação | Atendido — Dockerfile da aplicação e do Serviço de E-mail; a função Lambda roda no LocalStack | Atendido — também o Dockerfile do `config-server` |
+| Orquestração via Docker Compose de todos os componentes (app, serviço, bancos, Config Server) | Parcial — faltava o Config Server | Atendido — aplicação, Serviço de E-mail, Config Server, bancos, LocalStack e ferramentas de apoio aos testes |
+| Tag etapa-3 | **Não atendido** | Atendido |
+
+### **Principais tarefas realizadas na Etapa 3**
+
+Boa parte dos requisitos desta etapa já estava atendida ao fim da Etapa 2: cada serviço tinha perfis por ambiente, banco PostgreSQL próprio e imagem Docker, e os testes já rodavam contra a infraestrutura real. Nesta etapa, concentramos o trabalho na centralização da configuração e no ambiente de execução.
+
+#### Configuração centralizada com Spring Cloud Config Server
+
+Criamos o serviço `config-server`, com imagem Docker própria, que entrega a configuração de cada serviço e de cada ambiente. Ao iniciar, a aplicação Jogo de Ações e o Serviço de E-mail pedem ao `config-server` a configuração correspondente ao próprio nome e ao perfil ativo, por exemplo `jogo-acoes/docker` ou `email-service/production`.
+
+**Onde fica a configuração.** Escolhemos o *backend* `native`: o `config-server` lê os arquivos de um diretório deste repositório, `config-repo/`, com um arquivo por serviço e ambiente (`jogo-acoes-docker.yml`, `email-service-production.yml` e assim por diante). A configuração continua versionada, mas separada do código. Retiramos dos artefatos dos serviços os arquivos de configuração por ambiente: no artefato fica só o que não muda entre ambientes, como o schema do banco, a pasta das migrations e os tempos-limite do cliente OpenFeign. Assim, mudar um valor de ambiente não exige gerar uma nova imagem.
+
+**Os dois serviços migraram juntos.** Cogitamos usar o Config Server só no serviço novo, mas isso deixaria dois jeitos de configurar ambiente no mesmo repositório. Migramos também a aplicação Jogo de Ações e, com a mudança, completamos o Serviço de E-mail com o ambiente `staging`, que ele ainda não tinha.
+
+**Segredos fora do `config-repo/`.** Senhas, API-Keys e o *pepper* usado no cálculo do HMAC das chaves continuam em variáveis de ambiente de cada serviço. O arquivo servido pelo `config-server` traz apenas a referência à variável, por exemplo `${SPRING_DATASOURCE_PASSWORD}`, e o próprio serviço resolve o valor. O acesso ao `config-server` exige autenticação HTTP Basic, com usuário e senha também definidos por variáveis de ambiente.
+
+**Falha rápida.** Se o `config-server` estiver fora do ar, a aplicação e o Serviço de E-mail não iniciam. Preferimos falhar na inicialização a subir um serviço com configuração parcial. No Docker Compose, os dois serviços só iniciam depois que o `config-server` está aceitando requisições.
+
+**Testes.** As suítes de testes de cada serviço não dependem do `config-server`: usam a própria configuração de teste e desligam a importação da configuração remota. Para provar que a integração funciona, cada serviço tem um teste de integração, `ConfigServerClientIntegrationTest`, que busca a configuração no `config-server` real, iniciado pelo Docker Compose. A integração contínua roda com o `config-server` de pé.
+
+#### Ambiente de execução
+
+O Docker Compose sobe todos os componentes do sistema: a aplicação Jogo de Ações, o Serviço de E-mail, o `config-server`, um banco PostgreSQL para cada serviço e o LocalStack, que simula o SQS, o SES e a função Lambda. Nesta etapa, também melhoramos o ambiente usado nos testes manuais:
+
+* adicionamos o Dozzle, um visualizador de logs no navegador. Ele mostra os logs de todos os containers, inclusive os gerados pelos aspectos de log da Etapa 1, e completa o Adminer, que mostra o banco, e o visualizador de e-mails;
+* tornamos a subida do ambiente mais rápida: o container que empacota a função Lambda só executa o build quando o código da função mudou;
+* documentamos no README o endereço de cada serviço e ferramenta, incluindo o Swagger UI.
 
 ## **Etapa 4 — Comunicação Assíncrona e Processamento em Lote**
 
-| Requisito | Situação |
-| :---- | :---- |
-| Mensageria assíncrona real (produtor/fila/consumidor) | Atendido — SqsEmailSender publica em fila SQS real (LocalStack em dev/CI), consumida pela Lambda que dispara o SES |
-| Tecnologia de mensageria \= a definida pelo professor em aula | A confirmar — o enunciado cita RabbitMQ como exemplo; o projeto usa Amazon SQS. Precisa de confirmação se conta como "tecnologia equivalente" |
-| Processamento em lote com Spring Batch (Job/Step/ItemReader/ItemProcessor/ItemWriter) | **Não atendido** — planejado como job dentro do novo Serviço de E-mail (ver docs/context/iteracao-5.md), para a importação da lista de domínios temporários hospedada no GitHub |
+Na tabela abaixo, a coluna "Antes" mostra a situação do projeto na tag `etapa-3`, de 13/10/2026. A coluna "Ao fim da Etapa 4" mostra a situação na tag `etapa-4`, de 14/10/2026.
+
+| Requisito | Antes (tag `etapa-3`) | Ao fim da Etapa 4 (tag `etapa-4`) |
+| :---- | :---- | :---- |
+| Mensageria assíncrona real (produtor/fila/consumidor) | Atendido — o Serviço de E-mail publica cada pedido de envio numa fila SQS, consumida pela função Lambda, que entrega pelo SES | Atendido |
+| Tecnologia de mensageria \= a definida pelo professor em aula | A confirmar — o enunciado cita RabbitMQ como exemplo; o projeto usa Amazon SQS | A confirmar |
+| Processamento em lote com Spring Batch (Job/Step/ItemReader/ItemProcessor/ItemWriter) | **Não atendido** | Atendido — importação das listas de domínios de e-mail temporário no Serviço de E-mail |
+| Tag etapa-4 | **Não atendido** | Atendido |
 
 ### **Principais tarefas realizadas na Etapa 4**
 
-#### Processamento em Lote - Atualização da tabela de domínios de emails temporários
+#### Mensageria assíncrona no envio de e-mail
 
-Para evitar cadastro de usuários usando emails temporários, usamos listas gratuitas publicadas na internet.
+A comunicação assíncrona do sistema está no envio de e-mail e foi construída junto com o Serviço de E-mail, na Etapa 2. O Serviço de E-mail é o produtor: ao aceitar um pedido de envio, ele grava o envio e publica na fila SQS uma mensagem com o template, o remetente, o destinatário, as variáveis e um identificador de correlação. A função Lambda é a consumidora: o LocalStack, que simula a AWS nos ambientes de desenvolvimento e de testes, entrega cada mensagem da fila à função, que pede ao SES o envio do e-mail a partir do template. A função não conhece templates, clientes nem regras do jogo, e o identificador de correlação segue como etiqueta da mensagem no SES, para que eventos posteriores, como um *bounce*, possam ser associados ao envio original.
 
+A fila separa o tempo de resposta da API do tempo de entrega: o Serviço de E-mail responde assim que publica a mensagem, e uma falha na entrega não chega ao usuário que pediu o login. Quando a função falha, ela não trata a repetição: a mensagem volta para a fila e o SQS a entrega de novo.
+
+#### Verificação do domínio do destinatário
+
+Cada e-mail para um endereço que não existe vira um *bounce* no SES. Os *bounces* pesam na reputação da conta, e, acima de um limite, a AWS suspende o envio da conta inteira. Para reduzir esse risco, o Serviço de E-mail passou a verificar, antes de aceitar um pedido de envio, se o domínio do destinatário recebe e-mail. Ele consulta no DNS os registros MX do domínio e, na falta deles, os registros A, como define a RFC 5321. Um domínio que não recebe e-mail é recusado com `422`, sem gravar nem publicar nada.
+
+Como a maior parte dos e-mails vai para poucos domínios, mantemos uma lista branca: um domínio aprovado é gravado e não é consultado de novo no DNS.
+
+#### Processamento em lote: atualização da tabela de domínios de e-mail temporário
+
+Para evitar cadastro de usuários usando e-mails temporários, usamos listas gratuitas publicadas na internet. Endereços de serviços de e-mail temporário deixam de existir depois de alguns minutos: um jogador que entra com um deles não recebe o próximo link de login, e o e-mail para ele vira *bounce*. Esses domínios têm registros MX válidos, então a verificação pelo DNS não os detecta. As listas são grandes, com dezenas de milhares de linhas, e mudam com frequência. Por isso, importamos as listas para uma tabela do Serviço de E-mail por meio de um processamento em lote, em vez de consultá-las a cada envio.
+
+**Repositórios das listas.** As listas vêm de repositórios cadastrados numa tabela, com o endereço do arquivo, uma descrição, a hora do último download e a hora da última atualização da tabela de domínios. A equipe de operações cadastra os repositórios e pede a execução do lote pela API do serviço. O pedido responde `202` com o identificador da execução, e o lote roda em segundo plano. A situação de cada execução pode ser consultada depois, com o número de linhas lidas, de domínios incluídos e removidos e de linhas ignoradas.
+
+**O *job* do Spring Batch.** Para cada repositório, o *job* executa três *steps*:
+
+1. `downloadStep`, um *tasklet*, baixa a lista para um arquivo temporário. Se a lista for igual à última importada, o *job* termina aqui, sem mexer na tabela.
+2. `importStep` processa o arquivo em blocos (*chunks*) de 1.000 linhas. O `ItemReader` (`FlatFileItemReader`) lê o arquivo linha a linha. O `ItemProcessor` (`DisposableDomainLineProcessor`) ignora linhas em branco e comentários, normaliza o domínio (sem espaços, em minúsculas e, se internacionalizado, na forma ASCII) e descarta as linhas que não são domínios, que o *step* conta como ignoradas. O `ItemWriter` (`JdbcBatchItemWriter`) grava os domínios na tabela.
+3. `pruneStep`, outro *tasklet*, remove os domínios do repositório que não estão mais na lista.
+
+O `ItemWriter` faz *upsert*: gravar a mesma lista de novo não duplica nenhum domínio. Assim, uma execução interrompida no meio pode ser pedida de novo e termina o trabalho. Um repositório fora do ar, ou que devolve uma lista vazia, faz a execução falhar sem alterar a tabela, e os demais repositórios continuam sendo importados. Duas execuções do mesmo repositório não rodam ao mesmo tempo.
+
+**Uso no envio.** A verificação do destinatário consulta a tabela antes da lista branca e do DNS: um endereço de um domínio temporário, ou de um subdomínio dele, é recusado com `422`. Um domínio pode estar em mais de um repositório e continua valendo enquanto pelo menos um deles o tiver.
+
+**Permissões por chave de API.** Administrar as listas é tarefa da equipe de operações, não das aplicações clientes. Para separar os dois papéis, acrescentamos permissões às chaves na biblioteca de API-Key (versão 1.1.0). O Serviço de E-mail define duas permissões: `email:send`, para enviar e-mails e manter os próprios templates, e `disposable-email:admin`, para administrar as listas. A chave do Jogo de Ações tem só a primeira, e a chave de operações, só a segunda. Uma chave sem a permissão exigida pela rota recebe `403`.
+
+
+# Conclusão
+
+Separar o código em módulos por domínio, mesmo sem mudar nenhuma lógica, já nos mostrou onde a arquitetura podia melhorar e onde aplicar padrões de projeto. Com as classes agrupadas por funcionalidade, ficou visível que o mecanismo genérico de link tinha uma chave estrangeira para a competição, ou seja, que um módulo de base conhecia um caso de uso específico. Corrigimos isso invertendo a dependência: o módulo de link passou a definir a interface `LinkHandler`, e o módulo de competição a implementa, como qualquer outro consumidor. A mesma separação mostra o próximo passo: o módulo de competição continua complexo. É o maior da aplicação, com 27 classes e cerca de 1.500 linhas de código, o dobro do segundo maior, e reúne responsabilidades que provavelmente podem ser divididas em submódulos, como o pedido de entrada em competições, a gestão dos jogadores de uma competição e a busca de jogadores pelo administrador. Na organização anterior, por camada técnica, nenhuma dessas questões chamava atenção, porque as classes ficavam diluídas entre os pacotes `service`, `repository` e `domain`.
+
+Proibir o acesso direto a repositórios de outro módulo também melhorou o código. Para cumprir a regra, cada módulo precisou declarar, num serviço público, o que oferece aos demais. O levantamento feito para essa mudança encontrou a consulta do usuário logado copiada em cinco lugares e a criação de usuário com papel copiada em dois; as cópias foram substituídas por um serviço único. Além disso, o que cada serviço precisa de outro módulo passou a estar escrito na sua lista de dependências, e não espalhado em consultas ao banco.
+
+As regras de arquitetura só se mantiveram porque são verificadas a cada build. Os testes com ArchUnit impedem um módulo de acessar o repositório de outro, impedem a aplicação e o Serviço de E-mail de compartilharem classes e garantem que cada módulo registre as próprias regras de segurança. Sem essa verificação, bastaria uma importação feita por descuido, ou sugerida pela ferramenta de IA, para desfazer a separação sem que ninguém percebesse.
+
+Os testes manuais encontraram problemas que os testes automáticos não mostravam, inclusive no ambiente e na documentação. Executar os cadernos de testes revelou, por exemplo:
+
+* que uma sessão encerrada pelo limite de dispositivos continuava autenticada;
+* que o assunto de um template com acentos voltava com os caracteres trocados na pré-visualização;
+* que a aplicação deixava de iniciar quando o LocalStack era recriado e o Serviço de E-mail mantinha no banco templates que o SES já não tinha;
+* comandos e respostas da documentação que não correspondiam mais ao sistema.
+
+Os testes automáticos rodam sempre num ambiente limpo e verificam o que foi previsto; os manuais usam o sistema como um usuário usaria, num ambiente que acumula estado entre uma execução e outra. Os dois tipos de teste se complementam.
+
+Seguir a abordagem API-First nos dois serviços também simplificou a separação. Como a aplicação e o Serviço de E-mail dependem apenas do contrato OpenAPI, cada um pôde mudar por dentro sem afetar o outro, e o cliente OpenFeign e os DTOs foram gerados a partir do contrato, sem código compartilhado.
+
+Por fim, desenvolver com IA a partir de especificações escritas antes do código, com BDD e SDD, deu bons resultados. Cada mudança partiu de uma especificação revisada, com as decisões técnicas e as tarefas registradas, o que nos permitiu retomar o trabalho entre sessões e revisar com cuidado o código gerado.
+
+Ficam pendentes a falha de sessão encontrada no caderno de testes, a recriação automática de templates ausentes no SES e a confirmação de que o Amazon SQS é aceito no lugar da tecnologia de mensageria vista em aula.
 
 # Bibliografia
 
 ASPECT Oriented Programming (AOP) in Spring Framework. *GeeksforGeeks*, [20--]. Disponível em: https://www.geeksforgeeks.org/advance-java/aspect-oriented-programming-aop-in-spring-framework/. Acesso em: 5 out. 2026.
 
+GITHUB. **Spec Kit**: tasks-template.md. [*S. l.*]: GitHub, 2026. Disponível em: https://github.com/github/spec-kit/blob/main/templates/tasks-template.md. Acesso em: 16 set. 2026.
+
 GRAZIANO, Alfonso. **AI-Native Software Engineering**. Sebastopol, CA: O'Reilly Media, 2026. E-book. Versão preliminar (*early release*); publicação prevista para fev. 2027. Disponível em: https://learning.oreilly.com/library/view/ai-native-software-engineering/0642572352530/. Acesso em: 24 set. 2026.
 
 SMART, John Ferguson. **BDD in Action**: Behavior-Driven Development for the Whole Software Lifecycle. Shelter Island, NY: Manning Publications, 2014. E-book. ISBN 978-1-61729-165-4. Disponível em: https://learning.oreilly.com/library/view/bdd-in-action/9781617291654/. Acesso em: 24 set. 2026.
 
-[https://github.com/github/spec-kit/blob/main/templates/tasks-template.md ](https://github.com/github/spec-kit) Acessado 16/10/2026
-
-https://www.techknow.com.br/post/spec-driven-development Acessado 16/102026
-
-
-
-
+WILDRIK. **Spec Driven Development**: o futuro de programar com IA (SDD). *techknow*, 25 abr. 2026. Disponível em: https://www.techknow.com.br/post/spec-driven-development. Acesso em: 16 set. 2026.

@@ -5,6 +5,8 @@
 # for `dump` commands, never stops the JVM) so scripts/blackbox-coverage.sh can pull coverage
 # data from the application as it's exercised externally. docker-compose.yml itself is
 # untouched -- a plain `docker compose up` never activates any of this.
+# Spec 05-052: scripts/cloud-up.sh copies app's variables below (not the JaCoCo agent); keep it in
+# sync when they change.
 services:
   app:
     environment:

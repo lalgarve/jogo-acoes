@@ -1,0 +1,8 @@
+; Spec 05-047: shared by every domain the Corefile lists with it -- names are relative, so each
+; zone gets its own MX. Just enough for email-service to approve the domain by MX.
+$TTL 60
+@     IN SOA  ns admin 1 3600 600 86400 60
+@     IN NS   ns
+ns    IN A    192.0.2.1
+@     IN MX   10 mail
+mail  IN A    192.0.2.3
