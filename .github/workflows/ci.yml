@@ -75,14 +75,6 @@ jobs:
           name: jacoco-app
           path: app/target/site/jacoco/
 
-      # Spec 05-046: the email-service container's background publisher reads the same database as
-      # email-service's own tests and would publish the PENDING sends they create to its own queue,
-      # where email-lambda delivers them -- the tests would never see their messages. Only app's
-      # tests need it running.
-      - name: Stop the email-service container
-        if: ${{ !cancelled() }}
-        run: docker compose stop email-service
-
       # email-service depends on dev.leilaalgarve.apikey:api-key-validation, which is not on Maven
       # Central: the script installs it into ~/.m2 from the lalgarve/api-key release (a no-op when
       # the Maven cache already has it). Spec 05-030, T011.
