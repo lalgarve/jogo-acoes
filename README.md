@@ -301,7 +301,8 @@ no host em:
 |---|---|---|
 | `app` (API) | `http://localhost:8080/api` | Contrato em `docs/openapi.yaml` |
 | Swagger UI do `app` | `http://localhost:8080/api/swagger-ui/index.html` | O pedido de login só passa sem captcha com o overlay `blackbox` |
-| `email-service` (API) | `http://localhost:8082/api` | Exige API-Key; sem Swagger UI (exemplos em "Envio de e-mail pelo Serviço de E-mail") |
+| Swagger UI do `email-service` | `http://localhost:8082/api/swagger-ui.html` | Só no `docker` (spec 05-049). A tela abre sem chave; as chamadas pedem a `X-API-Key` no botão **Authorize** |
+| `email-service` (API) | `http://localhost:8082/api` | Exige API-Key (exemplos em "Envio de e-mail pelo Serviço de E-mail") |
 | `config-server` | `http://localhost:8888/{aplicação}/{perfil}` | Ex.: `/jogo-acoes/docker`; HTTP Basic `config` / `config-docker-not-a-secret` |
 | `ses-viewer` | `http://localhost:3005` | E-mails enviados pelo SES do LocalStack |
 | LocalStack | `http://localhost:4566` | SES em JSON: `GET /_aws/ses` |

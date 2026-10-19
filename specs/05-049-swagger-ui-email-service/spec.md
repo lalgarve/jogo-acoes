@@ -1,6 +1,7 @@
 # Spec: Swagger UI no Serviço de E-mail
 
-**Status:** rascunho
+**Status:** implementada; faltam a decisão sobre o caderno de testes (T005) e a verificação
+manual (T007), ver `tasks.md`
 **Issue:** [#188](https://github.com/lalgarve/jogo-acoes/issues/188)
 **Iteração:** iteration-5
 
