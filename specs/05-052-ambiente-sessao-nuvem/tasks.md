@@ -13,16 +13,11 @@ Issue-épico: a criar.
 | T004 | `scripts/cloud-blackbox-tests.sh`: venv e cliente gerado na pasta de estado, `DELETE /_aws/ses`, `behave` e `pytest` | T001 | [P] | — |
 | T005 | Comentário em `docker-compose.yml` e `docker-compose.blackbox.yml` apontando para `scripts/cloud-up.sh` | T003 | [P] | — |
 | T006 | `README.md` (seção sobre sessões de nuvem) e `CLAUDE.md` (aviso curto) | T003, T004 | | — |
-| T007 | Critério de aceite de exceções (`memory/constitution.md`): não se aplica, pois nenhuma classe Java muda e nenhuma exceção é criada. Registrar aqui que os caminhos de erro dos scripts são cobertos pelos cenários 5 a 7 da verificação manual | T003 | | — |
+| T007 | Critério de aceite de exceções (`memory/constitution.md`): não se aplica, pois nenhuma classe Java muda e nenhuma exceção é criada. Registrar aqui que os caminhos de erro dos scripts são cobertos pelos cenários 5 a 8 da verificação manual | T003 | | — |
 | T008 | Verificação manual, roteiro abaixo, numa sessão de nuvem | T003, T004 | | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
-
-## Decisão pendente antes de T003
-
-- Token ausente: Community com aviso ou erro (`plan.md`). O roteiro abaixo traz o passo 6 nas
-  duas versões; fica só a que for escolhida.
 
 ## Verificação manual
 
@@ -88,17 +83,14 @@ ps -eo args | grep -c '^java -jar'
 
 Esperado: `exit 0` duas vezes, nenhum container listado e `0`.
 
-### 6. Sem token
+### 6. Sem token (cenário 8)
 
 ```bash
 env -u LOCALSTACK_AUTH_TOKEN ./scripts/cloud-up.sh --no-build; echo "exit $?"
 ```
 
-Esperado, se a decisão for **Community com aviso**: aviso de que o LocalStack Community será
-usado, subida completa, `exit 0`, e `_localstack/info` com `"edition": "community"`.
-
-Esperado, se a decisão for **erro**: mensagem pedindo `LOCALSTACK_AUTH_TOKEN`, `exit 1`, nenhum
-container novo.
+Esperado: mensagem pedindo `LOCALSTACK_AUTH_TOKEN` configurado no ambiente de nuvem, `exit 1`,
+nenhum container novo e nenhum processo Java iniciado.
 
 ### 7. Licença inválida (cenário 5)
 

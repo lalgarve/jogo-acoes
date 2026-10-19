@@ -53,6 +53,9 @@ nenhum serviço. Os cenários são verificados rodando os scripts numa sessão d
    coisa e indica o `scripts/docker-up.sh`.
 7. **Falha de um serviço:** se `config-server`, `email-service` ou `app` não sobe no tempo
    esperado, o script mostra as últimas linhas do log dele e sai com erro.
+8. **Sem token:** sem `LOCALSTACK_AUTH_TOKEN`, o script para antes de fazer qualquer coisa,
+   dizendo que a variável precisa estar configurada no ambiente de nuvem. Não sobe o LocalStack
+   Community no lugar.
 
 ## Requisitos funcionais
 
@@ -72,7 +75,7 @@ nenhum serviço. Os cenários são verificados rodando os scripts numa sessão d
   com `blackbox-tests/openapi-python-client-config.yaml`, SES limpo antes de rodar.
 - `scripts/cloud-down.sh`: idempotente; só encerra os processos que o `cloud-up.sh` registrou.
 - O token do LocalStack vem de `LOCALSTACK_AUTH_TOKEN`, configurado no ambiente de nuvem, e nunca
-  é impresso.
+  é impresso. Sem ele, o script para com erro (não há alternativa com o LocalStack Community).
 - `README.md` ganha uma seção curta sobre os scripts; `CLAUDE.md` ganha um aviso de que, numa
   sessão de nuvem, é assim que se sobe a aplicação.
 
@@ -96,5 +99,5 @@ nenhum serviço. Os cenários são verificados rodando os scripts numa sessão d
 
 ## Decisões em aberto
 
-1. **Sem token**: usar o LocalStack Community (mesmo comando, outra imagem) com um aviso, ou
-   parar com erro? Ver `plan.md`.
+Nenhuma. A única que havia (o que fazer sem token) foi resolvida pela Leila em 2026-10-19:
+parar com erro. Ver `plan.md`.
