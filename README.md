@@ -32,8 +32,9 @@ jogador.
   [`docs/diagrams/sequencia.md`](docs/diagrams/sequencia.md).
 - **Integração contínua** (`.github/workflows/ci.yml`): suítes de testes do `app` (com piso de
   cobertura de linha, JaCoCo, 80%), do `email-service` e do `email-lambda` rodando a cada
-  *pull request* contra infraestrutura real (Postgres, SQS e SES no LocalStack) via Docker, não
-  contra simulação em memória.
+  *pull request* para `master` ou `development` (e a cada push nesses branches) contra
+  infraestrutura real (Postgres, SQS e SES no LocalStack) via Docker, não contra simulação em
+  memória.
 
 ## Arquitetura planejada
 
