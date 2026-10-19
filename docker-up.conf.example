@@ -1,0 +1,28 @@
+# Template for scripts/docker-up.sh (spec 05-050). Copy it once and edit the copy:
+#
+#   cp docker-up.conf.example docker-up.conf
+#
+# docker-up.conf is local and never committed (.gitignore): it is where the LocalStack license
+# token goes. Without it, scripts/docker-up.sh uses this template as is, which starts everything
+# with LocalStack Community and needs no token.
+#
+# One KEY=value per line; true/false for the switches. Lines starting with # are ignored.
+
+# Stack the blackbox overlay (docker-compose.blackbox.yml): captcha always accepted, administrator
+# seeded, JaCoCo agent on port 6300. What the test notebooks and manual verifications use.
+BLACKBOX=true
+
+# Use LocalStack Pro (docker-compose.localstack-pro.yml) instead of LocalStack Community.
+# Needs LOCALSTACK_AUTH_TOKEN below (or exported in the shell); https://app.localstack.cloud.
+LOCALSTACK_PRO=false
+
+# LocalStack license token, only read with LOCALSTACK_PRO=true. Empty: the exported
+# LOCALSTACK_AUTH_TOKEN, if any. Never put a real token in docker-up.conf.example.
+LOCALSTACK_AUTH_TOKEN=
+
+# Rebuild the images of app, email-service and config-server from the checkout (--build), so a
+# code change is never tested against an old image.
+BUILD=true
+
+# Also start the web tools: adminer (8081), ses-viewer (3005) and log-viewer (8083).
+TOOLS=true
