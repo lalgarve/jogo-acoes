@@ -129,7 +129,8 @@ Feature: Send an e-mail from a registered template
 
     Scenario Outline: A domain that accepts e-mail is approved and whitelisted
       When they send the template "welcome" to "player@<domain>"
-      Then the send is accepted as queued
+      Then the send is accepted as pending
+      And the send is recorded as queued with no template data kept
       And the domain "<domain>" is whitelisted as approved by "<record>"
 
       Examples:
@@ -140,17 +141,20 @@ Feature: Send an e-mail from a registered template
 
     Scenario: The domain is checked in lower case
       When they send the template "welcome" to "player@With-MX.Test"
-      Then the send is accepted as queued
+      Then the send is accepted as pending
+      And the send is recorded as queued with no template data kept
       And the domain "with-mx.test" is whitelisted as approved by "MX"
 
     Scenario: A whitelisted domain is accepted without a DNS lookup
       Given the domain "ghost.test" is already whitelisted
       When they send the template "welcome" to "player@ghost.test"
-      Then the send is accepted as queued
+      Then the send is accepted as pending
+      And the send is recorded as queued with no template data kept
 
     Scenario: The SES mailbox simulator is whitelisted from the start
       When they send the template "welcome" to "success@simulator.amazonses.com"
-      Then the send is accepted as queued
+      Then the send is accepted as pending
+      And the send is recorded as queued with no template data kept
       And the domain "simulator.amazonses.com" is whitelisted as approved by "SEED"
 
     Scenario Outline: A domain that does not accept e-mail is rejected
@@ -168,7 +172,8 @@ Feature: Send an e-mail from a registered template
 
     Scenario: The DNS server does not answer
       When they send the template "welcome" to "player@unavailable.test"
-      Then the send is accepted as queued
+      Then the send is accepted as pending
+      And the send is recorded as queued with no template data kept
       And the domain "unavailable.test" is not whitelisted
 
   Rule: A disposable e-mail domain is rejected before the whitelist and DNS
