@@ -58,6 +58,15 @@ ferramenta ou ambiente exigir outra versão, reportar a incompatibilidade concre
 uma decisão explícita sobre a mudança da baseline — não transformar essa exigência em um
 upgrade automático.
 
+## Rodar a aplicação numa sessão de nuvem
+
+Numa sessão do Claude Code na nuvem, `docker compose up` e `scripts/docker-up.sh` não funcionam
+(os containers da rede do Compose não alcançam o proxy da sessão). Para subir a aplicação inteira
+e testar de ponta a ponta: `./scripts/cloud-up.sh`, depois `./scripts/cloud-blackbox-tests.sh`, e
+`./scripts/cloud-down.sh` no fim (spec 05-052; detalhes no `README.md`, "Numa sessão do Claude Code
+na nuvem"). Não tentar expor o proxy aos containers com um relay: a segurança do ambiente bloqueia,
+com razão.
+
 ## O projeto
 
 Simulação de investimentos em bolsa por competição: administradores criam competições,
