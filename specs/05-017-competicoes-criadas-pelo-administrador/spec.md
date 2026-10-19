@@ -1,7 +1,7 @@
 # Spec: Administrador lista as competições que criou
 
 **Status:** implementada (tabela conferida contra o `master` em 2026-10-06; ver `tasks.md`)
-**Issue:** —
+**Issue:** [#183](https://github.com/lalgarve/jogo-acoes/issues/183)
 **Iteração:** iteration-5
 
 ## Resumo

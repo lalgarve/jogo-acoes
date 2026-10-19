@@ -6,7 +6,7 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 **Ordem:** o DNS de teste primeiro (sem ele nenhum teste novo roda), depois os testes do
 comportamento novo, falhando pelo motivo esperado, e só então as correções.
 
-Issue-épico: a criar quando a spec for aprovada.
+Issue-épico: [#186](https://github.com/lalgarve/jogo-acoes/issues/186).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
