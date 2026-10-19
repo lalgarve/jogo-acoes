@@ -1,6 +1,6 @@
 # Spec: Ambiente completo numa sessão de nuvem da Claude
 
-**Status:** rascunho
+**Status:** implementada (ver `tasks.md`)
 **Issue:** a criar
 **Iteração:** iteration-5
 
