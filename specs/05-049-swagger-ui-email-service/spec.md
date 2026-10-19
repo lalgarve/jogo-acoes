@@ -1,7 +1,7 @@
 # Spec: Swagger UI no Serviço de E-mail
 
 **Status:** rascunho
-**Issue:** a criar
+**Issue:** [#188](https://github.com/lalgarve/jogo-acoes/issues/188)
 **Iteração:** iteration-5
 
 ## Resumo

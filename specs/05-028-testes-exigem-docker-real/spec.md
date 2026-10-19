@@ -1,7 +1,7 @@
 # Spec: H2 sai do projeto — Postgres real sempre (sandbox, testes e Docker), sem Testcontainers
 
 **Status:** implementada (T005, T006 e T011 substituídas pela spec 05-035; ver `tasks.md`)
-**Issue:** #<a criar>
+**Issue:** [#184](https://github.com/lalgarve/jogo-acoes/issues/184)
 **Iteração:** iteration-5
 
 ## Resumo

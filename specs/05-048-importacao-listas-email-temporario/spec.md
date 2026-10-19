@@ -1,7 +1,7 @@
 # Spec: Importação em lote das listas de domínios de e-mail temporário
 
 **Status:** implementada (T001–T014 em `tasks.md`; falta a verificação manual T015)
-**Issue:** a criar
+**Issue:** [#187](https://github.com/lalgarve/jogo-acoes/issues/187)
 **Iteração:** iteration-5 (Etapa 4 da disciplina: processamento em lote)
 
 ## Resumo
