@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * Spec 05-048: the scheduled import starts every repository, and when one is still being
  * imported it logs and waits for the next run instead of failing. The cron itself is off in the
  * suite ("-"), so the method is called directly. Starts without repositories, like the Cucumber
- * suite (spec.md, "Repositório inicial").
+ * suite (spec 05-053: the initial repository exists only in staging and production).
  */
 @SpringBootTest
 class DisposableDomainImportSchedulerTest {

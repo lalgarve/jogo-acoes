@@ -25,6 +25,6 @@ CREATE TABLE disposable_domain (
 -- POST /emails looks a recipient's domain up here on every send.
 CREATE INDEX disposable_domain_domain_idx ON disposable_domain (domain);
 
-INSERT INTO disposable_domain_source (url, description, created_at)
-VALUES ('https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf',
-        'disposable-email-domains, lista principal', CURRENT_TIMESTAMP);
+-- Spec 05-053: the initial repository (spec 05-048, "Repositório inicial") is registered by
+-- db/seed-email-service/, applied only in staging and production -- docker and the tests never
+-- have it, so no test depends on a URL outside this project's control.
