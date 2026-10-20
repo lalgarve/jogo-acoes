@@ -501,11 +501,18 @@ execução. Nada é pulado por falta dela:
   pulado.
 - **Nenhum teste decide em tempo de execução se roda** (ex.: `assumeTrue(reachable(...))`,
   pular quando um container não sobe). Um teste de arquitetura impede esse padrão.
+- **Nenhum teste sobe container**, em nenhum módulo: nem por Testcontainers, nem pelo Dev Services
+  do Quarkus, nem por outro meio. Tudo o que o teste usa (bancos, LocalStack, DNS de teste,
+  `config-server`, serviços) é levantado antes, fora do Maven. Iniciar o próprio serviço dentro da
+  JVM (`@SpringBootTest`, `@QuarkusTest`) continua permitido: não é container. Um teste de
+  arquitetura em cada módulo impede o uso de Testcontainers (spec 05-053).
 - **Como subir a infraestrutura** fica documentado no `README.md`, junto do comando de teste.
 
 **Por quê**: um teste que se pula sozinho quando a infraestrutura falta esconde exatamente o
 problema que deveria acusar, e cada módulo acabava inventando um jeito diferente de lidar com
-isso. Como todo lugar onde o projeto roda tem Docker, não há caso legítimo para pular.
+isso. Como todo lugar onde o projeto roda tem Docker, não há caso legítimo para pular. Deixar o
+Maven subir containers dava problema (spec 05-028), e um container que a suíte sobe sozinha não é
+o mesmo ambiente que o resto dos testes usa.
 
 ## Critério de aceite: exceções e caminhos de erro exercitados por teste
 

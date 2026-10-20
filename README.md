@@ -154,8 +154,9 @@ leitura real dele (`ConfigServerClientIntegrationTest` nos dois, e o teste do pe
 `production` no `app`) precisam do `config-server` de pé. O `config-server` testa os arquivos
 reais de `config-repo/` e não precisa de infraestrutura.
 
-O `email-lambda` não usa o Compose: o Quarkus sobe o próprio LocalStack pelo Dev Services, e só
-precisa do Docker.
+O `email-lambda` usa o LocalStack do Compose, em `localhost:4566`, com fila de erros, remetentes e
+templates próprios. Nenhum teste sobe container: o Dev Services do Quarkus está desligado (spec
+05-053).
 
 **Se a infraestrutura não estiver de pé, os testes que dependem dela falham** com erro de
 conexão. Nenhum teste se pula por falta dela, e uma regra ArchUnit em cada módulo impede que um

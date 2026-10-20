@@ -115,7 +115,8 @@ Esta spec não adiciona nem muda comportamento de produto — é infraestrutura 
 
 - `email-lambda` — já usa Testcontainers via Quarkus Dev Services em CI (não localmente, por
   isso não foi afetado pelo problema desta sessão) e isso já funciona lá hoje. Não mexer, a
-  menos que surja o mesmo tipo de problema.
+  menos que surja o mesmo tipo de problema. **Nota (2026-10-20):** a spec 05-053 tirou o
+  Testcontainers da `email-lambda` também; nenhum teste do projeto sobe container.
 - Remover o perfil `sandbox` e os `assumeTrue` dos testes — spec 05-035.
 - Resolver a causa raiz do Testcontainers não funcionar no Docker Desktop desta máquina Windows
   específica — foi investigado (ver `specs/05-025-servico-email-templates/tasks.md`), mas a

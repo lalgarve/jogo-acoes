@@ -27,6 +27,12 @@ escolhe a chave, manda o JSON e mostra o status e a resposta.
 > `chaves.env`). Este caderno continua como foi entregue, com o `chamar.sh`: os roteiros, as
 > respostas e os logs são os mesmos pelos dois caminhos.
 
+> **Nota (2026-10-20), depois da entrega:** a spec 05-053 tirou do ambiente `docker` o
+> repositório inicial das listas de e-mail temporário (o do GitHub, `id` 1 nos roteiros abaixo);
+> ele passou a existir só em `staging`/`production`. Rodado de novo no `docker`, a lista de
+> repositórios começa vazia e os repositórios criados nos roteiros ganham um `id` a menos. Os
+> roteiros continuam como foram entregues.
+
 ## Preparação
 
 ### 1. Subir só o Serviço de E-mail
