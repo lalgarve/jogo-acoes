@@ -28,7 +28,7 @@ Issue-épico: [#185](https://github.com/lalgarve/jogo-acoes/issues/185).
 | ~~T018~~ | `send_email.feature`: nas `Rule`s das specs 05-047 e 05-048, os casos aceitos esperam `202 PENDING` e depois `QUEUED`; os recusados continuam `422`, sem linha em `email_send` e sem nada na fila; "The DNS server does not answer" espera `202 PENDING`. Confirmar verdes | T017 | | — |
 | ~~T019~~ | `app`: conferir que o `422` de domínio (`RecipientDomainRejectedException`) continua traduzido no *gateway* com a resposta `202 PENDING` do `email-service`; `mvn -pl app -am verify` verde | T017 | [P] | — |
 | ~~T020~~ | CI: depois dos testes do `app`, derrubar todos os containers e subir do zero só o que a suíte do `email-service` usa (`plan.md`); confirmar o CI verde numa PR para `development` | T017 | | — |
-| T021 | Caixa-preta: aplicar a opção escolhida para a primeira entrega lenta (`plan.md`, decisão em aberto) e confirmar a suíte verde logo depois de uma subida do zero | T017 | [P] | — |
+| ~~T021~~ | Caixa-preta: `last_email` espera até 30 s pelo e-mail (`plan.md`); confirmar a suíte verde logo depois de uma subida do zero | T017 | [P] | — |
 | ~~T015~~ | Rodar a suíte completa do `email-service`, a do `email-lambda` e `mvn -pl app -am verify` (cliente Feign regenerado com o enum novo) — confirmar verde | T013, T014, T017–T019 | | — |
 | T016 | Verificação manual (Leila): rodar o roteiro "Roteiro da T016" abaixo e conferir os resultados esperados | T015 | | — |
 
@@ -145,6 +145,10 @@ DNS de teste do Compose, `config-server`/`email-service`/`app` com `java -jar` n
   `email-service` recriado (0 tabelas), nenhum `email-service` rodando, `test-api-key.sh restore`
   e a suíte: 144 testes, 142 verdes e 2 ignorados (`@requires-real-ses`). Falta a confirmação no
   CI do GitHub, na PR.
+
+- **T021** (2026-10-20): `_POLL_TIMEOUT_SECONDS` de 10 para 30. Conferido com `mvn clean`, uma
+  subida do zero (`scripts/cloud-up.sh`) e a suíte de caixa-preta logo em seguida: `behave` 2/2,
+  `pytest` 29/29; a primeira entrega levou 12,6 s da fila ao SES.
 
 - **Roteiros da T016 e da T013 da 05-044** (2026-10-14, reescritos conforme a seção
   "Verificação manual: comandos prontos para copiar" do constitution): os `curl`, `psql` e
