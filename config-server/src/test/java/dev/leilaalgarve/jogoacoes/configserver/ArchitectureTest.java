@@ -42,4 +42,17 @@ class ArchitectureTest {
         noClasses().should().dependOnClassesThat().haveFullyQualifiedName("org.junit.jupiter.api.Assumptions")
                 .check(testClasses);
     }
+    /**
+     * Spec 05-053: no test starts a container -- everything a test uses is brought up before,
+     * outside Maven (constitution, "Testes exigem a infraestrutura de pé").
+     */
+    @Test
+    void noTestStartsContainersWithTestcontainers() {
+        JavaClasses testClasses = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.ONLY_INCLUDE_TESTS)
+                .importPackages(BASE_PACKAGE);
+
+        noClasses().should().dependOnClassesThat().resideInAPackage("org.testcontainers..")
+                .check(testClasses);
+    }
 }

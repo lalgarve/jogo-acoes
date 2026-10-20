@@ -37,6 +37,7 @@ class ArchitectureTest {
     private static final String CONFIG_SERVER_PACKAGE = BASE_PACKAGE + ".configserver..";
     private static final String EMAIL_CLIENT_API_PACKAGE = BASE_PACKAGE + ".email.client.api..";
     private static final String JUNIT_ASSUMPTIONS = "org.junit.jupiter.api.Assumptions";
+    private static final String TESTCONTAINERS_PACKAGE = "org.testcontainers..";
 
     @Test
     void everyModuleWithARestControllerHasASecurityConfigContributor() {
@@ -168,6 +169,16 @@ class ArchitectureTest {
     @Test
     void noTestSkipsItselfWithAssumptions() {
         noClasses().should().dependOnClassesThat().haveFullyQualifiedName(JUNIT_ASSUMPTIONS)
+                .check(testClasses());
+    }
+
+    /**
+     * Spec 05-053: no test starts a container -- everything a test uses is brought up before,
+     * outside Maven (constitution, "Testes exigem a infraestrutura de pé").
+     */
+    @Test
+    void noTestStartsContainersWithTestcontainers() {
+        noClasses().should().dependOnClassesThat().resideInAPackage(TESTCONTAINERS_PACKAGE)
                 .check(testClasses());
     }
 
