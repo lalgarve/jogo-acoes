@@ -11,6 +11,7 @@ Issue-épico: [#193](https://github.com/lalgarve/jogo-acoes/issues/193).
 | T002 | `memory/constitution.md`: a regra "os testes não sobem nada" em "Testes exigem a infraestrutura de pé"; nota na spec 05-028 | T001 | [P] | — |
 | T003 | Levantamento, teste por teste, dos que precisam de outra configuração (`spec.md`, "Decisões resolvidas"): a lista fechada dos que vão para Python, registrada em `plan.md` | — | [P] | — |
 | T003a | Suíte Python dos testes de configuração especial (onde: `spec.md`, decisão 6): apoio para levantar e derrubar os containers de um cenário; um teste por caso da T003, cada um levantando e derrubando o que usa | T003, T004 | | — |
+| T003b | Repositório inicial das listas só em `staging`/`production` (`plan.md`, "Repositório inicial"): `INSERT` fora da V6, migration de dados em `db/seed-email-service/`, `spring.flyway.locations` no `config-repo` de `staging`/`production`; a suíte Cucumber deixa de apagar o repositório; nota no caderno de testes do Serviço de E-mail e na spec 05-048 | — | [P] | — |
 | T004 | Ambiente de teste: overlay `blackbox` e `scripts/cloud-up.sh` com a configuração de teste e os agentes JaCoCo; `scripts/test-coverage.sh` | T001 | | — |
 | T005 | `config-server`: testes contra o serviço rodando; regra de arquitetura do módulo | T004 | | — |
 | T006 | `email-lambda`: teste pela fila do LocalStack, sem `@QuarkusTest` nem Dev Services; teste unitário do classificador de erros; regra de arquitetura | T004 | | — |
