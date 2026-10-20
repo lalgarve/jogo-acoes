@@ -1,6 +1,6 @@
 # Spec: Swagger UI no Serviço de E-mail
 
-**Status:** rascunho
+**Status:** implementada; falta a verificação manual (T007), ver `tasks.md`
 **Issue:** [#188](https://github.com/lalgarve/jogo-acoes/issues/188)
 **Iteração:** iteration-5
 
@@ -46,9 +46,9 @@ comportamento da API de e-mail (mesmo caso do Swagger UI do `app`, que também n
   **Authorize** (troca de chave no caderno sem colar de novo a cada recarga).
 - O contrato servido é o próprio arquivo de `docs/`, nunca um contrato montado pelas anotações do
   código (contract-first, como no `app`).
-- O caderno de testes do Serviço de E-mail passa a usar o Swagger UI nos passos de chamada à API.
-  Os scripts que não são chamada à API continuam: gerar as chaves, publicar as listas no S3 do
-  LocalStack e, como atalho, esperar a importação.
+- O caderno de testes do Serviço de E-mail ganha uma nota sobre o Swagger UI. Os passos continuam
+  com o `chamar.sh`, porque o caderno é parte do documento já entregue da disciplina (decisão da
+  Leila, 2026-10-20).
 
 ## Requisitos não-funcionais
 
@@ -64,12 +64,12 @@ comportamento da API de e-mail (mesmo caso do Swagger UI do `app`, que também n
 - Mudar o Swagger UI do `app`.
 - Interface web própria para operações (listas de e-mail temporário).
 
+## Decisões resolvidas
+
+- **Só no `docker`** (Leila, 2026-10-19): o Swagger UI e o contrato servido por ele ficam
+  ligados só no ambiente `docker` e desligados em `staging` e `production`, pelo `config-repo`.
+  Alternativa descartada: ligado em todos os ambientes, como o do `app`.
+
 ## Decisões em aberto
 
-- **Em quais ambientes o Swagger UI fica ligado.** O do `app` fica ligado em todos, inclusive
-  `staging` e `production`. Opções para o `email-service`:
-  1. igual ao `app`, em todos os ambientes;
-  2. só no `docker`, desligado em `staging` e `production` pelo `config-repo`.
-
-  Nas duas, as chamadas pela tela exigem a chave; a diferença é só se a tela e o contrato ficam
-  abertos fora do ambiente de teste.
+Nenhuma.

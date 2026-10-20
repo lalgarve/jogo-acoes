@@ -103,6 +103,13 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
 
 ## Log de decisões
 
+### Sessão 2026-10-20 — Swagger UI do Serviço de E-mail depois da entrega
+
+- A spec 05-049 acrescentou um Swagger UI ao `email-service` (só no `docker`) depois da entrega
+  do documento. `caderno-de-testes-email-service.md` ganhou só uma nota sobre isso; os passos
+  continuam com o `chamar.sh`, como foram entregues (decisão da autora). O apêndice B e o `.tex`
+  não mudam.
+
 ### Sessão 2026-10-15 (continuação) — tag `etapa-4` e `.tex`
 
 - Tag anotada `etapa-4` ("Fim da Etapa 4") criada em `6552d1c`, merge da PR #176 no `master`, que

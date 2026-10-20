@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -38,10 +39,34 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private final ApiKeyValidator validator;
     private final ObjectMapper objectMapper;
+    private final boolean swaggerUiEnabled;
 
-    public ApiKeyAuthenticationFilter(ApiKeyValidator validator, ObjectMapper objectMapper) {
+    public ApiKeyAuthenticationFilter(ApiKeyValidator validator, ObjectMapper objectMapper,
+                                      @Value("${springdoc.swagger-ui.enabled:true}") boolean swaggerUiEnabled) {
         this.validator = validator;
         this.objectMapper = objectMapper;
+        this.swaggerUiEnabled = swaggerUiEnabled;
+    }
+
+    /**
+     * Spec 05-049: the Swagger UI and the contract it shows open without a key. A closed list of
+     * paths, so no new route of the API is ever born open by mistake; the calls the UI makes go
+     * to the API routes and still need the key.
+     *
+     * <p>Only while the Swagger UI is on (docker): staging and production switch it off in
+     * config-repo, and the contract, a static file that springdoc's switches do not cover, then
+     * asks for a key like every other path.
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        if (!swaggerUiEnabled) {
+            return false;
+        }
+        String path = request.getServletPath();
+        return path.equals("/openapi.yaml")
+                || path.equals("/swagger-ui.html")
+                || path.startsWith("/swagger-ui/")
+                || path.startsWith("/v3/api-docs");
     }
 
     @Override

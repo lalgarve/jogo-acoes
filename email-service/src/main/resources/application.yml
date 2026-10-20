@@ -89,6 +89,19 @@ api-key:
       default: true
     - name: disposable-email:admin
 
+# Spec 05-049: Swagger UI over the static contract, copied to static/openapi.yaml at build time
+# (email-service/pom.xml), the same setup as app's (see app's application.yml for why each line
+# is there). packages-to-scan points at a nonexistent package: no operations are generated from
+# the annotations, while the bean the UI depends on stays up (api-docs.enabled: false would take
+# the UI down with it). The URL carries the context path, or the browser fetches /openapi.yaml
+# from the server root. persist-authorization keeps the API key in the browser across reloads.
+# Switched off in staging and production (config-repo): docker only.
+springdoc:
+  packages-to-scan: dev.leilaalgarve.jogoacoes.emailservice.__no_annotation_scanning__
+  swagger-ui:
+    url: ${server.servlet.context-path}/openapi.yaml
+    persist-authorization: true
+
 logging:
   level:
     dev.leilaalgarve.jogoacoes.emailservice: DEBUG
