@@ -5,7 +5,7 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 
 **Ordem:** o teste primeiro, falhando pelo motivo esperado (`401`), depois a mudança.
 
-Issue-épico: a criar quando a spec for aprovada.
+Issue-épico: [#188](https://github.com/lalgarve/jogo-acoes/issues/188).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|

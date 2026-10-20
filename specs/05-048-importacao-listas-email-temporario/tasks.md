@@ -8,7 +8,7 @@ correções. Depende da spec 05-047 (zona de DNS de teste, `RecipientDomainVerif
 `POST /emails`) e da spec `013-key-permissions` do `api-key` implementada e publicada (1.1.0),
 que é pré-requisito.
 
-Issue-épico: a criar quando a spec for aprovada.
+Issue-épico: [#187](https://github.com/lalgarve/jogo-acoes/issues/187).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|

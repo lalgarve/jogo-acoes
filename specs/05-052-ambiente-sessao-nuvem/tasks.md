@@ -3,7 +3,7 @@
 Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 "Rastreamento de trabalho via Issues" em `memory/constitution.md`).
 
-Issue-épico: a criar.
+Issue-épico: [#191](https://github.com/lalgarve/jogo-acoes/issues/191).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|

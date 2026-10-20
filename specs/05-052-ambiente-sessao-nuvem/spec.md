@@ -1,7 +1,7 @@
 # Spec: Ambiente completo numa sessão de nuvem da Claude
 
 **Status:** implementada (ver `tasks.md`)
-**Issue:** a criar
+**Issue:** [#191](https://github.com/lalgarve/jogo-acoes/issues/191)
 **Iteração:** iteration-5
 
 ## Resumo

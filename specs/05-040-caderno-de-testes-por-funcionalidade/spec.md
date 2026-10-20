@@ -1,7 +1,7 @@
 # Spec: Caderno de testes por funcionalidade
 
 **Status:** implementada (ver `tasks.md`)
-**Issue:** — (criar quando a spec for aprovada)
+**Issue:** [#157](https://github.com/lalgarve/jogo-acoes/issues/157)
 **Iteração:** iteration-5
 **Substitui:** [`05-012-caderno-de-testes-etapa1`](../05-012-caderno-de-testes-etapa1/spec.md)
 **Depende de:** [`05-018-gerador-dados-teste`](../05-018-gerador-dados-teste/spec.md) (massa de
