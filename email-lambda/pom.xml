@@ -58,17 +58,15 @@
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-jackson</artifactId>
     </dependency>
-    <!-- CDI-managed SesClient + config (quarkus.ses.aws.*) + Dev Services: auto-starts
-         LocalStack via Testcontainers for tests when no endpoint-override is configured,
-         same mechanism already used for Postgres/SQS elsewhere in this project (see
-         docs/context/iteracao-4.md, decision 3); requires Docker, which every place this
-         project runs has (spec 05-035): without it the tests fail, never skip. -->
+    <!-- CDI-managed SesClient + config (quarkus.ses.aws.*). Its Dev Services (a LocalStack started
+         with Testcontainers) is switched off in the tests (spec 05-053): they use the LocalStack
+         brought up before them, and fail without it, never skip (spec 05-035). -->
     <dependency>
       <groupId>io.quarkiverse.amazonservices</groupId>
       <artifactId>quarkus-amazon-ses</artifactId>
     </dependency>
     <!-- Spec 05-046: a delivery error goes to the dead-letter queue with its type, for
-         email-service to decide whether to try again. Same Dev Services LocalStack in tests. -->
+         email-service to decide whether to try again. Same LocalStack as SES in tests. -->
     <dependency>
       <groupId>io.quarkiverse.amazonservices</groupId>
       <artifactId>quarkus-amazon-sqs</artifactId>
