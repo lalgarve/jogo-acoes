@@ -101,12 +101,36 @@ executam. Verificação:
   - `config-server` inacessível (`ConfigServerClientIntegrationTest`, nos dois serviços);
   - Swagger UI desligado (`SwaggerUiSwitchedOffTest`, branch da 05-049);
   - os tempos curtos de nova tentativa do publicador (05-046);
-  - os que sobem o serviço com outro perfil (`HmacPepperStartupCheckTest`,
-    `ProductionProfileSuppressesLoggingAspectsTest` e afins; a lista fechada sai da T003).
+  - `ProductionProfileSuppressesLoggingAspectsTest` (`app` com o perfil `production`);
+  - a parte `startAppWith` do `EmailServiceClientIntegrationTest` (um segundo `app` com o
+    endereço ou a chave do `email-service` errados, que não pode subir);
+  - `ConfigServerCredentialsTest` (`config-server` sem usuário e senha, que não pode subir).
+
+  Não entram, porque viram testes comuns contra o ambiente levantado antes:
+  `BlackboxProfileIntegrationTest` (o ambiente de teste já usa o overlay `blackbox`),
+  `RecipientDomainRejectionIntegrationTest`, o resto do `EmailServiceClientIntegrationTest`
+  (apontam para o `email-service` em `localhost:8082`, o que está rodando) e `ConfigServerTest`
+  (usa as credenciais do ambiente). `HmacPepperStartupCheckTest` é teste unitário e não sobe
+  nada. Os valores do `application.yml` de teste do `email-service` (filas de teste, tempo máximo
+  do DNS, limites das listas, esperas do publicador) e o limite de 10 MB do
+  `ImportDisposableDomainsJobTest` dependem da decisão em aberto 2.
 
   Nesses testes, **o próprio teste em Python levanta e derruba os containers** de que precisa,
   com a configuração do cenário, e chama o serviço por fora. A regra "os testes não sobem nada"
   continua valendo para as suítes Java (Maven): é nelas que nada sobe.
+- **Nenhum teste depende de URL fora do nosso controle** (Leila, 2026-10-20). As listas de
+  e-mail temporário dos testes são servidas pelo S3 do LocalStack, publicadas pelo próprio teste.
+- **No ambiente de teste, o repositório do GitHub nem é criado** (Leila, 2026-10-20). Hoje a
+  migration `V6__create_disposable_domain_tables.sql` cadastra, em todos os ambientes, a lista
+  `disposable-email-domains` do GitHub (spec 05-048), e a suíte Cucumber a apaga antes dos
+  cenários. Esse cadastro passa a existir só em `staging` e `production`. Efeitos:
+  - a V6 muda de conteúdo: um banco já criado precisa ser recriado (`docker compose down -v`); o
+    sistema está em pré-produção (constitution), não há dado a preservar;
+  - o caderno de testes do Serviço de E-mail, parte do documento já entregue, conta com esse
+    repositório como o de número `1`; rodado de novo no `docker`, o resultado muda. O caderno
+    ganha uma nota, como a da spec 05-049, sem reescrever os roteiros;
+  - a spec 05-048 ganha uma nota de que o repositório inicial passou a ser só de
+    `staging`/`production`.
 
 ## Decisões em aberto
 

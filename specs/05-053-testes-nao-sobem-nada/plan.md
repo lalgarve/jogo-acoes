@@ -41,6 +41,12 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 | Ordem da migração | `config-server` → `email-lambda` → `email-service` → `app`, um módulo por PR, cada uma com a regra de arquitetura do módulo | proposta | Do menor para o maior; o CI fica verde a cada passo. |
 | CI | Um passo levanta tudo (infraestrutura, `config-server`, `email-service`, `app`, com o overlay `blackbox` e os agentes JaCoCo), depois as suítes, a cobertura e a derrubada | proposta | O ambiente sobe uma vez. Resolve, de passagem, o conflito de duas instâncias do `email-service` da 05-046. |
 
+## Repositório inicial das listas de e-mail temporário
+
+| Pergunta | Decisão | Status | Raciocínio |
+|---|---|---|---|
+| Como o repositório do GitHub deixa de existir no ambiente de teste | O `INSERT` sai de `V6__create_disposable_domain_tables.sql` e vai para uma migration de dados numa pasta própria (`db/seed-email-service/`), que só `config-repo/email-service-staging.yml` e `-production.yml` acrescentam a `spring.flyway.locations`. Histórico do Flyway igual ao de hoje (`email_service_schema_history`) | proposta (a decisão de não criar é da Leila, 2026-10-20) | O ambiente `docker` e os testes nunca têm o repositório, sem precisar apagar. Mesmo mecanismo de configuração por ambiente que o projeto já usa (`config-repo`). |
+
 ## Estrutura de módulos/pacotes
 
 - `*/src/test/java/.../testsupport/`: clientes HTTP, JDBC e AWS de cada módulo.
