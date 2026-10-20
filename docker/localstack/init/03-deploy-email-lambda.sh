@@ -12,6 +12,8 @@
 # code (the old EmailQueuePoller, removed) is needed to bridge the gap locally.
 #
 # No sender address for the function (spec 05-031): each message carries its client's own.
+# Spec 05-046: the function also publishes to the DLQ (01-create-queue.sh) -- its SQS client gets
+# the same LocalStack endpoint as SES, and EMAIL_DLQ_NAME names the queue.
 set -e
 
 FUNCTION_ZIP=/tmp/email-lambda-target/function.zip
@@ -30,7 +32,13 @@ awslocal lambda create-function \
     QUARKUS_SES_AWS_REGION=us-east-1,
     QUARKUS_SES_AWS_CREDENTIALS_TYPE=static,
     QUARKUS_SES_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID=test,
-    QUARKUS_SES_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY=test
+    QUARKUS_SES_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY=test,
+    QUARKUS_SQS_ENDPOINT_OVERRIDE=http://localhost.localstack.cloud:4566,
+    QUARKUS_SQS_AWS_REGION=us-east-1,
+    QUARKUS_SQS_AWS_CREDENTIALS_TYPE=static,
+    QUARKUS_SQS_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID=test,
+    QUARKUS_SQS_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY=test,
+    EMAIL_DLQ_NAME=jogo-acoes-email-commands-dlq
   }'
 
 # The function stays "Pending" for a few seconds while LocalStack builds its execution

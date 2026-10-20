@@ -4,27 +4,23 @@ import dev.leilaalgarve.jogoacoes.emailservice.api.model.SendEmailRequest;
 import dev.leilaalgarve.jogoacoes.emailservice.domain.RecipientDomainVerifier;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateReference;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateService;
-import io.awspring.cloud.sqs.operations.SqsTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * Queues one e-mail built from one of the client's own templates (spec 05-031). Nothing is
- * rendered or sent here: the message goes to the send queue and email-lambda asks SES to send the
- * template, rendered by SES itself.
+ * Accepts one e-mail built from one of the client's own templates (spec 05-031). Nothing is
+ * rendered, sent or published here: the checks a client can fix (sender configured, template
+ * exists, recipient's domain accepts e-mail) answer right away, and the send is recorded as
+ * PENDING. {@link EmailQueuePublisher} puts it on the send queue in the background (spec 05-046),
+ * so neither SQS nor SES being down fails this call.
  *
- * <p>{@code email_send} is written before publishing, in the same transaction: if the publish
- * fails, the row is rolled back and the client gets a 503, so there is never a recorded send that
- * never reached the queue (plan.md, "Falha ao publicar"). The reverse -- published, then the commit
- * fails -- leaves an e-mail without a row; accepted, it is rare.
- *
- * <p>The recipient's domain is checked last, after sender and template (spec 05-047): a request
- * those reject never reaches DNS, and a rejected domain records and queues nothing.
+ * <p>The recipient's domain is checked last, after sender and template (specs 05-047 and 05-048):
+ * a request those reject never reaches DNS, and a rejected domain records and queues nothing.
  */
 @Service
 public class EmailSendService {
@@ -33,19 +29,16 @@ public class EmailSendService {
     private final EmailSendRepository sendRepository;
     private final TemplateService templateService;
     private final RecipientDomainVerifier recipientDomainVerifier;
-    private final SqsTemplate sqsTemplate;
-    private final String queueName;
+    private final ObjectMapper objectMapper;
 
     public EmailSendService(ClientSenderRepository senderRepository, EmailSendRepository sendRepository,
                             TemplateService templateService, RecipientDomainVerifier recipientDomainVerifier,
-                            SqsTemplate sqsTemplate,
-                            @Value("${email.queue-name}") String queueName) {
+                            ObjectMapper objectMapper) {
         this.senderRepository = senderRepository;
         this.sendRepository = sendRepository;
         this.templateService = templateService;
         this.recipientDomainVerifier = recipientDomainVerifier;
-        this.sqsTemplate = sqsTemplate;
-        this.queueName = queueName;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -54,17 +47,10 @@ public class EmailSendService {
         TemplateReference template = templateService.reference(clientId, request.getTemplateName());
         recipientDomainVerifier.verify(request.getRecipientEmail());
 
-        EmailSend send = sendRepository.saveAndFlush(
-                new EmailSend(clientId, template.id(), request.getRecipientEmail(), Instant.now()));
-
         Map<String, Object> templateData = request.getTemplateData() == null ? Map.of() : request.getTemplateData();
-        EmailQueueMessage message = new EmailQueueMessage(EmailQueueMessage.SCHEMA_VERSION, send.getId().toString(),
-                sender.getAddress(), request.getRecipientEmail(), template.sesTemplateName(), templateData);
-        try {
-            sqsTemplate.send(queueName, message);
-        } catch (RuntimeException e) {
-            throw new EmailQueuePublishException(e);
-        }
+        EmailSend send = sendRepository.save(new EmailSend(clientId, template.id(), request.getRecipientEmail(),
+                sender.getAddress(), template.sesTemplateName(), objectMapper.writeValueAsString(templateData),
+                Instant.now()));
         return send.getId();
     }
 }

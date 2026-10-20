@@ -154,6 +154,15 @@
       <version>3.6.4</version>
     </dependency>
 
+    <!-- Spec 05-049: interactive Swagger UI against the static docs/openapi-email-service.yaml
+         contract, the same library and version as app's (spec 05-009). springdoc.packages-to-scan
+         in application.yml keeps it from generating a second contract from the annotations. -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>3.1.1</version>
+    </dependency>
+
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
@@ -250,6 +259,30 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <!-- Spec 05-049: copies the same docs/openapi-email-service.yaml the generator below reads
+             into target/classes/static as openapi.yaml, so Swagger UI (springdoc.swagger-ui.url)
+             serves the real contract at /api/openapi.yaml, the same address as app's. Antrun
+             rather than maven-resources-plugin (app's way) because the file is renamed. -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>copy-openapi-contract-for-swagger-ui</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <copy file="${project.basedir}/../docs/openapi-email-service.yaml"
+                      tofile="${project.build.outputDirectory}/static/openapi.yaml"/>
+              </target>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.openapitools</groupId>

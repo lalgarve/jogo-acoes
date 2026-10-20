@@ -121,7 +121,15 @@ dados de forma agregada e alertar sobre eles.
    LocalStack exigindo remetente verificado, ver seção da Lambda abaixo — PR #16), os dois
    corrigidos, e `master` está verde. Detalhes em "Produtor: `EmailSender` real".
 4. ~~Retry e política da DLQ.~~ — **resolvido: diferenciada por tipo de erro, com estado
-   consultável/cancelável via DynamoDB + processo agendado** (não a alternativa nativa do SQS
+   consultável/cancelável via DynamoDB + processo agendado**
+
+   > **Substituída pela spec
+   > [05-046](../../specs/05-046-publicacao-na-fila-em-segundo-plano/spec.md) (2026-10-14).** O
+   > DynamoDB nunca foi implementado. O estado de cada envio (status, tentativas, tipo do último
+   > erro) fica na tabela `email_send` do `email-service`, que publica na fila em segundo plano,
+   > lê a DLQ e decide se tenta de novo; a Lambda só classifica o erro do SES. O texto abaixo
+   > fica como registro da decisão da época.
+ (não a alternativa nativa do SQS
    que chegou a ser considerada — descartada porque não dá pra cancelar uma mensagem já
    publicada com atraso, nem expõe estado consultável sem reconstruir isso por fora).
 

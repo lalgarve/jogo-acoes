@@ -73,7 +73,9 @@ paths:
       description: >
         Fails with 409 if a template with this name already exists for the calling client, or
         with 422 if SES rejects the template (CreateTemplate call) — e.g. invalid Handlebars
-        syntax. The SES error message is passed through in the response.
+        syntax. The SES error message is passed through in the response. If SES still has a
+        template under this name with no record in this service (left over from a failed
+        registration), it is overwritten (spec 05-044). 503 when SES is unavailable.
       requestBody:
         required: true
         content:
@@ -103,6 +105,14 @@ paths:
                 $ref: '#/components/schemas/Error'
         '422':
           description: SES rejected the template -- message carries the reason SES returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            SES could not be reached, or failed on its side (5xx, throttling) -- nothing was
+            stored; the client may retry
           content:
             application/json:
               schema:
@@ -146,6 +156,11 @@ paths:
       tags: [templates]
       operationId: updateTemplate
       summary: Update an existing template and re-sync it to SES (UpdateTemplate)
+      description: >
+        The template's record in this service is the source of truth: if SES no longer has it
+        (e.g. LocalStack restarted, or it was deleted outside this service), it is recreated on
+        SES with the new content (spec 05-044). 404 only means this client has no template with
+        this name.
       requestBody:
         required: true
         content:
@@ -179,6 +194,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            SES could not be reached, or failed on its side (5xx, throttling) -- nothing was
+            stored; the client may retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /templates/{name}/preview:
     parameters:
@@ -191,7 +214,8 @@ paths:
       operationId: previewTemplate
       summary: >
         Render a registered template with sample data via SES TestRenderTemplate -- never sends
-        an email.
+        an email. If SES no longer has the template, it is recreated from this service's record
+        and rendered again (spec 05-044).
       requestBody:
         required: true
         content:
@@ -227,19 +251,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            SES could not be reached, or failed on its side (5xx, throttling) -- nothing was
+            stored; the client may retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /emails:
     post:
       tags: [emails]
       operationId: sendEmail
-      summary: Queue one email built from one of the calling client's own templates
+      summary: Accept one email built from one of the calling client's own templates
       description: >
         Looks up the template by name among the calling client's own templates and the
         sender address operations configured for the client, validates the request and
-        publishes one message to the SQS send queue (senderAddress/templateName/templateData,
-        rendered by SES at send time via
-        SendTemplatedEmail). Responds 202 as soon as the message is queued -- delivery happens
-        asynchronously in email-lambda, and a later delivery failure (bounce, complaint) is not
+        records the send as PENDING. Responds 202 right away: email-service publishes the
+        message (senderAddress/templateName/templateData, rendered by SES at send time via
+        SendTemplatedEmail) to the SQS send queue in the background, retrying while the queue
+        or SES is unavailable and giving up after 24 hours (spec 05-046). Neither SQS nor SES
+        being down fails this call. A later delivery failure (bounce, complaint) is not
         reported back by this endpoint. The returned id travels with the message as its
         correlationId (and as the SES message tag `correlationId`).
 
@@ -260,7 +293,7 @@ paths:
               $ref: '#/components/schemas/SendEmailRequest'
       responses:
         '202':
-          description: Accepted -- the message is on the send queue
+          description: Accepted -- the send is recorded as PENDING and will be published to the send queue
           content:
             application/json:
               schema:
@@ -290,7 +323,7 @@ paths:
         '409':
           description: >
             No sender address has been configured for the calling client yet (set by
-            operations, not through this API) -- nothing was queued
+            operations, not through this API) -- nothing was recorded
           content:
             application/json:
               schema:
@@ -300,14 +333,6 @@ paths:
             The recipient's domain does not accept e-mail (spec 05-047), or it is (or is under) a
             disposable e-mail domain imported by the batch (spec 05-048) -- nothing was recorded
             or queued. The message says which.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '503':
-          description: >
-            The message could not be published to the send queue -- nothing was sent, the
-            client may retry
           content:
             application/json:
               schema:
@@ -571,8 +596,12 @@ components:
             tag do SES
         status:
           type: string
-          enum: [QUEUED]
-          description: Único valor nesta spec -- a mensagem foi publicada na fila de envio
+          enum: [PENDING, QUEUED, FAILED]
+          description: >
+            Situação do envio (spec 05-046). A resposta do POST /emails é sempre PENDING: o envio
+            foi gravado e o email-service o publica na fila de envio em segundo plano. QUEUED: a
+            mensagem está na fila. FAILED: o email-service desistiu (o SES recusou o e-mail, ou ele
+            não saiu em 24 horas).
 
     DisposableDomainSourceCreateRequest:
       type: object

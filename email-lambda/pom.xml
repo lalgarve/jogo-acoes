@@ -67,6 +67,12 @@
       <groupId>io.quarkiverse.amazonservices</groupId>
       <artifactId>quarkus-amazon-ses</artifactId>
     </dependency>
+    <!-- Spec 05-046: a delivery error goes to the dead-letter queue with its type, for
+         email-service to decide whether to try again. Same Dev Services LocalStack in tests. -->
+    <dependency>
+      <groupId>io.quarkiverse.amazonservices</groupId>
+      <artifactId>quarkus-amazon-sqs</artifactId>
+    </dependency>
     <!-- The SES client needs an HTTP transport on the classpath; the extension defaults to
          this one (sync URL Connection client) rather than Apache/Netty. Found by actually
          running the build in this session: boot failed with NoClassDefFoundError without

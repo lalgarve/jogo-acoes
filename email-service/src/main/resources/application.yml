@@ -58,6 +58,21 @@ spring:
 # for now (plan.md, "Mesma fila ou fila nova").
 email:
   queue-name: ${EMAIL_QUEUE_NAME:jogo-acoes-email-commands}
+  # Spec 05-046: where email-lambda puts what it could not deliver, with the error type
+  # (contracts/dlq-message.md); also the send queue's redrive target. Created by
+  # docker/localstack/init/01-create-queue.sh in docker.
+  dlq-name: ${EMAIL_DLQ_NAME:jogo-acoes-email-commands-dlq}
+  # Spec 05-046: the background publisher. Retries wait initial-delay, doubling up to max-delay;
+  # a send not delivered within give-up-after is FAILED.
+  publisher:
+    poll-interval: 1s
+    batch-size: 20
+    initial-delay: 1s
+    max-delay: 5m
+    give-up-after: 24h
+  # Spec 05-046: a TEMPLATE_MISSING within this window of the last recreation does not recreate again.
+  template:
+    recreate-window: 1h
   disposable-domains:
     # Spec 05-048: limits of one list download. import-cron "-" switches the daily import off;
     # staging/production switch it on in config-repo.
@@ -73,6 +88,19 @@ api-key:
     - name: email:send
       default: true
     - name: disposable-email:admin
+
+# Spec 05-049: Swagger UI over the static contract, copied to static/openapi.yaml at build time
+# (email-service/pom.xml), the same setup as app's (see app's application.yml for why each line
+# is there). packages-to-scan points at a nonexistent package: no operations are generated from
+# the annotations, while the bean the UI depends on stays up (api-docs.enabled: false would take
+# the UI down with it). The URL carries the context path, or the browser fetches /openapi.yaml
+# from the server root. persist-authorization keeps the API key in the browser across reloads.
+# Switched off in staging and production (config-repo): docker only.
+springdoc:
+  packages-to-scan: dev.leilaalgarve.jogoacoes.emailservice.__no_annotation_scanning__
+  swagger-ui:
+    url: ${server.servlet.context-path}/openapi.yaml
+    persist-authorization: true
 
 logging:
   level:

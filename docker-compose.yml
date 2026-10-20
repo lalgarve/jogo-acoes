@@ -247,6 +247,9 @@ services:
       # wire to email-lambda (same queue as app's).
       SPRING_CLOUD_AWS_SQS_ENDPOINT: http://localstack:4566
       EMAIL_QUEUE_NAME: jogo-acoes-email-commands
+      # Spec 05-046: the send queue's dead-letter queue, also created by LocalStack's init scripts;
+      # email-lambda puts there what SES did not deliver, and email-service reads it.
+      EMAIL_DLQ_NAME: jogo-acoes-email-commands-dlq
       # Test pepper the test key was hashed with (same value as config-repo/email-service-docker.yml); never a
       # real secret.
       API_KEY_HMAC_PEPPER: jogo-acoes-test-pepper-not-a-secret

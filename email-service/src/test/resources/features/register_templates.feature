@@ -79,6 +79,31 @@ Feature: Register e-mail templates
       When they try to preview a template named "missing"
       Then the system shows an error that the template does not exist
 
+  Rule: email-service recreates on SES the templates SES lost
+
+    Background:
+      Given a client authenticated with the API key "client-a"
+
+    Scenario: Client updates a template SES no longer has
+      Given they already registered a template named "welcome"
+      And SES lost the template named "welcome"
+      When they update the template named "welcome" with a new subject and body
+      Then the template reflects the new content
+      And SES has the template named "welcome" with the new content
+
+    Scenario: Client previews a template SES no longer has
+      Given they already registered a template named "welcome"
+      And SES lost the template named "welcome"
+      When they preview the template named "welcome" with sample data
+      Then the system returns the rendered subject and body
+      And SES has the template named "welcome" again
+
+    Scenario: Client registers a template whose name was left on SES without a record
+      Given SES already has a template named "welcome" with no record
+      When they register a template named "welcome" with subject "Welcome!" and a valid body
+      Then the template is created
+      And SES has the template named "welcome" with the subject "Welcome!"
+
   Rule: Clients only see and change their own templates
 
     Background:

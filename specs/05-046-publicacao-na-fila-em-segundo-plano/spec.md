@@ -1,13 +1,15 @@
 # Spec: Publicação na fila de envio em segundo plano
 
-**Status:** rascunho
+**Status:** implementada, integrada às specs 05-047 e 05-048; falta confirmar a T020 no CI de
+uma PR e a verificação manual (ver `tasks.md`)
 **Issue:** [#185](https://github.com/lalgarve/jogo-acoes/issues/185) (relacionada à [#144](https://github.com/lalgarve/jogo-acoes/issues/144))
 **Iteração:** iteration-5
 
 ## Resumo
 
 `POST /emails` deixa de publicar na fila SQS dentro da chamada. O `email-service` faz as
-verificações básicas, grava o envio como pendente e responde. Uma thread do próprio serviço
+verificações básicas e a do domínio do destinatário (e-mail temporário e DNS, specs 05-048 e
+05-047), grava o envio como pendente e responde. Uma thread do próprio serviço
 publica os envios pendentes na fila e muda o status depois de publicar. Quando a `email-lambda`
 não consegue entregar, a mensagem vai para uma fila de erros (DLQ) com o tipo de erro; o
 `email-service` lê essa fila, grava o tipo de erro e o número de tentativas no banco e decide se
@@ -46,7 +48,10 @@ Decisões da Leila (2026-10-14), ao revisar a spec 05-044:
 - `.feature`: `email-service/src/test/resources/features/send_email.feature`. Muda antes do
   código (ver `tasks.md`): o envio aceito responde `PENDING` e chega a `QUEUED`; o cenário "The
   send queue is unavailable" deixa de esperar `503`; cenários novos para os erros que chegam pela
-  DLQ e para a desistência.
+  DLQ e para a desistência. As `Rule`s das specs 05-047 ("The recipient's domain must accept
+  e-mail") e 05-048 ("A disposable e-mail domain is rejected before the whitelist and DNS")
+  continuam: os casos aceitos passam a esperar `202 PENDING`; os recusados continuam `422`, sem
+  envio gravado e sem nada na fila.
 
 ## Requisitos funcionais
 
@@ -55,11 +60,28 @@ Decisões da Leila (2026-10-14), ao revisar a spec 05-044:
 - **Verificações básicas na chamada**, como hoje: `X-API-Key` (`401`), pedido malformado (`400`),
   template inexistente no banco ou de outro cliente (`404`), remetente não configurado (`409`).
   Nenhuma delas consulta a fila nem o SES.
+- **Verificação do domínio do destinatário**, depois das básicas e antes de gravar, como as specs
+  [05-048](../05-048-importacao-listas-email-temporario/spec.md) e
+  [05-047](../05-047-verificacao-dominio-destinatario/spec.md) já definem. Um pedido recusado pelas
+  básicas não chega a ela. Nesta ordem:
+  1. **E-mail temporário (05-048):** se o domínio, ou um domínio acima dele, está na tabela de
+     domínios temporários, o pedido é recusado com `422` (`Recipient domain is a disposable e-mail
+     domain: <domínio>`), mesmo que o domínio esteja na lista branca.
+  2. **Lista branca (05-047):** domínio já aprovado segue sem consultar o DNS.
+  3. **DNS (05-047):** fora da lista branca, o serviço consulta MX e, sem MX, A/AAAA. Aprovado, o
+     domínio entra na lista branca. Domínio inexistente, sem MX nem A/AAAA, ou com MX nulo: `422`
+     (`Recipient domain does not accept e-mail: <domínio>`).
+  4. **DNS sem resposta** (tempo esgotado, `SERVFAIL`): o pedido é aceito, o domínio não entra na
+     lista branca e o serviço registra um `WARN` (decisão da 05-047, que já seguia esta spec).
+
+  Um pedido recusado com `422` não grava envio nenhum (nem `PENDING`) e não põe nada na fila. A
+  verificação consulta o banco e, fora da lista branca, o DNS; nunca a fila nem o SES.
 - **Pedido aceito:** o serviço grava o envio com status `PENDING` e tudo o que a publicação vai
   precisar (remetente, destinatário, nome do template no SES, `templateData`), e responde `202`
   com `{ id, status: "PENDING" }`. O `202` passa a significar "aceito e gravado".
-- **A chamada não falha por causa da fila nem do SES.** O `503` de "fila indisponível" sai do
-  contrato de `POST /emails`.
+- **A chamada não falha por causa da fila, do SES nem do DNS.** O `503` de "fila indisponível"
+  sai do contrato de `POST /emails`; o `422` é a recusa do domínio, não uma falha de
+  infraestrutura.
 - O `jogo-acoes` continua chamando `POST /emails` de forma síncrona e não muda: ele lê só o `id`
   da resposta.
 
@@ -68,7 +90,7 @@ Decisões da Leila (2026-10-14), ao revisar a spec 05-044:
 - Uma thread do `email-service` pega os envios `PENDING` cuja próxima tentativa já venceu,
   publica cada um na fila de envio com a mesma mensagem de hoje (`correlationId` = `id`) e muda o
   status para `QUEUED`, com a hora da publicação.
-- A publicação não consulta o SES.
+- A publicação não consulta o SES e não repete a verificação do domínio: vale a feita no pedido.
 - Se a publicação falhar, o envio continua `PENDING`, com o tipo de erro `QUEUE_UNAVAILABLE`, uma
   tentativa a mais e uma próxima tentativa mais tarde (espera crescente).
 - Duas instâncias do `email-service` não publicam o mesmo envio ao mesmo tempo.
@@ -97,8 +119,7 @@ Decisões da Leila (2026-10-14), ao revisar a spec 05-044:
 
 ### Desistência
 
-- Um envio que ainda não deu certo 24 horas depois do pedido passa para `FAILED` (ver "Decisões em
-  aberto", item 1). O serviço registra um `ERROR` no log com o `id` e o tipo de erro.
+- Um envio que ainda não deu certo 24 horas depois do pedido passa para `FAILED` (ver "Decisões resolvidas"). O serviço registra um `ERROR` no log com o `id` e o tipo de erro.
 - O `templateData` só fica gravado enquanto o envio está `PENDING`; é apagado quando ele vira
   `QUEUED` ou `FAILED` (pode ter dado pessoal; a 05-031 não gravava).
 
@@ -115,7 +136,9 @@ Decisões da Leila (2026-10-14), ao revisar a spec 05-044:
 
 ## Requisitos não-funcionais
 
-- A resposta do `POST /emails` depende só do banco do `email-service`.
+- A resposta do `POST /emails` depende do banco do `email-service` e, só para domínio fora da lista
+  branca, do DNS, com o tempo máximo da 05-047 (2 s por consulta). DNS sem resposta não recusa
+  nem atrasa além desse tempo.
 - Uma rajada de N erros `TEMPLATE_MISSING` do mesmo template na mesma hora gera uma chamada ao SES
   (duas instâncias tratando ao mesmo tempo podem fazer uma cada; a recriação não sobrescreve).
 - A fila de trabalho é a própria tabela `email_send`, no PostgreSQL que o serviço já usa.
@@ -142,19 +165,21 @@ Decisões da Leila (2026-10-14), ao revisar a spec 05-044:
   na última hora não são recriados de novo (Leila, 2026-10-14).
 - **Tipo de erro e número de tentativas gravados no banco** (Leila, 2026-10-14).
 
+- **Desistência** (Leila, 2026-10-14): 24 horas depois do pedido, com espera de 1 s dobrando até
+  5 min entre tentativas. Valores configuráveis.
+- **Quem classifica o erro** (Leila, 2026-10-14): a `email-lambda`, que recebe a resposta do SES,
+  põe a mensagem na DLQ com o tipo. A redrive do SQS sozinha não diz o motivo da falha.
+- **Templates recriados na última hora** (Leila, 2026-10-14): coluna `ses_recreated_at` em
+  `email_template`, válida para todas as instâncias e depois de um reinício.
+- **Verificação do domínio no pedido** (Leila, 2026-10-19): as verificações de e-mail temporário
+  (05-048) e de DNS (05-047) entram nas verificações da chamada, depois das básicas e antes de
+  gravar o envio `PENDING`. Quando a 05-046 foi escrita e implementada, essas specs ainda não
+  estavam no `development`.
+- **Status na resposta** (2026-10-14): `202` com `status: "PENDING"`; o enum do contrato tem
+  `PENDING`, `QUEUED` e `FAILED` (os dois últimos só aparecem quando existir a consulta do envio).
+  Era a recomendação; anunciada na thread antes do "Pode implementar" da Leila e implementada
+  assim.
+
 ## Decisões em aberto
 
-Cada uma tem uma recomendação, já usada nos requisitos e no `plan.md`; falta a confirmação da
-Leila.
-
-1. **Quando desistir.** Recomendação: 24 horas depois do pedido, com espera de 1 s dobrando até
-   5 min entre tentativas. Um e-mail de login ou convite que sai um dia depois já não serve para
-   quem pediu. Valores configuráveis.
-2. **Quem classifica o erro.** Recomendação: a `email-lambda`, que é quem recebe a resposta do
-   SES, põe a mensagem na DLQ com o tipo. A redrive do SQS sozinha não diz o motivo da falha.
-3. **Onde fica a "lista dos templates recriados na última hora".** Recomendação: uma coluna
-   `ses_recreated_at` em `email_template`, e não uma lista em memória: vale para todas as
-   instâncias e sobrevive a um reinício.
-4. **Status na resposta.** Recomendação: `202` com `status: "PENDING"`, e o enum do contrato passa
-   a ter `PENDING`, `QUEUED` e `FAILED` (os dois últimos só aparecem quando existir a consulta do
-   envio).
+Nenhuma.

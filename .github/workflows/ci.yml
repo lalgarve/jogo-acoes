@@ -75,6 +75,18 @@ jobs:
           name: jacoco-app
           path: app/target/site/jacoco/
 
+      # Spec 05-046, T020: email-service's tests need neither app nor the email-service container,
+      # and that container's background publisher would publish the PENDING sends the tests create
+      # on its own queue. Everything app's tests used is taken down, volumes included, and only
+      # what email-service's tests need comes up again, from scratch.
+      - name: Take down the containers of app's tests
+        if: ${{ !cancelled() }}
+        run: docker compose down -v
+
+      - name: Start PostgreSQL, LocalStack, the test DNS and config-server for email-service
+        if: ${{ !cancelled() }}
+        run: docker compose up -d --wait db-email-service localstack dns config-server
+
       # email-service depends on dev.leilaalgarve.apikey:api-key-validation, which is not on Maven
       # Central: the script installs it into ~/.m2 from the lalgarve/api-key release (a no-op when
       # the Maven cache already has it). Spec 05-030, T011.

@@ -21,11 +21,14 @@ public class EmailSendController implements EmailsApi {
         this.emailSendService = emailSendService;
     }
 
-    /** 202, not 200: the e-mail is on the send queue, not delivered yet. */
+    /**
+     * 202, not 200: the e-mail is recorded as PENDING, not delivered yet -- email-service publishes
+     * it to the send queue in the background (spec 05-046).
+     */
     @Override
     public ResponseEntity<SendEmailResponse> sendEmail(SendEmailRequest sendEmailRequest) {
         UUID id = emailSendService.send(clientIdentityResolver.currentClientId(), sendEmailRequest);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(new SendEmailResponse(id, SendEmailResponse.StatusEnum.QUEUED));
+                .body(new SendEmailResponse(id, SendEmailResponse.StatusEnum.PENDING));
     }
 }

@@ -5,9 +5,14 @@ import dev.leilaalgarve.jogoacoes.emailservice.api.model.EmailTemplateUpdateRequ
 import dev.leilaalgarve.jogoacoes.emailservice.api.model.TemplatePreviewRequest;
 import dev.leilaalgarve.jogoacoes.emailservice.api.model.TemplatePreviewResponse;
 import org.openapitools.jackson.nullable.JsonNullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -16,22 +21,28 @@ import java.util.List;
 /**
  * Orchestrates template registration: SES is always called before the database is touched
  * (data-model.md, "Invariantes") -- a row only exists here once SES has confirmed the template
- * is valid.
+ * is valid. The database is the source of truth: whatever SES lost is recreated from the row
+ * (spec 05-044).
  */
 @Service
 public class TemplateService {
+
+    private static final Logger log = LoggerFactory.getLogger(TemplateService.class);
 
     private final EmailTemplateRepository repository;
     private final SesTemplateClient sesTemplateClient;
     private final MimeRenderedTemplateParser mimeParser;
     private final ObjectMapper objectMapper;
+    private final Duration recreateWindow;
 
     public TemplateService(EmailTemplateRepository repository, SesTemplateClient sesTemplateClient,
-                            MimeRenderedTemplateParser mimeParser, ObjectMapper objectMapper) {
+                            MimeRenderedTemplateParser mimeParser, ObjectMapper objectMapper,
+                            @Value("${email.template.recreate-window:1h}") Duration recreateWindow) {
         this.repository = repository;
         this.sesTemplateClient = sesTemplateClient;
         this.mimeParser = mimeParser;
         this.objectMapper = objectMapper;
+        this.recreateWindow = recreateWindow;
     }
 
     public List<dev.leilaalgarve.jogoacoes.emailservice.api.model.EmailTemplate> list(String clientId) {
@@ -48,7 +59,9 @@ public class TemplateService {
             throw new TemplateAlreadyExistsException(request.getName());
         }
         String sesTemplateName = sesTemplateClient.namespacedName(clientId, request.getName());
-        sesTemplateClient.createTemplate(sesTemplateName, request.getSubject(), request.getBody());
+        // Overwrites a template SES still has under this name with no row here (spec 05-044):
+        // the <client>__ prefix belongs to this service.
+        sesTemplateClient.putTemplate(sesTemplateName, request.getSubject(), request.getBody());
 
         EmailTemplate entity = new EmailTemplate(clientId, request.getName(), request.getSubject(),
                 request.getBody(), toJson(request.getVariablesSchema()), sesTemplateName, Instant.now());
@@ -66,7 +79,14 @@ public class TemplateService {
     public TemplatePreviewResponse preview(String clientId, String name, TemplatePreviewRequest request) {
         EmailTemplate entity = findOrThrow(clientId, name);
         String templateDataJson = toJsonRequired(request.getVariables());
-        String rawMime = sesTemplateClient.testRenderTemplate(entity.getSesTemplateName(), templateDataJson);
+        String rawMime;
+        try {
+            rawMime = sesTemplateClient.testRenderTemplate(entity.getSesTemplateName(), templateDataJson);
+        } catch (TemplateNotFoundException e) {
+            // The row exists, so SES lost it (spec 05-044): recreate it from the row, render once more.
+            sesTemplateClient.createIfAbsent(entity.getSesTemplateName(), entity.getSubject(), entity.getBody());
+            rawMime = sesTemplateClient.testRenderTemplate(entity.getSesTemplateName(), templateDataJson);
+        }
         MimeRenderedTemplateParser.RenderedTemplate rendered = mimeParser.parse(rawMime);
         return new TemplatePreviewResponse().subject(rendered.subject()).body(rendered.body());
     }
@@ -75,6 +95,28 @@ public class TemplateService {
     public TemplateReference reference(String clientId, String name) {
         EmailTemplate entity = findOrThrow(clientId, name);
         return new TemplateReference(entity.getId(), entity.getSesTemplateName());
+    }
+
+    /**
+     * Spec 05-046: a send failed because SES does not have the template -- recreate it from the
+     * row, unless this service already did within the recreate window (the rest of a burst of
+     * errors for the same template). The row lock makes concurrent errors wait for the first one
+     * instead of each calling SES. A template deleted since then is left alone.
+     *
+     * @throws SesUnavailableException SES did not answer; nothing is recorded, the next error tries again
+     */
+    @Transactional
+    public void recreateOnSesUnlessRecent(Long templateId) {
+        Instant now = Instant.now();
+        repository.lockById(templateId)
+                .filter(template -> !template.recreatedOnSesAfter(now.minus(recreateWindow)))
+                .ifPresent(template -> {
+                    sesTemplateClient.createIfAbsent(template.getSesTemplateName(), template.getSubject(),
+                            template.getBody());
+                    template.markRecreatedOnSes(now);
+                    log.info("Recreated template {} on SES after a TEMPLATE_MISSING delivery error",
+                            template.getSesTemplateName());
+                });
     }
 
     private EmailTemplate findOrThrow(String clientId, String name) {
