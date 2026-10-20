@@ -85,27 +85,34 @@ executam. Verificação:
 
 ## Fora de escopo
 
-- A suíte Python `blackbox-tests/`, que já testa o `app` por fora.
+- Os testes que a suíte Python `blackbox-tests/` já tem (testam o `app` por fora e já não sobem
+  nada); a suíte só ganha, conforme a decisão 6, os testes de configuração especial.
 - Mudar o comportamento de qualquer serviço.
 - O caderno de testes manual.
 
+## Decisões resolvidas
+
+- **Testes que dependem de subir um serviço com outra configuração vão para Python** (Leila,
+  2026-10-20). São os que não dá para fazer com um só serviço já rodando com a configuração
+  normal:
+  - duas instâncias do `email-service` publicando ao mesmo tempo (o teste dos 50 envios, branch
+    da 05-046);
+  - SES fora do ar (`SesUnavailableIntegrationTest` e parte do `DeadLetterConsumerIntegrationTest`);
+  - `config-server` inacessível (`ConfigServerClientIntegrationTest`, nos dois serviços);
+  - Swagger UI desligado (`SwaggerUiSwitchedOffTest`, branch da 05-049);
+  - os tempos curtos de nova tentativa do publicador (05-046);
+  - os que sobem o serviço com outro perfil (`HmacPepperStartupCheckTest`,
+    `ProductionProfileSuppressesLoggingAspectsTest` e afins; a lista fechada sai da T003).
+
+  Nesses testes, **o próprio teste em Python levanta e derruba os containers** de que precisa,
+  com a configuração do cenário, e chama o serviço por fora. A regra "os testes não sobem nada"
+  continua valendo para as suítes Java (Maven): é nelas que nada sobe.
+
 ## Decisões em aberto
 
-Cada uma tem uma recomendação, detalhada em `plan.md`; falta a decisão da Leila.
+Cada uma tem uma recomendação, detalhada em `plan.md`; falta a decisão da Leila. (A decisão 1,
+sobre os testes que precisam de outra configuração, foi resolvida; ver "Decisões resolvidas".)
 
-1. **Testes que hoje dependem de subir o serviço com uma configuração diferente.** Não dá para
-   reproduzir com um serviço só, já rodando com a configuração normal:
-   - `config-server` inacessível (o serviço não pode subir);
-   - SES fora do ar (`SesUnavailableIntegrationTest` e parte do `DeadLetterConsumerIntegrationTest`, este no branch da 05-046);
-   - Swagger UI desligado (`SwaggerUiSwitchedOffTest`, no branch da 05-049);
-   - duas instâncias publicando ao mesmo tempo (`EmailQueuePublisherConcurrencyTest`, branch da 05-046);
-   - `HmacPepperStartupCheckTest`, `ProductionProfileSuppressesLoggingAspectsTest` e afins, que
-     sobem o serviço com outro perfil.
-
-   Opções: (a) instâncias extras levantadas antes, cada uma com a sua configuração (ex.: um
-   `email-service` com o SES numa porta fechada); (b) virar verificação manual registrada na
-   spec de origem; (c) virar teste unitário da classe envolvida, sem subir nada.
-   Recomendação: decidir caso a caso entre (a) e (c), e (b) só para o que nenhum dos dois cobre.
 2. **Configuração do ambiente de teste.** Alguns testes precisam de valores diferentes dos do
    uso normal: captcha sempre aceito (já é o overlay `blackbox`), esperas curtas de nova
    tentativa no `email-service` (05-046), relógio do jogo. Opções: (a) estender o overlay
@@ -123,3 +130,7 @@ Cada uma tem uma recomendação, detalhada em `plan.md`; falta a decisão da Lei
    no formato antigo. Opções: (a) segurar as duas até esta spec ser implementada e reescrever os
    testes delas já no formato novo; (b) mesclar as duas antes, como estão, e converter depois.
    Recomendação: (a) para a 05-046, que hoje nem passa no CI; para a 05-049 a Leila decide.
+6. **Onde fica a suíte Python dos testes de configuração especial.** Opções: (a) dentro de
+   `blackbox-tests/`, numa pasta própria, aproveitando o `behave`/`pytest` e o cliente gerado que
+   já existem; (b) uma suíte Python nova, só para esses testes. Recomendação: (a), um projeto
+   Python de testes só.

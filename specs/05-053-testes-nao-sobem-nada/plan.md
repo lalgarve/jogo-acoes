@@ -33,7 +33,7 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 | Como o teste prepara e confere o estado | JDBC direto nos bancos (`localhost:5432` e `5433`, credenciais de teste versionadas), clientes da AWS SDK para SQS/SES/S3 no LocalStack, `GET /_aws/ses` para os e-mails enviados. Uma pequena camada de apoio por módulo (`testsupport/`), sem Spring | proposta | É o que o teste precisa enxergar sem passar pela aplicação. Os repositórios da aplicação não podem mais ser injetados. |
 | Injeção nos passos do Cucumber | `cucumber-picocontainer` no lugar de `cucumber-spring` | proposta | Compartilha o estado do cenário entre classes de passos sem contexto Spring. |
 | `email-lambda` | Sem `@QuarkusTest` e sem Dev Services (`quarkus.devservices.enabled=false` deixa de ser necessário, porque nada sobe). O teste publica na fila de envio do LocalStack e confere o e-mail em `/_aws/ses` ou a mensagem na DLQ. A classificação de erros do SES fica coberta também por teste unitário do classificador | proposta | É a função implantada de verdade, pelo mesmo caminho da produção (fila → Lambda → SES). |
-| Testes que precisam de outra configuração | Ver `spec.md`, decisão em aberto 1. Levantamento caso a caso numa tarefa própria (T003), com a opção proposta para cada teste | em aberto | — |
+| Testes que precisam de outra configuração | Vão para Python. Cada teste levanta os containers do cenário com a configuração dele (Compose com um arquivo ou variáveis próprias do cenário, num nome de projeto separado, para não tocar no ambiente das suítes Java), chama o serviço por HTTP, confere banco e LocalStack, e derruba o que levantou, também quando falha. A lista fechada sai da T003 | resolvida (Leila, 2026-10-20) | O teste controla o ambiente de que precisa; as suítes Java continuam sem subir nada. |
 | Configuração do ambiente de teste | Ver `spec.md`, decisão em aberto 2. Proposta: o overlay `blackbox` ganha o que os testes precisam (ex.: esperas curtas no `email-service`) e o `cloud-up.sh` aplica o mesmo | em aberto | — |
 | Cobertura | Ver `spec.md`, decisão em aberto 3. Proposta: agente JaCoCo `tcpserver` em `app` (6300, já existe), `email-service` (6301) e `config-server` (6302); depois das suítes, um script faz o *dump* de cada um e roda `jacoco:report` e `jacoco:check` sobre o arquivo do *dump*, com o mesmo piso de hoje. A `email-lambda` roda dentro do container do LocalStack: cobertura só informativa | em aberto | Mantém o gate do CI sem medir dentro do Maven. |
 | Regra de arquitetura | ArchUnit em cada módulo: nenhuma classe de teste depende de `org.springframework.boot.test.context`, `org.springframework.boot.test.autoconfigure`, `org.springframework.boot.builder.SpringApplicationBuilder`, `io.quarkus.test`, `org.testcontainers` | proposta | Mesma forma das regras de arquitetura que o projeto já tem; impede a volta do formato antigo. |
@@ -54,6 +54,13 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 - `specs/05-028-.../spec.md`: nota de que esta spec a estende.
 
 ## Riscos e trade-offs
+
+- **Testes Python que sobem containers no CI e na sessão de nuvem:** no CI, as imagens são
+  montadas pelo Compose como hoje. Na sessão de nuvem da Claude, os containers da rede do Compose
+  não alcançam o proxy (05-052): as imagens precisam já estar prontas ou ser montadas a partir dos
+  jars do host. Resolver na T004.
+- **Tempo:** cada cenário que levanta e derruba containers leva dezenas de segundos. Agrupar os
+  cenários que usam a mesma configuração.
 
 - **Testes dependentes de estado compartilhado:** o serviço e o banco são os mesmos para toda a
   suíte. Cada cenário usa dados próprios (endereços e nomes únicos, como já faz a suíte Python) e

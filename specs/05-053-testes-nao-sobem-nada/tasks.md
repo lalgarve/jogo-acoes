@@ -7,9 +7,10 @@ Issue-épico: [#193](https://github.com/lalgarve/jogo-acoes/issues/193).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Resolver as decisões em aberto de `spec.md` (1 a 5) e registrar com commit `decision:` | — | | — |
+| T001 | Resolver as decisões em aberto de `spec.md` (2 a 6; a 1 foi resolvida em 2026-10-20) e registrar com commit `decision:` | — | | — |
 | T002 | `memory/constitution.md`: a regra "os testes não sobem nada" em "Testes exigem a infraestrutura de pé"; nota na spec 05-028 | T001 | [P] | — |
-| T003 | Levantamento, teste por teste, dos que precisam de outra configuração (`spec.md`, decisão 1), com a opção aplicada a cada um; registrar em `plan.md` | T001 | [P] | — |
+| T003 | Levantamento, teste por teste, dos que precisam de outra configuração (`spec.md`, "Decisões resolvidas"): a lista fechada dos que vão para Python, registrada em `plan.md` | — | [P] | — |
+| T003a | Suíte Python dos testes de configuração especial (onde: `spec.md`, decisão 6): apoio para levantar e derrubar os containers de um cenário; um teste por caso da T003, cada um levantando e derrubando o que usa | T003, T004 | | — |
 | T004 | Ambiente de teste: overlay `blackbox` e `scripts/cloud-up.sh` com a configuração de teste e os agentes JaCoCo; `scripts/test-coverage.sh` | T001 | | — |
 | T005 | `config-server`: testes contra o serviço rodando; regra de arquitetura do módulo | T004 | | — |
 | T006 | `email-lambda`: teste pela fila do LocalStack, sem `@QuarkusTest` nem Dev Services; teste unitário do classificador de erros; regra de arquitetura | T004 | | — |
