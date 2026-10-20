@@ -21,6 +21,12 @@ nenhuma linha.
 O `email-service` não tem Swagger UI: as chamadas são feitas pelo script `chamar.sh`, que
 escolhe a chave, manda o JSON e mostra o status e a resposta.
 
+> **Nota (2026-10-20), depois da entrega:** a spec 05-049 acrescentou um Swagger UI ao
+> `email-service`, só no ambiente `docker`, em `http://localhost:8082/api/swagger-ui.html`. A tela
+> abre sem chave; as chamadas pedem a `X-API-Key` no botão **Authorize** (as chaves de
+> `chaves.env`). Este caderno continua como foi entregue, com o `chamar.sh`: os roteiros, as
+> respostas e os logs são os mesmos pelos dois caminhos.
+
 ## Preparação
 
 ### 1. Subir só o Serviço de E-mail

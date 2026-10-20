@@ -1,7 +1,6 @@
 # Spec: Swagger UI no Serviço de E-mail
 
-**Status:** implementada; faltam a decisão sobre o caderno de testes (T005) e a verificação
-manual (T007), ver `tasks.md`
+**Status:** implementada; falta a verificação manual (T007), ver `tasks.md`
 **Issue:** [#188](https://github.com/lalgarve/jogo-acoes/issues/188)
 **Iteração:** iteration-5
 
@@ -47,9 +46,9 @@ comportamento da API de e-mail (mesmo caso do Swagger UI do `app`, que também n
   **Authorize** (troca de chave no caderno sem colar de novo a cada recarga).
 - O contrato servido é o próprio arquivo de `docs/`, nunca um contrato montado pelas anotações do
   código (contract-first, como no `app`).
-- O caderno de testes do Serviço de E-mail passa a usar o Swagger UI nos passos de chamada à API.
-  Os scripts que não são chamada à API continuam: gerar as chaves, publicar as listas no S3 do
-  LocalStack e, como atalho, esperar a importação.
+- O caderno de testes do Serviço de E-mail ganha uma nota sobre o Swagger UI. Os passos continuam
+  com o `chamar.sh`, porque o caderno é parte do documento já entregue da disciplina (decisão da
+  Leila, 2026-10-20).
 
 ## Requisitos não-funcionais
 

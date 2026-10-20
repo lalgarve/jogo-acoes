@@ -13,7 +13,7 @@ Issue-épico: a criar quando a spec for aprovada.
 | ~~T002~~ | `SwaggerUiAccessTest` (`plan.md`, "Decisões de arquitetura", linha "Teste"). Confirmar que falha com `401` na tela e no contrato | — | [P] | — |
 | ~~T003~~ | `email-service/pom.xml` (springdoc e cópia do contrato), bloco `springdoc` no `application.yml`, `shouldNotFilter` no `ApiKeyAuthenticationFilter`; `config-repo/` (desligado em `staging` e `production`, T001). Confirmar T002 verde e a suíte do serviço verde | T001, T002 | | — |
 | ~~T004~~ | `README.md`: endereço do Swagger UI do `email-service` | T003 | [P] | — |
-| T005 | Caderno de testes do Serviço de E-mail: passos de chamada à API no Swagger UI (JSON em bloco ` ```json `, chave no **Authorize**), endereço na tabela de programas; `chamar.sh` sai ou fica como alternativa | T003 | [P] | — |
+| ~~T005~~ | Caderno de testes do Serviço de E-mail: em vez de reescrever os passos, uma nota dizendo que agora há Swagger UI (decisão da Leila, 2026-10-20: o caderno é parte do documento já entregue e continua com o `chamar.sh`) | T003 | [P] | — |
 | ~~T006~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): nenhuma classe de exceção nova; o branch novo é o `shouldNotFilter` (caminho liberado e caminho da API barrado), coberto pela T002. Registrar aqui | T003 | | — |
 | T007 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T007)" abaixo | T003–T006 | | — |
 
@@ -49,8 +49,9 @@ Na sessão de nuvem da Claude (`scripts/cloud-up.sh`, spec 05-052), branch
   4, 5 e 6 no navegador (Chromium pelo Playwright): título, as três tags, **Authorize**, nenhum
   "Failed to load remote configuration"; a chave continua depois de recarregar; troca de chave
   com `403` nas rotas sem a permissão. A T007 continua sendo da Leila.
-- **T005** não foi feita: o caderno do Serviço de E-mail e o apêndice B são parte do documento
-  já entregue da disciplina. Mudar os passos para o Swagger UI depende da decisão da Leila.
+- **T005** (2026-10-20): o caderno do Serviço de E-mail é parte do documento já entregue da
+  disciplina; por decisão da Leila, os passos continuam com o `chamar.sh` e o caderno ganhou só
+  uma nota sobre o Swagger UI, logo depois do parágrafo que diz que o serviço não tem um.
 
 ## Verificação manual (T007)
 
