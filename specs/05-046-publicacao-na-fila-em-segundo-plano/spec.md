@@ -1,7 +1,7 @@
 # Spec: Publicação na fila de envio em segundo plano
 
 **Status:** rascunho
-**Issue:** a criar (relacionada à [#144](https://github.com/lalgarve/jogo-acoes/issues/144))
+**Issue:** [#185](https://github.com/lalgarve/jogo-acoes/issues/185) (relacionada à [#144](https://github.com/lalgarve/jogo-acoes/issues/144))
 **Iteração:** iteration-5
 
 ## Resumo

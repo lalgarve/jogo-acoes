@@ -1,7 +1,7 @@
 # Spec: pré-visualização de template devolve o assunto com acentos corretos
 
-**Status:** rascunho
-**Issue:** — (a criar quando a spec for aprovada)
+**Status:** implementada (correção em `f31f678`, T001–T003); faltam T004–T006 (ver `tasks.md`)
+**Issue:** [#190](https://github.com/lalgarve/jogo-acoes/issues/190)
 **Iteração:** iteration-5
 
 ## Resumo
