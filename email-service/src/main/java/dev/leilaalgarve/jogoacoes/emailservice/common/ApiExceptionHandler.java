@@ -6,8 +6,8 @@ import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainImport
 import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainSourceAlreadyExistsException;
 import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainSourceNotFoundException;
 import dev.leilaalgarve.jogoacoes.emailservice.domain.RecipientDomainRejectedException;
-import dev.leilaalgarve.jogoacoes.emailservice.send.EmailQueuePublishException;
 import dev.leilaalgarve.jogoacoes.emailservice.send.SenderNotConfiguredException;
+import dev.leilaalgarve.jogoacoes.emailservice.template.SesUnavailableException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateAlreadyExistsException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateNotFoundException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateRejectedBySesException;
@@ -42,6 +42,12 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(new Error().message(ex.getMessage()));
     }
 
+    /** Spec 05-044: SES unreachable or failing on its side -- the request may succeed later. */
+    @ExceptionHandler(SesUnavailableException.class)
+    public ResponseEntity<Error> handleSesUnavailable(SesUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new Error().message(ex.getMessage()));
+    }
+
     @ExceptionHandler(SenderNotConfiguredException.class)
     public ResponseEntity<Error> handleSenderNotConfigured(SenderNotConfiguredException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new Error().message(ex.getMessage()));
@@ -63,11 +69,6 @@ public class ApiExceptionHandler {
             DisposableDomainImportAlreadyRunningException.class})
     public ResponseEntity<Error> handleDisposableDomainConflict(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new Error().message(ex.getMessage()));
-    }
-
-    @ExceptionHandler(EmailQueuePublishException.class)
-    public ResponseEntity<Error> handleEmailQueuePublish(EmailQueuePublishException ex) {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new Error().message(ex.getMessage()));
     }
 
     /** Bean Validation on the generated request DTOs (required fields, {@code format: email}). */

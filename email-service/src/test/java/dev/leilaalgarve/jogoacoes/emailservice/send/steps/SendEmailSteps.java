@@ -1,5 +1,7 @@
 package dev.leilaalgarve.jogoacoes.emailservice.send.steps;
 
+import dev.leilaalgarve.jogoacoes.emailservice.common.testsupport.DeadLetterQueue;
+import dev.leilaalgarve.jogoacoes.emailservice.common.testsupport.EmailSendRows;
 import dev.leilaalgarve.jogoacoes.emailservice.common.testsupport.EmailServiceScenarioWorld;
 import dev.leilaalgarve.jogoacoes.emailservice.common.testsupport.ScenarioSenders;
 import dev.leilaalgarve.jogoacoes.emailservice.common.testsupport.SendQueue;
@@ -12,37 +14,53 @@ import io.cucumber.java.en.When;
 import io.restassured.response.Response;
 import tools.jackson.databind.JsonNode;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 /**
  * Spec 05-031, T002: POST /emails against the real server, PostgreSQL and LocalStack queue --
  * the queued message is read back from the queue itself ({@link SendQueue}), not from a mock.
+ *
+ * <p>Spec 05-046: the request only records the send; email-service's publisher puts it on the
+ * queue in the background, and delivery errors come back through the dead-letter queue
+ * ({@link DeadLetterQueue}). The delivery state is read from the row itself ({@link EmailSendRows}).
  */
 public class SendEmailSteps {
 
-    /** How long to wait for a message that should be on the queue -- the publish is synchronous. */
-    private static final int RECEIVE_WAIT_SECONDS = 2;
+    /**
+     * How long to wait for a message that should be on the queue -- published in the background
+     * (spec 05-046), every 200 ms in this suite (src/test/resources/application.yml).
+     */
+    private static final int RECEIVE_WAIT_SECONDS = 5;
+    private static final Duration STATE_WAIT = Duration.ofSeconds(15);
 
     private final EmailServiceScenarioWorld world;
     private final ScenarioSenders senders;
     private final SendQueue sendQueue;
     private final EmailSendRepository sendRepository;
     private final EmailTemplateRepository templateRepository;
+    private final DeadLetterQueue deadLetterQueue;
+    private final EmailSendRows rows;
 
     private JsonNode receivedMessage;
+    private String receivedBody;
 
     public SendEmailSteps(EmailServiceScenarioWorld world, ScenarioSenders senders, SendQueue sendQueue,
-                          EmailSendRepository sendRepository, EmailTemplateRepository templateRepository) {
+                          EmailSendRepository sendRepository, EmailTemplateRepository templateRepository,
+                          DeadLetterQueue deadLetterQueue, EmailSendRows rows) {
         this.world = world;
         this.senders = senders;
         this.sendQueue = sendQueue;
         this.sendRepository = sendRepository;
         this.templateRepository = templateRepository;
+        this.deadLetterQueue = deadLetterQueue;
+        this.rows = rows;
     }
 
     @Given("operations configured the sender address {string} for them")
@@ -84,12 +102,88 @@ public class SendEmailSteps {
                 .when().post("/emails"));
     }
 
-    @Then("the send is accepted as queued")
-    public void the_send_is_accepted_as_queued() {
+    @Then("the send is accepted as pending")
+    public void the_send_is_accepted_as_pending() {
         Response response = world.getLastResponse();
         assertThat(response.statusCode()).isEqualTo(202);
-        assertThat(response.jsonPath().getString("status")).isEqualTo("QUEUED");
+        assertThat(response.jsonPath().getString("status")).isEqualTo("PENDING");
         assertThat(UUID.fromString(response.jsonPath().getString("id"))).isNotNull();
+    }
+
+    @Given("they sent the template {string} to {string} and it reached the send queue")
+    public void they_sent_the_template_and_it_reached_the_send_queue(String templateName, String recipientEmail) {
+        world.setLastResponse(send(Map.of("templateName", templateName, "recipientEmail", recipientEmail)));
+        the_send_queue_has_one_message_whose_correlation_id_is_the_returned_id(recipientEmail);
+        the_send_is_recorded_as_queued_with_no_template_data_kept();
+    }
+
+    @When("the send queue is available again")
+    public void the_send_queue_is_available_again() {
+        sendQueue.ensureExists();
+    }
+
+    @When("the send was requested more than a day ago")
+    public void the_send_was_requested_more_than_a_day_ago() {
+        rows.requestedHoursAgo(returnedId(), 25);
+    }
+
+    @When("the dead-letter queue receives that send with the error {string}")
+    public void the_dead_letter_queue_receives_that_send_with_the_error(String errorType) {
+        deadLetterQueue.send(receivedBody, errorType);
+    }
+
+    @When("the dead-letter queue receives that send with no error type")
+    public void the_dead_letter_queue_receives_that_send_with_no_error_type() {
+        deadLetterQueue.send(receivedBody, null);
+    }
+
+    @Then("the send is recorded as queued with no template data kept")
+    public void the_send_is_recorded_as_queued_with_no_template_data_kept() {
+        // Awaitility polls on its own thread, outside the scenario scope: read the id first.
+        UUID id = returnedId();
+        await().atMost(STATE_WAIT).untilAsserted(() -> {
+            Map<String, Object> state = rows.state(id);
+            assertThat(state.get("status")).isEqualTo("QUEUED");
+            assertThat(state.get("keeps_template_data")).isEqualTo(false);
+        });
+    }
+
+    @Then("the send is recorded as pending after a failed attempt with the error {string}")
+    public void the_send_is_recorded_as_pending_after_a_failed_attempt(String errorType) {
+        // Awaitility polls on its own thread, outside the scenario scope: read the id first.
+        UUID id = returnedId();
+        await().atMost(STATE_WAIT).untilAsserted(() -> {
+            Map<String, Object> state = rows.state(id);
+            assertThat(state.get("status")).isEqualTo("PENDING");
+            assertThat(((Number) state.get("attempts")).intValue()).isGreaterThanOrEqualTo(1);
+            assertThat(state.get("last_error_type")).isEqualTo(errorType);
+            assertThat((String) state.get("last_error")).isNotBlank();
+        });
+    }
+
+    @Then("the send is recorded as queued after {int} attempt(s) with the error {string}")
+    public void the_send_is_recorded_as_queued_after_attempts_with_the_error(int attempts, String errorType) {
+        // Awaitility polls on its own thread, outside the scenario scope: read the id first.
+        UUID id = returnedId();
+        await().atMost(STATE_WAIT).untilAsserted(() -> {
+            Map<String, Object> state = rows.state(id);
+            assertThat(state.get("status")).isEqualTo("QUEUED");
+            assertThat(((Number) state.get("attempts")).intValue()).isEqualTo(attempts);
+            assertThat(state.get("last_error_type")).isEqualTo(errorType);
+            assertThat(state.get("keeps_template_data")).isEqualTo(false);
+        });
+    }
+
+    @Then("the send is recorded as failed with the error {string} and no template data kept")
+    public void the_send_is_recorded_as_failed_with_the_error(String errorType) {
+        // Awaitility polls on its own thread, outside the scenario scope: read the id first.
+        UUID id = returnedId();
+        await().atMost(STATE_WAIT).untilAsserted(() -> {
+            Map<String, Object> state = rows.state(id);
+            assertThat(state.get("status")).isEqualTo("FAILED");
+            assertThat(state.get("last_error_type")).isEqualTo(errorType);
+            assertThat(state.get("keeps_template_data")).isEqualTo(false);
+        });
     }
 
     @Then("the send queue has one message for {string} whose correlation id is the returned id")
@@ -97,6 +191,7 @@ public class SendEmailSteps {
         List<JsonNode> messages = sendQueue.receiveAll(RECEIVE_WAIT_SECONDS);
         assertThat(messages).hasSize(1);
         receivedMessage = messages.get(0);
+        receivedBody = receivedMessage.toString();
         assertThat(receivedMessage.get("recipientEmail").asString()).isEqualTo(recipientEmail);
         assertThat(receivedMessage.get("correlationId").asString()).isEqualTo(returnedId().toString());
     }
@@ -146,12 +241,6 @@ public class SendEmailSteps {
     @Then("the system rejects the request as malformed")
     public void the_system_rejects_the_request_as_malformed() {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(400);
-        assertThat(world.getLastResponse().jsonPath().getString("message")).isNotBlank();
-    }
-
-    @Then("the system answers that the service is unavailable")
-    public void the_system_answers_that_the_service_is_unavailable() {
-        assertThat(world.getLastResponse().statusCode()).isEqualTo(503);
         assertThat(world.getLastResponse().jsonPath().getString("message")).isNotBlank();
     }
 

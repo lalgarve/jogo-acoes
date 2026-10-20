@@ -1,6 +1,6 @@
 # Spec: Recriar no SES os templates que só existem no banco do email-service
 
-**Status:** rascunho
+**Status:** implementada, faltam a suíte do `app` e a verificação manual (ver `tasks.md`)
 **Issue:** [#144](https://github.com/lalgarve/jogo-acoes/issues/144)
 **Iteração:** iteration-5
 
@@ -112,20 +112,11 @@ A reconciliação na subida não é um cenário de cliente: é verificada por te
   isso. Grava o envio como pendente e responde; a publicação na fila SQS passa para uma thread do
   serviço, que tenta de novo e decide quando desistir. Fica na spec 05-046.
 
+- **Recriar no `PUT`/preview, caso inverso e `503`** (2026-10-14): a Leila pediu a implementação
+  sem mudar as recomendações, que foram seguidas: recriar no `PUT` e no preview; na reconciliação,
+  só aviso no log para o template que está no SES sem linha, e o `POST` sobrescreve a sobra; `503`
+  nas rotas de template com o SES fora do ar (o `app` não sobe sem o SES).
+
 ## Decisões em aberto
 
-Cada uma tem uma recomendação, já usada nos requisitos acima; falta a confirmação da Leila.
-
-1. **Recriar no `PUT`/preview, além da reconciliação?** Recomendação: sim. Só a reconciliação
-   não resolveria o caso da Issue, em que só o LocalStack reinicia e o `email-service` continua
-   no ar.
-2. **Caso inverso (template no SES sem linha no banco).** Recomendação: na reconciliação, só um
-   aviso no log, sem apagar nem importar (importar exigiria inventar `variables_schema`; apagar
-   arrisca algo que outra ferramenta criou). No `POST /templates`, sobrescrever o template do SES,
-   porque o nome `<client>__<name>` é do `email-service` e hoje esse caso responde 422 e trava o
-   cadastro.
-3. **Cadastro e atualização de template com o SES fora do ar.** Recomendação: `503`, sem gravar
-   nada, porque só o SES valida a sintaxe do template e a 05-025 grava a linha depois do SES.
-   Consequência: com o SES fora do ar, o `app` não consegue sincronizar os templates ao subir e
-   não sobe (`EmailTemplateSynchronizer` falha de propósito). Se o `app` também tiver que subir
-   sem o SES, isso muda o `app` e vira item desta spec.
+Nenhuma.

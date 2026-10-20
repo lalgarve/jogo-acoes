@@ -49,6 +49,10 @@ public class EmailTemplate {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /** Spec 05-046: last time a TEMPLATE_MISSING delivery error made this service recreate it on SES. */
+    @Column(name = "ses_recreated_at")
+    private Instant sesRecreatedAt;
+
     protected EmailTemplate() {
         // JPA
     }
@@ -70,6 +74,15 @@ public class EmailTemplate {
         this.body = body;
         this.variablesSchema = variablesSchema;
         this.updatedAt = updatedAt;
+    }
+
+    /** Whether it was recreated on SES after {@code since} -- then a TEMPLATE_MISSING is not a reason to recreate it again. */
+    public boolean recreatedOnSesAfter(Instant since) {
+        return sesRecreatedAt != null && sesRecreatedAt.isAfter(since);
+    }
+
+    public void markRecreatedOnSes(Instant now) {
+        this.sesRecreatedAt = now;
     }
 
     public Long getId() {

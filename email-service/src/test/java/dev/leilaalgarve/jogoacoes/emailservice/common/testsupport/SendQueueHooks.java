@@ -11,13 +11,16 @@ import io.cucumber.java.Before;
 public class SendQueueHooks {
 
     private final SendQueue sendQueue;
+    private final DeadLetterQueue deadLetterQueue;
 
-    public SendQueueHooks(SendQueue sendQueue) {
+    public SendQueueHooks(SendQueue sendQueue, DeadLetterQueue deadLetterQueue) {
         this.sendQueue = sendQueue;
+        this.deadLetterQueue = deadLetterQueue;
     }
 
     @Before
     public void startWithAnEmptyQueue() {
+        deadLetterQueue.ensureExists();
         sendQueue.ensureExists();
         sendQueue.drain();
     }
