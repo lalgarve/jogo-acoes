@@ -8,6 +8,7 @@ import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
 
 import java.io.IOException;
 import java.net.URI;
@@ -27,6 +28,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * asked for again. The list cap is raised here; the Cucumber suite keeps a small one.
  */
 @SpringBootTest(properties = "email.disposable-domains.max-size=10MB")
+// The only class with this configuration: closing its context frees its database connections
+// for the rest of the suite (each cached context keeps a pool of its own).
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ImportDisposableDomainsJobTest {
 
     private static final String LIST_URL_PREFIX = "http://localhost:4566/disposable-lists/job-test-";

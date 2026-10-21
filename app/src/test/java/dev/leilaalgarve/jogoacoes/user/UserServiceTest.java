@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.annotation.DirtiesContext;
 
 import java.util.List;
 
@@ -16,6 +17,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DataJpaTest
 @Import({UserService.class, UserProvisioningService.class})
+// The only class with this configuration: closing its context frees its database connections
+// for the rest of the suite (each cached context keeps a pool of its own).
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class UserServiceTest {
 
     @Autowired

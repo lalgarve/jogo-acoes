@@ -24,6 +24,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -41,6 +42,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "email-service.base-url=http://localhost:8082/api",
         "email.sender=email-service"})
+// The only class with this configuration: closing its context frees its database connections
+// for the rest of the suite (each cached context keeps a pool of its own).
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class RecipientDomainRejectionIntegrationTest {
 
     @LocalServerPort

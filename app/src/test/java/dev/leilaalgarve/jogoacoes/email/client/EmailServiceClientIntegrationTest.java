@@ -21,6 +21,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 
 import java.io.IOException;
 import java.net.URI;
@@ -52,6 +53,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest(properties = {
         "email-service.base-url=" + EmailServiceClientIntegrationTest.EMAIL_SERVICE_URL,
         "email.sender=email-service"})
+// The only class with this configuration: closing its context frees its database connections
+// for the rest of the suite (each cached context keeps a pool of its own).
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class EmailServiceClientIntegrationTest {
 
     static final String EMAIL_SERVICE_URL = "http://localhost:8082/api";
