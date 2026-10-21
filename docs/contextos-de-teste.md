@@ -81,7 +81,7 @@ Banco: Postgres `db-email-service` (`localhost:5433`).
 
 | # | Configuração | Classes | Vida |
 |---|---|---|---|
-| E1 | `@SpringBootTest`, `MOCK`, sem propriedades | `ApiKeyIntegrationVerificationTest`, `SchemaLayoutTest`, `DisposableDomainImportSchedulerTest`, `RecipientDomainVerifierTest`, `SesTemplateClientIntegrationTest`, `SesTemplateReconcilerIntegrationTest` | até o fim da suíte |
+| E1 | `@SpringBootTest`, `MOCK`, sem propriedades | `ApiKeyIntegrationVerificationTest`, `SchemaLayoutTest`, `DisposableDomainImportSchedulerTest`, `RecipientDomainVerifierTest`, `SesTemplateClientIntegrationTest`, `SesTemplateReconcilerIntegrationTest`, `DisposableDomainImportQueueTest` (spec 05-054) | até o fim da suíte |
 | E2 | `@SpringBootTest`, `RANDOM_PORT`, sem propriedades | `CucumberSpringConfiguration` (todos os cenários de `RunCucumberTest`), `DeadLetterBurstIntegrationTest`, `EmailQueuePublisherConcurrencyTest` | fechado depois de `DeadLetterBurstIntegrationTest` e depois de `EmailQueuePublisherConcurrencyTest` (`@DirtiesContext`); quem usar depois sobe outro |
 | E3 | `@SpringBootTest`, `RANDOM_PORT`, `spring.config.location` apontando para o `application.yml` real, credenciais do `config-server` | `SwaggerUiAccessTest` | fechado no fim da classe (`@DirtiesContext`, desde o commit `0dd8bf4`) |
 | E4 | E3 + `springdoc.swagger-ui.enabled=false` e `springdoc.api-docs.enabled=false` | `SwaggerUiSwitchedOffTest` | fechado no fim da classe (`@DirtiesContext`, desde o commit `0dd8bf4`) |
