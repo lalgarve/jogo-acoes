@@ -1,6 +1,6 @@
 # Spec: Importações das listas de e-mail temporário uma de cada vez
 
-**Status:** rascunho
+**Status:** implementada; falta a verificação manual (T007), ver `tasks.md`
 **Issue:** [#197](https://github.com/lalgarve/jogo-acoes/issues/197)
 **Iteração:** iteration-5
 
