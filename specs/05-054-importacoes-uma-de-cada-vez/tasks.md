@@ -39,7 +39,8 @@ configuração vale.
 
 ## Verificação manual (T007)
 
-Na raiz do repositório, no WSL, no branch da implementação. Começa de um banco vazio.
+Na raiz do repositório, no WSL, no branch da implementação. Começa de um banco vazio, sem
+repositórios (desde a spec 05-053, o do GitHub não é cadastrado no `docker`).
 
 ```bash
 docker compose down -v
@@ -53,13 +54,7 @@ OPS_API_KEY=dak_D9CebHAQ6cq2vAnYIomxJ1nX56qn_5dDRv2J-aHrQFc
 (`OPS_API_KEY` é a chave de teste do cliente `operations`, com `disposable-email:admin`, a mesma da
 verificação manual da 05-048.)
 
-1. Tirar o repositório inicial do GitHub, se houver (enquanto a spec 05-053 não estiver em
-   `development`, a migration ainda o cadastra, e ele baixaria a lista da internet):
-   ```bash
-   docker compose exec -T db-email-service sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "DELETE FROM email_service.disposable_domain_source"'
-   ```
-   Esperado: `DELETE 0` ou `DELETE 1`.
-2. Três listas no S3 do LocalStack e três repositórios:
+1. Três listas no S3 do LocalStack e três repositórios:
    ```bash
    docker compose exec -T localstack awslocal s3 mb s3://disposable-lists
    for n in 1 2 3; do
@@ -70,14 +65,14 @@ verificação manual da 05-048.)
    done
    ```
    Esperado: `make_bucket: disposable-lists` e `201` três vezes.
-3. Importar todos os repositórios:
+2. Importar todos os repositórios:
    ```bash
    curl -s -w ' [%{http_code}]\n' -X POST http://localhost:8082/api/disposable-domain-imports \
      -H "X-API-Key: $OPS_API_KEY"
    sleep 5
    ```
    Esperado: três execuções na resposta, com `executionId`, e ` [202]` no fim.
-4. Conferir que terminaram e que uma só começou depois de a anterior terminar:
+3. Conferir que terminaram e que uma só começou depois de a anterior terminar:
    ```bash
    docker compose exec -T db-email-service sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT job_execution_id, status, start_time, end_time, start_time >= lag(end_time) OVER (ORDER BY start_time) AS depois_da_anterior FROM email_service.batch_job_execution ORDER BY start_time"'
    ```
