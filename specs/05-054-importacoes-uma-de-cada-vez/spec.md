@@ -82,17 +82,15 @@ valendo. Muda o que acontece por baixo deles:
   pedido de operações, como hoje.
 - Mudar o modelo da spec 05-048 (uma execução por repositório, histórico por repositório).
 
+## Decisões resolvidas
+
+- **Como tirar o paralelismo:** fila de uma importação por vez, e o Spring Batch cria execuções
+  com `READ_COMMITTED` (Leila, 2026-10-21; a opção "A + `READ_COMMITTED`"). Descartadas:
+  disparar o próximo job só quando o anterior termina (mudaria o contrato) e um job só para todos
+  os repositórios (mudaria o modelo da 05-048).
+- **Onde registrar:** nesta spec nova (Leila, 2026-10-21, ao pedir "pode escrever a spec" e
+  depois "pode implementar" sobre ela).
+
 ## Decisões em aberto
 
-1. **Como tirar o paralelismo** (ver `plan.md`):
-   - **A.** Fila de uma importação por vez: as execuções continuam criadas na hora; o executor
-     roda um job de cada vez. O contrato não muda.
-   - **A + `READ_COMMITTED`:** A, e o Spring Batch cria execuções com `READ_COMMITTED` em vez de
-     `SERIALIZABLE`. Fecha também o caso que A deixa: a criação de uma execução, na thread do
-     pedido, coincidindo com a criação do registro de um passo do job que está rodando.
-   - **B.** Disparar o próximo job só quando o anterior termina: o `202` deixa de trazer as
-     execuções seguintes, que ainda não existem. Muda o contrato.
-   - **C.** Um job só para todos os repositórios: muda o modelo da 05-048.
-
-   Recomendação: **A + `READ_COMMITTED`**.
-2. **Onde registrar:** esta spec nova, ou uma decisão nova dentro da 05-048.
+Nenhuma.
