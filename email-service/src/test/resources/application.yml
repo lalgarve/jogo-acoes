@@ -24,6 +24,8 @@ spring:
   batch:
     jdbc:
       initialize-schema: never
+      # Same as src/main/resources/application.yml (spec 05-054) -- this file replaces that one.
+      isolation-level-for-create: read-committed
     job:
       enabled: false
   jpa:

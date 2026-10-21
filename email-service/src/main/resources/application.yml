@@ -30,6 +30,10 @@ spring:
   batch:
     jdbc:
       initialize-schema: never
+      # Spec 05-054: Spring Batch records new executions and steps under SERIALIZABLE by default,
+      # and PostgreSQL cancelled one of two recorded at the same moment. Each one only inserts its
+      # own rows; DisposableDomainImportService.start is synchronized for the "already running" check.
+      isolation-level-for-create: read-committed
     job:
       enabled: false
   jpa:

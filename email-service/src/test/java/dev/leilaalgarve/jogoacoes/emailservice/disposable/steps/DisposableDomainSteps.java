@@ -99,8 +99,10 @@ public class DisposableDomainSteps {
     public void the_import_of_every_repository_already_ran() {
         they_ask_to_run_the_import_of_every_repository();
         assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
+        // Spec 05-054: an import that failed here used to surface only later, as a wrong count.
         for (Long executionId : executionBySource.values()) {
-            awaitEnd(executionId);
+            Response execution = awaitEnd(executionId);
+            assertThat(execution.jsonPath().getString("status")).as(execution.asString()).isEqualTo("COMPLETED");
         }
         for (Map<String, Object> source : listSources()) {
             listedBefore.put((String) source.get("description"), source);
