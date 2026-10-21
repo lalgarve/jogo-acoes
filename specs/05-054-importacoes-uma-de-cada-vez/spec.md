@@ -1,7 +1,7 @@
 # Spec: Importações das listas de e-mail temporário uma de cada vez
 
 **Status:** rascunho
-**Issue:** a criar
+**Issue:** [#197](https://github.com/lalgarve/jogo-acoes/issues/197)
 **Iteração:** iteration-5
 
 ## Resumo
