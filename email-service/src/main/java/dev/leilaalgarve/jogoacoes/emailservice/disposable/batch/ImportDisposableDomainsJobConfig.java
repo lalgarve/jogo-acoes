@@ -17,8 +17,8 @@ import org.springframework.boot.batch.autoconfigure.BatchTaskExecutor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
@@ -117,11 +117,20 @@ public class ImportDisposableDomainsJobConfig {
         return writer;
     }
 
-    /** Imports run in the background: the request answers 202 as soon as the execution exists. */
+    /**
+     * Imports run in the background: the request answers 202 as soon as the execution exists.
+     * Spec 05-054: one at a time, in the order they were asked for -- two jobs recording a step at
+     * the same moment made PostgreSQL cancel one of them. The queue has no limit, so asking never
+     * waits.
+     */
     @Bean
     @BatchTaskExecutor
     public TaskExecutor disposableDomainImportTaskExecutor() {
-        return new SimpleAsyncTaskExecutor("disposable-domain-import-");
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setThreadNamePrefix("disposable-domain-import-");
+        return executor;
     }
 
     /** The temporary list file is gone whatever way the execution ended. */
