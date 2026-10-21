@@ -113,8 +113,11 @@ depende do código Java do outro, regra verificada pelo `ArchitectureTest` de ca
 ## Como rodar os testes
 
 Os testes rodam contra a infraestrutura real do Docker Compose, que precisa estar de pé antes
-(`memory/constitution.md`, "Testes exigem a infraestrutura de pé"). É a mesma ordem da CI
-(`.github/workflows/ci.yml`):
+(`memory/constitution.md`, "Testes exigem a infraestrutura de pé"). São duas etapas, na mesma
+ordem da CI (`.github/workflows/ci.yml`). Cada suíte roda sem nenhuma variável de ambiente,
+porque `docker` é o perfil padrão (spec 05-035).
+
+**1. Suíte do `app`**, que chama o `email-service` de verdade, por isso com ele no ar:
 
 ```bash
 docker compose up -d --wait db db-email-service localstack dns
@@ -122,27 +125,30 @@ docker compose up -d --wait config-server
 ./scripts/test-api-key.sh restore
 docker compose up -d --wait email-service
 ./scripts/test-api-key.sh restore
+mvn -pl app -am verify
 ```
 
 O `restore` roda duas vezes porque a segunda define o remetente do cliente `jogo-acoes`, numa
 tabela que só existe depois que o `email-service` sobe (ver "Envio de e-mail pelo Serviço de
-E-mail" abaixo). O `email-service` também precisa da biblioteca de API-KEY no `~/.m2`
-(`./scripts/install-api-key-lib.sh`, uma vez).
+E-mail" abaixo).
 
-Depois, cada suíte roda sem nenhuma variável de ambiente, porque `docker` é o perfil padrão
-(spec 05-035):
-
-```bash
-mvn -pl app -am verify
-```
+**2. Suítes do `email-service` e da `email-lambda`**, com tudo derrubado e levantado de novo,
+**sem** o container do `email-service`:
 
 ```bash
+docker compose down -v
+docker compose up -d --wait db-email-service localstack dns config-server
+./scripts/test-api-key.sh restore
 mvn -pl email-service -am verify
-```
-
-```bash
 mvn -pl email-lambda -am verify
 ```
+
+O container do `email-service` não pode estar no ar durante a suíte dele: o publicador em segundo
+plano do serviço rodando lê o mesmo banco e publica na fila dele os envios que os testes criam,
+e os testes falham (spec 05-046, T020). O `email-service` também precisa da biblioteca de
+API-KEY no `~/.m2` (`./scripts/install-api-key-lib.sh`, uma vez).
+
+O `config-server` roda em qualquer das duas etapas, ou sem nada de pé:
 
 ```bash
 mvn -pl config-server -am verify
@@ -154,8 +160,9 @@ leitura real dele (`ConfigServerClientIntegrationTest` nos dois, e o teste do pe
 `production` no `app`) precisam do `config-server` de pé. O `config-server` testa os arquivos
 reais de `config-repo/` e não precisa de infraestrutura.
 
-O `email-lambda` não usa o Compose: o Quarkus sobe o próprio LocalStack pelo Dev Services, e só
-precisa do Docker.
+O `email-lambda` usa o LocalStack do Compose, em `localhost:4566`, com fila de erros, remetentes e
+templates próprios. Nenhum teste sobe container: o Dev Services do Quarkus está desligado (spec
+05-053).
 
 **Se a infraestrutura não estiver de pé, os testes que dependem dela falham** com erro de
 conexão. Nenhum teste se pula por falta dela, e uma regra ArchUnit em cada módulo impede que um

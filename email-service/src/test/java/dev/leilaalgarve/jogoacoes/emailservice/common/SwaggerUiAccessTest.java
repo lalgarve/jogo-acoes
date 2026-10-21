@@ -6,6 +6,7 @@ import io.restassured.specification.RequestSpecification;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.test.annotation.DirtiesContext;
 
 import java.util.Map;
 
@@ -25,6 +26,9 @@ import static org.assertj.core.api.Assertions.assertThat;
         // docker-compose.yml's test credentials for config-server; never a real secret.
         "CONFIG_SERVER_USERNAME=config",
         "CONFIG_SERVER_PASSWORD=config-docker-not-a-secret"})
+// The only class with this configuration: closing its context frees its database connections
+// for the rest of the suite (each cached context keeps a pool of its own).
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class SwaggerUiAccessTest {
 
     @LocalServerPort

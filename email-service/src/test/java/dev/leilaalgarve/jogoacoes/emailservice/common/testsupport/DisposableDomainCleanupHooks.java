@@ -9,8 +9,9 @@ import java.time.Instant;
 /**
  * Spec 05-048: after each scenario, lets every import still running end (a held server is
  * released, so it answers or the download times out) and deletes every disposable domain
- * repository with its domains -- the suite starts each scenario without repositories, the one
- * the migration registers included (spec.md, "Repositório inicial"). Guarded by the tables'
+ * repository with its domains -- the suite starts each scenario without repositories. The initial
+ * one (spec.md, "Repositório inicial") is never there: since spec 05-053 only staging and
+ * production register it. Guarded by the tables'
  * existence only so the scenarios written before the migration fail for their own reason.
  */
 public class DisposableDomainCleanupHooks {

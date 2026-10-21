@@ -112,6 +112,16 @@ jobs:
         if: ${{ !cancelled() }}
         run: mvn -B -pl config-server -am verify
 
+      # JVM mode only -- the real deployable artifact is a GraalVM native image
+      # (docs/context/iteracao-4.md), built manually/locally, never in CI: native compilation takes
+      # several minutes and there's nowhere to deploy the result yet (blocked on AWS access).
+      # Spec 05-053: no test starts a container -- the suite uses the LocalStack brought up above
+      # (localhost:4566) with its own DLQ, senders and templates, so it runs before the containers
+      # are taken down.
+      - name: Build and test email-lambda (JVM mode)
+        if: ${{ !cancelled() }}
+        run: mvn -B -pl email-lambda -am test
+
       # Runs even if the coverage gate above failed the build, so the PR still shows the
       # actual percentage instead of just a red check with no explanation.
       - name: Comment coverage on the PR
@@ -128,11 +138,3 @@ jobs:
       - name: Stop Postgres, LocalStack, config-server and email-service
         if: always()
         run: docker compose down -v
-
-      # JVM mode only -- the real deployable artifact is a GraalVM native image
-      # (docs/context/iteracao-4.md), built manually/locally, never in CI: native compilation takes
-      # several minutes and there's nowhere to deploy the result yet (blocked on AWS access).
-      # This step's LocalStack SES container comes from Quarkus Dev Services (Testcontainers),
-      # using the runner's own Docker daemon -- no docker-compose service needed for it.
-      - name: Build and test email-lambda (JVM mode)
-        run: mvn -B -pl email-lambda -am test

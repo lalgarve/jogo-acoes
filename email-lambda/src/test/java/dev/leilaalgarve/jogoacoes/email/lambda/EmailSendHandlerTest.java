@@ -35,9 +35,10 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Exercises the handler against the LocalStack SES container Dev Services starts automatically
- * for @QuarkusTest (docs/context/iteracao-4.md, decision 3) -- requires Docker, and fails without
- * it (memory/constitution.md, "Testes exigem a infraestrutura de pé").
+ * Exercises the handler against the LocalStack brought up before the suite (localhost:4566, spec
+ * 05-053: no test starts a container) -- fails without it (memory/constitution.md, "Testes exigem a
+ * infraestrutura de pé"). That LocalStack is shared with the docker environment, so every test
+ * uses its own sender, template and this suite's own DLQ.
  *
  * <p>Spec 05-031, T003: a queue message names a template already on SES, the client's sender
  * address and the template data; the handler turns it into a {@code SendTemplatedEmail}. What

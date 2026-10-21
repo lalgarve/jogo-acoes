@@ -163,7 +163,9 @@ e a biblioteca de validação devolve as permissões da chave válida.
 - **Repositório inicial**: a migration cadastra
   `https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf`
   ("disposable-email-domains, lista principal"). Nos testes, a suíte apaga os repositórios antes
-  de cada cenário (Leila, 2026-10-14).
+  de cada cenário (Leila, 2026-10-14). **Nota (2026-10-20):** a spec 05-053 tirou o cadastro da
+  V6; ele está em `db/seed-email-service/`, aplicado só em `staging`/`production`. No `docker` e
+  nos testes o repositório nem é criado, e nenhum teste depende de URL fora do projeto.
 - **Lista que encolhe**: só a lista vazia é recusada; sem regra de porcentagem por enquanto
   (Leila, 2026-10-14).
 - **Subdomínios**: os subdomínios de um domínio da lista (`x.mailinator.com`) também são

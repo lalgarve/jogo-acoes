@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.test.annotation.DirtiesContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,6 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
         "CONFIG_SERVER_PASSWORD=config-docker-not-a-secret",
         "springdoc.swagger-ui.enabled=false",
         "springdoc.api-docs.enabled=false"})
+// The only class with this configuration: closing its context frees its database connections
+// for the rest of the suite (each cached context keeps a pool of its own).
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class SwaggerUiSwitchedOffTest {
 
     @LocalServerPort

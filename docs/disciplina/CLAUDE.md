@@ -103,6 +103,13 @@ gerado, deve manter esse mesmo nome-base (`leila-algarve_arquitetura-avancadas-d
 
 ## Log de decisões
 
+### Sessão 2026-10-20 — repositório inicial das listas fora do `docker`
+
+- A spec 05-053 tirou do ambiente `docker` o repositório inicial das listas de e-mail temporário
+  (o do GitHub), depois da entrega do documento. `caderno-de-testes-email-service.md` ganhou só
+  uma nota, como a da spec 05-049; os roteiros não mudam (decisão da autora). O apêndice B e o
+  `.tex` não mudam.
+
 ### Sessão 2026-10-20 — Swagger UI do Serviço de E-mail depois da entrega
 
 - A spec 05-049 acrescentou um Swagger UI ao `email-service` (só no `docker`) depois da entrega
