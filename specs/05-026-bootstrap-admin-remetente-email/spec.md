@@ -151,17 +151,18 @@ sem mudança de conteúdo, só de pacote.
   responsabilidade caber nele mais tarde — mas não implementa essa parte agora.
 - `BlackboxController`/`BlackboxSecurityConfigContributor` — spec 05-023, não esta.
 
+## Decisões resolvidas
+
+As cinco perguntas que estavam aqui foram decididas em `plan.md` ("Decisões de arquitetura"):
+
+1. **Nome do serviço novo:** `UserProvisioningService` (hoje no pacote `user`, depois da spec 05-027).
+2. **`CompetitionLinkHandler.complete()`:** não migrou nesta spec (duplicação registrada na Issue
+   #95). Migrou depois: hoje usa o `UserProvisioningService`, e a Issue #95 está fechada.
+3. **Nome do administrador:** `ADMIN_NAME`, opcional, com `"Administrator"` quando ausente.
+4. **`ADMIN_EMAIL` malformado:** loga `ERROR` e não cria ninguém, sem derrubar a subida.
+5. **Nomes das variáveis:** `ADMIN_EMAIL`, `ADMIN_NAME` e `EMAIL_SENDER_ADDRESS`. A última saiu
+   do `app` com a spec 05-031: o remetente passou a ser de cada cliente, no `email-service`.
+
 ## Decisões em aberto
 
-1. **Nome do serviço novo em `login/`** (cria usuário com lista de papéis) — candidatos:
-   `UserProvisioningService`, `UserAccountService`.
-2. **`CompetitionLinkHandler.complete()` migra pra usar esse serviço novo**, eliminando sua
-   cópia própria de `assignRole`, ou fica como está (duplicação existente, não piora, mas não
-   melhora)? Achado desta sessão, não pedido explicitamente — decidir no `plan.md`.
-3. **Nome do administrador**: variável de ambiente própria (`ADMIN_NAME`), ou um valor fixo
-   genérico ("Administrator") toda vez que `ADMIN_EMAIL` é usado?
-4. **`ADMIN_EMAIL` malformado** (setada, mas não é um e-mail válido): falhar a subida da
-   aplicação, ou logar um aviso e pular o bootstrap?
-5. **Nomes exatos das variáveis de ambiente** (`ADMIN_EMAIL`/`ADMIN_NAME`,
-   `EMAIL_SENDER_ADDRESS`) — confirmar contra a convenção já usada no projeto (`EMAIL_QUEUE_NAME`,
-   `AWS_REGION`, `SPRING_CLOUD_AWS_SQS_ENDPOINT`) antes de fechar.
+Nenhuma.
