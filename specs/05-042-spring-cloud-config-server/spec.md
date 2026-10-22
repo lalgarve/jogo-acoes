@@ -1,6 +1,6 @@
 # Spec: Spring Cloud Config Server
 
-**Status:** implementada; falta a suíte `blackbox-tests` (T015, ver `tasks.md`)
+**Status:** implementada e verificada (ver `tasks.md`)
 **Issue:** [#165](https://github.com/lalgarve/jogo-acoes/issues/165)
 **Iteração:** iteration-5 (Etapa 3 da disciplina)
 

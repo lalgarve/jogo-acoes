@@ -287,11 +287,14 @@ sequenceDiagram
   `login`/`link`, não cria o serviço de "usuário atual" que `competition/` deveria consumir.
 - Qualquer mudança de comportamento do mecanismo de link/sessão — reorganização pura.
 
+## Decisões resolvidas
+
+As duas perguntas que estavam aqui foram decididas em `plan.md` ("Decisões de arquitetura"):
+
+1. **Nome dos pacotes:** minúsculos, `user`, `loginsession` e `loginsecurity`, como todos os
+   outros pacotes do projeto.
+2. **Diagramas:** atualizados nesta spec, no último passo (`docs/diagrams/` usa os pacotes novos).
+
 ## Decisões em aberto
 
-1. Nome exato dos três pacotes — `user`/`loginSession`/`loginSecurity` como o usuário definiu
-   nesta sessão, ou ajustar pra convenção de nomenclatura já usada no projeto (pacotes atuais são
-   todos minúsculos sem camelCase: `login`, `link`, `competition`) — `loginsession`/
-   `loginsecurity` em vez de `loginSession`/`loginSecurity`?
-2. Atualizar `docs/diagrams/*.md` como parte desta spec, ou numa spec/commit separado depois da
-   implementação (evita documentar algo que ainda não existe no código)?
+Nenhuma.

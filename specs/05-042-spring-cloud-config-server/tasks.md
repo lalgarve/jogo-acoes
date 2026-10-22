@@ -24,7 +24,7 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue-épico [#165](
 | ~~T012~~ | CI: subir `config-server` junto do resto do Compose antes dos `mvn verify`; passo `mvn -B -pl config-server -am verify`. Confirmar no CI que T003, T007 e T010 rodam (nenhum pulado) | T011 | | #165 |
 | ~~T013~~ | Documentação: `README.md` (módulo novo, como subir, que rodar o `app` fora do Compose exige o `config-server`); `memory/constitution.md`, "Nomenclatura de ambientes" (o arquivo autodescritivo de cada ambiente passa a morar em `config-repo/`); `docs/context/iteracao-5.md` (fechar a decisão em aberto "o `app/` também migra para o Config Server?" apontando para esta spec) | T011 | [P] | #165 |
 | ~~T014~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os caminhos de erro (Config Server inalcançável no cliente, `401` no servidor, credenciais ausentes no servidor fora do teste); para cada um, apontar o teste que o exercita. Registrar a lista abaixo | T007, T010, T011 | | #165 |
-| T015 | Rodar a suíte completa dos três módulos e a `blackbox-tests` contra o `docker compose up` — confirmar verde | T012, T013, T014 | | #165 |
+| ~~T015~~ | Rodar a suíte completa dos três módulos e a `blackbox-tests` contra o `docker compose up` — confirmar verde | T012, T013, T014 | | #165 |
 | ~~T016~~ | Verificação manual (Leila), seguindo o "Roteiro da verificação manual (T016)" abaixo | T015 | | #165 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
@@ -206,3 +206,8 @@ mesmos jars que as imagens empacotam.
   ambiente `blackbox`, verde. A primeira tentativa usou imagens de `app`/`email-service`
   construídas antes desta spec (o `up -d` sem `--build` as reaproveitou), e o `app` subiu com o
   `config-server` parado; o roteiro passou a exigir `--build` no passo 1.
+- **T015 (conclusão, registrada em 2026-10-22)** — A `blackbox-tests` passou contra o ambiente
+  inteiro com o `config-server` (subido por `scripts/cloud-up.sh`, spec 05-052): `behave` 2/2 e
+  `pytest` 29/29 em 2026-10-19 (`specs/05-052-ambiente-sessao-nuvem/tasks.md`, passo 3) e de novo
+  em 2026-10-20 (spec 05-046, T021). As três suítes Java rodam no CI de toda PR para
+  `development` e passaram, entre outras, na PR #201 (run 39709919144).
