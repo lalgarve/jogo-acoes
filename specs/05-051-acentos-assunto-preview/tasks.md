@@ -12,8 +12,8 @@ começar a implementar sem pedido explícito").
 | ~~T001~~ | `register_templates.feature`, regra "A client previews a template without sending an e-mail": cenário `Client previews a template with accented characters in the subject and body` (assunto `{{name}}, sua conta está pronta`, corpo `<p>Olá, {{name}}! Sua conta está pronta.</p>`, pré-visualização com `name = Ada`) e os passos novos em `RegisterTemplatesSteps`. Rodar contra o LocalStack e confirmar que falha pelo assunto | — | | — |
 | ~~T002~~ | `MimeRenderedTemplateParser`: `Session.getInstance` com `mail.mime.allowutf8=true` no lugar de `Session.getDefaultInstance(new Properties())`; Javadoc atualizado (UTF-8 cru do LocalStack, RFC 2047 continua aceito). Confirmar T001 verde | T001 | | — |
 | ~~T003~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os branches de exceção adicionados ou alterados (esperado: nenhum; o `catch` do parser fica igual). Registrar abaixo | T002 | | — |
-| T004 | Rodar `mvn -pl email-service -am verify` e `mvn -pl app -am verify` e confirmar verde | T002 | | — |
-| T005 | Caderno do email-service (`docs/disciplina/caderno-de-testes-email-service.md`, roteiro 2, passo 5): tirar a nota "Falha encontrada na execução de 2026-10-14" quando a correção estiver no `master` | T004 | | — |
+| ~~T004~~ | Rodar `mvn -pl email-service -am verify` e `mvn -pl app -am verify` e confirmar verde | T002 | | — |
+| ~~T005~~ | Caderno do email-service (`docs/disciplina/caderno-de-testes-email-service.md`, roteiro 2, passo 5): tirar a nota "Falha encontrada na execução de 2026-10-14" quando a correção estiver no `master` | T004 | | — |
 | ~~T006~~ | Verificação manual (Leila): rodar o roteiro "Verificação manual (T006)" abaixo e conferir os resultados esperados | T004 | | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
@@ -93,3 +93,12 @@ Feita pela Leila com o roteiro único [`docs/verificacao-manual-wsl.md`](../../d
 |---|---|
 | 1. Template com acentos | `201`, `"subject":"{{nome}}, sua conta está pronta"` |
 | 2. Pré-visualização | `{"body":"<p>Olá, Maria! Sua conta está pronta.</p>","subject":"Maria, sua conta está pronta"} [200]` |
+
+## T004 e T005 (2026-10-22)
+
+- **T004:** O CI de toda PR para `development` roda `mvn -B -pl app -am verify` e `mvn -B -pl email-service -am verify` contra a infraestrutura do Compose (`.github/workflows/ci.yml`). Verde nas duas suítes, entre outras, na PR #201 (2026-10-22, run [39709919144](https://github.com/lalgarve/jogo-acoes/actions/runs/39709919144)), já com esta spec em `development`.
+- **T005:** a correção está no `master` (`f31f678`, PR #175). O caderno já foi refeito em 2026-10-15 com o
+  serviço corrigido: o passo 5 do roteiro 2 mostra o assunto certo, seguido de um parágrafo curto que
+  registra a falha achada na primeira execução e a correção. Esse parágrafo fica por decisão da Leila
+  (`docs/disciplina/CLAUDE.md`, log de decisões; o apêndice B menciona a falha do mesmo jeito); a nota
+  que a tarefa mandava tirar não existe mais.

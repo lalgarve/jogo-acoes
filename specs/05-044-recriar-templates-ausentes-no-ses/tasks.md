@@ -22,7 +22,7 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
 | ~~T009~~ | `SesTemplateReconciler`: começa no `ApplicationReadyEvent` pelo `TaskScheduler`, `findAll()` × `ListTemplates` paginado, `createIfAbsent` para os ausentes, `WARN` para os órfãos e para as falhas, nova rodada com espera de 1 s dobrando até 5 min (`email.ses.reconciliation.initial-delay`/`max-delay`), para depois da primeira rodada sem falha. Confirmar T004 verde | T004, T006, T008 | | #144 |
 | ~~T010~~ | Documentação: `503` e descrições de `POST /templates`, `PUT /templates/{name}` e `POST /templates/{name}/preview` em `docs/openapi-email-service.yaml`; invariante novo em `specs/05-025-servico-email-templates/data-model.md` | T006, T007, T008 | [P] | #144 |
 | ~~T011~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: `SesUnavailableException`) e os branches de exceção adicionados ou alterados (`AlreadyExistsException` em `putTemplate` e em `createIfAbsent`, `TemplateDoesNotExistException` em `updateTemplate`, a nova tentativa do preview, `SdkClientException`/5xx no `SesTemplateClient`, o handler do `503`, falha de `ListTemplates` e de `createIfAbsent` na reconciliação e a nova rodada); para cada um, apontar o teste que o exercita. O que não tiver teste é justificado em `plan.md` (já previsto: `SesException` genérica não 5xx com o SES no ar) e avisado no chat ao abrir a PR. Registrar a lista aqui | T006–T009 | | #144 |
-| T012 | Rodar a suíte completa do `email-service` e `mvn -pl app -am verify` — confirmar verde | T010, T011 | | #144 |
+| ~~T012~~ | Rodar a suíte completa do `email-service` e `mvn -pl app -am verify` — confirmar verde | T010, T011 | | #144 |
 | ~~T013~~ | Verificação manual (Leila), rodar o roteiro "Roteiro da T013" abaixo e conferir os resultados esperados | T012 | | #144 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
@@ -186,3 +186,7 @@ Feita pela Leila com o roteiro único [`docs/verificacao-manual-wsl.md`](../../d
 | 3. Reiniciar o `app` | `Started JogoAcoesApplication`, nenhum `answered 409`; os 5 templates do `app` de volta no SES |
 | 4. Atualizar e pré-visualizar um template que o SES perdeu | `201`, `200` com `Roteiro T013 v2` e `{"body":"<p>Oi Ada</p>","subject":"Roteiro T013 v2"} [200]` |
 | 5. Recriação na subida do `email-service` | 10 linhas `SesTemplateReconciler : Recreated template jogo-acoes__<nome> on SES from the database`, os 10 templates no `list-templates` |
+
+## Suítes completas (T012, 2026-10-22)
+
+O CI de toda PR para `development` roda `mvn -B -pl app -am verify` e `mvn -B -pl email-service -am verify` contra a infraestrutura do Compose (`.github/workflows/ci.yml`). Verde nas duas suítes, entre outras, na PR #201 (2026-10-22, run [39709919144](https://github.com/lalgarve/jogo-acoes/actions/runs/39709919144)), já com esta spec em `development`.
