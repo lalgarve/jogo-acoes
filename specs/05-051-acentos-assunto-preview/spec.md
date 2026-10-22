@@ -1,6 +1,6 @@
 # Spec: pré-visualização de template devolve o assunto com acentos corretos
 
-**Status:** implementada (correção em `f31f678`, T001–T003); faltam T004–T006 (ver `tasks.md`)
+**Status:** implementada (correção em `f31f678`); verificação manual T006 feita em 2026-10-22; faltam T004 e T005 (ver `tasks.md`)
 **Issue:** [#190](https://github.com/lalgarve/jogo-acoes/issues/190)
 **Iteração:** iteration-5
 

@@ -11,8 +11,8 @@ Issue-épico: [#189](https://github.com/lalgarve/jogo-acoes/issues/189).
 | ~~T002~~ | `docker-up.conf.example`, `docker-up.conf` no `.gitignore` | — | [P] | — |
 | ~~T003~~ | `scripts/docker-up.sh` | T001, T002 | | — |
 | ~~T004~~ | `README.md`: subida com o script e LocalStack Pro | T003 | | — |
-| T005 | Verificação manual sem token (Leila): roteiro A abaixo | T003 | [P] | — |
-| T006 | Verificação manual com token (Leila): roteiro B abaixo | T003 | [P] | — |
+| ~~T005~~ | Verificação manual sem token (Leila): roteiro A abaixo | T003 | [P] | — |
+| ~~T006~~ | Verificação manual com token (Leila): roteiro B abaixo | T003 | [P] | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -153,3 +153,19 @@ Para derrubar e voltar ao estado anterior:
 docker compose down -v
 mv docker-up.conf.bak docker-up.conf 2>/dev/null; true
 ```
+
+## Verificação manual no WSL (2026-10-22)
+
+Feita pela Leila com o roteiro único [`docs/verificacao-manual-wsl.md`](../../docs/verificacao-manual-wsl.md), Bloco 1, passo 1 (roteiro A) e Bloco 3 (roteiro B).
+
+| Roteiro | Resultado |
+|---|---|
+| A (T005) | `No docker-up.conf, using the template docker-up.conf.example ...`, `Compose files: docker-compose.yml:docker-compose.blackbox.yml`, `LocalStack: Community`, `Environment up.`; `localstack/localstack:4`; `200` |
+| B (T006), itens 1 e 2 | `git status` vazio; `Compose files: ...:docker-compose.localstack-pro.yml`, `LocalStack: Pro`, `Environment up.` |
+| B (T006), item 3 | `localstack/localstack-pro:4`; `Successfully requested and activated new license ...:student` |
+| B (T006), item 4 | `202` e `1` mensagem no SES |
+| B (T006), item 5 | token `x`: `Localstack returning with exit code 55`, `License activation failed!`, `docker-up: docker compose up ... failed`; o token real não apareceu |
+
+Com o overlay Pro, os comandos `docker compose` seguintes também precisam do
+`LOCALSTACK_AUTH_TOKEN` exportado na shell (o `docker-up.sh` avisa no fim); o roteiro do WSL
+passou a exportá-lo do `docker-up.conf` sem imprimir.

@@ -13,7 +13,7 @@ Issue-épico: [#197](https://github.com/lalgarve/jogo-acoes/issues/197).
 | ~~T004~~ | `spring.batch.jdbc.isolation-level-for-create: read-committed` | T002 | [P] | — |
 | ~~T005~~ | Suíte do `email-service` verde, rodada algumas vezes seguidas; nota na 05-048 (`plan.md`, "Execução sob pedido") | T001, T003, T004 | | — |
 | ~~T006~~ | Critério de aceite de exceções (`memory/constitution.md`): nenhuma classe de exceção nova; registrar aqui | T003 | | — |
-| T007 | Verificação manual, com comandos prontos: três repositórios, "importar todos", conferir que as três execuções terminam `COMPLETED` e que os horários não se sobrepõem | T005 | | — |
+| ~~T007~~ | Verificação manual, com comandos prontos: três repositórios, "importar todos", conferir que as três execuções terminam `COMPLETED` e que os horários não se sobrepõem | T005 | | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -84,3 +84,13 @@ verificação manual da 05-048.)
 ```bash
 docker compose down -v
 ```
+
+## Verificação manual no WSL (2026-10-22)
+
+Feita pela Leila com o roteiro único [`docs/verificacao-manual-wsl.md`](../../docs/verificacao-manual-wsl.md), Bloco 1, passo 7, com a "Lista de teste" da 05-048 já cadastrada (quatro repositórios).
+
+| Item | Resultado |
+|---|---|
+| 1. Três listas e repositórios | `ANTES` = `3`; `201` três vezes |
+| 2. Importar todos | quatro execuções `STARTING` na resposta, `[202]` |
+| 3. Uma de cada vez | execuções 4 a 7 `COMPLETED`; `depois_da_anterior` vazio na primeira e `t` nas outras três |

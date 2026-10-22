@@ -7,6 +7,11 @@ tarefa e registrar o que deu).
 Montado em 2026-10-21, a partir de `development`. As expectativas foram atualizadas onde uma
 spec posterior mudou o resultado (indicado em cada passo).
 
+**Rodado inteiro em 2026-10-22**, tudo como esperado; o resultado de cada spec está no
+`tasks.md` dela. Na execução, três ajustes entraram aqui: a espera da publicação depois de
+recriar a fila (05-046), o filtro do Testcontainers (05-053) e o `export` do token com o
+LocalStack Pro (05-050).
+
 | Spec | Tarefa | Onde está aqui |
 |---|---|---|
 | [05-050](../specs/05-050-perfil-localstack-pro/tasks.md) LocalStack Pro opcional | T005 (roteiro A) | Bloco 1, passo 1 |
@@ -330,14 +335,16 @@ Esperado: o JSON do template e ` [201]` no fim.
    ```
    Esperado: `PENDING`, `attempts` maior que zero (cresce a cada vez que o comando é repetido),
    `QUEUE_UNAVAILABLE`, `t`.
-3. Recriar a fila e conferir o envio:
+3. Recriar a fila e conferir o envio. A espera entre tentativas dobra a cada falha (1 s, 2 s,
+   4 s... até 5 min), então a publicação pode levar mais de um minuto para acontecer:
    ```bash
    docker compose exec localstack sh /etc/localstack/init/ready.d/01-create-queue.sh
-   sleep 10
+   sleep 60
    docker compose exec db-email-service psql -U email_service_admin -d email_service -c "select status, attempts, last_error_type, template_data is not null as keeps_template_data from email_service.email_send where recipient_email = 'success+t016a@simulator.amazonses.com';"
    ```
    Esperado: `QUEUED`, `QUEUE_UNAVAILABLE` (o último erro), `f` (os dados do template não ficam
-   guardados depois de publicado).
+   guardados depois de publicado). `attempts` conta só as falhas. Se ainda estiver `PENDING`,
+   esperar mais um pouco e repetir a consulta.
 4. O e-mail chegou ao SES:
    ```bash
    sleep 10
@@ -363,7 +370,7 @@ Esperado: o JSON do template e ` [201]` no fim.
 6. A Lambda não acha o template e põe a mensagem na DLQ com `TEMPLATE_MISSING`; o
    `email-service` recria o template e publica de novo:
    ```bash
-   sleep 15
+   sleep 30
    docker compose exec db-email-service psql -U email_service_admin -d email_service -c "select status, attempts, last_error_type from email_service.email_send where recipient_email = 'success+t016b@simulator.amazonses.com';"
    docker compose exec db-email-service psql -U email_service_admin -d email_service -c "select name, ses_recreated_at is not null as recreated from email_service.email_template where name = 'roteiro-t016';"
    docker compose exec localstack awslocal ses get-template --template-name jogo-acoes__roteiro-t016 --query 'Template.SubjectPart' --output text
@@ -458,11 +465,13 @@ docker compose down -v
 2. Suíte da `email-lambda` com o LocalStack de pé:
    ```bash
    docker ps -aq | wc -l
-   mvn -pl email-lambda -am test 2>&1 | grep -E "Tests run: [0-9]+, Fail|BUILD|testcontainers"
+   mvn -pl email-lambda -am test 2>&1 | grep -E "Tests run: [0-9]+, Fail|BUILD (SUCCESS|FAILURE)|Testcontainers version|Creating container"
    docker ps -aq | wc -l
    ```
    Esperado: `Tests run: 12, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`, nenhuma linha
-   com `testcontainers`, e o mesmo número de containers antes e depois.
+   `Testcontainers version` nem `Creating container`, e o mesmo número de containers antes e
+   depois. (Na primeira vez, o Maven pode baixar os jars do Testcontainers, dependência do Dev
+   Services da extensão Quarkus; baixar não é subir container.)
 3. Suíte da `email-lambda` sem o LocalStack:
    ```bash
    docker compose stop localstack
@@ -491,7 +500,11 @@ Abrir `docker-up.conf` num editor e colar o token em `LOCALSTACK_AUTH_TOKEN=` (s
 git status --short docker-up.conf
 ./scripts/docker-up.sh --reset
 export COMPOSE_FILE=docker-compose.yml:docker-compose.blackbox.yml:docker-compose.localstack-pro.yml
+export LOCALSTACK_AUTH_TOKEN=$(sed -n 's/^LOCALSTACK_AUTH_TOKEN=//p' docker-up.conf)
 ```
+
+(Com o overlay Pro, o `docker compose` recusa os comandos sem o token exportado; o `sed` lê o
+token do arquivo sem imprimi-lo.)
 
 Esperado:
 
@@ -510,13 +523,19 @@ Esperado:
    curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:8080/api/login-requests \
      -H 'Content-Type: application/json' \
      -d '{"email": "success+admin@simulator.amazonses.com"}'
-   sleep 10
+   sleep 20
    curl -s http://localhost:4566/_aws/ses | jq '.messages | length'
    ```
    Esperado: `202` e um número maior que `0`.
-5. Token inválido: trocar o token do arquivo por `x` e rodar `./scripts/docker-up.sh`. Esperado:
-   `docker-up: localstack exited; its last log lines:`, a mensagem `License activation failed!`
-   e a última linha `docker-up: docker compose up ... failed`. Colocar o token certo de volta.
+5. Token inválido, guardando o arquivo com o token certo:
+   ```bash
+   cp docker-up.conf docker-up.conf.valido
+   sed -i 's/^LOCALSTACK_AUTH_TOKEN=.*/LOCALSTACK_AUTH_TOKEN=x/' docker-up.conf
+   ./scripts/docker-up.sh 2>&1 | tail -15
+   mv docker-up.conf.valido docker-up.conf
+   ```
+   Esperado: `Localstack returning with exit code 55`, a mensagem `License activation failed!` e
+   a última linha `docker-up: docker compose up ... failed`; o token real não aparece.
 
 Derrubar e voltar ao estado anterior:
 

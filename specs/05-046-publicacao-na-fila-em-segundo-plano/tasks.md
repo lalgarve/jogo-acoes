@@ -30,7 +30,7 @@ Issue-épico: [#185](https://github.com/lalgarve/jogo-acoes/issues/185).
 | ~~T020~~ | CI: depois dos testes do `app`, derrubar todos os containers e subir do zero só o que a suíte do `email-service` usa (`plan.md`); confirmar o CI verde numa PR para `development` | T017 | | — |
 | ~~T021~~ | Caixa-preta: `last_email` espera até 30 s pelo e-mail (`plan.md`); confirmar a suíte verde logo depois de uma subida do zero | T017 | [P] | — |
 | ~~T015~~ | Rodar a suíte completa do `email-service`, a do `email-lambda` e `mvn -pl app -am verify` (cliente Feign regenerado com o enum novo) — confirmar verde | T013, T014, T017–T019 | | — |
-| T016 | Verificação manual (Leila): rodar o roteiro "Roteiro da T016" abaixo e conferir os resultados esperados | T015 | | — |
+| ~~T016~~ | Verificação manual (Leila): rodar o roteiro "Roteiro da T016" abaixo e conferir os resultados esperados | T015 | | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -286,3 +286,20 @@ Esperado no último comando (as datas mudam):
    Esperado: `success+t016b@simulator.amazonses.com`, e o e-mail no `ses-viewer`.
 
 Para derrubar: `docker compose down -v`.
+
+## Verificação manual no WSL (2026-10-22)
+
+Feita pela Leila com o roteiro único [`docs/verificacao-manual-wsl.md`](../../docs/verificacao-manual-wsl.md), Bloco 1, passo 8.
+
+| Item | Resultado |
+|---|---|
+| (a) 1. Fila apagada, pedido de e-mail | `{"id":"...","status":"PENDING"} [202]` |
+| (a) 2. Envio pendente | `PENDING`, `2`, `QUEUE_UNAVAILABLE`, `t` |
+| (a) 3. Fila recriada | dez segundos depois ainda `PENDING` (`attempts` 6): a espera entre tentativas dobra a cada falha e já passava de 30 s. Um minuto depois: `QUEUED`, `6`, `QUEUE_UNAVAILABLE`, `f` (`attempts` conta as falhas; a publicação que deu certo não soma) |
+| (a) 4. E-mail no SES | `success+t016a@simulator.amazonses.com` |
+| (b) 5. Template apagado do SES, pedido de e-mail | `PENDING`, `[202]` |
+| (b) 6. DLQ e recriação | `QUEUED`, `1`, `TEMPLATE_MISSING`; `roteiro-t016`, `t`; `Roteiro T016`; as linhas `TemplateService : Recreated template jogo-acoes__roteiro-t016 on SES after a TEMPLATE_MISSING delivery error` e `DeadLetterConsumer : Send ... was not delivered (TEMPLATE_MISSING): Template (jogo-acoes__roteiro-t016) does not exist ...` |
+| (b) 7. E-mail no SES | `success+t016b@simulator.amazonses.com` |
+
+O roteiro acima (item 3) espera só 10 s depois de recriar a fila, pouco para o recuo entre
+tentativas; o roteiro do WSL passou a esperar o envio ficar `QUEUED`.

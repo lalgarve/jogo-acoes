@@ -1,6 +1,6 @@
 # Spec: Recriar no SES os templates que só existem no banco do email-service
 
-**Status:** implementada, faltam a suíte do `app` e a verificação manual (ver `tasks.md`)
+**Status:** implementada; falta a suíte do `app` (T012). Verificação manual feita em 2026-10-22 (ver `tasks.md`)
 **Issue:** [#144](https://github.com/lalgarve/jogo-acoes/issues/144)
 **Iteração:** iteration-5
 

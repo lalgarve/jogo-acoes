@@ -1,6 +1,6 @@
 # Spec: Os testes não sobem containers
 
-**Status:** implementada; falta a verificação manual (T007), ver `tasks.md`
+**Status:** implementada e verificada (verificação manual T007 em 2026-10-22, ver `tasks.md`)
 **Issue:** [#193](https://github.com/lalgarve/jogo-acoes/issues/193)
 **Iteração:** iteration-5
 

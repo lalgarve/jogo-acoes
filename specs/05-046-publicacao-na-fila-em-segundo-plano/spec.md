@@ -1,7 +1,6 @@
 # Spec: Publicação na fila de envio em segundo plano
 
-**Status:** implementada, integrada às specs 05-047 e 05-048; falta confirmar a T020 no CI de
-uma PR e a verificação manual (ver `tasks.md`)
+**Status:** implementada e verificada: T020 confirmada no CI da PR #194; verificação manual em 2026-10-22 (ver `tasks.md`)
 **Issue:** [#185](https://github.com/lalgarve/jogo-acoes/issues/185) (relacionada à [#144](https://github.com/lalgarve/jogo-acoes/issues/144))
 **Iteração:** iteration-5
 

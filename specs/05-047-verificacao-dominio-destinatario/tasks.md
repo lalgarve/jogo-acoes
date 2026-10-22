@@ -20,7 +20,7 @@ Issue-épico: [#186](https://github.com/lalgarve/jogo-acoes/issues/186).
 | ~~T008~~ | `README.md`: o serviço `dns`, a zona de teste e como incluir um domínio novo nela | T001 | [P] | — |
 | ~~T009~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: `RecipientDomainRejectedException` no `email-service` e no `app`) e os branches de exceção adicionados ou alterados (cada resultado do DNS, inclusive sem resposta; `IDN` inválido; `ON CONFLICT`; tradução do `422` no *gateway*; o `catch` do convite em grupo); para cada um, apontar o teste que o exercita. O que não tiver teste é justificado em `plan.md` e avisado no chat ao abrir a PR. Registrar a lista aqui | T006, T007 | | — |
 | ~~T010~~ | Rodar a suíte completa do `email-service`, `mvn -pl app -am verify` e o `blackbox-tests/` — confirmar verde (nenhum teste com domínio fora da zona) | T008, T009 | | — |
-| T011 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T011)" abaixo e conferir os resultados esperados | T010 | | — |
+| ~~T011~~ | Verificação manual (Leila): rodar o roteiro "Verificação manual (T011)" abaixo e conferir os resultados esperados | T010 | | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -162,3 +162,16 @@ API_KEY=dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU
    Esperado: `jogador@with-mx.test` e `jogador@only-a.test`, `(2 rows)`.
 
 Para derrubar: `docker compose down -v`.
+
+## Verificação manual no WSL (2026-10-22)
+
+Feita pela Leila com o roteiro único [`docs/verificacao-manual-wsl.md`](../../docs/verificacao-manual-wsl.md), Bloco 1, passo 3, num banco vazio.
+
+| Item | Resultado |
+|---|---|
+| 1. Zona de teste | `with-mx.test MX: 10 mail.with-mx.test.`, `only-a.test A: 192.0.2.10`, `null-mx.test MX: 0 . A: 192.0.2.20`, `missing.test` sem registros |
+| 2. Template | `[201]` |
+| 3 e 4. `with-mx.test` e `only-a.test` | `{"id":"...","status":"PENDING"} [202]` nos dois (`PENDING` desde a spec 05-046) |
+| 5 e 6. `missing.test` e `null-mx.test` | `{"message":"Recipient domain does not accept e-mail: <domínio>"} [422]` nos dois |
+| 7. Lista branca | `only-a.test` (`A`), `simulator.amazonses.com` (`SEED`), `with-mx.test` (`MX`), `(3 rows)` |
+| 8. Envios gravados | `jogador@with-mx.test`, `jogador@only-a.test`, `(2 rows)` |
