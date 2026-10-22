@@ -1,6 +1,6 @@
 # Spec: Perfil LocalStack Pro e script de subida do ambiente
 
-**Status:** implementada (ver `tasks.md`; falta a verificação manual com token, T006)
+**Status:** implementada e verificada (verificações manuais T005 e T006 em 2026-10-22, ver `tasks.md`)
 **Issue:** [#189](https://github.com/lalgarve/jogo-acoes/issues/189)
 **Iteração:** iteration-5
 

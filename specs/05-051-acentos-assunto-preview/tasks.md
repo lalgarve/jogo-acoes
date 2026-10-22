@@ -14,7 +14,7 @@ começar a implementar sem pedido explícito").
 | ~~T003~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os branches de exceção adicionados ou alterados (esperado: nenhum; o `catch` do parser fica igual). Registrar abaixo | T002 | | — |
 | T004 | Rodar `mvn -pl email-service -am verify` e `mvn -pl app -am verify` e confirmar verde | T002 | | — |
 | T005 | Caderno do email-service (`docs/disciplina/caderno-de-testes-email-service.md`, roteiro 2, passo 5): tirar a nota "Falha encontrada na execução de 2026-10-14" quando a correção estiver no `master` | T004 | | — |
-| T006 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T006)" abaixo e conferir os resultados esperados | T004 | | — |
+| ~~T006~~ | Verificação manual (Leila): rodar o roteiro "Verificação manual (T006)" abaixo e conferir os resultados esperados | T004 | | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -84,3 +84,12 @@ Para derrubar: `docker compose down -v`.
   (`db`, `db-email-service` e `localstack` recriados, email-service não), e todos os 37 testes
   falharam na subida com `409`/`404` no template `invite` (banco e SES fora de sincronia).
   Falta rodar `mvn -pl app -am verify` de novo com o ambiente recriado do zero.
+
+## Verificação manual no WSL (2026-10-22)
+
+Feita pela Leila com o roteiro único [`docs/verificacao-manual-wsl.md`](../../docs/verificacao-manual-wsl.md), Bloco 1, passo 4.
+
+| Item | Resultado |
+|---|---|
+| 1. Template com acentos | `201`, `"subject":"{{nome}}, sua conta está pronta"` |
+| 2. Pré-visualização | `{"body":"<p>Olá, Maria! Sua conta está pronta.</p>","subject":"Maria, sua conta está pronta"} [200]` |

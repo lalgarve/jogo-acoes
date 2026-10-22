@@ -26,7 +26,7 @@ Issue-épico: [#187](https://github.com/lalgarve/jogo-acoes/issues/187).
 | ~~T012~~ | Documentação: `README.md` (cliente `operations`, como cadastrar repositório e pedir a execução); `docs/disciplina/caderno-de-testes.md`, seção do email-service, com os `curl` da verificação manual | T009 | [P] | — |
 | ~~T013~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: `DisposableDomainSourceAlreadyExistsException`, `DisposableDomainImportAlreadyRunningException`, `DisposableListDownloadException`) e os branches de exceção adicionados ou alterados (`400`/`403`/`409` das rotas; cada falha do `downloadStep`: status, tempo, tamanho, lista vazia; linha inválida no processador; execução parada e refeita; motivo `DISPOSABLE` no `422`); para cada um, apontar o teste que o exercita. O que não tiver teste é justificado em `plan.md` e avisado no chat ao abrir a PR. Registrar a lista aqui | T008–T010 | | — |
 | ~~T014~~ | Rodar a suíte completa do `email-service` e `mvn -pl app -am verify` — confirmar verde | T011–T013 | | — |
-| T015 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T015)" abaixo e conferir os resultados esperados | T014 | | — |
+| ~~T015~~ | Verificação manual (Leila): rodar o roteiro "Verificação manual (T015)" abaixo e conferir os resultados esperados | T014 | | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -213,3 +213,20 @@ gerada na T001.)
     mostra só `disposable.test`.
 
 Para derrubar: `docker compose down -v`.
+
+## Verificação manual no WSL (2026-10-22)
+
+Feita pela Leila com o roteiro único [`docs/verificacao-manual-wsl.md`](../../docs/verificacao-manual-wsl.md), Bloco 1, passo 6.
+
+| Item | Resultado |
+|---|---|
+| 1. Lista no S3 | `make_bucket: disposable-lists` |
+| 2. Repositório | `201`, `"domainCount":0`, sem horas; `id` `1` (desde a spec 05-053 não há repositório inicial no `docker`) |
+| 3. Mesmo endereço | `409` |
+| 4. Permissões | `403` para o `jogo-acoes` nos repositórios; `{"message":"Missing permission: email:send"} [403]` para operações no envio |
+| 5. Importação | `COMPLETED`, `read` 5, `skipped` 1, `added` 2, `removed` 0 |
+| 6. Domínios | `disposable.test`, `outro-temporario.test` |
+| 7. Horas | `lastDownloadedAt` e `lastUpdatedAt` às 00:37:05 |
+| 8. Mesma lista de novo | `COMPLETED`, `UNCHANGED`, `added` 0, `removed` 0; `lastDownloadedAt` 00:37:51, `lastUpdatedAt` continua 00:37:05 |
+| 9. Envio para domínio temporário | `{"message":"Recipient domain is a disposable e-mail domain: disposable.test"} [422]` |
+| 10. Domínio sai da lista | `COMPLETED`, `added` 0, `removed` 1; só `disposable.test` no banco |

@@ -1,6 +1,6 @@
 # Spec: Verificação do domínio do destinatário por DNS (A e MX) com lista branca
 
-**Status:** implementada (T001–T010 em `tasks.md`; falta a verificação manual T011)
+**Status:** implementada e verificada (verificação manual T011 em 2026-10-22, ver `tasks.md`)
 **Issue:** [#186](https://github.com/lalgarve/jogo-acoes/issues/186)
 **Iteração:** iteration-5
 

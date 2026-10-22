@@ -13,7 +13,7 @@ Issue-épico: [#193](https://github.com/lalgarve/jogo-acoes/issues/193).
 | ~~T004~~ | Repositório inicial das listas só em `staging`/`production` (`plan.md`): `INSERT` fora da V6, migration de dados em `db/seed-email-service/` (sem duplicar), `spring.flyway.locations` no `config-repo`; `DisposableDomainCleanupHooks` sem o caso do GitHub. Confirmar a suíte do `email-service` verde | — | [P] | — |
 | ~~T005~~ | Documentação: constitution ("Testes exigem a infraestrutura de pé"), notas nas specs 05-028 e 05-048, nota no caderno de testes do Serviço de E-mail, README ("Como rodar os testes": a `email-lambda` também precisa do LocalStack de pé) | T002–T004 | | — |
 | ~~T006~~ | Critério de aceite de exceções (`memory/constitution.md`): nenhuma classe de exceção nova; registrar aqui | T002, T004 | | — |
-| T007 | Verificação manual, com comandos prontos: suíte da `email-lambda` com e sem LocalStack; `docker ps` sem container novo durante o `mvn test`; `GET /disposable-domain-sources` vazio num banco novo do `docker` | T001–T005 | | — |
+| ~~T007~~ | Verificação manual, com comandos prontos: suíte da `email-lambda` com e sem LocalStack; `docker ps` sem container novo durante o `mvn test`; `GET /disposable-domain-sources` vazio num banco novo do `docker` | T001–T005 | | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -88,3 +88,19 @@ Esperado: `0`.
 ```bash
 docker compose down -v
 ```
+
+## Verificação manual no WSL (2026-10-22)
+
+Feita pela Leila com o roteiro único [`docs/verificacao-manual-wsl.md`](../../docs/verificacao-manual-wsl.md), Bloco 1, passo 2 (item 4) e Bloco 2 (itens 1 a 3).
+
+| Item | Resultado |
+|---|---|
+| 4. Repositório do GitHub fora do `docker` | `0` |
+| 1. Infraestrutura dos testes | `config-server`, `db-email-service`, `dns`, `localstack` |
+| 2. Suíte com LocalStack | `Tests run: 12, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`; 6 containers antes e 6 depois |
+| 3. Suíte sem LocalStack | `Tests run: 12, Failures: 0, Errors: 5, Skipped: 0`, `BUILD FAILURE`; `0` LocalStack |
+
+No item 2, a primeira rodada mostrou linhas `testcontainers`: eram o Maven baixando os jars
+(dependência do Dev Services da extensão Quarkus de SES/SQS), não container subindo. A segunda,
+com os jars no cache e o filtro sem distinguir maiúsculas, não mostrou nada do Testcontainers.
+O roteiro do WSL passou a filtrar `Testcontainers version|Creating container`.

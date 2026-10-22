@@ -15,7 +15,7 @@ Issue-épico: [#188](https://github.com/lalgarve/jogo-acoes/issues/188).
 | ~~T004~~ | `README.md`: endereço do Swagger UI do `email-service` | T003 | [P] | — |
 | ~~T005~~ | Caderno de testes do Serviço de E-mail: em vez de reescrever os passos, uma nota dizendo que agora há Swagger UI (decisão da Leila, 2026-10-20: o caderno é parte do documento já entregue e continua com o `chamar.sh`) | T003 | [P] | — |
 | ~~T006~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): nenhuma classe de exceção nova; o branch novo é o `shouldNotFilter` (caminho liberado e caminho da API barrado), coberto pela T002. Registrar aqui | T003 | | — |
-| T007 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T007)" abaixo | T003–T006 | | — |
+| ~~T007~~ | Verificação manual (Leila): rodar o roteiro "Verificação manual (T007)" abaixo | T003–T006 | | — |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -94,3 +94,13 @@ docs/disciplina/caderno-de-testes-email-service/scripts/gerar-chaves.sh
    Esperado: `0`.
 
 Para derrubar: `docker compose down -v`.
+
+## Verificação manual no WSL (2026-10-22)
+
+Feita pela Leila com o roteiro único [`docs/verificacao-manual-wsl.md`](../../docs/verificacao-manual-wsl.md), Bloco 1, passo 5, com as chaves do caderno geradas por `gerar-chaves.sh`.
+
+| Item | Resultado |
+|---|---|
+| 1. Contrato sem chave | `openapi: 3.0.3`, `info:`, `  title: Serviço de E-mail` |
+| 2 a 6. Tela no navegador | todos como esperado: tela sem chave, `401` sem chave, `200`/`403` com a chave de envio, chave mantida depois do F5, `200`/`403` com a chave de operações |
+| 7. Nada gerado pelas anotações | `0` |
