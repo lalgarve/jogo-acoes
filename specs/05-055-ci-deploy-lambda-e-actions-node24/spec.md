@@ -125,14 +125,14 @@ Verificação (comandos prontos em `tasks.md`):
 ## Decisões resolvidas
 
 - **Uma spec só para as duas Issues** (Leila, 2026-10-24): as duas mudam o CI.
+- **Init conferido no healthcheck do Compose e também no CI** (Leila, 2026-10-24). O healthcheck
+  do `localstack` faz o `--wait` falhar em todo lugar que usa o Compose, e o passo do CI
+  (`scripts/check-localstack.sh`) deixa o estado da função e do mapeamento no log. Efeito local
+  aceito: `docker compose up --wait localstack` demora mais (espera o deploy da Lambda) e, com um
+  script de init quebrado, falha, quando antes subia um ambiente sem a Lambda.
 
 ## Decisões em aberto
 
-- **Conferir o init no healthcheck do Compose ou só no CI.** A proposta é o healthcheck
-  (`plan.md`): o mesmo erro aparece no CI e no ambiente local, e o `--wait` passa a significar
-  "LocalStack pronto". Efeito local: `docker compose up --wait localstack` demora mais (espera o
-  deploy da Lambda) e, com um script de init quebrado, falha, quando antes subia um ambiente sem
-  a Lambda. A alternativa é deixar o Compose como está e conferir só num passo do CI.
 - **`madrapps/jacoco-report` sem versão no Node.js 24.** Se, na T004, não existir release dessa
   action que rode no Node.js 24, falta decidir entre manter a `v1.7` com o aviso e registrar o
   motivo, ou trocar a action. Só se decide com o resultado da T004 em mãos.
