@@ -61,8 +61,9 @@ Verificação (comandos prontos em `tasks.md`):
    `create-function`), `docker compose up -d --wait localstack` termina com erro e o container
    fica `unhealthy`.
 3. **Função que não fica `Active`:** `03-deploy-email-lambda.sh` termina com erro, em vez de
-   seguir em frente, quando a função não chega a `Active` no tempo de espera; idem para o
-   mapeamento que não chega a `Enabled`.
+   seguir em frente, quando a função não chega a `Active` no tempo de espera ou fica `Failed`;
+   idem para o mapeamento que não chega a `Enabled`. O tempo de espera é contado em segundos,
+   não em tentativas, e é só o máximo: a espera acaba assim que o estado chega.
 4. **Log do CI:** cada vez que o CI sobe o LocalStack (antes da suíte do `app` e de novo antes
    da suíte do `email-service`), o log mostra o estado dos scripts de init, o estado da função e
    o do mapeamento. Quando algum passo do job falha, o log mostra também a saída do `localstack`
@@ -80,8 +81,9 @@ Verificação (comandos prontos em `tasks.md`):
   lugar que sobe o LocalStack pelo Compose: CI, `scripts/docker-up.sh`, verificações manuais, e
   também o overlay `docker-compose.localstack-pro.yml`, que herda o healthcheck.
 - **`03-deploy-email-lambda.sh`** termina com erro quando a função não chega a `Active` ou o
-  mapeamento não chega a `Enabled` no tempo de espera, com uma mensagem que diz o que faltou e o
-  último estado lido.
+  mapeamento não chega a `Enabled` no tempo de espera (até 120 s para a função, 30 s para o
+  mapeamento), ou logo que a função fica `Failed`, com uma mensagem que diz o que faltou e o último
+  estado lido, e, para a função, o motivo que o LocalStack deu.
 - **CI**, depois de cada subida do LocalStack: um passo que imprime o estado dos scripts de init,
   o estado da função e o do mapeamento, e falha se algum não estiver como esperado. Um passo no
   fim do job, só quando algo falhou e antes de os containers serem derrubados, imprime
@@ -135,6 +137,15 @@ Verificação (comandos prontos em `tasks.md`):
   encontrar release dessa action que rode no Node.js 24, ela fica na `v1.7`, com o aviso de
   Node.js 20 só para ela, e o motivo é registrado no `plan.md`. Se encontrar, é atualizada como as
   outras. A T004 encontrou a `v1.8.0`, em `node24`.
+
+- **Espera por tempo, não por tentativas** (Leila, 2026-10-24, depois da T008). Na primeira
+  rodada da T008 no WSL, a função ficou `Pending` por ~52 s e as "30 voltas" de 1 s duraram ~52 s
+  (cada `awslocal` leva ~1,5 s), então o script falhou num ambiente que estava certo. A espera
+  passa a ser de até 120 s para a função e 30 s para o mapeamento, medidos no relógio; o
+  `start_period` do healthcheck vai para 180 s para cobrir as duas e o resto do init. São limites:
+  com a imagem do runtime da Lambda no cache, a função fica `Active` em poucos segundos e o
+  container fica `healthy` logo. Só um init quebrado demora mais para dar `unhealthy` (perto de
+  4 min no pior caso).
 
 ## Decisões em aberto
 

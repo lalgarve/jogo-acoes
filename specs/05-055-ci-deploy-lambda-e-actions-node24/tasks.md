@@ -17,6 +17,7 @@ fazem o papel de épico; não há Issue nova por tarefa.
 | ~~T006~~ | Critério de aceite de exceções (`memory/constitution.md`): nenhuma classe de exceção nem branch de exceção em código Java. Registrar aqui os caminhos de erro de shell (script de init com `ERROR`, função que não fica `Active`, mapeamento que não fica `Enabled`, `docker-up.sh` com `localstack` `unhealthy`) e onde a T008 exercita cada um | T001–T003 | | #98 |
 | T007 | CI da PR: verde; o log mostra a saída do `check-localstack.sh` nas duas subidas; o artefato `jacoco-app` existe; o comentário de cobertura foi atualizado (não duplicado); nenhum aviso de Node.js 20 nem de `setup-java` v4 nas anotações do job (a T004 achou a `v1.8` do `jacoco-report`, em `node24`). Registrar aqui o link da execução | T003, T005 | | #98, #182 |
 | ~~T008~~ | Verificação manual, com os comandos abaixo | T001–T003 | | #98 |
+| T009 | Espera por tempo (decisão da Leila depois da T008): `wait_for_state` no `03-deploy-email-lambda.sh` (até 120 s pela função, 30 s pelo mapeamento, desiste com a função `Failed`), `start_period: 180s`, roteiro da T008 ajustado. Repetir no WSL os passos 1, 3 e 4 do roteiro abaixo | T008 | | #98 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo. As duas linhas de trabalho (T001–T003 e T004–T005) são independentes até a
@@ -73,12 +74,29 @@ das 30 voltas. A falha foi a da T001 (o script falhou e o container ficou `unhea
 esconder a função parada atrás de um `healthy`). Se as 30 voltas bastam fica em aberto, para
 decidir.
 
+## Espera por tempo (T009, 2026-10-24)
+
+Na sessão de nuvem, como na seção "O que foi verificado" acima, com o script e o healthcheck novos
+(`start_period` de 20 s nos casos de erro, para o teste andar mais rápido):
+
+| Caso | Resultado |
+|---|---|
+| Init completo | `healthy` em 34 s e em 12 s; `check-localstack.sh` com tudo certo |
+| `FUNCTION_TIMEOUT_SECONDS=0` | `unhealthy`; `EmailLambda did not become Active in 0s, last state: none` |
+| `MAPPING_TIMEOUT_SECONDS=0` | `unhealthy`; `the event source mapping from jogo-acoes-email-commands did not become Enabled in 0s, last state: none` |
+| `FUNCTION_TIMEOUT_SECONDS=1` | `unhealthy`; `EmailLambda did not become Active in 1s, last state: Pending`: o limite em segundos, com o estado lido |
+| Imagem do runtime da Lambda indisponível | A sessão de nuvem não conseguiu baixar `public.ecr.aws/lambda/java:21` de novo (o proxy recusa o CDN do registro) e a função ficou `Failed`. Antes da mudança, o laço esperava os 120 s; com ela, `EmailLambda is Failed instead of Active` em ~2 s, seguido de `InternalError	Error while creating lambda: public.ecr.aws/lambda/java:21`, e `unhealthy` |
+
+Este último caso não tem passo no roteiro do WSL: lá a imagem baixa normalmente.
+
 ## Verificação manual (T008)
 
 Na raiz do repositório, no branch da implementação, no WSL. Só o LocalStack é usado, sem o
 overlay `blackbox` nem os serviços: a verificação é do init dele. Os passos 2 a 4 quebram o
 `03-deploy-email-lambda.sh` de propósito e o restauram no fim com `git checkout`. Cada um leva
-uns 3 minutos: o `--wait` só desiste depois do `start_period` (120 s) e das `retries`.
+uns 4 minutos: o `--wait` só desiste depois do `start_period` (180 s) e das `retries`. Os passos 3 e
+4 zeram os limites de espera do script (`FUNCTION_TIMEOUT_SECONDS` e `MAPPING_TIMEOUT_SECONDS`), e
+com zero o script nem consulta o estado.
 
 ### 1. Init completo
 
@@ -110,35 +128,37 @@ como `ERROR`; `exit=1`.
 
 ### 3. Função que não fica `Active`
 
-Com o laço zerado, o script não espera e cai direto na falha.
+Com o limite da função zerado, o script não espera e cai direto na falha.
 
 ```bash
 docker compose down -v
-sed -i 's/seq 1 30/seq 1 0/' docker/localstack/init/03-deploy-email-lambda.sh
+sed -i 's/^FUNCTION_TIMEOUT_SECONDS=120$/FUNCTION_TIMEOUT_SECONDS=0/' docker/localstack/init/03-deploy-email-lambda.sh
+grep -c '^FUNCTION_TIMEOUT_SECONDS=0$' docker/localstack/init/03-deploy-email-lambda.sh
 docker compose up -d --wait localstack; echo "exit=$?"
 docker compose logs localstack | grep -c 'did not become Active'
 git checkout -- docker/localstack/init/03-deploy-email-lambda.sh
 ```
 
-Esperado: `exit=` diferente de `0` e `1` (a mensagem da T001 no log).
+Esperado: `1` no primeiro `grep`; `exit=` diferente de `0`; `1` no último `grep` (no log,
+`03-deploy-email-lambda: EmailLambda did not become Active in 0s, last state: none`).
 
 ### 4. Mapeamento que não fica `Enabled`, pelo `docker-up.sh`
 
-Só o segundo laço zerado: a função fica `Active` e o mapeamento não é esperado. Roda pelo
+Só o limite do mapeamento zerado: a função fica `Active` e o mapeamento não é esperado. Roda pelo
 `scripts/docker-up.sh`, para ver o log do `localstack` `unhealthy`.
 
 ```bash
 docker compose down -v
-sed -i '0,/seq 1 30/! s/seq 1 30/seq 1 0/' docker/localstack/init/03-deploy-email-lambda.sh
-grep -c 'seq 1 30' docker/localstack/init/03-deploy-email-lambda.sh
+sed -i 's/^MAPPING_TIMEOUT_SECONDS=30$/MAPPING_TIMEOUT_SECONDS=0/' docker/localstack/init/03-deploy-email-lambda.sh
+grep -c '^MAPPING_TIMEOUT_SECONDS=0$' docker/localstack/init/03-deploy-email-lambda.sh
 ./scripts/docker-up.sh; echo "exit=$?"
 git checkout -- docker/localstack/init/03-deploy-email-lambda.sh
 ```
 
-Esperado: `1` no `grep` (só o primeiro laço intacto); o `docker-up.sh` para na primeira subida
+Esperado: `1` no `grep`; o `docker-up.sh` para na primeira subida
 com `docker-up: localstack unhealthy; its last log lines:` e, entre essas linhas,
 `03-deploy-email-lambda: the event source mapping from jogo-acoes-email-commands did not become
-Enabled in 30s, last state: none`, e `docker-up: docker compose up --build db db-email-service localstack dns failed` (sem `--build` se o `docker-up.conf` tiver `BUILD=false`);
+Enabled in 0s, last state: none`, e `docker-up: docker compose up --build db db-email-service localstack dns failed` (sem `--build` se o `docker-up.conf` tiver `BUILD=false`);
 `exit=1`.
 
 ### Derrubar no fim

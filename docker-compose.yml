@@ -92,8 +92,9 @@ services:
     # (03-deploy-email-lambda.sh fails otherwise). LocalStack answers before its init scripts run,
     # so checking only that it is up let `--wait` pass with a broken init. A script in ERROR never
     # changes state again, so the container turns unhealthy once start_period and the retries run
-    # out. start_period covers the Lambda deploy (about 20s in a cloud session, more while the
-    # Lambda runtime image is pulled for the first time). python3 rather than curl: both images
+    # out. start_period covers the Lambda deploy: 03-deploy-email-lambda.sh waits up to 120s for the
+    # function and 30s for its event source mapping (usually a few seconds; longer while the Lambda
+    # runtime image is pulled for the first time). python3 rather than curl: both images
     # (Community and Pro) have it, and the JSON is parsed instead of grepped. No proxy: a proxy set in
     # Docker's own configuration must not get between the container and its own port.
     healthcheck:
@@ -110,7 +111,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-      start_period: 120s
+      start_period: 180s
 
   # Spec 05-047: test DNS server (CoreDNS) email-service checks recipient domains against in the
   # docker environment -- fixed zones in docker/dns/, nothing forwarded to the internet. Port 1053
