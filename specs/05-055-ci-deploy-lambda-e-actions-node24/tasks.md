@@ -45,6 +45,8 @@ com `docker run` na rede do host, como o `cloud-up.sh` faz, com os scripts de
 | T004 | Tabela "Versões das actions" no `plan.md` |
 | T006 | Nenhuma classe de exceção nem branch de exceção em código Java. Caminhos de erro de shell e onde são exercitados: script de init em `ERROR` (T002 acima; T008, passo 2), função que não fica `Active` (T001 acima; T008, passo 3), mapeamento que não fica `Enabled` (T001 acima; T008, passo 4), `docker-up.sh` com `localstack` `unhealthy` (T008, passo 4), `check-localstack.sh` sem conseguir ler o init (T003 acima) |
 
+| T007, execução manual no branch | [Execução 40100070950](https://github.com/lalgarve/jogo-acoes/actions/runs/40100070950) (`workflow_dispatch`): verde. "Start Postgres, LocalStack and the test DNS" levou 73 s (com o pull das imagens e o deploy da Lambda), a segunda subida 17 s. Os dois "Check LocalStack's init" passaram; o do `email-service` mostra os três scripts `SUCCESSFUL`, `EmailLambda: Active` e o mapeamento `Enabled` (o do primeiro fica antes das 5.000 linhas finais que a API devolve). Artefato `jacoco-app` publicado. Nenhum aviso de Node.js 20 nem de `setup-java` no fim do job; os únicos `##[warning]` são do compilador Maven. Os passos de log com `failure()` ficaram `skipped`, como esperado. Falta, na PR: o comentário de cobertura (o passo só roda em `pull_request`) e as anotações na aba do job |
+
 Não deu para rodar aqui: o Compose de verdade (`docker compose up --wait`, `docker compose exec`)
 e o `docker-up.sh`, por isso a T008 continua aberta, para o WSL.
 
