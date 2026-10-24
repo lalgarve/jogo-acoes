@@ -94,8 +94,12 @@ Scenario: Requesting a login link while the e-mail service is unavailable change
 
 - **O caso inverso** (o `email-service` aceita o envio, mas a resposta se perde ou o commit
   falha depois): o usuário pode receber um e-mail com um link que não foi gravado. É o mesmo
-  risco dos outros fluxos de e-mail e depende da idempotência de `POST /emails`, que ficou para
-  a Etapa 4 (spec 05-034).
+  risco dos outros fluxos de e-mail, que já enviam dentro da transação (spec 05-034, `plan.md`,
+  "Riscos": "Envio dentro da transação"). Fechar esse caso exigiria enviar só depois do commit
+  (item abaixo). A idempotência de `POST /emails` não resolve: ela evita o e-mail duplicado
+  quando o pedido é repetido, não o e-mail de um link desfeito. Essa idempotência foi adiada para
+  a Etapa 4 pela spec 05-031 (decisão de 2026-10-04, mantida na 05-034), mas não tem spec nem
+  Issue até agora; enquanto isso, o `app` não repete `POST /emails` automaticamente.
 - Mover o envio para depois do commit (outbox, evento pós-commit): muda a semântica de falha e
   não é o que a Issue pede.
 - Mudar `consumeLoginLink` e `completeRegistration`: eles não enviam e-mail.
