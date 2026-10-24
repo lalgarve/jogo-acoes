@@ -4,17 +4,8 @@ import dev.leilaalgarve.jogoacoes.api.LoginApi;
 import dev.leilaalgarve.jogoacoes.api.model.CompleteRegistrationRequest;
 import dev.leilaalgarve.jogoacoes.api.model.LoginResult;
 import dev.leilaalgarve.jogoacoes.api.model.RequestLoginLinkRequest;
-import dev.leilaalgarve.jogoacoes.email.EmailRequest;
-import dev.leilaalgarve.jogoacoes.email.EmailSender;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
-import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
 import dev.leilaalgarve.jogoacoes.link.LinkOutcome;
 import dev.leilaalgarve.jogoacoes.link.LinkService;
-import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
-import dev.leilaalgarve.jogoacoes.log.AuditLogService;
-import dev.leilaalgarve.jogoacoes.log.LogType;
-import dev.leilaalgarve.jogoacoes.user.User;
-import dev.leilaalgarve.jogoacoes.user.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,8 +14,8 @@ import java.util.Map;
 /**
  * `consumeLoginLink`/`completeRegistration` are thin adapters over the generic
  * {@link LinkService} (login is just one more {@code LinkHandler} it dispatches to);
- * `requestLoginLink` stays here because creating a standalone login link is entirely a `loginsession`
- * concern (nothing generic to dispatch) -- see plan.md's revision of this controller's home.
+ * `requestLoginLink` is a thin adapter over {@link LoginLinkRequestService}, which runs the whole
+ * request in one transaction so a failed send changes nothing (spec 05-056).
  *
  * <p>The `Sec-CH-UA*` parameters both methods below accept (spec 05-009) are declared in the
  * contract purely so Swagger UI shows a fillable field for them -- neither method reads its own
@@ -35,16 +26,11 @@ import java.util.Map;
 public class LoginController implements LoginApi {
 
     private final LinkService linkService;
-    private final UserService userService;
-    private final EmailSender emailSender;
-    private final AuditLogService auditLogService;
+    private final LoginLinkRequestService loginLinkRequestService;
 
-    public LoginController(LinkService linkService, UserService userService, EmailSender emailSender,
-                            AuditLogService auditLogService) {
+    public LoginController(LinkService linkService, LoginLinkRequestService loginLinkRequestService) {
         this.linkService = linkService;
-        this.userService = userService;
-        this.emailSender = emailSender;
-        this.auditLogService = auditLogService;
+        this.loginLinkRequestService = loginLinkRequestService;
     }
 
     @Override
@@ -67,21 +53,9 @@ public class LoginController implements LoginApi {
 
     @Override
     public ResponseEntity<Void> requestLoginLink(RequestLoginLinkRequest requestLoginLinkRequest) {
-        String email = requestLoginLinkRequest.getEmail();
-        User user = userService.findByEmail(email).orElse(null);
-        if (user == null) {
-            return ResponseEntity.status(202).build(); // Don't reveal whether the address is known.
-        }
-
-        linkService.invalidateActiveLinksFor(user.getId());
-        Map<String, String> extra = ReturnToValidator.validate(requestLoginLinkRequest.getReturnTo())
-                .map(returnTo -> Map.of("returnTo", returnTo))
-                .orElse(Map.of());
-        LinkCreationResult created = linkService.create(LoginLinkHandler.KEY, new LinkPayload(user.getId(), email, extra));
-        auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), user, "Login link issued to " + email);
-
-        emailSender.send(new EmailRequest(user.getId(), email, user.getName(), null, null,
-                created.url(), EmailTemplate.LOGIN_LINK));
+        // 202 whether or not the address is known, so the answer doesn't reveal it.
+        loginLinkRequestService.requestLoginLink(requestLoginLinkRequest.getEmail(),
+                requestLoginLinkRequest.getReturnTo());
         return ResponseEntity.status(202).build();
     }
 
