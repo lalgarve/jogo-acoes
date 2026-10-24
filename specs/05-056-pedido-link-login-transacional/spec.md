@@ -1,6 +1,6 @@
 # Spec: pedido de link de login não deixa rastro quando o e-mail não sai
 
-**Status:** rascunho
+**Status:** implementada (verificação manual T007 pendente; ver `tasks.md`)
 **Issue:** [#135](https://github.com/lalgarve/jogo-acoes/issues/135)
 **Iteração:** iteration-5
 
@@ -54,8 +54,8 @@ Scenario: Requesting a login link while the e-mail service is unavailable change
   And the e-mail service is unavailable
   When they request a new login link
   Then the system reports that the e-mail could not be sent
-  And the previous login link can still be used to log in
   And no new login link was issued
+  And the previous login link can still be used to log in
 ```
 
 - "Reports that the e-mail could not be sent" = `503` com corpo `Error`, como já documentado em
