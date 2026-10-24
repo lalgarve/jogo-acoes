@@ -68,7 +68,8 @@ Verificação (comandos prontos em `tasks.md`):
    o do mapeamento. Quando algum passo do job falha, o log mostra também a saída do `localstack`
    e do `email-lambda-builder`.
 5. **Actions:** a execução do CI da PR desta spec fica verde e não mostra nenhum aviso de
-   Node.js 20 nem de `setup-java` v4.
+   Node.js 20 nem de `setup-java` v4, a não ser o do `madrapps/jacoco-report`, se ele ficar na
+   `v1.7` (decisões resolvidas).
 
 ## Requisitos funcionais
 
@@ -130,9 +131,11 @@ Verificação (comandos prontos em `tasks.md`):
   (`scripts/check-localstack.sh`) deixa o estado da função e do mapeamento no log. Efeito local
   aceito: `docker compose up --wait localstack` demora mais (espera o deploy da Lambda) e, com um
   script de init quebrado, falha, quando antes subia um ambiente sem a Lambda.
+- **`madrapps/jacoco-report` sem versão no Node.js 24** (Leila, 2026-10-24): se a T004 não
+  encontrar release dessa action que rode no Node.js 24, ela fica na `v1.7`, com o aviso de
+  Node.js 20 só para ela, e o motivo é registrado no `plan.md`. Se encontrar, é atualizada como as
+  outras.
 
 ## Decisões em aberto
 
-- **`madrapps/jacoco-report` sem versão no Node.js 24.** Se, na T004, não existir release dessa
-  action que rode no Node.js 24, falta decidir entre manter a `v1.7` com o aviso e registrar o
-  motivo, ou trocar a action. Só se decide com o resultado da T004 em mãos.
+Nenhuma.
