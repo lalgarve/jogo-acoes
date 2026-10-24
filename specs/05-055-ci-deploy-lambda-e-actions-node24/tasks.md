@@ -89,6 +89,10 @@ Na sessão de nuvem, como na seção "O que foi verificado" acima, com o script 
 
 Este último caso não tem passo no roteiro do WSL: lá a imagem baixa normalmente.
 
+CI no branch com a mudança: [execução 40119832715](https://github.com/lalgarve/jogo-acoes/actions/runs/40119832715) (`workflow_dispatch`, `dae8bf6`), verde.
+
+Falta repetir no WSL os passos 1, 3 e 4 do roteiro abaixo (comandos dos passos 3 e 4 mudaram).
+
 ## Verificação manual (T008)
 
 Na raiz do repositório, no branch da implementação, no WSL. Só o LocalStack é usado, sem o
