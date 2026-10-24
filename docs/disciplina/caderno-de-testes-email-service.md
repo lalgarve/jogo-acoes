@@ -466,13 +466,41 @@ JSON
 
 Resposta: `400`, `{"message":"subject must not be null"}`.
 
-Nenhum passo deste roteiro escreve no log: o cadastro, a consulta, a pré-visualização e a
-alteração dão certo em silêncio, e os `404`, `409` e `400` também não deixam linha.
+**9. Pré-visualizar sem uma variável que o template usa.** Depois do passo 5, o corpo usa
+`{{link}}`; o preview manda só `nome`:
 
-O SES do LocalStack não valida a sintaxe Handlebars nem reclama de variável faltando na
-pré-visualização: os `422` de template rejeitado pelo SES só aparecem com o SES de verdade (os
+```bash
+$C/chamar.sh envio POST /templates/boas-vindas/preview <<'JSON'
+{
+  "variables": {
+    "nome": "Maria"
+  }
+}
+JSON
+```
+
+Resposta: `422`, com o motivo do SES repassado como veio:
+
+```json
+{
+  "message": "Attribute 'link' is not present in the rendering data. (Service: Ses, Status Code: 400, Request ID: …) (SDK Attempt Count: 1)"
+}
+```
+
+O SES aponta só a primeira variável que falta. Uma variável a mais, que o template não usa, é
+ignorada (`200`).
+
+Nenhum passo deste roteiro escreve no log: o cadastro, a consulta, a pré-visualização e a
+alteração dão certo em silêncio, e os `404`, `409`, `400` e `422` também não deixam linha.
+
+O SES do LocalStack reclama de variável faltando na pré-visualização (passo 9), mas não valida a
+sintaxe Handlebars: aceita no cadastro um template com bloco ou tag sem fechar. Os `422` de
+template rejeitado pelo SES no cadastro e na alteração só aparecem com o SES de verdade (os
 cenários marcados `@requires-real-ses` no `register_templates.feature`) e ficam fora deste
-caderno.
+caderno. O LocalStack também só cobra a variável que de fato avalia: dentro de um `{{#if}}`
+falso, a variável que falta passa sem erro. Se o SES de verdade faz o mesmo ainda não foi
+verificado (Issue #204); os resultados completos estão em
+[`investigacao-issue-179.md`](../../specs/05-025-servico-email-templates/investigacao-issue-179.md).
 
 ## Envio
 
