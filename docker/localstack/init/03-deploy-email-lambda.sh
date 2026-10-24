@@ -43,6 +43,10 @@ awslocal lambda create-function \
 
 # The function stays "Pending" for a few seconds while LocalStack builds its execution
 # container -- an event source mapping can't attach to a function that isn't Active yet.
+# Spec 05-055: failing here marks this script ERROR in /_localstack/init/ready, which is what
+# localstack's healthcheck in docker-compose.yml reads -- going on would leave a function that
+# never runs behind a "healthy" container.
+STATE=""
 for i in $(seq 1 30); do
   STATE=$(awslocal lambda get-function --function-name EmailLambda --query 'Configuration.State' --output text)
   if [ "$STATE" = "Active" ]; then
@@ -50,12 +54,31 @@ for i in $(seq 1 30); do
   fi
   sleep 1
 done
+if [ "$STATE" != "Active" ]; then
+  echo "03-deploy-email-lambda: EmailLambda did not become Active in 30s, last state: ${STATE:-none}" >&2
+  exit 1
+fi
 
 QUEUE_ARN=$(awslocal sqs get-queue-attributes \
   --queue-url "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/${QUEUE_NAME}" \
   --attribute-names QueueArn --query 'Attributes.QueueArn' --output text)
 
-awslocal lambda create-event-source-mapping \
+MAPPING_UUID=$(awslocal lambda create-event-source-mapping \
   --function-name EmailLambda \
   --event-source-arn "$QUEUE_ARN" \
-  --batch-size 1
+  --batch-size 1 \
+  --query 'UUID' --output text)
+
+# The mapping starts as "Creating"; only "Enabled" means the queue's messages reach the function.
+MAPPING_STATE=""
+for i in $(seq 1 30); do
+  MAPPING_STATE=$(awslocal lambda get-event-source-mapping --uuid "$MAPPING_UUID" --query 'State' --output text)
+  if [ "$MAPPING_STATE" = "Enabled" ]; then
+    break
+  fi
+  sleep 1
+done
+if [ "$MAPPING_STATE" != "Enabled" ]; then
+  echo "03-deploy-email-lambda: the event source mapping from ${QUEUE_NAME} did not become Enabled in 30s, last state: ${MAPPING_STATE:-none}" >&2
+  exit 1
+fi

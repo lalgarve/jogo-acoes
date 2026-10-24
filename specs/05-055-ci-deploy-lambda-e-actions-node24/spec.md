@@ -1,6 +1,6 @@
 # Spec: CI confere o deploy da Lambda e sai do Node.js 20
 
-**Status:** rascunho
+**Status:** implementada (verificação no CI na T007, ver `tasks.md`)
 **Issue:** [#98](https://github.com/lalgarve/jogo-acoes/issues/98) e
 [#182](https://github.com/lalgarve/jogo-acoes/issues/182)
 **Iteração:** iteration-5
@@ -17,7 +17,7 @@ arquivo e se verificam pela mesma execução do CI:
    mapeamento passa a aparecer no log do CI.
 2. **Actions fora do Node.js 20 (#182).** `actions/checkout`, `actions/setup-java`,
    `actions/upload-artifact` e `madrapps/jacoco-report` passam para versões que rodam no
-   Node.js 24, `actions/setup-java` para a `v5`, sem mudar o que o workflow faz.
+   Node.js 24 (`actions/setup-java` na `v6`, ver `plan.md`), sem mudar o que o workflow faz.
 
 ## Motivação
 
@@ -68,8 +68,7 @@ Verificação (comandos prontos em `tasks.md`):
    o do mapeamento. Quando algum passo do job falha, o log mostra também a saída do `localstack`
    e do `email-lambda-builder`.
 5. **Actions:** a execução do CI da PR desta spec fica verde e não mostra nenhum aviso de
-   Node.js 20 nem de `setup-java` v4, a não ser o do `madrapps/jacoco-report`, se ele ficar na
-   `v1.7` (decisões resolvidas).
+   Node.js 20 nem de `setup-java` v4.
 
 ## Requisitos funcionais
 
@@ -94,7 +93,8 @@ Verificação (comandos prontos em `tasks.md`):
 
 - `actions/checkout`, `actions/setup-java`, `actions/upload-artifact` e `madrapps/jacoco-report`
   em versões que rodam no Node.js 24, escolhidas pela release mais recente de cada uma e pelas
-  notas de release, nunca por palpite; `actions/setup-java` na `v5`.
+  notas de release, nunca por palpite; `actions/setup-java` pelo menos na `v5` (o aviso pede a
+  `v5`; a T004 escolheu a `v6`, ver `plan.md`).
 - O que o workflow usa continua igual:
   - `setup-java`: `distribution: temurin`, `java-version: '21'`, `cache: maven`;
   - `upload-artifact`: `name: jacoco-app`, `path: app/target/site/jacoco/`, e o upload com
@@ -134,7 +134,7 @@ Verificação (comandos prontos em `tasks.md`):
 - **`madrapps/jacoco-report` sem versão no Node.js 24** (Leila, 2026-10-24): se a T004 não
   encontrar release dessa action que rode no Node.js 24, ela fica na `v1.7`, com o aviso de
   Node.js 20 só para ela, e o motivo é registrado no `plan.md`. Se encontrar, é atualizada como as
-  outras.
+  outras. A T004 encontrou a `v1.8.0`, em `node24`.
 
 ## Decisões em aberto
 

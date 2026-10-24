@@ -87,11 +87,30 @@ services:
       # LocalStack's default ("docker") Lambda executor runs each function in a sibling
       # container, so it needs the host's Docker socket to create one.
       - /var/run/docker.sock:/var/run/docker.sock
+    # Spec 05-055: healthy only once every ready.d script above finished SUCCESSFUL -- the queues,
+    # the sender and email-lambda deployed Active with its event source mapping Enabled
+    # (03-deploy-email-lambda.sh fails otherwise). LocalStack answers before its init scripts run,
+    # so checking only that it is up let `--wait` pass with a broken init. A script in ERROR never
+    # changes state again, so the container turns unhealthy once start_period and the retries run
+    # out. start_period covers the Lambda deploy (about 20s in a cloud session, more while the
+    # Lambda runtime image is pulled for the first time). python3 rather than curl: both images
+    # (Community and Pro) have it, and the JSON is parsed instead of grepped. No proxy: a proxy set in
+    # Docker's own configuration must not get between the container and its own port.
     healthcheck:
-      test: ["CMD", "awslocal", "sqs", "list-queues"]
+      test:
+        - CMD
+        - python3
+        - -c
+        - >-
+          import json, sys, urllib.request;
+          opener = urllib.request.build_opener(urllib.request.ProxyHandler({}));
+          r = json.load(opener.open('http://localhost:4566/_localstack/init/ready'));
+          s = [x['state'] for x in r.get('scripts', [])];
+          sys.exit(0 if r.get('completed') and s and all(x == 'SUCCESSFUL' for x in s) else 1)
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 120s
 
   # Spec 05-047: test DNS server (CoreDNS) email-service checks recipient domains against in the
   # docker environment -- fixed zones in docker/dns/, nothing forwarded to the internet. Port 1053
