@@ -42,7 +42,7 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 | E-mail desconhecido | O serviço volta sem fazer nada, dentro da mesma transação (só leitura). | proposta | Mantém o comportamento de não revelar se o endereço existe. Uma transação só de leitura nesse caminho não custa nada relevante. |
 | Ordem dos passos | Mantida: invalidar, criar, auditar, enviar. | proposta | Com tudo na mesma transação, a ordem não muda o resultado de uma falha. Enviar por último segura a conexão do banco o menor tempo possível antes da chamada HTTP. |
 | Envio dentro da transação | Sim, como nos outros fluxos. | resolvida | Já aceito na spec 05-034 ("Riscos e trade-offs": "Envio dentro da transação"), com o tempo limite de 5 s do cliente limitando o pior caso. Enviar depois do commit está fora de escopo (`spec.md`). |
-| Teste do caminho `503` (o que a Issue pede) | Cenário novo em `login.feature` (texto na `spec.md`). O passo `Given the e-mail service is unavailable` liga um `EmailSender` de teste, em `app/src/test`, que lança `EmailServiceUnavailableException` enquanto estiver ligado e, desligado, delega ao `StubEmailSender`. É registrado como `@Primary` no contexto Cucumber e desligado num `@After` do Cucumber. | em aberto | Não há como derrubar o `email-service` real no meio de um cenário: a suíte Cucumber usa o stub, e um `app` apontando para um `email-service` fora do ar nem sobe (o `EmailTemplateSynchronizer` falha no `ApplicationReadyEvent`). O fake lança a mesma exceção que o `EmailServiceGateway` lança quando a conexão falha, que já é testada contra o serviço real em `EmailServiceClientIntegrationTest`. É o primeiro dublê de teste do `app`, por isso fica para a Leila decidir (ver "Decisões em aberto"). |
+| Teste do caminho `503` (o que a Issue pede) | Cenário novo em `login.feature` (texto na `spec.md`). O passo `Given the e-mail service is unavailable` liga um `EmailSender` de teste, em `app/src/test`, que lança `EmailServiceUnavailableException` enquanto estiver ligado e, desligado, delega ao `StubEmailSender`. É registrado como `@Primary` no contexto Cucumber e desligado num `@After` do Cucumber. | resolvida (2026-10-24) | Não há como derrubar o `email-service` real no meio de um cenário: a suíte Cucumber usa o stub, e um `app` apontando para um `email-service` fora do ar nem sobe (o `EmailTemplateSynchronizer` falha no `ApplicationReadyEvent`). O fake lança a mesma exceção que o `EmailServiceGateway` lança quando a conexão falha, que já é testada contra o serviço real em `EmailServiceClientIntegrationTest`. É o primeiro dublê de teste do `app`; escolhido pela Leila em 2026-10-24 (opção A abaixo), junto com o teste real do `422`. |
 | Teste com a infraestrutura real | Estender `RecipientDomainRejectionIntegrationTest.aLoginLinkToADomainThatTakesNoEmailIsRejected`: o usuário já tem um link ativo antes do pedido; depois do `422`, esse link continua sem `invalidated_at`, não há link novo para o usuário e não há `LOGIN_LINK_ISSUED` dele. | proposta | Prova o desfazer contra o `email-service` real (domínio `missing.test` no DNS de teste), sem dublê (constitution, "Testes: preferir real a fake sempre que der"). Usa o mesmo mecanismo do `503`: as duas são `RuntimeException` lançadas pelo `EmailSender` dentro da transação. |
 | Como conferir "nenhum link novo" e "nenhuma auditoria" | Pelo usuário do cenário, que é único por teste (`UserMother`): `LinkRecordRepository` sem nenhum registro dele além do link prévio, e `LogRepository` sem `LOGIN_LINK_ISSUED` com esse usuário. | proposta | As tabelas são compartilhadas entre os testes (já causou o Issue #41). Filtrar pelo usuário do teste evita contar linhas de outros testes. Se faltar um método de consulta no repositório, usar `findAll()` filtrado, como já faz o `AuditLoggingIntegrationTest`. |
 | Exceções novas | Nenhuma. | resolvida | O caminho de erro usa exceções e tratadores que já existem. Os dois branches que esta correção passa a exercitar no fluxo de login (`EmailServiceUnavailableException` e `RecipientDomainRejectedException` lançadas dentro da transação) ganham um teste cada, pelas duas linhas acima. |
@@ -63,7 +63,7 @@ Decisões marcadas "em aberto" viram commit `decision:` quando resolvidas (ver
 - `app/src/test/java/.../loginsession/LoginSteps.java`: os passos novos
   (`the e-mail service is unavailable`, `the system reports that the e-mail could not be sent`,
   `the previous login link can still be used to log in`, `no new login link was issued`).
-- `app/src/test/java/.../common/` (se a decisão em aberto for pelo fake): o `EmailSender` de
+- `app/src/test/java/.../common/`: o `EmailSender` de
   teste ligável e a configuração que o registra no contexto Cucumber.
 - `app/src/test/java/.../email/RecipientDomainRejectionIntegrationTest.java`: o teste estendido.
 
@@ -92,21 +92,19 @@ de `link`, `log`, `user` e `email`.
   o commit falhar depois), o link é desfeito e o e-mail com ele já saiu. Fora de escopo
   (`spec.md`); a idempotência de `POST /emails` ([Issue #205](https://github.com/lalgarve/jogo-acoes/issues/205))
   não resolve esse caso.
-- **Dublê de teste.** Se a decisão em aberto for pelo fake, o cenário de `503` não passa pela
+- **Dublê de teste.** O cenário de `503` não passa pela
   chamada HTTP real. O mapeamento de falha de conexão para `EmailServiceUnavailableException`
   continua coberto pelo `EmailServiceClientIntegrationTest`, e o desfazer é coberto também pelo
   teste real do `422`.
 
+## Decisões resolvidas
+
+1. ~~**Dublê para o cenário de `503`.**~~ Resolvida em 2026-10-24 (Leila): opção A, o
+   `EmailSender` de teste ligável, só em `app/src/test`, para o cenário Cucumber do `503`, mais o
+   teste real do `422` contra o `email-service`. A opção descartada (B) era testar só o `422`
+   real e trocar o critério da Issue #135 para "o envio falha". A favor de A: o `503` é o caso
+   descrito na Issue e o mais provável em produção, e o dublê fica restrito ao código de teste.
+
 ## Decisões em aberto
 
-1. **Dublê para o cenário de `503`.** Opções:
-   - **A (recomendada):** o `EmailSender` de teste ligável descrito na tabela, só em
-     `app/src/test`, mais o teste real do `422`. Cobre exatamente o critério da Issue (`503`) e
-     prova o desfazer também contra a infraestrutura real.
-   - **B:** só o teste real do `422`, sem dublê e sem cenário Cucumber. O critério da Issue passa
-     a ser cumprido pelo mesmo mecanismo com outra exceção, e a `spec.md` e a Issue ficam com o
-     critério ajustado para "o envio falha" em vez de "`email-service` inacessível".
-
-   A recomendação é A porque o `503` é o caso descrito na Issue e o mais provável em produção, e
-   o dublê fica restrito ao código de teste (a regra de não misturar código de teste em módulo de
-   produção não é violada).
+Nenhuma.
