@@ -99,7 +99,7 @@ Scenario: Requesting a login link while the e-mail service is unavailable change
   (item abaixo). A idempotência de `POST /emails` não resolve: ela evita o e-mail duplicado
   quando o pedido é repetido, não o e-mail de um link desfeito. Essa idempotência foi adiada para
   a Etapa 4 pela spec 05-031 (decisão de 2026-10-04, mantida na 05-034), mas não tem spec nem
-  Issue até agora; enquanto isso, o `app` não repete `POST /emails` automaticamente.
+  Issue até 2026-10-24, quando ganhou a [Issue #205](https://github.com/lalgarve/jogo-acoes/issues/205); enquanto isso, o `app` não repete `POST /emails` automaticamente.
 - Mover o envio para depois do commit (outbox, evento pós-commit): muda a semântica de falha e
   não é o que a Issue pede.
 - Mudar `consumeLoginLink` e `completeRegistration`: eles não enviam e-mail.
