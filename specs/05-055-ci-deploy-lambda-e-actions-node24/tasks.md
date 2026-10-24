@@ -16,7 +16,7 @@ fazem o papel de épico; não há Issue nova por tarefa.
 | ~~T005~~ | `ci.yml`: as quatro actions nas versões da T004 (`actions/setup-java` na `v6`, ver `plan.md`), sem mudar `with:` além do que as notas de release exigirem | T004 | | #182 |
 | ~~T006~~ | Critério de aceite de exceções (`memory/constitution.md`): nenhuma classe de exceção nem branch de exceção em código Java. Registrar aqui os caminhos de erro de shell (script de init com `ERROR`, função que não fica `Active`, mapeamento que não fica `Enabled`, `docker-up.sh` com `localstack` `unhealthy`) e onde a T008 exercita cada um | T001–T003 | | #98 |
 | T007 | CI da PR: verde; o log mostra a saída do `check-localstack.sh` nas duas subidas; o artefato `jacoco-app` existe; o comentário de cobertura foi atualizado (não duplicado); nenhum aviso de Node.js 20 nem de `setup-java` v4 nas anotações do job (a T004 achou a `v1.8` do `jacoco-report`, em `node24`). Registrar aqui o link da execução | T003, T005 | | #98, #182 |
-| T008 | Verificação manual, com os comandos abaixo | T001–T003 | | #98 |
+| ~~T008~~ | Verificação manual, com os comandos abaixo | T001–T003 | | #98 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo. As duas linhas de trabalho (T001–T003 e T004–T005) são independentes até a
@@ -49,6 +49,29 @@ com `docker run` na rede do host, como o `cloud-up.sh` faz, com os scripts de
 
 Não deu para rodar aqui: o Compose de verdade (`docker compose up --wait`, `docker compose exec`)
 e o `docker-up.sh`, por isso a T008 continua aberta, para o WSL.
+
+## Verificação manual no WSL (T008, 2026-10-24)
+
+Os comandos de "Verificação manual (T008)" abaixo, exatamente como estão, no branch
+`claude/project-thread-b3h617` (`0ef5480`), no WSL2 com Docker 29.8.0 e Compose v5.5.1, sem
+`docker-up.conf` (o `docker-up.sh` usou o `docker-up.conf.example`: LocalStack Community, overlay
+`blackbox`).
+
+| Passo | Resultado |
+|---|---|
+| 1, primeira rodada | **Não saiu como o esperado**: `exit=1`, `unhealthy`; o `check-localstack.sh` mostrou o `03` em `ERROR`, `EmailLambda: Active` e o mapeamento `missing`, e `exit=1`. No log, `03-deploy-email-lambda: EmailLambda did not become Active in 30s, last state: Pending`: a função ficou `Pending` das 16:57:06 às 16:57:58. Cada `awslocal lambda get-function` levou ~1,5 s, então as 30 voltas do laço da T001 deram ~52 s, não 30 s. Pouco depois a função estava `Active`. A rodada também criou do zero o volume `maven_cache` do `email-lambda-builder` |
+| 1, segunda rodada | Com a imagem `public.ecr.aws/lambda/java:21` já baixada: `exit=0` em 13 s, `healthy`, os três scripts `SUCCESSFUL`, `EmailLambda: Active`, `Event source mapping from jogo-acoes-email-commands: Enabled`, `check-localstack: LocalStack is ready`, `exit=0`. `CreateFunction` às 17:00:18 e `CreateEventSourceMapping` às 17:00:22: a função ficou `Active` em ~3 s |
+| 1, com o cache frio | Depois de `docker rmi public.ecr.aws/lambda/java:21`, para repetir o pull do runtime: `exit=0` em 32 s e tudo certo, como na segunda rodada. Por isso a causa da primeira falha fica sem confirmar: com o pull, a função ainda ficou `Active` dentro das 30 voltas. A hipótese mais provável é um pull mais lento na primeira rodada |
+| 2 | `exit=1`, `unhealthy`; o `check-localstack.sh` mostrou o `03` em `ERROR` (`EmailLambda: missing`) e `exit=1`. No log, `InvalidParameterValueException` do `CreateFunction` para `java99` |
+| 3 | `exit=1` e `1` no `grep`; no log, `03-deploy-email-lambda: EmailLambda did not become Active in 30s, last state: none` |
+| 4 | `1` no `grep`; `docker-up: localstack unhealthy; its last log lines:` e, nessas linhas, `03-deploy-email-lambda: the event source mapping from jogo-acoes-email-commands did not become Enabled in 30s, last state: none`, seguido de `docker-up: docker compose up --build db db-email-service localstack dns failed`; `exit=1` |
+| Derrubar no fim | Nenhuma linha no `git status` |
+
+Os caminhos de erro (passos 2 a 4) e o `docker-up.sh` saíram como o esperado. O passo 1 passou
+nas duas rodadas seguintes, mas a primeira mostra que, no WSL, a espera da função pode passar
+das 30 voltas. A falha foi a da T001 (o script falhou e o container ficou `unhealthy`, sem
+esconder a função parada atrás de um `healthy`). Se as 30 voltas bastam fica em aberto, para
+decidir.
 
 ## Verificação manual (T008)
 
