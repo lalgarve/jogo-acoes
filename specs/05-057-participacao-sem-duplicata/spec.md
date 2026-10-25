@@ -47,12 +47,14 @@ Em `app/src/test/resources/features/manage_competition_players.feature`:
 Scenario: Administrator invites an e-mail that is already in the competition
   Given a private competition already has a player with a given e-mail
   When the administrator invites that same e-mail again
-  Then the competition still has a single player with that e-mail
+  Then the system rejects the invite and shows an error message
+  And the competition still has a single player with that e-mail
 
 Scenario: Administrator invites a list that repeats an e-mail
   Given a private competition
   When the administrator invites a list in which the same e-mail appears twice
-  Then the competition has a single player with that e-mail
+  Then the system rejects the invite and shows an error message
+  And no player is added to the competition
 ```
 
 Em `app/src/test/resources/features/request_competition_entry.feature`:
@@ -73,10 +75,13 @@ simultâneos para o mesmo e-mail e a mesma competição resultam numa participa�
 - Uma competição tem no máximo uma participação por e-mail, comparando sem diferenciar
   maiúsculas de minúsculas. Vale para criação de competição privada, `invitePlayers`,
   `requestEntry`, `confirmEntry` e `updateEmail`.
-- Convidar um e-mail que já está na competição não cria participação nova. O que acontece com o
-  convite fica em "Decisões em aberto".
-- Uma lista de convite com o mesmo e-mail repetido é tratada como se o e-mail aparecesse uma
-  vez.
+- Convidar um e-mail que já está na competição dá erro (decidido em 2026-10-25): `invitePlayers`
+  responde `400` com corpo `Error`, como `updateEmail` já faz para e-mail repetido
+  (`PlayerValidationException`), e o pedido inteiro é recusado: nenhum e-mail da lista é
+  adicionado nem convidado. A mensagem diz quais e-mails já estão na competição. O contrato em
+  `docs/openapi.yaml` passa a documentar essa resposta.
+- Uma lista com o mesmo e-mail repetido (em `invitePlayers` ou na criação de competição privada)
+  também dá erro `400`, sem criar nada.
 - `requestEntry` repetido continua reaproveitando a participação existente e reenviando o link
   (cenário já existente "Player requests entry again into a public competition they already
   requested"). A busca passa a ignorar maiúsculas.
@@ -105,7 +110,4 @@ simultâneos para o mesmo e-mail e a mesma competição resultam numa participa�
 
 ## Decisões em aberto
 
-- **Convite de um e-mail que já está na competição**: ignorar em silêncio, reenviar o convite
-  quando a participação ainda não está `IN_COMPETITION`, ou recusar o pedido inteiro com `409`?
-  Cada opção muda o contrato de `invitePlayers` (`docs/openapi.yaml` hoje só documenta `202` e
-  `503`).
+Nenhuma.
