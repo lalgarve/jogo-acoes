@@ -85,7 +85,9 @@ simultâneos para o mesmo e-mail e a mesma competição resultam numa participa�
 - `resendInviteEmail(s)` continua mandando o e-mail de novo a cada chamada (é o que o
   administrador pediu); a participação só muda para `EMAIL_SENT`, como hoje.
 - A unicidade é garantida também no banco, por uma migration nova em
-  `db/migration-jogo-acoes`, para que dois pedidos simultâneos não passem os dois.
+  `db/migration-jogo-acoes`, para que dois pedidos simultâneos não passem os dois. A migration
+  não trata duplicatas já gravadas: o sistema não está em produção (decidido em 2026-10-25), e um
+  ambiente local com duplicata é recriado.
 
 ## Requisitos não-funcionais
 
@@ -107,6 +109,3 @@ simultâneos para o mesmo e-mail e a mesma competição resultam numa participa�
   quando a participação ainda não está `IN_COMPETITION`, ou recusar o pedido inteiro com `409`?
   Cada opção muda o contrato de `invitePlayers` (`docs/openapi.yaml` hoje só documenta `202` e
   `503`).
-- **Duplicatas que já existam no banco**: a migration falha se houver duas participações com o
-  mesmo e-mail na mesma competição. Conferir os ambientes antes; se houver, decidir qual linha
-  fica.
