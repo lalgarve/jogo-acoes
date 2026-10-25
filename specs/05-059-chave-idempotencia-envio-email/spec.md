@@ -40,18 +40,19 @@ verificado por testes de integração dos dois lados, contra o `email-service` r
 
 ## Requisitos funcionais
 
-- `POST /emails` aceita o header `Idempotency-Key` (texto até 255 caracteres). O contrato em
-  `docs/openapi-email-service.yaml` documenta o header e as respostas novas.
+- `POST /emails` exige o header `Idempotency-Key` (texto até 255 caracteres). O contrato em
+  `docs/openapi-email-service.yaml` muda de forma incompatível, sem manter a forma antiga: o
+  sistema está em pré-produção (constitution, "Status do sistema: pré-produção").
 - A chave vale por cliente (`X-API-Key`): dois clientes podem usar a mesma chave sem conflito.
 - Mesmo cliente, mesma chave e mesmo corpo: responde `202` com o `id` do envio já gravado, sem
   gravar outro e sem publicar outra mensagem na fila. Vale também se o primeiro pedido ainda
-  estiver sendo processado (ver "Decisões em aberto").
+  estiver sendo processado: o segundo espera o primeiro terminar e responde com o mesmo `id` (ou
+  com o erro do primeiro, se ele falhar).
 - Mesmo cliente, mesma chave e corpo diferente: responde `422` com corpo `Error`, sem gravar
   nada.
 - Um pedido recusado (`400`, `422` de domínio, `404` de template) não guarda a chave: repetir
   com a mesma chave depois de corrigir o problema é um pedido novo.
-- Sem o header, o comportamento é o de hoje (cada pedido é um envio novo). Fica assim porque
-  ainda não há outro cliente; ver "Decisões em aberto".
+- Sem o header, `POST /emails` responde `400` com corpo `Error`, sem gravar nada.
 - O `app` gera uma chave por e-mail que quer mandar, manda em todas as tentativas desse e-mail e
   passa a repetir `POST /emails` com a mesma política das outras operações (até 3 tentativas,
   200 ms, só quando o `email-service` não foi alcançado ou respondeu `5xx`).
@@ -74,11 +75,6 @@ verificado por testes de integração dos dois lados, contra o `email-service` r
 
 ## Decisões em aberto
 
-- **Pedido repetido enquanto o primeiro ainda não terminou**: responder `202` com o mesmo `id`
-  esperando o primeiro terminar, ou `409` pedindo para tentar de novo? Com o `app` esperando
-  200 ms entre tentativas e o envio gravado numa transação curta, o caso é raro.
-- **Header obrigatório**: tornar `Idempotency-Key` obrigatório em `POST /emails`? O `app` é o
-  único cliente, então dá para exigir de uma vez; deixar opcional facilita clientes futuros.
-- **Por quanto tempo guardar a chave** além das 24 horas mínimas, e se ela mora em
-  `email_send` (coluna nova com índice único) ou numa tabela própria. É decisão técnica do
-  `plan.md`, mas afeta o contrato se a chave puder expirar e ser reaproveitada.
+Nenhuma de requisito. Onde a chave fica guardada (coluna nova em `email_send` ou tabela própria)
+e por quanto tempo, além das 24 horas mínimas, são decisões técnicas do `plan.md`. Pela
+pré-produção, a coluna ou tabela nova pode nascer `NOT NULL`, sem tratar envios já gravados.

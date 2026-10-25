@@ -87,8 +87,10 @@ teste de ponta a ponta na suíte `blackbox-tests/`:
   aceitar e a gravação manda o e-mail de novo na reentrega. A Decisão 8 escolheu "antes"; a
   nova tentativa da 05-046 obriga a revisar.
 - **Chave do registro**: só `correlationId` (com a regra acima de só gravar envio aceito) ou
-  `correlationId` mais um número de tentativa vindo do `email-service`? A segunda opção muda o
-  contrato da mensagem (`EmailQueueMessage`, `schemaVersion` 2).
+  `correlationId` mais um número de tentativa vindo do `email-service`? A segunda opção acrescenta
+  um campo à mensagem da fila (`EmailQueueMessage`). Pela pré-produção, a mensagem pode mudar sem
+  manter o formato antigo funcionando (constitution, "Status do sistema: pré-produção"), então o
+  custo dessa opção é só o código dos dois lados.
 - **Falha parcial do lote**: usar a resposta de falha parcial do SQS (`ReportBatchItemFailures`)
   para reentregar só os registros que falharam, ou fixar o lote em 1 também na AWS? As duas
   reduzem o caminho 2 da "Motivação"; a checagem de duplicata continua necessária para os
