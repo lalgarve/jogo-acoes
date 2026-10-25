@@ -43,57 +43,73 @@ Não há cenário de usuário. O comportamento é verificado por testes de integ
 teste de ponta a ponta na suíte `blackbox-tests/`:
 
 - A mesma mensagem processada duas vezes gera um envio no SES.
-- Um lote em que o segundo registro falha, reentregue, não manda de novo o primeiro.
+- Num lote em que o segundo registro falha, só o segundo é reentregue, e o primeiro não é
+  mandado de novo.
 - Uma mensagem que voltou para a DLQ com `SES_UNAVAILABLE` e foi publicada de novo pelo
   `email-service` é mandada quando o SES volta.
 
 ## Requisitos funcionais
 
-- Cada envio (`correlationId`) gera no máximo uma chamada bem-sucedida ao SES
-  (`SendTemplatedEmail`), qualquer que seja o número de vezes que a mensagem chegue.
-- Uma tentativa que não chegou a ser aceita pelo SES (`TEMPLATE_MISSING`, `SES_REJECTED`,
-  `SES_UNAVAILABLE`, exceção antes da chamada) não conta como envio: a próxima entrega da mesma
-  mensagem tenta de novo.
-- Uma mensagem reconhecida como duplicata é descartada com sucesso (não falha a invocação, não
-  vai para a DLQ) e gera uma linha de log com o `correlationId`, sem o endereço de e-mail
-  completo nem os dados do template.
-- O registro de "já mandado" fica guardado pelo menos o tempo em que a mesma mensagem ainda pode
-  chegar: retenção da fila mais as 24 horas de tentativas do `email-service` (spec 05-046).
+Decidido em 2026-10-25: o registro é gravado **antes** de chamar o SES, a chave inclui o **número
+da tentativa**, e o lote usa **falha parcial**.
+
+**Mensagem da fila**
+
+- A mensagem (`EmailQueueMessage` no `email-service`, `EmailMessage` no `email-lambda`) ganha o
+  campo obrigatório `attempt`, um inteiro a partir de 1. O `email-service` só muda esse número
+  quando decide tentar o envio de novo (depois de uma falha, spec 05-046); publicar de novo a
+  mesma tentativa, como no caminho 3 da "Motivação", repete o mesmo número.
+- O contrato da mensagem muda sem manter o formato antigo (constitution, "Status do sistema:
+  pré-produção"). O documento do contrato da 05-031/05-046 é atualizado.
+
+**Checagem de duplicata**
+
+- A chave do registro é (`correlationId`, `attempt`).
+- Antes de chamar o SES, o handler grava o registro com uma escrita condicional ("só se não
+  existir"). Se a chave já existe, a mensagem é duplicata: é descartada com sucesso (não falha o
+  registro, não vai para a DLQ) e gera uma linha de log com `correlationId` e `attempt`, sem o
+  endereço de e-mail completo nem os dados do template.
+- Cada (`correlationId`, `attempt`) gera no máximo uma chamada ao SES, qualquer que seja o número
+  de vezes que a mensagem chegue.
+- Quando o SES recusa ou está fora do ar (`TEMPLATE_MISSING`, `SES_REJECTED`, `SES_UNAVAILABLE`),
+  a mensagem vai para a DLQ com o tipo do erro, como hoje, e o registro fica. Se o
+  `email-service` decidir tentar de novo, a nova mensagem tem outro `attempt` e passa pela
+  checagem.
+- Quando o handler falha antes de o SES aceitar a mensagem, por um erro que não é classificado
+  (mensagem malformada, erro do SES não classificado, DLQ fora do ar), ele apaga o registro antes
+  de devolver a falha, para que a reentrega do SQS tente de novo.
+- Se a escrita do registro falha (armazenamento fora do ar), o handler não chama o SES: o
+  registro falha e o SQS reentrega.
+- O registro fica guardado pelo menos o tempo em que a mesma mensagem ainda pode chegar:
+  retenção da fila mais as 24 horas de tentativas do `email-service` (spec 05-046).
 - O `email-lambda` continua sem acesso ao banco do `app` e do `email-service` (Decisão 1 da
   Iteração 4; constitution, "Fronteira entre módulos e serviços").
-- A falha de um registro do lote não faz reentregar os registros que já deram certo (ver
-  "Decisões em aberto").
+
+**Lote**
+
+- O handler devolve a resposta de falha parcial do SQS (`ReportBatchItemFailures`): um registro
+  que falha é reentregue sozinho, e os que deram certo no mesmo lote não voltam.
+- O mapeamento da fila para o Lambda passa a declarar esse tipo de resposta, no LocalStack
+  (`docker/localstack/init/03-deploy-email-lambda.sh`) e no Terraform quando houver conta AWS
+  real.
 
 ## Requisitos não-funcionais
 
-- A tabela de controle e a permissão do Lambda para usá-la entram na mesma configuração que já
-  cria a fila e o Lambda no LocalStack (`docker/localstack/init/`), e no Terraform quando houver
-  conta AWS real.
-- Se a tabela de controle estiver fora do ar, o handler não manda o e-mail sem checar: falha a
-  invocação e deixa o SQS reentregar.
+- O armazenamento do registro é a tabela DynamoDB com TTL da Decisão 8 da Iteração 4, criada pela
+  mesma configuração que já cria a fila e o Lambda no LocalStack (`docker/localstack/init/`), com
+  a permissão do Lambda para usá-la.
+- Os testes rodam contra SQS, SES e DynamoDB do LocalStack, sem mock (constitution, "Testes").
 
 ## Fora de escopo
 
 - Chave de idempotência em `POST /emails` (spec 05-059).
 - Bounce, complaint e eventos do SES (pipeline de eventos, a especificar).
-- Garantia de "exatamente uma vez" contra uma falha entre o SES aceitar e o registro ser
-  gravado: ver "Decisões em aberto".
 
 ## Decisões em aberto
 
-- **Quando gravar o registro**: antes do SES (escrita condicional "em andamento", apagada se o SES
-  recusar) ou depois do SES aceitar? Antes evita duas chamadas simultâneas ao SES, mas exige
-  limpar o registro em cada falha; depois é mais simples, mas um Lambda que cai entre o SES
-  aceitar e a gravação manda o e-mail de novo na reentrega. A Decisão 8 escolheu "antes"; a
-  nova tentativa da 05-046 obriga a revisar.
-- **Chave do registro**: só `correlationId` (com a regra acima de só gravar envio aceito) ou
-  `correlationId` mais um número de tentativa vindo do `email-service`? A segunda opção acrescenta
-  um campo à mensagem da fila (`EmailQueueMessage`). Pela pré-produção, a mensagem pode mudar sem
-  manter o formato antigo funcionando (constitution, "Status do sistema: pré-produção"), então o
-  custo dessa opção é só o código dos dois lados.
-- **Falha parcial do lote**: usar a resposta de falha parcial do SQS (`ReportBatchItemFailures`)
-  para reentregar só os registros que falharam, ou fixar o lote em 1 também na AWS? As duas
-  reduzem o caminho 2 da "Motivação"; a checagem de duplicata continua necessária para os
-  caminhos 1 e 3.
-- **DynamoDB ou outro armazenamento**: a Decisão 8 escolheu DynamoDB com TTL. Confirmar, já que a
-  conta AWS real ainda não existe e tudo roda no LocalStack.
+- **Lambda interrompido entre gravar o registro e o SES responder** (tempo limite estourado,
+  processo morto): a reentrega encontra o registro e trata a mensagem como duplicata. Se o SES não
+  chegou a aceitar, esse e-mail não sai e ninguém fica sabendo. Aceitar esse risco (é raro), ou o
+  registro guardar "em andamento" e, na reentrega, mandar a mensagem para a DLQ com um tipo de
+  erro novo para o `email-service` decidir? A segunda opção troca o e-mail perdido por um
+  possível e-mail duplicado.
