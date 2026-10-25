@@ -49,7 +49,10 @@ Verificação:
    `loginsession → email` e `competition → email` já existentes) também é encontrado e
    mostrado inteiro.
 4. **Vários ciclos:** se houver mais de um ciclo, a mensagem mostra todos, não só o primeiro.
-5. **Referência dentro do mesmo módulo:** classes de subpacotes do mesmo módulo (por exemplo
+5. **Cliente novo de e-mail:** um módulo que implemente as duas interfaces do `email` manda
+   e-mail com template próprio sem nenhuma mudança no `email`, e o grafo continua sem ciclo
+   (o cliente depende do `email`, nunca o contrário).
+6. **Referência dentro do mesmo módulo:** classes de subpacotes do mesmo módulo (por exemplo
    `competition.exception` e `competition`) não geram aresta.
 
 ## Requisitos funcionais
@@ -63,7 +66,24 @@ Verificação:
 - A mensagem de falha lista cada ciclo como sequência de módulos (`A → B → C → A`) e, para cada
   aresta, ao menos uma referência concreta (`classe de origem → classe de destino`), para quem
   for corrigir saber onde mexer.
-- O ciclo `competition ↔ email` que já existe é quebrado nesta spec (ver "Decisões em aberto").
+- O ciclo `competition ↔ email` que já existe é quebrado nesta spec, com o `email` virando um
+  serviço genérico de envio para os clientes (ver "Decisões resolvidas"):
+  - o `email` não conhece nenhum cliente: não usa `competition.RequestType` nem tem a lista dos
+    templates de cada cliente (o enum `EmailTemplate` e a escolha do template em
+    `EmailServiceEmailSender` saem do `email`);
+  - o `email` publica duas interfaces: uma para o cliente montar o e-mail (destinatário, usuário
+    quando houver, nome do template e variáveis) e outra para o cliente declarar os templates
+    que são dele (nome, assunto e conteúdo);
+  - `competition` e `loginsession` implementam as duas: cada um monta os próprios e-mails,
+    escolhe o template e define os templates que usa;
+  - o `email` continua dono do que é comum a todos: o layout compartilhado, o registro dos
+    templates no `email-service`, o envio e o registro em `sent_email`;
+  - um cliente novo usa e-mail implementando as duas interfaces, sem mudar o `email`.
+- Os e-mails enviados continuam os mesmos: mesmos cinco templates, mesmo assunto, mesmo texto e
+  mesmas variáveis. A suíte de caixa-preta de e-mail continua passando sem mudança.
+- `sent_email` passa a guardar o nome do template (texto) em vez do enum. Sem migração de dado
+  existente nem compatibilidade com o formato antigo (constitution, "Status do sistema:
+  pré-produção").
 - **Constitution:** a seção "Fronteira entre módulos e serviços" passa a dizer que não há ciclo
   de dependência entre módulos de um serviço, garantido por teste de arquitetura.
 
@@ -84,12 +104,14 @@ Verificação:
 
 - **Algoritmo próprio sobre o grafo** (Leila, 2026-10-24): o teste monta o grafo e aplica o
   algoritmo, nos três passos que ela descreveu. Detalhe técnico em `plan.md`.
+- **Ciclo `competition ↔ email`: o `email` publica interfaces e os clientes as implementam**
+  (Leila, 2026-10-25). Hoje só `competition` e `loginsession` mandam e-mail, mas já são dois
+  clientes e provavelmente surgirão outros. Cada cliente implementa a interface que monta o
+  e-mail e define os próprios templates; o `email` não sabe quem são os clientes. Descartadas: um
+  enum próprio de origem dentro do `email` e mover `RequestType` para o `email`, porque as duas
+  mantêm no `email` a lista dos templates de cada cliente.
 
 ## Decisões em aberto
 
-1. **Como quebrar o ciclo `competition ↔ email`.** Recomendação: o módulo `email` ganha o próprio
-   enum para a origem do convite (por exemplo `EmailOrigin { INVITE, REQUEST }`) e a
-   `competition` converte `RequestType` nele ao montar o `EmailRequest`. Assim `email` fica um
-   módulo de baixo nível, usado por `competition` e `loginsession`, sem saber de competição.
-   Alternativa: mover `RequestType` para `email`; descartada na recomendação porque
-   `RequestType` é um conceito de participação, persistido em `Participation`.
+1. **Classe do grafo duplicada no `app` e no `email-service`** (ver `plan.md`). Recomendação:
+   duplicar, porque os dois serviços não compartilham código Java (spec 05-034).
