@@ -31,7 +31,7 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 | Alternativa considerada | `slices().matching("dev.leilaalgarve.jogoacoes.(*)..").should().beFreeOfCycles()` do ArchUnit faz o mesmo em uma linha | descartada | A Leila pediu o grafo e o algoritmo explícitos. Fica registrado como alternativa se o código próprio der trabalho de manutenção. |
 | Interface para montar o e-mail | `email.OutgoingEmail` (interface): `recipient()`, `userId()` (opcional), `templateName()`, `templateData()`. `EmailSender.send(OutgoingEmail)`. Cada cliente tem os próprios records que a implementam (por exemplo `competition.InviteEmail`, `loginsession.LoginLinkEmail`) e escolhe ali o template, inclusive o `login-link-invite`/`login-link-request` pelo `RequestType`, que fica só na `competition` | adotada (Leila, 2026-10-25) | O `email` só envia e registra; não precisa saber nada de competição. `EmailRequest` e o enum `EmailTemplate` saem. Nomes das classes são sugestão, definidos na implementação. |
 | Interface para definir os templates | `email.EmailTemplateSource` (interface, bean Spring): devolve os templates do cliente (nome, assunto, conteúdo). `competition` e `loginsession` têm uma implementação cada, lendo os arquivos de `email-templates/competition/` e `email-templates/loginsession/`. `EmailTemplateSynchronizer` recebe todas as implementações (`List<EmailTemplateSource>`), encaixa cada conteúdo no `layout.html` (que fica no `email`) e registra no `email-service` | adotada (Leila, 2026-10-25) | Cliente novo = um bean novo, sem mudar o `email`. Dois clientes com o mesmo nome de template fazem a aplicação falhar na subida, com mensagem que diz os dois. |
-| `sent_email.template` | Passa a guardar o nome do template (`varchar`), não o enum. Migration nova em `db/migration-app` altera a coluna; sem conversão de linhas antigas | adotada | Pré-produção (constitution). O nome do template é mais preciso que o enum antigo (que juntava três templates em `LOGIN_LINK`). |
+| `sent_email.template` | Passa a guardar o nome do template (`varchar`), não o enum. Migration nova em `db/migration-jogo-acoes` altera a coluna; sem conversão de linhas antigas | adotada | Pré-produção (constitution). O nome do template é mais preciso que o enum antigo (que juntava três templates em `LOGIN_LINK`). |
 
 ## Estrutura de módulos/pacotes
 
@@ -46,7 +46,7 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 - `app/src/main/resources/email-templates/`: `layout.html` fica; os cinco templates vão para
   `competition/` (`invite`, `registration-link`, `login-link-invite`, `login-link-request`) e
   `loginsession/` (`login-link`).
-- `app/src/main/resources/db/migration-app/`: migration da coluna `sent_email.template`.
+- `app/src/main/resources/db/migration-jogo-acoes/`: migration da coluna `sent_email.template`.
 - `memory/constitution.md`, seção "Fronteira entre módulos e serviços".
 
 ## Riscos e trade-offs
