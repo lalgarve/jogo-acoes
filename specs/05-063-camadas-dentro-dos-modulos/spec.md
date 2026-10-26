@@ -1,6 +1,6 @@
 # Spec: Camadas dentro dos módulos
 
-**Status:** rascunho (decisão em aberto abaixo)
+**Status:** especificada, aguardando implementação
 **Issue:** —
 **Iteração:** iteration-5
 
@@ -21,7 +21,7 @@ camada de baixo depende de uma de cima.
 - **Situação atual** (conferida em 2026-10-26 pelo código-fonte de `origin/development`, sem
   rodar o teste): nenhum controller usa repository, nenhuma classe de produção usa controller e
   nenhum repository usa service. Cinco classes do `email-service` (`disposable`) usam
-  `JdbcTemplate` direto, fora de repository (ver "Decisões em aberto").
+  `JdbcTemplate` direto, fora de repository; isso continua permitido (ver "Decisões resolvidas").
 
 ## As camadas
 
@@ -39,8 +39,7 @@ mesmo pacote), então a camada vem do papel da classe, não do pacote:
 Não há `.feature` novo: a mudança é na forma de testar, não no comportamento dos serviços.
 Verificação:
 
-1. **Código atual:** o teste passa no `app` e no `email-service` (com a decisão em aberto
-   resolvida).
+1. **Código atual:** o teste passa no `app` e no `email-service`.
 2. **Controller usando repository:** um controller que receba um `UserRepository` no construtor
    faz o teste falhar, e a mensagem diz o controller e o repository.
 3. **Controller usando API de banco:** um controller que use `JdbcTemplate` ou `EntityManager`
@@ -55,7 +54,7 @@ Verificação:
 ## Requisitos funcionais
 
 - **Controller** não depende de repository nem de API de acesso a banco (`JdbcTemplate`,
-  `NamedParameterJdbcTemplate`, `EntityManager`, `DataSource`).
+  `NamedParameterJdbcTemplate`, `EntityManager`, `DataSource`). Service pode usar essas APIs.
 - **Nenhuma classe** depende de controller. Quem chama controller é o Spring.
 - **Repository** não depende de service nem de controller; pode depender de entidades e
   projeções (`PlayerSummaryView`), que ficam na camada de service pela tabela acima.
@@ -82,12 +81,13 @@ Verificação:
 - **Camada pelo papel da classe, não pelo pacote**: os módulos são pacotes únicos; criar
   subpacotes por camada seria uma reorganização grande sem pedido.
 
+- **`JdbcTemplate` permitido em service** (Leila, 2026-10-26): a regra proíbe API de banco só
+  em controller. No `email-service`, `DisposableDomainSourceService`, `DisposableDomainChecker`,
+  `DisposableDomainImportService` e os tasklets `PruneDomainsTasklet` e `DownloadListTasklet`
+  continuam usando `JdbcTemplate` direto na importação em lote das listas de e-mail temporário
+  (spec 05-048). Descartado: mover esse SQL para repositories, que mexeria na importação
+  estabilizada pela spec 05-054 sem ganho de comportamento.
+
 ## Decisões em aberto
 
-1. **`JdbcTemplate` fora de repository.** No `email-service`, `DisposableDomainSourceService`,
-   `DisposableDomainChecker`, `DisposableDomainImportService` e os tasklets `PruneDomainsTasklet`
-   e `DownloadListTasklet` usam `JdbcTemplate` direto (importação em lote das listas de e-mail
-   temporário, spec 05-048). Recomendação: a regra proíbe API de banco só em controller, e
-   service pode usá-la. Mover esse SQL para repositories próprios deixaria a regra mais estrita
-   ("só repository acessa o banco"), mas mexe na importação em lote, que acabou de ser
-   estabilizada (spec 05-054), sem ganho de comportamento.
+Nenhuma.
