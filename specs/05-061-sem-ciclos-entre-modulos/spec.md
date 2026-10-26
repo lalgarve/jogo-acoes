@@ -1,6 +1,6 @@
 # Spec: Nenhum ciclo de dependência entre módulos
 
-**Status:** rascunho (decisões em aberto abaixo)
+**Status:** especificada, aguardando implementação
 **Issue:** —
 **Iteração:** iteration-5
 
@@ -97,8 +97,8 @@ Verificação:
 - Ciclos entre módulos Maven: o Maven já recusa um reator com ciclo.
 - Ciclos entre serviços (`app`, `email-service`): eles só se falam por contrato, e os
   `ArchitectureTest` já proíbem dependência Java entre eles (spec 05-034).
-- Regra de camadas dentro de cada módulo (controller → service → repository): fica para uma
-  spec própria.
+- Regra de camadas dentro de cada módulo (controller → service → repository): spec
+  [05-063](../05-063-camadas-dentro-dos-modulos/spec.md).
 
 ## Decisões resolvidas
 
@@ -111,7 +111,9 @@ Verificação:
   enum próprio de origem dentro do `email` e mover `RequestType` para o `email`, porque as duas
   mantêm no `email` a lista dos templates de cada cliente.
 
+- **Classe do grafo duplicada no `app` e no `email-service`** (Leila, 2026-10-26): os dois
+  serviços não compartilham código Java, nem em teste (spec 05-034).
+
 ## Decisões em aberto
 
-1. **Classe do grafo duplicada no `app` e no `email-service`** (ver `plan.md`). Recomendação:
-   duplicar, porque os dois serviços não compartilham código Java (spec 05-034).
+Nenhuma.
