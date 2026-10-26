@@ -36,6 +36,218 @@ dele:
 
 Um módulo novo entra no grafo sozinho, sem mudar o teste.
 
+## Diagramas de classes
+
+Só as classes envolvidas no ciclo `competition ↔ email` e no envio de e-mail. Nomes novos
+(`OutgoingEmail`, `EmailTemplateSource`, `TemplateDefinition`, `CompetitionEmail`, `LoginLinkEmail` e as fontes de
+template) são sugestão; o nome final sai na implementação.
+
+### Antes (ciclo atual)
+
+```mermaid
+classDiagram
+    namespace competition {
+        class CompetitionService {
+            +decideInviteEmailTiming(competitionId, timing)
+        }
+        class EntryRequestService {
+            +requestEntry(competitionId, request)
+        }
+        class PlayerManagementService {
+            +resendInviteEmail(competitionId, participationId)
+        }
+        class RequestType {
+            <<enumeration>>
+            INVITE
+            REQUEST
+        }
+    }
+    namespace loginsession {
+        class LoginController {
+            +requestLoginLink(email)
+        }
+    }
+    namespace email {
+        class EmailSender {
+            <<interface>>
+            +send(EmailRequest)
+        }
+        class EmailRequest {
+            <<record>>
+            +Long userId
+            +String email
+            +String name
+            +String competitionName
+            +RequestType origin
+            +String link
+            +EmailTemplate template
+        }
+        class EmailTemplate {
+            <<enumeration>>
+            INVITE
+            REGISTRATION_LINK
+            LOGIN_LINK
+        }
+        class EmailServiceEmailSender {
+            +send(EmailRequest)
+            ~templateNameFor(EmailRequest) String
+            ~templateDataFor(EmailRequest) Map
+        }
+        class StubEmailSender {
+            +send(EmailRequest)
+        }
+        class SentEmailRecorder {
+            ~record(EmailRequest, UUID) SentEmail
+        }
+        class SentEmail {
+            +EmailTemplate template
+        }
+        class EmailTemplateSynchronizer {
+            ~TEMPLATE_NAMES$ List~String~
+            ~synchronize()
+        }
+        class EmailServiceGateway {
+            +sendEmail(templateName, recipient, data) UUID
+            +upsertTemplate(EmailServiceTemplate)
+        }
+    }
+
+    CompetitionService --> EmailSender
+    EntryRequestService --> EmailSender
+    PlayerManagementService --> EmailSender
+    LoginController --> EmailSender
+    CompetitionService ..> EmailRequest : monta
+    EntryRequestService ..> EmailRequest : monta
+    PlayerManagementService ..> EmailRequest : monta
+    LoginController ..> EmailRequest : monta
+    EmailRequest --> RequestType : ciclo email → competition
+    EmailRequest --> EmailTemplate
+    EmailSender <|.. EmailServiceEmailSender
+    EmailSender <|.. StubEmailSender
+    EmailServiceEmailSender ..> RequestType : escolhe login-link-invite/request
+    EmailServiceEmailSender --> EmailServiceGateway
+    EmailServiceEmailSender --> SentEmailRecorder
+    StubEmailSender --> SentEmailRecorder
+    SentEmailRecorder --> SentEmail : grava
+    SentEmail --> EmailTemplate
+    EmailTemplateSynchronizer --> EmailServiceGateway : registra os 5 templates
+```
+
+O `email` conhece os clientes em três lugares: `EmailRequest` usa `RequestType` da `competition`
+(é a aresta que fecha o ciclo), `EmailTemplate` e `EmailServiceEmailSender.templateNameFor`
+escolhem entre os templates de todos os clientes, e `EmailTemplateSynchronizer.TEMPLATE_NAMES`
+lista os cinco templates, que ficam juntos em `email-templates/`. Um cliente novo de e-mail
+precisaria mudar as três.
+
+### Depois (interfaces implementadas pelos clientes)
+
+```mermaid
+classDiagram
+    namespace competition {
+        class CompetitionService
+        class EntryRequestService
+        class PlayerManagementService
+        class RequestType {
+            <<enumeration>>
+            INVITE
+            REQUEST
+        }
+        class CompetitionEmail {
+            <<record>>
+            +templateName() String
+            +templateData() Map
+        }
+        class CompetitionEmailTemplates {
+            +templates() List~TemplateDefinition~
+        }
+    }
+    namespace loginsession {
+        class LoginController
+        class LoginLinkEmail {
+            <<record>>
+            +templateName() String
+            +templateData() Map
+        }
+        class LoginEmailTemplates {
+            +templates() List~TemplateDefinition~
+        }
+    }
+    namespace email {
+        class OutgoingEmail {
+            <<interface>>
+            +recipient() String
+            +userId() Long
+            +templateName() String
+            +templateData() Map~String,Object~
+        }
+        class EmailTemplateSource {
+            <<interface>>
+            +templates() List~TemplateDefinition~
+        }
+        class TemplateDefinition {
+            <<record>>
+            +String name
+            +String subject
+            +String content
+        }
+        class EmailSender {
+            <<interface>>
+            +send(OutgoingEmail)
+        }
+        class EmailServiceEmailSender {
+            +send(OutgoingEmail)
+        }
+        class StubEmailSender {
+            +send(OutgoingEmail)
+        }
+        class SentEmailRecorder {
+            ~record(OutgoingEmail, UUID) SentEmail
+        }
+        class SentEmail {
+            +String templateName
+        }
+        class EmailTemplateSynchronizer {
+            -List~EmailTemplateSource~ sources
+            ~synchronize()
+        }
+        class EmailServiceGateway {
+            +sendEmail(templateName, recipient, data) UUID
+            +upsertTemplate(EmailServiceTemplate)
+        }
+    }
+
+    CompetitionService --> EmailSender
+    EntryRequestService --> EmailSender
+    PlayerManagementService --> EmailSender
+    LoginController --> EmailSender
+    CompetitionService ..> CompetitionEmail : monta
+    EntryRequestService ..> CompetitionEmail : monta
+    PlayerManagementService ..> CompetitionEmail : monta
+    LoginController ..> LoginLinkEmail : monta
+    CompetitionEmail ..> RequestType : escolhe o template
+    OutgoingEmail <|.. CompetitionEmail
+    OutgoingEmail <|.. LoginLinkEmail
+    EmailTemplateSource <|.. CompetitionEmailTemplates
+    EmailTemplateSource <|.. LoginEmailTemplates
+    EmailTemplateSource ..> TemplateDefinition : devolve
+    EmailSender <|.. EmailServiceEmailSender
+    EmailSender <|.. StubEmailSender
+    EmailSender ..> OutgoingEmail : recebe
+    EmailServiceEmailSender --> EmailServiceGateway
+    EmailServiceEmailSender --> SentEmailRecorder
+    StubEmailSender --> SentEmailRecorder
+    SentEmailRecorder --> SentEmail : grava
+    EmailTemplateSynchronizer --> EmailTemplateSource : lê todas
+    EmailTemplateSynchronizer --> EmailServiceGateway : registra com o layout comum
+```
+
+Todas as setas entre módulos saem de `competition` ou `loginsession` e chegam em `email`; nenhuma
+volta. `RequestType` só é usado dentro da `competition`. `CompetitionEmail` decide entre
+`invite`, `registration-link`, `login-link-invite` e `login-link-request`; `LoginLinkEmail` usa
+`login-link`. `CompetitionEmailTemplates` lê `email-templates/competition/` e
+`LoginEmailTemplates` lê `email-templates/loginsession/`; o `layout.html` fica no `email`. Um
+cliente novo implementa `OutgoingEmail` e `EmailTemplateSource` e não muda nada no `email`.
+
 ## Cenários (comportamento esperado)
 
 Não há `.feature` novo: a mudança é na forma de testar, não no comportamento dos serviços.
