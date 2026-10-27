@@ -75,7 +75,7 @@ comentário do `Dockerfile` do `app` também está desatualizado: cita só o `op
 ## Cenários (comportamento esperado)
 
 Não há `.feature` novo: a mudança é no build das imagens, não no comportamento dos serviços.
-Verificação (comandos prontos em `tasks.md`, quando existir):
+Verificação (comandos prontos em `tasks.md`):
 
 1. **Cache do Maven apagado, camadas mantidas:** com as camadas do build do `email-service` no
    cache e o cache mount `/root/.m2` apagado, `docker compose build email-service` (depois de uma
