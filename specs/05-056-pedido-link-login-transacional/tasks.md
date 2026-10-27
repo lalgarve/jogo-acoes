@@ -44,6 +44,25 @@ docker compose up -d --wait --build email-service
 docker compose up -d --wait --build app
 ```
 
+O `--wait` do `app` volta antes de ele terminar de subir
+([#207](https://github.com/lalgarve/jogo-acoes/issues/207)): o Spring ainda leva uns 20 s para
+aceitar conexões e, depois, cadastra os cinco templates de e-mail do `app` no `email-service`. Se
+o passo 2 parar o `email-service` antes disso, o `app` sai. Esperar os cinco templates no banco do
+`email-service` (vazio por causa do `down -v`):
+
+```bash
+for i in $(seq 1 120); do
+  n=$(docker compose exec -T db-email-service psql -U email_service_admin -d email_service -tAc \
+    "SELECT count(*) FROM email_service.email_template")
+  [ "$n" = 5 ] && break
+  sleep 1
+done
+echo "templates=$n"
+docker compose ps --format '{{.Service}} {{.State}}' app
+```
+
+Esperado: `templates=5` e `app running`.
+
 Consultas usadas nos passos (copiar uma vez no mesmo terminal):
 
 ```bash
@@ -156,3 +175,42 @@ uma espera pelo `app` que o roteiro não tem.
 
 Para fechar a T007: o roteiro precisa esperar o `app` ficar pronto e terminar a sincronização de
 templates antes do passo 1, e ser rodado de novo no WSL.
+
+## Repetição no WSL com a espera pelo `app` (T007, 2026-10-27)
+
+O roteiro "Verificação manual (T007)" acima, já com a espera pelos cinco templates
+([#207](https://github.com/lalgarve/jogo-acoes/issues/207)), no branch
+`claude/project-thread-4wissn` (`e47ae4a` mais a espera), no WSL2 com Docker 29.8.0 e Compose
+v5.5.1, com os comandos colados em sequência, sem pausa entre eles. **A T007 continua aberta:**
+na primeira rodada, o passo 3 falhou sem causa encontrada; a segunda rodada deu o esperado em
+todos os passos.
+
+| Etapa | Rodada 1 | Rodada 2 |
+|---|---|---|
+| Subida | Os cinco comandos com `exit=0`; o build do `email-service` passou | Igual |
+| Espera | `templates=5` em 4 s, `app running` | `templates=5` em 11 s, `app running` |
+| 1 | ` [202]`, `1 ativo(s), 1 no total`, `1 LOGIN_LINK_ISSUED` | Igual |
+| 2 | `{"message":"The e-mail could not be sent right now, try again"} [503]`, `1 ativo(s), 1 no total`, `1 LOGIN_LINK_ISSUED`; `app` de pé | Igual |
+| 3 | **Não saiu como o esperado**: `{"message":"The e-mail could not be sent right now, try again"} [503]`, `1 ativo(s), 1 no total`, `1 LOGIN_LINK_ISSUED`, com o `email-service` `Healthy` | ` [202]`, `1 ativo(s), 2 no total`, `2 LOGIN_LINK_ISSUED`, como o esperado |
+| Fim | `app running` | `app running`; `docker compose down -v`, `git status` limpo |
+
+Rodada 1, passo 3, em detalhe:
+
+- No log do `email-service`, `Tomcat started on port 8080` às 02:57:04.776 e `Started
+  EmailServiceApplication` às 02:57:05.175. Nada às 02:57:10.
+- No log do `app`, o pedido às 02:57:10.125 e a chamada ao `email-service` às 02:57:10.137, que
+  falhou em 3 ms: `feign.RetryableException: Connection refused executing POST
+  http://email-service:8080/api/emails`. No passo 2, a falha tinha sido outra: `Connect timed out`.
+- Um pedido repetido à mão às 02:57:30 deu `202`.
+- Hipótese descartada: IP novo do `email-service` depois do `stop`/`start`, com o `app` guardando o
+  antigo (a JVM guarda o nome por 30 s). Num `stop`/`start` à parte, o IP ficou o mesmo
+  (`172.18.0.9`), e o `getent hosts email-service` de dentro do `app` dava esse IP. O IP do passo 1
+  da rodada 1 não foi anotado, então não dá para saber se mudou ali; na rodada 2, ficou
+  `172.18.0.7` antes e depois.
+- Duas repetições extras dos passos 2 e 3 (sem o `down -v`, pedindo o link logo depois do
+  `Healthy`): `503` com o `email-service` parado e `202` no primeiro pedido depois do `Healthy`
+  (às 02:58:37 e 02:58:54), nas duas.
+
+A falha da rodada 1 não se repetiu em três tentativas. Ela não diz respeito à correção da spec (o
+pedido com `503` não deixou rastro, como pede a spec), e sim a o `app` voltar a alcançar o
+`email-service` logo depois de ele religar.
