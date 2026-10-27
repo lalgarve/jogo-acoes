@@ -134,3 +134,25 @@ Implementação de 2026-10-24, numa sessão de nuvem, com a infraestrutura de `.
   iguais (`1 ativo(s), 2 no total`, `2 LOGIN_LINK_ISSUED`), com o link ativo de antes ainda
   ativo. No roteiro da T007, o `docker compose stop` só volta depois que o container parou, então
   essa corrida não acontece.
+
+## Verificação manual no WSL (T007, 2026-10-24)
+
+O roteiro "Verificação manual (T007)" acima, no branch `claude/project-thread-4wissn` (`8e9d408`),
+no WSL2 com Docker 29.8.0 e Compose v5.5.1. **A T007 continua aberta:** na primeira rodada, o
+roteiro como está escrito não deu o resultado esperado; a correção deu, numa segunda rodada com
+uma espera pelo `app` que o roteiro não tem.
+
+| Etapa | Resultado |
+|---|---|
+| Subida, primeira tentativa | `docker compose up -d --wait --build db db-email-service localstack` passou; o build do `email-service` falhou com `dev.leilaalgarve.apikey:api-key-validation:jar:1.1.0 was not found in https://repo.maven.apache.org/maven2`. Causa: defeito do `email-service/Dockerfile`, não da correção (o passo do `install-api-key-lib.sh` vem das camadas do build sem rodar, depois de o BuildKit apagar o cache mount `/root/.m2`); correção na spec 05-062. Contornado com `docker compose build --no-cache email-service`, e a subida repetida desde o `down -v`: todos os serviços de pé |
+| 1, primeira rodada | **Não saiu como o esperado**: ` [000]` (conexão recusada), `0 ativo(s), 0 no total`, `0 LOGIN_LINK_ISSUED`. O `app` não tem healthcheck, então o `up -d --wait --build app` volta antes de o Spring aceitar conexões (`Started JogoAcoesApplication` só às 18:19:46) |
+| 2, primeira rodada | `{"message":"The e-mail could not be sent right now, try again"} [503]`, `0 ativo(s), 0 no total`, `0 LOGIN_LINK_ISSUED`. O `docker compose stop email-service` caiu durante a sincronização de templates do `app` (`EmailTemplateSynchronizer`, no `ApplicationReadyEvent`): `PUT /templates/invite` falhou com `UnknownHostException: email-service`, `Application run failed`, e o `app` saiu com `Exited (1)` |
+| 3, primeira rodada | ` [000]`: o `app` já tinha saído |
+| Segunda rodada | `docker compose up -d --wait app`, espera até `/v3/api-docs` responder (13 s) e mais 15 s, com o banco ainda sem links do usuário (`0 ativo(s), 0 no total`, `0 LOGIN_LINK_ISSUED`) |
+| 1, segunda rodada | ` [202]`, `1 ativo(s), 1 no total`, `1 LOGIN_LINK_ISSUED`, como o esperado |
+| 2, segunda rodada | `{"message":"The e-mail could not be sent right now, try again"} [503]`, `1 ativo(s), 1 no total`, `1 LOGIN_LINK_ISSUED`: nada mudou, como o esperado |
+| 3, segunda rodada | ` [202]`, `1 ativo(s), 2 no total`, `2 LOGIN_LINK_ISSUED`, como o esperado; o `app` continuou `running` |
+| Derrubar | `docker compose down -v`; `git status` limpo |
+
+Para fechar a T007: o roteiro precisa esperar o `app` ficar pronto e terminar a sincronização de
+templates antes do passo 1, e ser rodado de novo no WSL.
