@@ -17,7 +17,7 @@ fazem o papel de épico; não há Issue nova por tarefa.
 | ~~T006~~ | Critério de aceite de exceções (`memory/constitution.md`): nenhuma classe de exceção nem branch de exceção em código Java. Registrar aqui os caminhos de erro de shell (script de init com `ERROR`, função que não fica `Active`, mapeamento que não fica `Enabled`, `docker-up.sh` com `localstack` `unhealthy`) e onde a T008 exercita cada um | T001–T003 | | #98 |
 | T007 | CI da PR: verde; o log mostra a saída do `check-localstack.sh` nas duas subidas; o artefato `jacoco-app` existe; o comentário de cobertura foi atualizado (não duplicado); nenhum aviso de Node.js 20 nem de `setup-java` v4 nas anotações do job (a T004 achou a `v1.8` do `jacoco-report`, em `node24`). Registrar aqui o link da execução | T003, T005 | | #98, #182 |
 | ~~T008~~ | Verificação manual, com os comandos abaixo | T001–T003 | | #98 |
-| T009 | Espera por tempo (decisão da Leila depois da T008): `wait_for_state` no `03-deploy-email-lambda.sh` (até 120 s pela função, 30 s pelo mapeamento, desiste com a função `Failed`), `start_period: 180s`, roteiro da T008 ajustado. Repetir no WSL os passos 1, 3 e 4 do roteiro abaixo | T008 | | #98 |
+| ~~T009~~ | Espera por tempo (decisão da Leila depois da T008): `wait_for_state` no `03-deploy-email-lambda.sh` (até 120 s pela função, 30 s pelo mapeamento, desiste com a função `Failed`), `start_period: 180s`, roteiro da T008 ajustado. Repetir no WSL os passos 1, 3 e 4 do roteiro abaixo | T008 | | #98 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo. As duas linhas de trabalho (T001–T003 e T004–T005) são independentes até a
@@ -71,8 +71,8 @@ Os comandos de "Verificação manual (T008)" abaixo, exatamente como estão, no 
 Os caminhos de erro (passos 2 a 4) e o `docker-up.sh` saíram como o esperado. O passo 1 passou
 nas duas rodadas seguintes, mas a primeira mostra que, no WSL, a espera da função pode passar
 das 30 voltas. A falha foi a da T001 (o script falhou e o container ficou `unhealthy`, sem
-esconder a função parada atrás de um `healthy`). Se as 30 voltas bastam fica em aberto, para
-decidir.
+esconder a função parada atrás de um `healthy`). Daí a decisão de esperar por tempo (`spec.md`,
+"Decisões resolvidas") e a T009, que repetiu o roteiro no WSL (seção "Repetição no WSL" abaixo).
 
 ## Espera por tempo (T009, 2026-10-24)
 
@@ -91,7 +91,22 @@ Este último caso não tem passo no roteiro do WSL: lá a imagem baixa normalmen
 
 CI no branch com a mudança: [execução 40119832715](https://github.com/lalgarve/jogo-acoes/actions/runs/40119832715) (`workflow_dispatch`, `dae8bf6`), verde.
 
-Falta repetir no WSL os passos 1, 3 e 4 do roteiro abaixo (comandos dos passos 3 e 4 mudaram).
+## Repetição no WSL (T009, 2026-10-26)
+
+O roteiro "Verificação manual (T008)" abaixo, inteiro, como está escrito (passo 2 incluído), no
+branch `claude/project-thread-b3h617` (`3da24e0`), no WSL2 com Docker 29.8.0 e Compose v5.5.1, sem
+`docker-up.conf`.
+
+| Passo | Resultado |
+|---|---|
+| 1 | `exit=0` em 18 s, `healthy`; os três scripts `SUCCESSFUL`, `EmailLambda: Active`, `Event source mapping from jogo-acoes-email-commands: Enabled`, `check-localstack: LocalStack is ready`, `exit=0`. A imagem `public.ecr.aws/lambda/java:21` já estava no Docker |
+| 1, com o cache frio | Fora do roteiro, para o caso que motivou a T009: depois de `docker rmi public.ecr.aws/lambda/java:21`, `exit=0` em 42 s e tudo certo como acima. `CreateFunction` às 02:26:30 e `CreateEventSourceMapping` às 02:27:02: a função ficou `Pending` ~32 s enquanto o runtime era baixado, dentro dos 120 s |
+| 2 | `exit=1` em 232 s, `unhealthy`; o `check-localstack.sh` mostrou o `03` em `ERROR` (`EmailLambda: missing`) e `exit=1` |
+| 3 | `1` no primeiro `grep`; `exit=1`; `1` no último `grep` (no log, `03-deploy-email-lambda: EmailLambda did not become Active in 0s, last state: none`) |
+| 4 | `1` no `grep`; `docker-up: localstack unhealthy; its last log lines:` e, nessas linhas, `03-deploy-email-lambda: the event source mapping from jogo-acoes-email-commands did not become Enabled in 0s, last state: none`, seguido de `docker-up: docker compose up --build db db-email-service localstack dns failed`; `exit=1` |
+| Derrubar no fim | Nenhuma linha no `git status` |
+
+Todos os passos saíram como o esperado.
 
 ## Verificação manual (T008)
 
