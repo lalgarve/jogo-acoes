@@ -65,10 +65,22 @@ da tentativa**, e o lote usa **falha parcial**.
 **Checagem de duplicata**
 
 - A chave do registro é (`correlationId`, `attempt`).
-- Antes de chamar o SES, o handler grava o registro com uma escrita condicional ("só se não
-  existir"). Se a chave já existe, a mensagem é duplicata: é descartada com sucesso (não falha o
-  registro, não vai para a DLQ) e gera uma linha de log com `correlationId` e `attempt`, sem o
-  endereço de e-mail completo nem os dados do template.
+- Antes de chamar o SES, o handler grava o registro como "em andamento", com uma escrita
+  condicional ("só se não existir"). Quando o SES aceita, o registro passa a "enviado".
+- Se a chave já existe como "enviado", a mensagem é duplicata: é descartada com sucesso (não
+  falha o registro, não vai para a DLQ) e gera uma linha de log com `correlationId` e `attempt`,
+  sem o endereço de e-mail completo nem os dados do template.
+- Se a chave já existe como "em andamento", a invocação anterior parou entre gravar o registro e
+  o SES responder (tempo limite estourado, processo morto), e não dá para saber se o SES aceitou.
+  O handler não chama o SES: manda a mensagem para a DLQ com o tipo de erro novo
+  `SEND_IN_DOUBT`, e o `email-service` decide (decidido em 2026-10-29).
+- O `email-service`, ao ler `SEND_IN_DOUBT` na DLQ, volta o envio para `PENDING` com uma espera de
+  15 minutos antes da próxima tentativa (que vai com outro `attempt`). A espera reduz a chance
+  de mandar o e-mail duas vezes: enquanto o `email-service` não processar os eventos do SES, ele
+  não tem como saber se o primeiro envio saiu. Processar esses eventos é a
+  [Issue #208](https://github.com/lalgarve/jogo-acoes/issues/208).
+- O tipo `SEND_IN_DOUBT` entra no contrato da DLQ
+  (`specs/05-046-publicacao-na-fila-em-segundo-plano/contracts/dlq-message.md`).
 - Cada (`correlationId`, `attempt`) gera no máximo uma chamada ao SES, qualquer que seja o número
   de vezes que a mensagem chegue.
 - Quando o SES recusa ou está fora do ar (`TEMPLATE_MISSING`, `SES_REJECTED`, `SES_UNAVAILABLE`),
@@ -107,9 +119,6 @@ da tentativa**, e o lote usa **falha parcial**.
 
 ## Decisões em aberto
 
-- **Lambda interrompido entre gravar o registro e o SES responder** (tempo limite estourado,
-  processo morto): a reentrega encontra o registro e trata a mensagem como duplicata. Se o SES não
-  chegou a aceitar, esse e-mail não sai e ninguém fica sabendo. Aceitar esse risco (é raro), ou o
-  registro guardar "em andamento" e, na reentrega, mandar a mensagem para a DLQ com um tipo de
-  erro novo para o `email-service` decidir? A segunda opção troca o e-mail perdido por um
-  possível e-mail duplicado.
+Nenhuma. Fica um risco aceito: se o SES aceitou o e-mail e a invocação parou antes de gravar
+"enviado", a nova tentativa depois de 15 minutos manda o e-mail de novo. Ele some quando o
+`email-service` passar a usar os eventos do SES para confirmar o envio (Issue #208).
