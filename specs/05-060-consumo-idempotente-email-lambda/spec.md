@@ -1,7 +1,7 @@
 # Spec: e-mail entregue duas vezes pela fila é mandado uma vez só
 
 **Status:** rascunho
-**Issue:** [#117](https://github.com/lalgarve/jogo-acoes/issues/117) (item 4)
+**Issue:** [#205](https://github.com/lalgarve/jogo-acoes/issues/205), parte do item 4 da [#117](https://github.com/lalgarve/jogo-acoes/issues/117)
 **Iteração:** iteration-6
 
 ## Resumo
