@@ -1,7 +1,7 @@
 # Spec: chave de idempotência no pedido de envio de e-mail
 
 **Status:** rascunho
-**Issue:** [#117](https://github.com/lalgarve/jogo-acoes/issues/117) (item 4)
+**Issue:** [#205](https://github.com/lalgarve/jogo-acoes/issues/205), parte do item 4 da [#117](https://github.com/lalgarve/jogo-acoes/issues/117)
 **Iteração:** iteration-6
 
 ## Resumo
@@ -46,8 +46,8 @@ verificado por testes de integração dos dois lados, contra o `email-service` r
 - A chave vale por cliente (`X-API-Key`): dois clientes podem usar a mesma chave sem conflito.
 - Mesmo cliente, mesma chave e mesmo corpo: responde `202` com o `id` do envio já gravado, sem
   gravar outro e sem publicar outra mensagem na fila. Vale também se o primeiro pedido ainda
-  estiver sendo processado: o segundo espera o primeiro terminar e responde com o mesmo `id` (ou
-  com o erro do primeiro, se ele falhar).
+  estiver sendo processado: o segundo espera o primeiro terminar e responde com o mesmo `id`. Se
+  o primeiro for recusado, ele não guarda a chave, e o segundo é avaliado como um pedido novo.
 - Mesmo cliente, mesma chave e corpo diferente: responde `422` com corpo `Error`, sem gravar
   nada.
 - Um pedido recusado (`400`, `422` de domínio, `404` de template) não guarda a chave: repetir
