@@ -63,6 +63,7 @@ Em `app/src/test/resources/features/request_competition_entry.feature`:
 Scenario: Player requests entry twice and uses the first link
   Given the player is unregistered
   And requested entry into a public competition twice
+  And both e-mails contain the same link
   When they open the link from the first e-mail
   Then they can finish registration and join the competition
 ```
