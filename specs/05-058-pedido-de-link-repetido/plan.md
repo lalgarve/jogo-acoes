@@ -4,8 +4,8 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 
 ## Contexto técnico
 
-- **Depende da spec 05-056** (Issue #135, branch `claude/project-thread-4wissn`, ainda não
-  mesclada em `development`). Ela move o pedido de link de login de
+- **Depende da spec 05-056** (Issue #135, mesclada em `development` pela
+  [PR #210](https://github.com/lalgarve/jogo-acoes/pull/210)). Ela move o pedido de link de login de
   `LoginController.requestLoginLink` para `LoginLinkRequestService.requestLoginLink`, num
   `@Transactional` que desfaz tudo quando o envio falha. Este plano parte desse serviço.
 - Módulo `link` (`LinkService`, `LinkRecord`, `LinkRecordRepository`): não conhece o que cada
@@ -84,4 +84,4 @@ dependem de `link`.
 ## Decisões em aberto
 
 Nenhuma. A `spec.md` deixa em aberto juntar a implementação com a 05-056; isto é decisão de
-planejamento, e o plano só exige que a 05-056 esteja mesclada antes.
+planejamento, e a 05-056 já está mesclada (PR #210).
