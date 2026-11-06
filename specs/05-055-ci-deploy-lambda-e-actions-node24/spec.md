@@ -1,6 +1,6 @@
 # Spec: CI confere o deploy da Lambda e sai do Node.js 20
 
-**Status:** implementada (verificação no CI na T007, ver `tasks.md`)
+**Status:** implementada e verificada (CI da PR #209 e verificações manuais T008/T009 no WSL, ver `tasks.md`)
 **Issue:** [#98](https://github.com/lalgarve/jogo-acoes/issues/98) e
 [#182](https://github.com/lalgarve/jogo-acoes/issues/182)
 **Iteração:** iteration-5
