@@ -55,6 +55,12 @@ Scenario: Requesting a login link after the previous one was used issues a new l
   Given a registered player already used their login link
   When they request a login link again
   Then they receive a new login link by e-mail
+
+Scenario: Requesting a login link when the active one expires within a day issues a new link
+  Given a registered player has an active login link that expires in less than a day
+  When they request a login link again
+  Then they receive a new login link by e-mail
+  And the previous login link can still be used to log in until it expires
 ```
 
 Em `app/src/test/resources/features/request_competition_entry.feature`:
@@ -66,19 +72,33 @@ Scenario: Player requests entry twice and uses the first link
   And both e-mails contain the same link
   When they open the link from the first e-mail
   Then they can finish registration and join the competition
+
+Scenario: Player requests entry again when the link expires within a day
+  Given the player is unregistered
+  And requested entry into a public competition
+  And that link expires in less than a day
+  When they request entry into that competition again
+  Then they receive a new link by e-mail
+  And the link from the first e-mail still works until it expires
 ```
 
 ## Requisitos funcionais
 
 - **Link ativo** quer dizer: não usado, não invalidado e não expirado (validade de 7 dias,
   `LinkService.LINK_VALIDITY_DAYS`).
-- Pedir o link de login quando o usuário já tem um link de login ativo com o mesmo `returnTo`
-  reenvia esse link: mesmo token, mesma data de expiração (a validade não é estendida). Nenhum
+- **Link reenviável** é um link ativo que ainda vale por pelo menos 1 dia (decidido em
+  2026-11-06). Só ele é reenviado: um link que vence em menos de 1 dia não é reenviado, para
+  ninguém receber um link quase vencido.
+- Pedir o link de login quando o usuário já tem um link de login reenviável com o mesmo
+  `returnTo` reenvia esse link: mesmo token, mesma data de expiração (a validade não é estendida). Nenhum
   link novo é criado e nenhum link é invalidado.
-- Pedir o link de login sem link de login ativo, ou com um `returnTo` diferente do link ativo,
-  cria um link novo como hoje (invalidando os links ativos anteriores do usuário).
-- Pedir entrada de novo numa competição em que a participação já tem um link de entrada ativo
-  reenvia esse link, tenha ou não a pessoa cadastro. Sem link ativo, cria um novo.
+- Pedir o link de login sem link de login reenviável, ou com um `returnTo` diferente, cria um
+  link novo e invalida os links ativos anteriores do usuário, como hoje, **exceto** os que vencem
+  em menos de 1 dia: esses continuam valendo até expirar, para que a pessoa ainda possa usar o
+  e-mail que já recebeu.
+- Pedir entrada de novo numa competição em que a participação já tem um link de entrada
+  reenviável reenvia esse link, tenha ou não a pessoa cadastro. Sem link reenviável, cria um
+  novo; o link anterior, se ainda ativo, continua valendo até expirar.
 - Pedir entrada numa competição não afeta links de entrada em outras competições nem o link de
   login.
 - Cada e-mail mandado grava uma entrada `LOGIN_LINK_ISSUED` com o id do link; um reenvio grava
