@@ -175,6 +175,30 @@ class ArchitectureTest {
         assertThat(cycles).as("dependency cycles between modules:%s", graph.describe(cycles)).isEmpty();
     }
 
+    /** Spec 05-063: only repositories access the database. */
+    @Test
+    void onlyRepositoriesUseDatabaseApis() {
+        LayerRules.onlyRepositoriesUseDatabaseApis().check(productionClasses());
+    }
+
+    /** Spec 05-063: a controller calls services, never a repository. */
+    @Test
+    void controllersDoNotUseRepositories() {
+        LayerRules.controllersDoNotUseRepositories().check(productionClasses());
+    }
+
+    /** Spec 05-063: no production class depends on a controller; only Spring calls them. */
+    @Test
+    void nothingDependsOnControllers() {
+        LayerRules.nothingDependsOnControllers().check(productionClasses());
+    }
+
+    /** Spec 05-063: a repository depends on no service or controller. */
+    @Test
+    void repositoriesDoNotDependOnServicesOrControllers() {
+        LayerRules.repositoriesDoNotDependOnServicesOrControllers().check(productionClasses());
+    }
+
     /**
      * Spec 05-035: missing infrastructure is an error, never a skip (constitution, "Testes exigem
      * a infraestrutura de pé"), so no test decides at runtime whether to run. Named by string,
