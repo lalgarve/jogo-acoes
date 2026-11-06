@@ -12,9 +12,7 @@ import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
 import dev.leilaalgarve.jogoacoes.competition.exception.CompetitionNotFoundException;
 import dev.leilaalgarve.jogoacoes.competition.exception.EntryRequestValidationException;
-import dev.leilaalgarve.jogoacoes.email.EmailRequest;
 import dev.leilaalgarve.jogoacoes.email.EmailSender;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
 import dev.leilaalgarve.jogoacoes.link.LinkService;
 import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
@@ -102,10 +100,6 @@ public class EntryRequestService {
         }
 
         Optional<User> existingUser = userService.findByEmail(email);
-        EmailTemplate template = existingUser.filter(User::isRegistered).isPresent()
-                ? EmailTemplate.LOGIN_LINK
-                : EmailTemplate.REGISTRATION_LINK;
-
         Participation participation = participationRepository
                 .findByCompetition_IdAndEmailAndStatusNot(competitionId, email, ParticipationStatus.IN_COMPETITION)
                 .orElseGet(() -> {
@@ -126,8 +120,9 @@ public class EntryRequestService {
                 "Entry request login link issued to " + email);
 
         String name = existingUser.map(User::getName).orElse(null);
-        emailSender.send(new EmailRequest(userId, email, name, competition.getName(), RequestType.REQUEST,
-                created.url(), template));
+        emailSender.send(existingUser.filter(User::isRegistered).isPresent()
+                ? CompetitionEmail.loginLink(userId, email, name, competition.getName(), RequestType.REQUEST, created.url())
+                : CompetitionEmail.registrationLink(userId, email, competition.getName(), created.url()));
 
         if (participation.getFirstEmailSentDate() == null) {
             participation.setFirstEmailSentDate(LocalDate.now());

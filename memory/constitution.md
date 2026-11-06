@@ -441,7 +441,14 @@ Há duas fronteiras diferentes, e cada uma tem a sua regra:
 - **Módulo** (pacote de primeiro nível dentro de um mesmo serviço, ex. `user`, `competition`,
   `email` no `app`): roda no mesmo processo e fala com outro módulo **só por serviço Java**.
   Repositório, entidade interna e detalhe de persistência ficam dentro do módulo dono (spec
-  05-029).
+  05-029). **Não há ciclo de dependência entre módulos** de um serviço: se `A` depende de `B`,
+  nada em `B` depende de `A`, nem por um caminho mais longo. Um módulo usado por vários outros
+  (ex. `email`) publica interfaces que os clientes implementam, em vez de conhecer os clientes
+  (spec 05-061).
+  Dentro de cada módulo, **controller → service → repository**, sem atalho: controller chama
+  service, nunca repository; nada depende de controller; repository não depende de service; e
+  **só repository acessa o banco** (`JdbcTemplate`, `JdbcClient`, `EntityManager`, `DataSource`).
+  A camada vem do papel da classe (anotação ou tipo do Spring Data), não do pacote (spec 05-063).
 - **Serviço** (artefato com deploy próprio, ex. `app` e `email-service`): fala com outro
   serviço **só por contrato** — HTTP documentado em OpenAPI, ou mensagem com contrato próprio
   em `specs/NN-NNN-slug/contracts/`. Mesmo morando no mesmo repositório e no mesmo reator
@@ -468,8 +475,10 @@ dos lados muda. Retry de operação não idempotente transforma uma falha de red
 dobro (ex.: o mesmo e-mail enviado duas vezes).
 
 **Como é verificado**: `ArchitectureTest` em cada serviço (nenhuma classe do outro serviço,
-nem no pacote raiz que eles compartilham; o cliente HTTP gerado só usado pelo *gateway*) e o
-`maven-enforcer-plugin` com `bannedDependencies` em cada `pom.xml`.
+nem no pacote raiz que eles compartilham; o cliente HTTP gerado só usado pelo *gateway*; nenhum
+ciclo no grafo de dependências entre módulos, spec 05-061; as quatro regras de camada, spec
+05-063) e o `maven-enforcer-plugin` com
+`bannedDependencies` em cada `pom.xml`.
 
 **Exemplo usado neste projeto** (spec `05-034-fronteira-sincrona-app-email-service`): o `app`
 envia e-mail chamando o `email-service` por OpenFeign, com cliente gerado de

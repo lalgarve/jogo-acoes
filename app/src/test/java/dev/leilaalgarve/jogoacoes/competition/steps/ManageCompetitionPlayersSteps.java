@@ -13,7 +13,6 @@ import dev.leilaalgarve.jogoacoes.competition.Participation;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
 import dev.leilaalgarve.jogoacoes.user.User;
 import io.restassured.response.Response;
@@ -399,7 +398,7 @@ public class ManageCompetitionPlayersSteps {
     public void sends_the_e_mail_personalized_with_the_name_instead_of_an_invite_to_create_an_account() {
         boolean sent = sentEmailRepository.findAll().stream()
                 .anyMatch(sentEmail -> sentEmail.getEmail().equals(world.getCandidateEmail())
-                        && sentEmail.getTemplate() == EmailTemplate.LOGIN_LINK);
+                        && "login-link-invite".equals(sentEmail.getTemplate()));
         assertThat(sent).isTrue();
     }
 }

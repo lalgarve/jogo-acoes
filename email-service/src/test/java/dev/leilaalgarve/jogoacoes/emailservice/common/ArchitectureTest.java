@@ -6,6 +6,9 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideOutsideOfPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -62,6 +65,43 @@ class ArchitectureTest {
                 .orShould().dependOnClassesThat(resideInAPackage(SHARED_ROOT_PACKAGE + "..")
                         .and(resideOutsideOfPackage(BASE_PACKAGE + "..")))
                 .check(sharedRootClasses);
+    }
+
+    /**
+     * Spec 05-061: no cycle between modules. Each module is a node, each reference from one module
+     * to another an edge; every cycle found is listed with one example reference per edge.
+     */
+    @Test
+    void modulesHaveNoDependencyCycles() {
+        ModuleDependencyGraph graph = ModuleDependencyGraph.of(productionClasses, BASE_PACKAGE);
+
+        List<List<String>> cycles = graph.cycles();
+
+        assertThat(cycles).as("dependency cycles between modules:%s", graph.describe(cycles)).isEmpty();
+    }
+
+    /** Spec 05-063: only repositories access the database. */
+    @Test
+    void onlyRepositoriesUseDatabaseApis() {
+        LayerRules.onlyRepositoriesUseDatabaseApis().check(productionClasses);
+    }
+
+    /** Spec 05-063: a controller calls services, never a repository. */
+    @Test
+    void controllersDoNotUseRepositories() {
+        LayerRules.controllersDoNotUseRepositories().check(productionClasses);
+    }
+
+    /** Spec 05-063: no production class depends on a controller; only Spring calls them. */
+    @Test
+    void nothingDependsOnControllers() {
+        LayerRules.nothingDependsOnControllers().check(productionClasses);
+    }
+
+    /** Spec 05-063: a repository depends on no service or controller. */
+    @Test
+    void repositoriesDoNotDependOnServicesOrControllers() {
+        LayerRules.repositoriesDoNotDependOnServicesOrControllers().check(productionClasses);
     }
 
     /**

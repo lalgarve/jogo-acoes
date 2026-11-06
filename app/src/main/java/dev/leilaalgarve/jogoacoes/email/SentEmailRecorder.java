@@ -23,20 +23,20 @@ class SentEmailRecorder {
         this.userService = userService;
     }
 
-    SentEmail record(EmailRequest request) {
-        return record(request, null);
+    SentEmail record(OutgoingEmail email) {
+        return record(email, null);
     }
 
     /** Records a send email-service accepted, with the id it gave it (spec 05-034). */
-    SentEmail record(EmailRequest request, UUID emailServiceId) {
+    SentEmail record(OutgoingEmail email, UUID emailServiceId) {
         SentEmail sentEmail = new SentEmail();
         sentEmail.setEmailServiceId(emailServiceId);
-        if (request.userId() != null) {
-            sentEmail.setUser(userService.getById(request.userId()));
+        if (email.userId() != null) {
+            sentEmail.setUser(userService.getById(email.userId()));
         }
-        sentEmail.setEmail(request.email());
-        sentEmail.setLink(request.link());
-        sentEmail.setTemplate(request.template());
+        sentEmail.setEmail(email.recipient());
+        sentEmail.setLink(email.link());
+        sentEmail.setTemplate(email.templateName());
         sentEmail.setSentAt(LocalDateTime.now());
         return sentEmailRepository.save(sentEmail);
     }

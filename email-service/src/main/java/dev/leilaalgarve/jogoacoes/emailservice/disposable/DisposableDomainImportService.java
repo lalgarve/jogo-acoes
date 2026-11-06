@@ -14,7 +14,6 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.StepExecution;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Sort;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -40,16 +39,16 @@ public class DisposableDomainImportService {
     private final JobOperator jobOperator;
     private final JobRepository jobRepository;
     private final Job importJob;
-    private final JdbcTemplate jdbcTemplate;
+    private final ImportExecutionRepository importExecutions;
 
     public DisposableDomainImportService(DisposableDomainSourceRepository sources, JobOperator jobOperator,
                                          JobRepository jobRepository, Job importDisposableDomainsJob,
-                                         JdbcTemplate jdbcTemplate) {
+                                         ImportExecutionRepository importExecutions) {
         this.sources = sources;
         this.jobOperator = jobOperator;
         this.jobRepository = jobRepository;
         this.importJob = importDisposableDomainsJob;
-        this.jdbcTemplate = jdbcTemplate;
+        this.importExecutions = importExecutions;
     }
 
     /**
@@ -103,18 +102,9 @@ public class DisposableDomainImportService {
                 .exitMessage(exitMessageOf(execution));
     }
 
-    /**
-     * The latest execution of a repository, for the repository list; empty before the first.
-     * Found with one query on Spring Batch's tables (its own API would load every instance).
-     */
+    /** The latest execution of a repository, for the repository list; empty before the first. */
     Optional<DisposableDomainImportSummary> lastImportOf(long sourceId) {
-        List<Long> latest = jdbcTemplate.queryForList(
-                "SELECT max(e.job_execution_id) FROM batch_job_execution e"
-                        + " JOIN batch_job_instance i ON i.job_instance_id = e.job_instance_id"
-                        + " JOIN batch_job_execution_params p ON p.job_execution_id = e.job_execution_id"
-                        + " WHERE i.job_name = ? AND p.parameter_name = ? AND p.parameter_value = ?",
-                Long.class, ImportContextKeys.JOB_NAME, ImportContextKeys.SOURCE_ID, String.valueOf(sourceId));
-        return latest.stream().filter(java.util.Objects::nonNull).findFirst()
+        return importExecutions.latestExecutionIdOf(sourceId)
                 .map(jobRepository::getJobExecution)
                 .map(DisposableDomainImportService::summaryOf);
     }

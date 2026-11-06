@@ -11,9 +11,7 @@ import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
 import dev.leilaalgarve.jogoacoes.competition.exception.CompetitionNotFoundException;
 import dev.leilaalgarve.jogoacoes.competition.exception.CompetitionValidationException;
-import dev.leilaalgarve.jogoacoes.email.EmailRequest;
 import dev.leilaalgarve.jogoacoes.email.EmailSender;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.email.exception.RecipientDomainRejectedException;
 import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
 import dev.leilaalgarve.jogoacoes.link.LinkService;
@@ -118,11 +116,11 @@ public class CompetitionService {
             auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), admin,
                     "Invite login link issued to " + participation.getEmail());
 
-            EmailTemplate template = user != null ? EmailTemplate.LOGIN_LINK : EmailTemplate.INVITE;
             try {
-                emailSender.send(new EmailRequest(userId, participation.getEmail(),
-                        user != null ? user.getName() : null, competition.getName(), participation.getRequestType(),
-                        created.url(), template));
+                emailSender.send(user != null
+                        ? CompetitionEmail.loginLink(userId, participation.getEmail(), user.getName(), competition.getName(),
+                                participation.getRequestType(), created.url())
+                        : CompetitionEmail.invite(userId, participation.getEmail(), competition.getName(), created.url()));
             } catch (RecipientDomainRejectedException rejected) {
                 // Spec 05-047: one address whose domain takes no e-mail doesn't stop the others; it
                 // stays EMAIL_NOT_SENT (EmailServiceLoggingAspect logs it).

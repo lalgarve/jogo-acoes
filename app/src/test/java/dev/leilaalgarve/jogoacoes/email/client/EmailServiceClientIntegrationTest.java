@@ -1,10 +1,8 @@
 package dev.leilaalgarve.jogoacoes.email.client;
 
 import dev.leilaalgarve.jogoacoes.JogoAcoesApplication;
-import dev.leilaalgarve.jogoacoes.competition.RequestType;
-import dev.leilaalgarve.jogoacoes.email.EmailRequest;
 import dev.leilaalgarve.jogoacoes.email.EmailSender;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
+import dev.leilaalgarve.jogoacoes.email.OutgoingEmail;
 import dev.leilaalgarve.jogoacoes.email.SentEmail;
 import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceAuthenticationException;
@@ -81,14 +79,14 @@ class EmailServiceClientIntegrationTest {
     @Test
     void startingAppRegistersEveryTemplateInEmailService() {
         // The synchronizer already ran on ApplicationReadyEvent, while this context started.
-        for (EmailServiceTemplate expected : EmailTemplateSynchronizer.templates()) {
+        for (EmailServiceTemplate expected : synchronizer.templates()) {
             assertThat(gateway.findTemplate(expected.name())).contains(expected);
         }
     }
 
     @Test
     void synchronizingAgainLeavesEmailServiceInTheSameState() {
-        List<EmailServiceTemplate> expected = EmailTemplateSynchronizer.templates();
+        List<EmailServiceTemplate> expected = synchronizer.templates();
 
         synchronizer.synchronize();
         synchronizer.synchronize();
@@ -290,30 +288,29 @@ class EmailServiceClientIntegrationTest {
 
     static Stream<Arguments> everyKindOfEmail() {
         return Stream.of(
-                Arguments.of(EmailTemplate.INVITE, null, "Copa de Inverno", RequestType.INVITE, "invite"),
-                Arguments.of(EmailTemplate.REGISTRATION_LINK, null, "Copa de Inverno", RequestType.REQUEST,
-                        "registration-link"),
-                Arguments.of(EmailTemplate.LOGIN_LINK, "Ana", null, null, "login-link"),
-                Arguments.of(EmailTemplate.LOGIN_LINK, "Ana", "Copa de Inverno", RequestType.INVITE, "login-link-invite"),
-                Arguments.of(EmailTemplate.LOGIN_LINK, "Ana", "Copa de Inverno", RequestType.REQUEST,
-                        "login-link-request"));
+                Arguments.of("invite", null, "Copa de Inverno"),
+                Arguments.of("registration-link", null, "Copa de Inverno"),
+                Arguments.of("login-link", "Ana", null),
+                Arguments.of("login-link-invite", "Ana", "Copa de Inverno"),
+                Arguments.of("login-link-request", "Ana", "Copa de Inverno"));
     }
 
     @ParameterizedTest
     @MethodSource("everyKindOfEmail")
-    void sendingRecordsEmailServiceIdAndReachesSesWithTheTemplate(EmailTemplate template, String name,
-            String competitionName, RequestType origin, String expectedTemplateName) throws Exception {
+    void sendingRecordsEmailServiceIdAndReachesSesWithTheTemplate(String templateName, String name,
+            String competitionName) throws Exception {
         // Short qualifier: the local part has to stay within 64 characters (@Email in the generated client).
         String recipient = unique("send");
         String link = "https://jogo-acoes.example/login-links/" + UUID.randomUUID();
 
-        emailSender.send(new EmailRequest(null, recipient, name, competitionName, origin, link, template));
+        emailSender.send(new TestEmail(recipient, link, templateName, variables(name, competitionName, link)));
 
         SentEmail recorded = sentEmailRepository.findByLink(link).orElseThrow();
         assertThat(recorded.getEmailServiceId()).isNotNull();
         JSONObject sent = sentToSes(recipient, Duration.ofSeconds(30))
                 .orElseThrow(() -> new AssertionError("no e-mail to " + recipient + " reached SES on LocalStack"));
-        assertThat(sent.getString("Template")).isEqualTo("jogo-acoes__" + expectedTemplateName);
+        assertThat(recorded.getTemplate()).isEqualTo(templateName);
+        assertThat(sent.getString("Template")).isEqualTo("jogo-acoes__" + templateName);
         assertThat(new JSONObject(sent.getString("TemplateData")).getString("link")).isEqualTo(link);
     }
 
@@ -363,8 +360,31 @@ class EmailServiceClientIntegrationTest {
                 "name", "Ana", "competitionName", "Copa de Inverno", "link", "https://jogo-acoes.example/login-links/abc"));
     }
 
-    private static EmailServiceTemplate templateNamed(String name) {
-        return EmailTemplateSynchronizer.templates().stream()
+    /**
+     * Spec 05-061: which template each situation picks is the clients' job (CompetitionEmailTest,
+     * LoginLinkEmailTest); here any OutgoingEmail with a registered template name will do.
+     */
+    private record TestEmail(String recipient, String link, String templateName, Map<String, Object> templateData)
+            implements OutgoingEmail {
+        @Override
+        public Long userId() {
+            return null;
+        }
+    }
+
+    private static Map<String, Object> variables(String name, String competitionName, String link) {
+        Map<String, Object> data = new java.util.HashMap<>(Map.of("link", link));
+        if (name != null) {
+            data.put("name", name);
+        }
+        if (competitionName != null) {
+            data.put("competitionName", competitionName);
+        }
+        return data;
+    }
+
+    private EmailServiceTemplate templateNamed(String name) {
+        return synchronizer.templates().stream()
                 .filter(template -> template.name().equals(name))
                 .findFirst().orElseThrow();
     }

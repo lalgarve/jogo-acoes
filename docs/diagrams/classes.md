@@ -193,32 +193,50 @@ Três lados: o cliente no `app/` (pacote `dev.leilaalgarve.jogoacoes.email`), qu
 `email-service` de forma síncrona (spec 05-034); o `email-service/` (pacote
 `dev.leilaalgarve.jogoacoes.emailservice.send`), que publica na fila SQS; e o consumidor
 `email-lambda/` (pacote `dev.leilaalgarve.jogoacoes.email.lambda`), que pede ao Amazon SES o
-envio do template (spec 05-031).
+envio do template (spec 05-031). No `app`, cada módulo cliente (`competition`, `loginsession`)
+monta os próprios e-mails e define os próprios templates; o `email` não conhece os clientes
+(spec 05-061).
 
 ```mermaid
 classDiagram
     class EmailSender {
         <<interface>>
-        +send(EmailRequest request)
+        +send(OutgoingEmail email)
     }
-    class EmailRequest {
+    class OutgoingEmail {
+        <<interface>>
+        +userId() Long
+        +recipient() String
+        +link() String
+        +templateName() String
+        +templateData() Map
+    }
+    class EmailTemplateSource {
+        <<interface>>
+        +templates() List~TemplateDefinition~
+    }
+    class TemplateDefinition {
         <<record>>
-        +Long userId
-        +String email
         +String name
-        +String competitionName
-        +RequestType origin
-        +String link
-        +EmailTemplate template
+        +String subject
+        +String content
     }
+    class CompetitionEmail["CompetitionEmail (competition)"] {
+        <<record>>
+    }
+    class LoginLinkEmail["LoginLinkEmail (loginsession)"] {
+        <<record>>
+    }
+    class CompetitionEmailTemplates["CompetitionEmailTemplates (competition)"]
+    class LoginEmailTemplates["LoginEmailTemplates (loginsession)"]
     class StubEmailSender {
         -SentEmailRecorder sentEmailRecorder
-        +send(EmailRequest request)
+        +send(OutgoingEmail email)
     }
     class EmailServiceEmailSender {
         -EmailServiceGateway gateway
         -SentEmailRecorder sentEmailRecorder
-        +send(EmailRequest request)
+        +send(OutgoingEmail email)
     }
     class EmailServiceGateway {
         -TemplatesApi templates
@@ -230,21 +248,27 @@ classDiagram
     }
     class EmailTemplateSynchronizer {
         -EmailServiceGateway gateway
+        -List~EmailTemplateSource~ sources
         +synchronize()
     }
     class SentEmailRecorder {
-        +record(EmailRequest request) SentEmail
-        +record(EmailRequest request, UUID emailServiceId) SentEmail
+        +record(OutgoingEmail email) SentEmail
+        +record(OutgoingEmail email, UUID emailServiceId) SentEmail
     }
 
     EmailSender <|.. StubEmailSender
     EmailSender <|.. EmailServiceEmailSender
-    EmailSender ..> EmailRequest : usa
+    EmailSender ..> OutgoingEmail : usa
+    OutgoingEmail <|.. CompetitionEmail
+    OutgoingEmail <|.. LoginLinkEmail
+    EmailTemplateSource <|.. CompetitionEmailTemplates
+    EmailTemplateSource <|.. LoginEmailTemplates
+    EmailTemplateSource ..> TemplateDefinition : devolve
     StubEmailSender ..> SentEmailRecorder : usa
     EmailServiceEmailSender ..> EmailServiceGateway : usa
     EmailServiceEmailSender ..> SentEmailRecorder : usa
-    EmailServiceEmailSender ..> EmailTemplate : escolhe 1 dos 5\ntemplates Handlebars
-    EmailTemplateSynchronizer ..> EmailServiceGateway : cadastra os 5 templates\nna subida
+    EmailTemplateSynchronizer ..> EmailTemplateSource : lê os templates\nde cada cliente
+    EmailTemplateSynchronizer ..> EmailServiceGateway : cadastra na subida,\ncom o layout comum
     SentEmailRecorder ..> SentEmail : grava
 
     class EmailSendService["EmailSendService (email-service)"] {

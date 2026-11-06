@@ -1,0 +1,331 @@
+# Spec: Nenhum ciclo de dependência entre módulos
+
+**Status:** implementada; verificação manual da Leila (T008) pendente
+**Issue:** —
+**Iteração:** iteration-5
+
+## Resumo
+
+Um teste de arquitetura monta, em cada serviço, um grafo direcionado em que cada nó é um módulo
+e cada aresta `A → B` diz que alguma classe de `A` referencia alguma classe de `B`. No fim, um
+algoritmo de grafos procura ciclos. Se houver algum, o build falha e a mensagem mostra cada ciclo
+com os módulos envolvidos e uma referência de exemplo para cada aresta.
+
+## Motivação
+
+- **Pedido da Leila (2026-10-24):** verificar se há referências circulares entre módulos, nos
+  três passos: montar o grafo, criar uma aresta para cada referência de um módulo a outro e
+  aplicar um algoritmo que encontre ciclos.
+- Os `ArchitectureTest` de hoje proíbem dependências específicas (por exemplo, `user`,
+  `loginsecurity` e `link` não dependem entre si), mas nenhum olha o grafo inteiro. Um ciclo
+  novo entre dois módulos que não estão nessas regras passa sem ser notado.
+- **Já existe um ciclo no `app`:** `competition → email` (os serviços de competição montam
+  `EmailRequest` e chamam `EmailSender`) e `email → competition` (`EmailRequest` e
+  `EmailServiceEmailSender` usam o enum `competition.RequestType`). Conferido em 2026-10-24 pelos
+  `import` de `origin/development`. O teste nasce vermelho até esse ciclo ser quebrado.
+
+## O que é um módulo
+
+O pacote de primeiro nível abaixo do pacote base de cada serviço, com tudo o que estiver abaixo
+dele:
+
+| Serviço | Pacote base | Módulos hoje |
+|---|---|---|
+| `app` | `dev.leilaalgarve.jogoacoes` | `api` (gerado do OpenAPI), `bootstrap`, `captcha`, `common`, `competition`, `email`, `link`, `log`, `loginsecurity`, `loginsession`, `user` |
+| `email-service` | `dev.leilaalgarve.jogoacoes.emailservice` | `api` (gerado), `auth`, `common`, `disposable`, `domain`, `send`, `template` |
+
+Um módulo novo entra no grafo sozinho, sem mudar o teste.
+
+## Diagramas de classes
+
+Só as classes envolvidas no ciclo `competition ↔ email` e no envio de e-mail. Nomes novos
+(`OutgoingEmail`, `EmailTemplateSource`, `TemplateDefinition`, `CompetitionEmail`, `LoginLinkEmail` e as fontes de
+template) são sugestão; o nome final sai na implementação.
+
+### Antes (ciclo atual)
+
+```mermaid
+classDiagram
+    namespace competition {
+        class CompetitionService {
+            +decideInviteEmailTiming(competitionId, timing)
+        }
+        class EntryRequestService {
+            +requestEntry(competitionId, request)
+        }
+        class PlayerManagementService {
+            +resendInviteEmail(competitionId, participationId)
+        }
+        class RequestType {
+            <<enumeration>>
+            INVITE
+            REQUEST
+        }
+    }
+    namespace loginsession {
+        class LoginController {
+            +requestLoginLink(email)
+        }
+    }
+    namespace email {
+        class EmailSender {
+            <<interface>>
+            +send(EmailRequest)
+        }
+        class EmailRequest {
+            <<record>>
+            +Long userId
+            +String email
+            +String name
+            +String competitionName
+            +RequestType origin
+            +String link
+            +EmailTemplate template
+        }
+        class EmailTemplate {
+            <<enumeration>>
+            INVITE
+            REGISTRATION_LINK
+            LOGIN_LINK
+        }
+        class EmailServiceEmailSender {
+            +send(EmailRequest)
+            ~templateNameFor(EmailRequest) String
+            ~templateDataFor(EmailRequest) Map
+        }
+        class StubEmailSender {
+            +send(EmailRequest)
+        }
+        class SentEmailRecorder {
+            ~record(EmailRequest, UUID) SentEmail
+        }
+        class SentEmail {
+            +EmailTemplate template
+        }
+        class EmailTemplateSynchronizer {
+            ~TEMPLATE_NAMES$ List~String~
+            ~synchronize()
+        }
+        class EmailServiceGateway {
+            +sendEmail(templateName, recipient, data) UUID
+            +upsertTemplate(EmailServiceTemplate)
+        }
+    }
+
+    CompetitionService --> EmailSender
+    EntryRequestService --> EmailSender
+    PlayerManagementService --> EmailSender
+    LoginController --> EmailSender
+    CompetitionService ..> EmailRequest : monta
+    EntryRequestService ..> EmailRequest : monta
+    PlayerManagementService ..> EmailRequest : monta
+    LoginController ..> EmailRequest : monta
+    EmailRequest --> RequestType : ciclo email → competition
+    EmailRequest --> EmailTemplate
+    EmailSender <|.. EmailServiceEmailSender
+    EmailSender <|.. StubEmailSender
+    EmailServiceEmailSender ..> RequestType : escolhe login-link-invite/request
+    EmailServiceEmailSender --> EmailServiceGateway
+    EmailServiceEmailSender --> SentEmailRecorder
+    StubEmailSender --> SentEmailRecorder
+    SentEmailRecorder --> SentEmail : grava
+    SentEmail --> EmailTemplate
+    EmailTemplateSynchronizer --> EmailServiceGateway : registra os 5 templates
+```
+
+O `email` conhece os clientes em três lugares: `EmailRequest` usa `RequestType` da `competition`
+(é a aresta que fecha o ciclo), `EmailTemplate` e `EmailServiceEmailSender.templateNameFor`
+escolhem entre os templates de todos os clientes, e `EmailTemplateSynchronizer.TEMPLATE_NAMES`
+lista os cinco templates, que ficam juntos em `email-templates/`. Um cliente novo de e-mail
+precisaria mudar as três.
+
+### Depois (interfaces implementadas pelos clientes)
+
+```mermaid
+classDiagram
+    namespace competition {
+        class CompetitionService
+        class EntryRequestService
+        class PlayerManagementService
+        class RequestType {
+            <<enumeration>>
+            INVITE
+            REQUEST
+        }
+        class CompetitionEmail {
+            <<record>>
+            +templateName() String
+            +templateData() Map
+        }
+        class CompetitionEmailTemplates {
+            +templates() List~TemplateDefinition~
+        }
+    }
+    namespace loginsession {
+        class LoginController
+        class LoginLinkEmail {
+            <<record>>
+            +templateName() String
+            +templateData() Map
+        }
+        class LoginEmailTemplates {
+            +templates() List~TemplateDefinition~
+        }
+    }
+    namespace email {
+        class OutgoingEmail {
+            <<interface>>
+            +recipient() String
+            +userId() Long
+            +templateName() String
+            +templateData() Map~String,Object~
+        }
+        class EmailTemplateSource {
+            <<interface>>
+            +templates() List~TemplateDefinition~
+        }
+        class TemplateDefinition {
+            <<record>>
+            +String name
+            +String subject
+            +String content
+        }
+        class EmailSender {
+            <<interface>>
+            +send(OutgoingEmail)
+        }
+        class EmailServiceEmailSender {
+            +send(OutgoingEmail)
+        }
+        class StubEmailSender {
+            +send(OutgoingEmail)
+        }
+        class SentEmailRecorder {
+            ~record(OutgoingEmail, UUID) SentEmail
+        }
+        class SentEmail {
+            +String templateName
+        }
+        class EmailTemplateSynchronizer {
+            -List~EmailTemplateSource~ sources
+            ~synchronize()
+        }
+        class EmailServiceGateway {
+            +sendEmail(templateName, recipient, data) UUID
+            +upsertTemplate(EmailServiceTemplate)
+        }
+    }
+
+    CompetitionService --> EmailSender
+    EntryRequestService --> EmailSender
+    PlayerManagementService --> EmailSender
+    LoginController --> EmailSender
+    CompetitionService ..> CompetitionEmail : monta
+    EntryRequestService ..> CompetitionEmail : monta
+    PlayerManagementService ..> CompetitionEmail : monta
+    LoginController ..> LoginLinkEmail : monta
+    CompetitionEmail ..> RequestType : escolhe o template
+    OutgoingEmail <|.. CompetitionEmail
+    OutgoingEmail <|.. LoginLinkEmail
+    EmailTemplateSource <|.. CompetitionEmailTemplates
+    EmailTemplateSource <|.. LoginEmailTemplates
+    EmailTemplateSource ..> TemplateDefinition : devolve
+    EmailSender <|.. EmailServiceEmailSender
+    EmailSender <|.. StubEmailSender
+    EmailSender ..> OutgoingEmail : recebe
+    EmailServiceEmailSender --> EmailServiceGateway
+    EmailServiceEmailSender --> SentEmailRecorder
+    StubEmailSender --> SentEmailRecorder
+    SentEmailRecorder --> SentEmail : grava
+    EmailTemplateSynchronizer --> EmailTemplateSource : lê todas
+    EmailTemplateSynchronizer --> EmailServiceGateway : registra com o layout comum
+```
+
+Todas as setas entre módulos saem de `competition` ou `loginsession` e chegam em `email`; nenhuma
+volta. `RequestType` só é usado dentro da `competition`. `CompetitionEmail` decide entre
+`invite`, `registration-link`, `login-link-invite` e `login-link-request`; `LoginLinkEmail` usa
+`login-link`. `CompetitionEmailTemplates` lê `email-templates/competition/` e
+`LoginEmailTemplates` lê `email-templates/loginsession/`; o `layout.html` fica no `email`. Um
+cliente novo implementa `OutgoingEmail` e `EmailTemplateSource` e não muda nada no `email`.
+
+## Cenários (comportamento esperado)
+
+Não há `.feature` novo: a mudança é na forma de testar, não no comportamento dos serviços.
+Verificação:
+
+1. **Sem ciclo:** com o ciclo `competition ↔ email` quebrado, o teste passa no `app` e no
+   `email-service`.
+2. **Ciclo de dois módulos:** uma classe de `user` que referencie `log` (já existe `log → user`)
+   faz o teste falhar, e a mensagem mostra `user → log → user`.
+3. **Ciclo longo:** um ciclo de três ou mais módulos (por exemplo `email → loginsession`, com
+   `loginsession → email` e `competition → email` já existentes) também é encontrado e
+   mostrado inteiro.
+4. **Vários ciclos:** se houver mais de um ciclo, a mensagem mostra todos, não só o primeiro.
+5. **Cliente novo de e-mail:** um módulo que implemente as duas interfaces do `email` manda
+   e-mail com template próprio sem nenhuma mudança no `email`, e o grafo continua sem ciclo
+   (o cliente depende do `email`, nunca o contrário).
+6. **Referência dentro do mesmo módulo:** classes de subpacotes do mesmo módulo (por exemplo
+   `competition.exception` e `competition`) não geram aresta.
+
+## Requisitos funcionais
+
+- **Referência** é qualquer dependência que aparece no bytecode compilado: `import`, nome
+  totalmente qualificado no código, herança, campo, parâmetro, retorno, anotação, chamada de
+  método ou exceção lançada. Não só `import`.
+- Só classes de produção (`src/main`) entram no grafo; classes de teste ficam de fora.
+- Um teste por serviço com mais de um módulo: `app` e `email-service`. A `email-lambda` e o
+  `config-server` têm um pacote só e não ganham o teste.
+- A mensagem de falha lista cada ciclo como sequência de módulos (`A → B → C → A`) e, para cada
+  aresta, ao menos uma referência concreta (`classe de origem → classe de destino`), para quem
+  for corrigir saber onde mexer.
+- O ciclo `competition ↔ email` que já existe é quebrado nesta spec, com o `email` virando um
+  serviço genérico de envio para os clientes (ver "Decisões resolvidas"):
+  - o `email` não conhece nenhum cliente: não usa `competition.RequestType` nem tem a lista dos
+    templates de cada cliente (o enum `EmailTemplate` e a escolha do template em
+    `EmailServiceEmailSender` saem do `email`);
+  - o `email` publica duas interfaces: uma para o cliente montar o e-mail (destinatário, usuário
+    quando houver, nome do template e variáveis) e outra para o cliente declarar os templates
+    que são dele (nome, assunto e conteúdo);
+  - `competition` e `loginsession` implementam as duas: cada um monta os próprios e-mails,
+    escolhe o template e define os templates que usa;
+  - o `email` continua dono do que é comum a todos: o layout compartilhado, o registro dos
+    templates no `email-service`, o envio e o registro em `sent_email`;
+  - um cliente novo usa e-mail implementando as duas interfaces, sem mudar o `email`.
+- Os e-mails enviados continuam os mesmos: mesmos cinco templates, mesmo assunto, mesmo texto e
+  mesmas variáveis. A suíte de caixa-preta de e-mail continua passando sem mudança.
+- `sent_email` passa a guardar o nome do template (texto) em vez do enum. Sem migração de dado
+  existente nem compatibilidade com o formato antigo (constitution, "Status do sistema:
+  pré-produção").
+- **Constitution:** a seção "Fronteira entre módulos e serviços" passa a dizer que não há ciclo
+  de dependência entre módulos de um serviço, garantido por teste de arquitetura.
+
+## Requisitos não-funcionais
+
+- O teste roda na suíte normal (`mvn test`) junto dos outros `ArchitectureTest`, sem
+  infraestrutura de pé.
+
+## Fora de escopo
+
+- Ciclos entre módulos Maven: o Maven já recusa um reator com ciclo.
+- Ciclos entre serviços (`app`, `email-service`): eles só se falam por contrato, e os
+  `ArchitectureTest` já proíbem dependência Java entre eles (spec 05-034).
+- Regra de camadas dentro de cada módulo (controller → service → repository): spec
+  [05-063](../05-063-camadas-dentro-dos-modulos/spec.md).
+
+## Decisões resolvidas
+
+- **Algoritmo próprio sobre o grafo** (Leila, 2026-10-24): o teste monta o grafo e aplica o
+  algoritmo, nos três passos que ela descreveu. Detalhe técnico em `plan.md`.
+- **Ciclo `competition ↔ email`: o `email` publica interfaces e os clientes as implementam**
+  (Leila, 2026-10-25). Hoje só `competition` e `loginsession` mandam e-mail, mas já são dois
+  clientes e provavelmente surgirão outros. Cada cliente implementa a interface que monta o
+  e-mail e define os próprios templates; o `email` não sabe quem são os clientes. Descartadas: um
+  enum próprio de origem dentro do `email` e mover `RequestType` para o `email`, porque as duas
+  mantêm no `email` a lista dos templates de cada cliente.
+
+- **Classe do grafo duplicada no `app` e no `email-service`** (Leila, 2026-10-26): os dois
+  serviços não compartilham código Java, nem em teste (spec 05-034).
+
+## Decisões em aberto
+
+Nenhuma.
