@@ -4,9 +4,7 @@ import dev.leilaalgarve.jogoacoes.api.LoginApi;
 import dev.leilaalgarve.jogoacoes.api.model.CompleteRegistrationRequest;
 import dev.leilaalgarve.jogoacoes.api.model.LoginResult;
 import dev.leilaalgarve.jogoacoes.api.model.RequestLoginLinkRequest;
-import dev.leilaalgarve.jogoacoes.email.EmailRequest;
 import dev.leilaalgarve.jogoacoes.email.EmailSender;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
 import dev.leilaalgarve.jogoacoes.link.LinkOutcome;
 import dev.leilaalgarve.jogoacoes.link.LinkService;
@@ -80,8 +78,7 @@ public class LoginController implements LoginApi {
         LinkCreationResult created = linkService.create(LoginLinkHandler.KEY, new LinkPayload(user.getId(), email, extra));
         auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), user, "Login link issued to " + email);
 
-        emailSender.send(new EmailRequest(user.getId(), email, user.getName(), null, null,
-                created.url(), EmailTemplate.LOGIN_LINK));
+        emailSender.send(new LoginLinkEmail(user.getId(), email, user.getName(), created.url()));
         return ResponseEntity.status(202).build();
     }
 

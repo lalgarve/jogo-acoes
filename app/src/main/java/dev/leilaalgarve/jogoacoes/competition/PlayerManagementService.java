@@ -9,9 +9,7 @@ import dev.leilaalgarve.jogoacoes.competition.RequestType;
 import dev.leilaalgarve.jogoacoes.competition.exception.CompetitionNotFoundException;
 import dev.leilaalgarve.jogoacoes.competition.exception.PlayerNotFoundException;
 import dev.leilaalgarve.jogoacoes.competition.exception.PlayerValidationException;
-import dev.leilaalgarve.jogoacoes.email.EmailRequest;
 import dev.leilaalgarve.jogoacoes.email.EmailSender;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.email.exception.RecipientDomainRejectedException;
 import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
 import dev.leilaalgarve.jogoacoes.link.LinkService;
@@ -136,9 +134,7 @@ public class PlayerManagementService {
         auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), currentUserService.currentUser(),
                 "Invite login link issued to " + participation.getEmail());
 
-        emailSender.send(new EmailRequest(userId, participation.getEmail(),
-                user != null ? user.getName() : null, participation.getCompetition().getName(), participation.getRequestType(),
-                created.url(), templateFor(participation)));
+        emailSender.send(emailFor(participation, created.url()));
 
         if (participation.getFirstEmailSentDate() == null) {
             participation.setFirstEmailSentDate(LocalDate.now());
@@ -149,11 +145,16 @@ public class PlayerManagementService {
                 "Participation status changed to EMAIL_SENT");
     }
 
-    private static EmailTemplate templateFor(Participation participation) {
-        if (participation.getUser() != null) {
-            return EmailTemplate.LOGIN_LINK;
+    private static CompetitionEmail emailFor(Participation participation, String link) {
+        User user = participation.getUser();
+        String competitionName = participation.getCompetition().getName();
+        if (user != null) {
+            return CompetitionEmail.loginLink(user.getId(), participation.getEmail(), user.getName(), competitionName,
+                    participation.getRequestType(), link);
         }
-        return participation.getRequestType() == RequestType.INVITE ? EmailTemplate.INVITE : EmailTemplate.REGISTRATION_LINK;
+        return participation.getRequestType() == RequestType.INVITE
+                ? CompetitionEmail.invite(null, participation.getEmail(), competitionName, link)
+                : CompetitionEmail.registrationLink(null, participation.getEmail(), competitionName, link);
     }
 
     private Competition findCompetition(Long competitionId) {
