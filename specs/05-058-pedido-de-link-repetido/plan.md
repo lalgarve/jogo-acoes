@@ -29,11 +29,11 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 
 | Pergunta | Decisão | Status | Raciocínio |
 |---|---|---|---|
-| Onde mora a regra "reenviar o link ativo" | Método novo em `LinkService`: `findActive(String serviceKey, LinkPayload payload)` devolve o `LinkCreationResult` do link ativo com o mesmo `serviceKey`, o mesmo e-mail (sem diferenciar maiúsculas), o mesmo `userId` e o mesmo `extra`, se houver. Quem pede o link decide o que fazer com a resposta. | proposta | O módulo `link` continua sem saber o que é `returnTo` ou `participationId`: compara o `extra` inteiro, como mapa. A decisão de invalidar (login) ou não (entrada) continua com cada fluxo, como hoje. |
+| Onde mora a regra "reenviar o link ativo" | Método novo em `LinkService`: `findActive(String serviceKey, LinkPayload payload)` devolve o `LinkCreationResult` do link reenviável (ativo e com `expiresAt` pelo menos 1 dia à frente, constante `RESEND_MIN_VALIDITY = Duration.ofDays(1)`) com o mesmo `serviceKey`, o mesmo e-mail (sem diferenciar maiúsculas), o mesmo `userId` e o mesmo `extra`, se houver. Quem pede o link decide o que fazer com a resposta. | proposta | O módulo `link` continua sem saber o que é `returnTo` ou `participationId`: compara o `extra` inteiro, como mapa. A decisão de invalidar (login) ou não (entrada) continua com cada fluxo, como hoje. |
 | Como comparar o `extra` | Ler os candidatos com `findByServiceKeyAndEmailIgnoreCaseAndUsedAtIsNullAndInvalidatedAtIsNullAndExpiresAtAfter` e comparar o `extra` desserializado (`Map.equals`) em Java; se houver mais de um, o mais recente (`id` maior). | proposta | O JSON gravado não tem ordem de chaves garantida, então comparar texto falharia. Os candidatos são poucos (um e-mail, links ativos). |
 | Reenvio: o que muda no registro | Só `emailSentAt = agora`. Token, `expiresAt` e o resto ficam iguais. Método `LinkService.markResent(Long linkId)`. | proposta | `spec.md`: mesma validade, sem estender. `emailSentAt` passa a dizer quando saiu o último e-mail daquele link. |
-| Login | Em `LoginLinkRequestService.requestLoginLink`: `findActive(LoginLinkHandler.KEY, payload)`. Achou: `markResent`, auditoria e envio do mesmo link. Não achou: o fluxo atual (invalidar os links ativos do usuário, criar, auditar, enviar). | proposta | Mesmo `returnTo` faz parte do `extra`, então um `returnTo` diferente não acha o link e cai no fluxo de link novo, como a `spec.md` pede. |
-| Entrada | Em `requestEntry`: `findActive(CompetitionLinkHandler.KEY, payload)` com o `participationId` no `extra`. Achou: reenvia. Não achou: cria. Nunca invalida. | proposta | Vale para quem tem e quem não tem cadastro: a chave é e-mail + participação, não `userId`. Links de outras competições têm outro `participationId` e não são afetados. |
+| Login | Em `LoginLinkRequestService.requestLoginLink`: `findActive(LoginLinkHandler.KEY, payload)`. Achou: `markResent`, auditoria e envio do mesmo link. Não achou: o fluxo atual (invalidar, criar, auditar, enviar), com `invalidateActiveLinksFor` deixando de invalidar os links que vencem em menos de 1 dia. | proposta | Mesmo `returnTo` faz parte do `extra`, então um `returnTo` diferente não acha o link e cai no fluxo de link novo, como a `spec.md` pede. |
+| Entrada | Em `requestEntry`: `findActive(CompetitionLinkHandler.KEY, payload)` com o `participationId` no `extra`. Achou: reenvia. Não achou (inclusive quando o link ativo vence em menos de 1 dia): cria. Nunca invalida. | proposta | Vale para quem tem e quem não tem cadastro: a chave é e-mail + participação, não `userId`. Links de outras competições têm outro `participationId` e não são afetados. |
 | Convites (`PlayerManagementService`) | Não mudam. | proposta | A `spec.md` só cobre login e entrada. O reenvio de convite pelo administrador já é explícito (`resendInviteEmail(s)`). |
 | Auditoria | `LOGIN_LINK_ISSUED` com o id do link a cada e-mail; no reenvio, a mensagem termina em `(resent)`, por exemplo `Login link issued to x@y (resent)`. | proposta | `spec.md`: uma entrada por e-mail, com o mesmo id. O sufixo deixa a diferença visível sem tipo de log novo. |
 | Falha no reenvio | Nada a fazer além da 05-056: o envio está dentro do `@Transactional` do serviço, e uma falha desfaz o `markResent` e a auditoria. O link continua ativo como estava. | resolvida | Já é o comportamento que a 05-056 cria para o login. `requestEntry` já envia dentro do próprio `@Transactional`. |
@@ -51,7 +51,8 @@ Decisões marcadas "em aberto" viram commit `decision:` quando resolvidas (ver
 - `competition/EntryRequestService.java`: ramo do reenvio em `requestEntry`.
 - `docs/openapi.yaml`: descrições.
 - Testes: `LinkServiceTest` (casos de `findActive`: mesmo `extra`, `extra` diferente, link usado,
-  invalidado, expirado, e-mail com outra grafia); `login.feature` e `LoginSteps` (os dois
+  invalidado, expirado, vencendo em menos de 1 dia, e-mail com outra grafia; e
+  `invalidateActiveLinksFor` poupando o link que vence em menos de 1 dia); `login.feature` e `LoginSteps` (os dois
   cenários da `spec.md` substituem "Requesting a new login link invalidates the previous one");
   cenário novo em `request_competition_entry.feature`; um cenário em `redirect_after_login.feature`
   ou em `LoginSteps` para o `returnTo` diferente (link novo, o anterior invalidado).
@@ -75,9 +76,9 @@ dependem de `link`.
   dois. No login, o segundo invalida os links que enxerga, mas não o do primeiro, que ainda não
   foi gravado: os dois links ficam ativos e os dois funcionam. É o mesmo resultado que a
   `spec.md` quer (qualquer e-mail funciona), então não vale uma trava.
-- **Link reenviado perto de expirar.** Um link pedido há quase 7 dias é reenviado com a validade
-  que sobra. A `spec.md` decidiu não estender; quem receber um link expirado pede outro e, sem
-  link ativo, ganha um novo.
+- **Link perto de expirar.** Resolvido em 2026-11-06: só é reenviado o link que ainda vale por
+  pelo menos 1 dia. Abaixo disso sai um link novo e o anterior continua valendo até expirar, então
+  por até 1 dia a pessoa pode ter dois links válidos. Os dois levam ao mesmo lugar.
 - **Token em claro.** O reenvio depende de o token estar guardado em claro, como já está. Se um
   dia passar a ser guardado só como hash (Issue #117, item 6), o reenvio terá de mudar.
 
