@@ -3,7 +3,7 @@
 Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 "Rastreamento de trabalho via Issues" em `memory/constitution.md`).
 
-**Ordem:** a spec 05-056 mesclada em `development` antes de tudo; depois contrato e testes,
+**Ordem:** a spec 05-056 já está em `development` (PR #210); primeiro contrato e testes,
 falhando pelo motivo esperado; depois o código. Nenhuma task começa sem pedido explícito
 (constitution, "Nunca começar a implementar sem pedido explícito").
 
@@ -13,7 +13,7 @@ Leila preferir.
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | Pré-requisito: spec 05-056 (Issue #135) mesclada em `development`, com `LoginLinkRequestService`. Trazer `development` para o branch desta spec | — | | #117 |
+| ~~T001~~ | Pré-requisito: spec 05-056 (Issue #135) mesclada em `development`, com `LoginLinkRequestService`. Feito: PR #210, trazida para o branch desta spec em 2026-11-06 | — | | #117 |
 | T002 | `docs/openapi.yaml`: descrições de `requestLoginLink`, `consumeLoginLink` e `requestOrConfirmEntry` (decisão "Contrato" do `plan.md`). Regenerar e compilar | T001 | [P] | #117 |
 | T003 | `LinkServiceTest`: casos de `findActive` (mesmo `extra` acha; `extra` diferente, link usado, invalidado ou expirado não acham; e-mail com outra grafia acha; com dois candidatos, o mais recente) e de `markResent` (só muda `emailSentAt`). Não compila até T005; escrever primeiro | T001 | [P] | #117 |
 | T004 | `login.feature`: substituir "Requesting a new login link invalidates the previous one" pelos dois cenários da `spec.md`; acrescentar um cenário com `returnTo` diferente (link novo, o anterior deixa de valer). `request_competition_entry.feature`: cenário "Player requests entry twice and uses the first link". Passos em `LoginSteps` e `RequestCompetitionEntrySteps` (o token de cada e-mail vem do `StubEmailSender`). Rodar e confirmar que falham hoje por o token ser diferente | T001 | [P] | #117 |
