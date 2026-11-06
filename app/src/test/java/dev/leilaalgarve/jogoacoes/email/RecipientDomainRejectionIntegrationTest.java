@@ -2,6 +2,7 @@ package dev.leilaalgarve.jogoacoes.email;
 
 import dev.leilaalgarve.jogoacoes.api.model.DecideInviteEmailTimingRequest;
 import dev.leilaalgarve.jogoacoes.common.testsupport.CompetitionFixtures;
+import dev.leilaalgarve.jogoacoes.common.testsupport.LoginLinkFixtures;
 import dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails;
 import dev.leilaalgarve.jogoacoes.common.testsupport.UserMother;
 import dev.leilaalgarve.jogoacoes.competition.Competition;
@@ -15,6 +16,10 @@ import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.PlayerManagementService;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
 import dev.leilaalgarve.jogoacoes.email.exception.RecipientDomainRejectedException;
+import dev.leilaalgarve.jogoacoes.link.LinkRecord;
+import dev.leilaalgarve.jogoacoes.link.LinkRecordRepository;
+import dev.leilaalgarve.jogoacoes.log.LogRepository;
+import dev.leilaalgarve.jogoacoes.log.LogType;
 import dev.leilaalgarve.jogoacoes.user.User;
 import io.restassured.RestAssured;
 import org.junit.jupiter.api.AfterEach;
@@ -68,14 +73,24 @@ class RecipientDomainRejectionIntegrationTest {
     @Autowired
     private PlayerManagementService playerManagementService;
 
+    @Autowired
+    private LoginLinkFixtures loginLinkFixtures;
+
+    @Autowired
+    private LinkRecordRepository linkRecordRepository;
+
+    @Autowired
+    private LogRepository logRepository;
+
     @AfterEach
     void clearAuthentication() {
         SecurityContextHolder.clearContext();
     }
 
     @Test
-    void aLoginLinkToADomainThatTakesNoEmailIsRejected() {
+    void aLoginLinkToADomainThatTakesNoEmailIsRejectedAndChangesNothing() {
         User player = userMother.registeredPlayer("Ana", rejected());
+        LinkRecord previous = loginLinkFixtures.activeLink(player);
 
         RestAssured.given()
                 .port(port)
@@ -86,6 +101,16 @@ class RecipientDomainRejectionIntegrationTest {
                 .then()
                 .statusCode(422)
                 .body("message", org.hamcrest.Matchers.equalTo("The e-mail address domain does not accept e-mail"));
+
+        // Spec 05-056: the failed send undoes the whole request.
+        assertThat(linkRecordRepository.findById(previous.getId()).orElseThrow().getInvalidatedAt()).isNull();
+        assertThat(linkRecordRepository.findAll())
+                .filteredOn(link -> player.getId().equals(link.getUserId()))
+                .extracting(LinkRecord::getId)
+                .containsExactly(previous.getId());
+        assertThat(logRepository.findAll())
+                .filteredOn(log -> log.getUser() != null && player.getId().equals(log.getUser().getId()))
+                .noneMatch(log -> log.getLogType() == LogType.LOGIN_LINK_ISSUED);
     }
 
     @Test

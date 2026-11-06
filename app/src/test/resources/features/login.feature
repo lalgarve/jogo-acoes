@@ -93,6 +93,14 @@ Feature: Login via link sent by e-mail
     Then the previous login link is invalidated
     And only the new login link can be used to log in
 
+  Scenario: Requesting a login link while the e-mail service is unavailable changes nothing
+    Given a registered player has an active login link that has not been used yet
+    And the e-mail service is unavailable
+    When they request a new login link
+    Then the system reports that the e-mail could not be sent
+    And no new login link was issued
+    And the previous login link can still be used to log in
+
   Scenario: Player logs in on a new device beyond the configured limit
     Given the player is already logged in on the maximum number of devices allowed by the system
     When they log in successfully on one more device

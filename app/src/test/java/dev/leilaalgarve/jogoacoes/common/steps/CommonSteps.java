@@ -1,9 +1,11 @@
 package dev.leilaalgarve.jogoacoes.common.steps;
 
+import io.cucumber.java.After;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import dev.leilaalgarve.jogoacoes.common.testsupport.LoginHelper;
 import dev.leilaalgarve.jogoacoes.common.testsupport.ScenarioWorld;
+import dev.leilaalgarve.jogoacoes.common.testsupport.SwitchableEmailSender;
 import dev.leilaalgarve.jogoacoes.common.testsupport.UserMother;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,11 +15,20 @@ public class CommonSteps {
     private final ScenarioWorld world;
     private final UserMother userMother;
     private final LoginHelper loginHelper;
+    private final SwitchableEmailSender emailSender;
 
-    public CommonSteps(ScenarioWorld world, UserMother userMother, LoginHelper loginHelper) {
+    public CommonSteps(ScenarioWorld world, UserMother userMother, LoginHelper loginHelper,
+                       SwitchableEmailSender emailSender) {
         this.world = world;
         this.userMother = userMother;
         this.loginHelper = loginHelper;
+        this.emailSender = emailSender;
+    }
+
+    /** A scenario that switched email-service off must not leave it off for the next one. */
+    @After
+    public void switchEmailServiceBackOn() {
+        emailSender.makeAvailable();
     }
 
     @Given("^the user is (the system administrator|a new player|a registered player)$")

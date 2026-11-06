@@ -9,6 +9,7 @@ import dev.leilaalgarve.jogoacoes.common.testsupport.CompetitionFixtures;
 import dev.leilaalgarve.jogoacoes.common.testsupport.LoginHelper;
 import dev.leilaalgarve.jogoacoes.common.testsupport.LoginLinkFixtures;
 import dev.leilaalgarve.jogoacoes.common.testsupport.ScenarioWorld;
+import dev.leilaalgarve.jogoacoes.common.testsupport.SwitchableEmailSender;
 import dev.leilaalgarve.jogoacoes.common.testsupport.UserMother;
 import dev.leilaalgarve.jogoacoes.competition.Competition;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionRepository;
@@ -19,6 +20,8 @@ import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
 import dev.leilaalgarve.jogoacoes.link.LinkRecord;
 import dev.leilaalgarve.jogoacoes.link.LinkRecordRepository;
+import dev.leilaalgarve.jogoacoes.log.LogRepository;
+import dev.leilaalgarve.jogoacoes.log.LogType;
 import dev.leilaalgarve.jogoacoes.user.User;
 import dev.leilaalgarve.jogoacoes.user.UserRepository;
 import io.restassured.response.Response;
@@ -45,13 +48,16 @@ public class LoginSteps {
     private final LinkRecordRepository linkRecordRepository;
     private final LoginSessionRepository loginSessionRepository;
     private final UserRepository userRepository;
+    private final LogRepository logRepository;
+    private final SwitchableEmailSender emailSender;
     private final int maxDevicesPerUser;
 
     public LoginSteps(ScenarioWorld world, UserMother userMother, LoginHelper loginHelper,
                        CompetitionFixtures competitionFixtures, LoginLinkFixtures loginLinkFixtures,
                        CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
                        LinkRecordRepository linkRecordRepository, LoginSessionRepository loginSessionRepository,
-                       UserRepository userRepository, @Value("${login.max-devices-per-user}") int maxDevicesPerUser) {
+                       UserRepository userRepository, LogRepository logRepository, SwitchableEmailSender emailSender,
+                       @Value("${login.max-devices-per-user}") int maxDevicesPerUser) {
         this.world = world;
         this.userMother = userMother;
         this.loginHelper = loginHelper;
@@ -62,6 +68,8 @@ public class LoginSteps {
         this.linkRecordRepository = linkRecordRepository;
         this.loginSessionRepository = loginSessionRepository;
         this.userRepository = userRepository;
+        this.logRepository = logRepository;
+        this.emailSender = emailSender;
         this.maxDevicesPerUser = maxDevicesPerUser;
     }
 
@@ -399,6 +407,41 @@ public class LoginSteps {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
         LinkRecord oldLink = linkRecordRepository.findById(world.getCurrentLoginLink().getId()).orElseThrow();
         assertThat(oldLink.getInvalidatedAt()).isNotNull();
+    }
+
+    @Given("the e-mail service is unavailable")
+    public void the_e_mail_service_is_unavailable() {
+        emailSender.makeUnavailable();
+    }
+
+    @Then("the system reports that the e-mail could not be sent")
+    public void the_system_reports_that_the_e_mail_could_not_be_sent() {
+        assertThat(world.getLastResponse().statusCode()).isEqualTo(503);
+        assertThat(world.getLastResponse().jsonPath().getString("message"))
+                .isEqualTo("The e-mail could not be sent right now, try again");
+    }
+
+    @Then("no new login link was issued")
+    public void no_new_login_link_was_issued() {
+        Long userId = world.getCurrentUser().getId();
+        assertThat(linkRecordRepository.findAll())
+                .filteredOn(link -> userId.equals(link.getUserId()))
+                .extracting(LinkRecord::getId)
+                .containsExactly(world.getCurrentLoginLink().getId());
+        // Filtered by this scenario's user: the log table is shared with every other test (Issue #41).
+        assertThat(logRepository.findAll())
+                .filteredOn(log -> log.getUser() != null && userId.equals(log.getUser().getId()))
+                .noneMatch(log -> log.getLogType() == LogType.LOGIN_LINK_ISSUED);
+    }
+
+    @Then("the previous login link can still be used to log in")
+    public void the_previous_login_link_can_still_be_used_to_log_in() {
+        LinkRecord previous = linkRecordRepository.findById(world.getCurrentLoginLink().getId()).orElseThrow();
+        assertThat(previous.getInvalidatedAt()).isNull();
+        Response attempt = world.request()
+                .when()
+                .get("/login-links/{token}", previous.getToken());
+        assertThat(attempt.statusCode()).isEqualTo(200);
     }
 
     @Then("only the new login link can be used to log in")
