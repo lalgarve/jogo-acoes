@@ -52,3 +52,9 @@ Traduz `spec.md` em decisões técnicas. Valida contra `memory/constitution.md`.
 ## Critério de aceite: exceções
 
 Nenhuma classe de exceção nova. A falha do teste é um `AssertionError` do JUnit/ArchUnit.
+
+Um caminho de erro novo fica sem teste, de propósito: `DownloadListTasklet` agora lê o
+repositório da lista com `findById` e lança `IllegalStateException` se ele não existir. Antes,
+o SQL à mão simplesmente não achava a linha. O caminho é inalcançável: o job só recebe o id de
+um repositório que acabou de ler, e repositório nunca é apagado (não há endpoint de exclusão,
+spec 05-048). Forçar o caso exigiria apagar a linha no meio do job, só para o teste.

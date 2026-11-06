@@ -1,6 +1,6 @@
 # Spec: Nenhum ciclo de dependência entre módulos
 
-**Status:** especificada, aguardando implementação
+**Status:** implementada; verificação manual da Leila (T008) pendente
 **Issue:** —
 **Iteração:** iteration-5
 

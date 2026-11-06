@@ -1,6 +1,6 @@
 # Spec: Camadas dentro dos módulos
 
-**Status:** especificada, aguardando implementação
+**Status:** implementada; verificação manual da Leila (T006) pendente
 **Issue:** —
 **Iteração:** iteration-5
 
