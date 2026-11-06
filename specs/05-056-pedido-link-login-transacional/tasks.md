@@ -18,7 +18,7 @@ Todas as tarefas abaixo são acompanhadas como checklist na Issue
 | ~~T004~~ | `LoginLinkRequestService` novo em `loginsession`, com `@Transactional requestLoginLink(String email, String returnTo)`: busca o usuário (desconhecido → volta sem fazer nada), valida `returnTo`, invalida os links ativos, cria o link, grava `LOGIN_LINK_ISSUED` e envia. `LoginController.requestLoginLink` passa a só chamar o serviço e devolver `202`; saem do controller `UserService`, `EmailSender` e `AuditLogService`; Javadoc da classe atualizado. Confirmar T002 e T003 verdes, e verdes também "Requesting a new login link invalidates the previous one", o resto de `login.feature`, `redirect_after_login.feature` e `AuditLoggingIntegrationTest` | T002, T003 | | #135 |
 | ~~T005~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): listar as classes de exceção criadas (esperado: nenhuma) e os caminhos de erro alterados (`EmailServiceUnavailableException` e `RecipientDomainRejectedException` lançadas dentro da transação do pedido de link, desfazendo-a); apontar T002 e T003 como os testes que os exercitam. Registrar abaixo | T004 | | #135 |
 | ~~T006~~ | Rodar `mvn -pl app -am verify` com a infraestrutura do Compose de pé e a chave de teste restaurada (`README.md`) e confirmar verde. Se o container da sessão não conseguir rodar algum teste por limitação do ambiente, registrar qual e fechar pelo CI da PR para `development` | T004 | | #135 |
-| T007 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T007)" abaixo e conferir os resultados esperados | T006 | | #135 |
+| ~~T007~~ | Verificação manual (Leila): rodar o roteiro "Verificação manual (T007)" abaixo e conferir os resultados esperados | T006 | | #135 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
   ordem/em paralelo.
@@ -214,3 +214,18 @@ Rodada 1, passo 3, em detalhe:
 A falha da rodada 1 não se repetiu em três tentativas. Ela não diz respeito à correção da spec (o
 pedido com `503` não deixou rastro, como pede a spec), e sim a o `app` voltar a alcançar o
 `email-service` logo depois de ele religar.
+
+## Terceira rodada no WSL (T007, 2026-11-06): concluída
+
+A Leila rodou o roteiro "Verificação manual (T007)" acima de novo no WSL: subida do zero com
+`down -v`, espera pelos cinco templates e os passos 1 a 3. Todos os passos deram o resultado
+esperado, e a falha da rodada 1 de 2026-10-27 (passo 3) não apareceu. **A T007 está concluída.**
+
+| Etapa | Resultado |
+|---|---|
+| Subida | Os cinco comandos terminaram com todos os containers `Healthy` |
+| Espera | `templates=5`, `app running` |
+| 1 | ` [202]`, `1 ativo(s), 1 no total`, `1 LOGIN_LINK_ISSUED` |
+| 2 (`docker compose stop email-service`) | `{"message":"The e-mail could not be sent right now, try again"} [503]`, `1 ativo(s), 1 no total`, `1 LOGIN_LINK_ISSUED` |
+| 3 (`start` e `up --wait`, `email-service` `Healthy` em 10,3 s) | ` [202]`, `1 ativo(s), 2 no total`, `2 LOGIN_LINK_ISSUED` |
+| Fim | `docker compose down -v` |
