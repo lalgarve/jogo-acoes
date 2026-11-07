@@ -121,5 +121,4 @@ Scenario: Player requests entry again when the link expires within a day
 
 ## Decisões em aberto
 
-- **Juntar com a 05-056**: as duas mexem na mesma orquestração do pedido de link de login. Pode
-  ser mais simples implementar as duas juntas; é decisão de planejamento, não de requisito.
+Nenhuma.
