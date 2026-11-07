@@ -245,8 +245,7 @@ public class SendEmailSteps {
     }
 
     private Response send(Map<String, Object> body) {
-        // Spec 05-059: a new key per request, as a client sending a new e-mail would.
-        return world.request().header("Idempotency-Key", UUID.randomUUID().toString()).body(body).when().post("/emails");
+        return world.request().body(body).when().post("/emails");
     }
 
     private UUID returnedId() {

@@ -188,7 +188,7 @@ class AuditLoggingIntegrationTest {
         String email = unique("newplayer");
         LinkRecord link = loginLinkFixtures.pendingParticipationLink(publicCompetition, email, RequestType.REQUEST);
         Long participationId = participationRepository
-                .findByCompetition_IdAndEmailIgnoreCase(publicCompetition.getId(), email)
+                .findByCompetition_IdAndEmailAndStatusNot(publicCompetition.getId(), email, ParticipationStatus.IN_COMPETITION)
                 .orElseThrow().getId();
 
         loginController.completeRegistration(link.getToken(), new CompleteRegistrationRequest().name("New Player"),

@@ -14,13 +14,13 @@ Leila preferir.
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
 | ~~T001~~ | Pré-requisito: spec 05-056 (Issue #135) mesclada em `development`, com `LoginLinkRequestService`. Feito: PR #210, trazida para o branch desta spec em 2026-11-06 | — | | #117 |
-| ~~T002~~ | `docs/openapi.yaml`: descrições de `requestLoginLink`, `consumeLoginLink` e `requestOrConfirmEntry` (decisão "Contrato" do `plan.md`). Regenerar e compilar | T001 | [P] | #117 |
-| ~~T003~~ | `LinkServiceTest`: casos de `findActive` (mesmo `extra` acha; `extra` diferente, link usado, invalidado, expirado ou vencendo em menos de 1 dia não acham; e-mail com outra grafia acha; com dois candidatos, o mais recente) de `markResent` (só muda `emailSentAt`) e de `invalidateActiveLinksFor` (poupa o link que vence em menos de 1 dia). Não compila até T005; escrever primeiro | T001 | [P] | #117 |
-| ~~T004~~ | `login.feature`: substituir "Requesting a new login link invalidates the previous one" pelos dois cenários da `spec.md`; o cenário do link de login que vence em menos de 1 dia; e um cenário com `returnTo` diferente (link novo, o anterior deixa de valer). `request_competition_entry.feature`: os dois cenários da `spec.md`. Para o link que vence em menos de 1 dia, o passo ajusta `expires_at` pelo `LinkRecordRepository`. Passos em `LoginSteps` e `RequestCompetitionEntrySteps` (o token de cada e-mail vem do `StubEmailSender`). Rodar e confirmar que falham hoje por o token ser diferente | T001 | [P] | #117 |
-| ~~T005~~ | `LinkRecordRepository` (consulta dos candidatos) e `LinkService.findActive`/`markResent`. Confirmar T003 verde | T003 | | #117 |
-| ~~T006~~ | `LoginLinkRequestService.requestLoginLink` e `EntryRequestService.requestEntry` com o ramo do reenvio e a auditoria `(resent)`. Confirmar T004 verde e verdes também o resto de `login.feature`, `redirect_after_login.feature`, `request_competition_entry.feature` e `AuditLoggingIntegrationTest` | T004, T005 | | #117 |
-| ~~T007~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): classes criadas (esperado: nenhuma); caminhos de erro alterados: falha de envio no reenvio desfaz `markResent` e auditoria (coberto pelo cenário de `503` da 05-056, que passa a reenviar o link do `Given`; conferir que ele continua verde e, se não cobrir o reenvio, acrescentar o caso); link invalidado pelo pedido com `returnTo` diferente responde `LoginLinkInvalidException` (T004). Registrar abaixo | T006 | | #117 |
-| ~~T008~~ | Rodar `mvn -pl app -am verify` com o ambiente de pé e a chave de teste restaurada (`README.md`), e a suíte `blackbox-tests/`. Se o container da sessão não rodar algum teste, registrar qual e fechar pelo CI da PR para `development` | T006 | | #117 |
+| T002 | `docs/openapi.yaml`: descrições de `requestLoginLink`, `consumeLoginLink` e `requestOrConfirmEntry` (decisão "Contrato" do `plan.md`). Regenerar e compilar | T001 | [P] | #117 |
+| T003 | `LinkServiceTest`: casos de `findActive` (mesmo `extra` acha; `extra` diferente, link usado, invalidado, expirado ou vencendo em menos de 1 dia não acham; e-mail com outra grafia acha; com dois candidatos, o mais recente) de `markResent` (só muda `emailSentAt`) e de `invalidateActiveLinksFor` (poupa o link que vence em menos de 1 dia). Não compila até T005; escrever primeiro | T001 | [P] | #117 |
+| T004 | `login.feature`: substituir "Requesting a new login link invalidates the previous one" pelos dois cenários da `spec.md`; o cenário do link de login que vence em menos de 1 dia; e um cenário com `returnTo` diferente (link novo, o anterior deixa de valer). `request_competition_entry.feature`: os dois cenários da `spec.md`. Para o link que vence em menos de 1 dia, o passo ajusta `expires_at` pelo `LinkRecordRepository`. Passos em `LoginSteps` e `RequestCompetitionEntrySteps` (o token de cada e-mail vem do `StubEmailSender`). Rodar e confirmar que falham hoje por o token ser diferente | T001 | [P] | #117 |
+| T005 | `LinkRecordRepository` (consulta dos candidatos) e `LinkService.findActive`/`markResent`. Confirmar T003 verde | T003 | | #117 |
+| T006 | `LoginLinkRequestService.requestLoginLink` e `EntryRequestService.requestEntry` com o ramo do reenvio e a auditoria `(resent)`. Confirmar T004 verde e verdes também o resto de `login.feature`, `redirect_after_login.feature`, `request_competition_entry.feature` e `AuditLoggingIntegrationTest` | T004, T005 | | #117 |
+| T007 | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): classes criadas (esperado: nenhuma); caminhos de erro alterados: falha de envio no reenvio desfaz `markResent` e auditoria (coberto pelo cenário de `503` da 05-056, que passa a reenviar o link do `Given`; conferir que ele continua verde e, se não cobrir o reenvio, acrescentar o caso); link invalidado pelo pedido com `returnTo` diferente responde `LoginLinkInvalidException` (T004). Registrar abaixo | T006 | | #117 |
+| T008 | Rodar `mvn -pl app -am verify` com o ambiente de pé e a chave de teste restaurada (`README.md`), e a suíte `blackbox-tests/`. Se o container da sessão não rodar algum teste, registrar qual e fechar pelo CI da PR para `development` | T006 | | #117 |
 | T009 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T009)" abaixo e conferir os resultados esperados | T008 | | #117 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
@@ -101,32 +101,4 @@ Para derrubar: `docker compose down -v`.
 
 ## Registro
 
-Implementação em 2026-11-07, branch `claude/project-thread-l3kfw8`.
-
-- **T003, testes de `LinkService`.** Ficaram num teste de integração novo,
-  `LinkServiceIntegrationTest`, contra o PostgreSQL real, em vez do `LinkServiceTest` com mocks
-  (constitution, "Testes": dependência real sempre que der). Cobre `findActive` (mesmo `extra`,
-  `extra` com outra ordem de chaves, e-mail com outra grafia; não acha: outro `extra`, outro
-  `serviceKey`, outro usuário, vencendo em menos de 1 dia, expirado, usado, invalidado; com dois
-  candidatos, o mais recente), `markResent` e `invalidateActiveLinksFor` poupando o link que vence
-  em menos de 1 dia. Não rodou antes do código (usa os métodos novos).
-- **T004, fase vermelha.** Rodada antes do código: falharam os cenários "Requesting a login link
-  again resends the same link" (token diferente), "Requesting a login link when the active one
-  expires within a day issues a new link" (link anterior invalidado) e "Player requests entry
-  twice and uses the first link" (links diferentes). "Player requests entry again when the link
-  expires within a day" já passava (a entrada nunca invalidou links) e fica como proteção. O passo
-  `a registered player has an active login link that has not been used yet` passou a criar um
-  link com a validade inteira, para que o cenário de `503` da 05-056 passe pelo reenvio.
-- **T007, critério de aceite de exceções.** Nenhuma classe de exceção nova. Caminhos de erro:
-  - falha de envio no reenvio desfaz `markResent` e a auditoria: cenário "Requesting a login link
-    while the e-mail service is unavailable changes nothing", que agora reenvia o link do `Given` e
-    confere que `emailSentAt` não mudou;
-  - link invalidado pelo pedido com `returnTo` diferente responde `400`
-    (`LoginLinkInvalidException`): cenário "Requesting a login link for a different return page
-    issues a new link and invalidates the previous one";
-  - `markResent` com id inexistente (`NoSuchElementException`, só por erro de programação):
-    `LinkServiceIntegrationTest.markResentOfAnUnknownLinkFails`.
-- **T008.** `mvn -pl app -am verify` com o ambiente da nuvem de pé: 325 testes, `BUILD SUCCESS`.
-  Blackbox com o ambiente reconstruído: o teste `test_last_email_only_consumes_the_message_it_read`
-  pedia o link duas vezes e esperava links diferentes; o segundo pedido passou a usar outro
-  `returnTo`. Depois disso, 2 cenários `behave` e 29 testes `pytest` verdes.
+<preencher conforme as tasks forem concluídas>

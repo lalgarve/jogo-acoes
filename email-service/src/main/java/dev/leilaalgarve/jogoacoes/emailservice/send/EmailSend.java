@@ -71,26 +71,14 @@ public class EmailSend {
     @Column(name = "queued_at")
     private Instant queuedAt;
 
-    /** Spec 05-059: chosen by the client, unique per client. */
-    @Column(name = "idempotency_key", nullable = false)
-    private String idempotencyKey;
-
-    /** Spec 05-059: SHA-256 of the request body, to tell a repeat from a different request. */
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "request_hash", nullable = false, length = 64)
-    private String requestHash;
-
     protected EmailSend() {
         // JPA
     }
 
     /** A new PENDING send, due for publishing right away. */
-    public EmailSend(String clientId, String idempotencyKey, String requestHash, Long templateId,
-                     String recipientEmail, String senderAddress, String sesTemplateName, String templateData,
-                     Instant createdAt) {
+    public EmailSend(String clientId, Long templateId, String recipientEmail, String senderAddress,
+                     String sesTemplateName, String templateData, Instant createdAt) {
         this.clientId = clientId;
-        this.idempotencyKey = idempotencyKey;
-        this.requestHash = requestHash;
         this.templateId = templateId;
         this.recipientEmail = recipientEmail;
         this.senderAddress = senderAddress;
@@ -167,13 +155,5 @@ public class EmailSend {
 
     public DeliveryErrorType getLastErrorType() {
         return lastErrorType;
-    }
-
-    public String getIdempotencyKey() {
-        return idempotencyKey;
-    }
-
-    public String getRequestHash() {
-        return requestHash;
     }
 }

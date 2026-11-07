@@ -12,15 +12,15 @@ As tarefas são acompanhadas como checklist na Issue
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| ~~T001~~ | `docs/openapi-email-service.yaml`: header `Idempotency-Key` obrigatório (1 a 255 caracteres) em `POST /emails`; descrição da repetição (mesma chave e corpo → mesmo `202`; corpo diferente → `422`; sem header → `400`). Regenerar os dois lados (`mvn -pl email-service,app -am generate-sources`) e ajustar o que deixar de compilar só com a assinatura nova (`EmailSendController`, `EmailServiceGateway`) passando a chave adiante, sem lógica ainda | — | | #205 |
-| ~~T002~~ | `EmailSendIdempotencyIntegrationTest` (pacote `send` do `email-service`), com os casos da decisão "Testes do `email-service`" do `plan.md`. Rodar e confirmar que falham hoje (segunda linha gravada, `400` sem corpo `Error`) | T001 | [P] | #205 |
-| ~~T003~~ | `EmailServiceClientIntegrationTest` (`app`): duas chamadas com a mesma chave devolvem o mesmo `id`, contra o `email-service` real. Rodar e confirmar que falha hoje | T001 | [P] | #205 |
-| ~~T004~~ | Migration `V8__add_idempotency_key_to_email_send.sql` e campos em `EmailSend`; `EmailSendRepository.findByClientIdAndIdempotencyKey` | T002 | | #205 |
-| ~~T005~~ | `EmailSendService.send(clientId, key, request)`: hash do pedido, checagem da chave antes das outras, gravação num `TransactionTemplate` com `saveAndFlush` e tradução da violação do índice. `IdempotencyKeyReusedException` e tratadores de `422`, header faltando e header inválido no `ApiExceptionHandler`. Confirmar T002 verde e a suíte do `email-service` verde | T004 | | #205 |
-| ~~T006~~ | `app`: `EmailServiceEmailSender` gera a chave por e-mail; `EmailServiceGateway.sendEmail` recebe a chave e passa a usar `retrying`; Javadoc e comentário do `422` atualizados. Confirmar T003 verde | T005 | | #205 |
-| ~~T007~~ | Documentação: tabela "Operações usadas" de `specs/05-034-fronteira-sincrona-app-email-service/contracts/feign-client.md`; `README.md` (exemplo `curl` com o header, parágrafo sobre repetir o pedido) | T006 | [P] | #205 |
-| ~~T008~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): classe criada `IdempotencyKeyReusedException` (lançada em T002, corpo diferente); caminhos novos: tradução da violação do índice (T002, pedidos simultâneos), `MissingRequestHeaderException` e `HandlerMethodValidationException` → `400` (T002), `retrying` em `sendEmail` (coberto pelo mecanismo comum; se não houver teste de `retrying` com `sendEmail`, acrescentar um em `EmailServiceClientIntegrationTest` com o `email-service` parado). Registrar abaixo | T006 | | #205 |
-| ~~T009~~ | Rodar as suítes do `email-service` e do `app` (`mvn -pl email-service,app -am verify`) com o ambiente de pé e a chave de teste restaurada (`README.md`), e a suíte `blackbox-tests/`. Se o container da sessão não rodar algum teste, registrar qual e fechar pelo CI da PR para `development` | T006 | | #205 |
+| T001 | `docs/openapi-email-service.yaml`: header `Idempotency-Key` obrigatório (1 a 255 caracteres) em `POST /emails`; descrição da repetição (mesma chave e corpo → mesmo `202`; corpo diferente → `422`; sem header → `400`). Regenerar os dois lados (`mvn -pl email-service,app -am generate-sources`) e ajustar o que deixar de compilar só com a assinatura nova (`EmailSendController`, `EmailServiceGateway`) passando a chave adiante, sem lógica ainda | — | | #205 |
+| T002 | `EmailSendIdempotencyIntegrationTest` (pacote `send` do `email-service`), com os casos da decisão "Testes do `email-service`" do `plan.md`. Rodar e confirmar que falham hoje (segunda linha gravada, `400` sem corpo `Error`) | T001 | [P] | #205 |
+| T003 | `EmailServiceClientIntegrationTest` (`app`): duas chamadas com a mesma chave devolvem o mesmo `id`, contra o `email-service` real. Rodar e confirmar que falha hoje | T001 | [P] | #205 |
+| T004 | Migration `V8__add_idempotency_key_to_email_send.sql` e campos em `EmailSend`; `EmailSendRepository.findByClientIdAndIdempotencyKey` | T002 | | #205 |
+| T005 | `EmailSendService.send(clientId, key, request)`: hash do pedido, checagem da chave antes das outras, gravação num `TransactionTemplate` com `saveAndFlush` e tradução da violação do índice. `IdempotencyKeyReusedException` e tratadores de `422`, header faltando e header inválido no `ApiExceptionHandler`. Confirmar T002 verde e a suíte do `email-service` verde | T004 | | #205 |
+| T006 | `app`: `EmailServiceEmailSender` gera a chave por e-mail; `EmailServiceGateway.sendEmail` recebe a chave e passa a usar `retrying`; Javadoc e comentário do `422` atualizados. Confirmar T003 verde | T005 | | #205 |
+| T007 | Documentação: tabela "Operações usadas" de `specs/05-034-fronteira-sincrona-app-email-service/contracts/feign-client.md`; `README.md` (exemplo `curl` com o header, parágrafo sobre repetir o pedido) | T006 | [P] | #205 |
+| T008 | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): classe criada `IdempotencyKeyReusedException` (lançada em T002, corpo diferente); caminhos novos: tradução da violação do índice (T002, pedidos simultâneos), `MissingRequestHeaderException` e `HandlerMethodValidationException` → `400` (T002), `retrying` em `sendEmail` (coberto pelo mecanismo comum; se não houver teste de `retrying` com `sendEmail`, acrescentar um em `EmailServiceClientIntegrationTest` com o `email-service` parado). Registrar abaixo | T006 | | #205 |
+| T009 | Rodar as suítes do `email-service` e do `app` (`mvn -pl email-service,app -am verify`) com o ambiente de pé e a chave de teste restaurada (`README.md`), e a suíte `blackbox-tests/`. Se o container da sessão não rodar algum teste, registrar qual e fechar pelo CI da PR para `development` | T006 | | #205 |
 | T010 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T010)" abaixo e conferir os resultados esperados | T009 | | #205 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
@@ -100,34 +100,4 @@ Para derrubar: `docker compose down -v`.
 
 ## Registro
 
-Implementação em 2026-11-07, branch `claude/project-thread-l3kfw8`.
-
-- **Ordem e fase vermelha.** O servidor (T004/T005) foi escrito antes dos testes de T002, então a
-  fase vermelha não foi rodada. Os testes rodaram contra o servidor pronto.
-- **Header inválido.** A interface gerada é `@Validated`, então chave vazia ou longa demais chega
-  como `ConstraintViolationException`, não como `HandlerMethodValidationException` (como o
-  `plan.md` supunha). O tratador do `ApiExceptionHandler` é para `ConstraintViolationException`.
-- **`request_hash`.** A coluna é `CHAR(64)`; a entidade declara `@JdbcTypeCode(SqlTypes.CHAR)` para
-  a validação do Hibernate aceitar.
-- **Ordem dos parâmetros.** `EmailServiceGateway.sendEmail` recebe a chave por último, para o
-  `EmailServiceLoggingAspect` continuar ligando `templateName` e `recipientEmail` pelos primeiros
-  argumentos.
-- **T003, resposta perdida.** Além das duas chamadas com a mesma chave em
-  `EmailServiceClientIntegrationTest`, um teste novo, `EmailSendRetryIntegrationTest`, põe um proxy
-  entre o `app` e o `email-service` real que repassa um `POST /emails` e devolve `503` no lugar do
-  `202`: o gateway repete com a mesma chave e as duas respostas do `email-service` têm o mesmo `id`.
-- **T008, critério de aceite de exceções.**
-  - `IdempotencyKeyReusedException` (classe nova): `theSameKeyWithAnotherBodyIsRejectedAndRecordsNothing`;
-  - violação do índice único traduzida em repetição: `simultaneousRequestsWithTheSameKeyRecordOneSend`
-    (o log do teste mostra a violação de `email_send_client_idempotency_key_uk`);
-  - `MissingRequestHeaderException` → `400`: `aRequestWithoutTheKeyIsRejectedAndRecordsNothing`;
-  - `ConstraintViolationException` → `400`: `anEmptyOrTooLongKeyIsRejectedAndRecordsNothing`;
-  - `retrying` em `sendEmail`: `EmailSendRetryIntegrationTest`.
-- **T009.** Ambiente da nuvem recriado do zero (a migration `V8` exige banco sem envios antigos).
-  `mvn -pl email-service,app -am verify`: `app` com 327 testes verdes; `email-service` com 177,
-  dos quais `EmailQueuePublisherConcurrencyTest` falhou (41–42 de 50 envios publicados em 60 s).
-  A causa é o ambiente: o `email-service` do `cloud-up.sh` é um terceiro publicador no mesmo banco
-  e, quando o teste apaga a fila, as linhas que ele pega voltam com espera crescente. Com esse
-  processo parado (`kill -STOP`), o teste passa com o código desta spec. Sem relação com a chave,
-  mas fica para conferir no CI da PR. Blackbox com o ambiente recriado: 2 cenários `behave` e 29
-  testes `pytest` verdes.
+<preencher conforme as tasks forem concluídas>

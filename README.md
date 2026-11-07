@@ -603,7 +603,6 @@ Enviar um e-mail a partir do template `welcome` cadastrado acima:
 ```
 curl -X POST http://localhost:8082/api/emails \
   -H "X-API-Key: dak_IpfF8aaAizW6r1rSC59yi6BwMs4ox3GQDPiAWamRucU" \
-  -H "Idempotency-Key: $(uuidgen)" \
   -H "Content-Type: application/json" \
   -d '{"templateName": "welcome", "recipientEmail": "success@simulator.amazonses.com", "templateData": {"name": "Ada"}}'
 ```
@@ -611,9 +610,8 @@ curl -X POST http://localhost:8082/api/emails \
 Resposta: `202 {"id": "<uuid>", "status": "QUEUED"}`. Template inexistente (ou de outro
 cliente) dá `404`, pedido malformado dá `400`, domínio do destinatário que não recebe e-mail dá
 `422` (ver abaixo) e falha ao publicar na fila dá `503` (nada é enviado nem gravado; pode
-repetir). O header `Idempotency-Key` é obrigatório (spec 05-059): repetir o pedido com a mesma
-chave e o mesmo corpo devolve o mesmo `id` e não gera outro e-mail; a mesma chave com outro corpo
-dá `422`, e sem o header a resposta é `400`. Para mandar outro e-mail, use outra chave.
+repetir). Repetir o mesmo pedido gera dois e-mails: idempotência fica
+para a Etapa 4.
 
 A Lambda só aceita mensagens com template.
 

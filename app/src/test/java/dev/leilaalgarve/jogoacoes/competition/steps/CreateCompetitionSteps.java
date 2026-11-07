@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
-import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class CreateCompetitionSteps {
@@ -65,12 +64,6 @@ public class CreateCompetitionSteps {
     @Given("enter a list of e-mails containing an invalid e-mail address")
     public void enter_a_list_of_e_mails_containing_an_invalid_e_mail_address() {
         world.getCompetitionRequest().emails(List.of(fixed("valid"), "not-an-email"));
-    }
-
-    @Given("enter a list of e-mails with the same e-mail twice")
-    public void enter_a_list_of_e_mails_with_the_same_e_mail_twice() {
-        String email = unique("repeated");
-        world.getCompetitionRequest().emails(List.of(email, email.toUpperCase()));
     }
 
     @Given("define the start date as {}")

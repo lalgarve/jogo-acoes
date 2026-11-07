@@ -93,12 +93,6 @@ Feature: Create Competition
       When they click the "create" button
       Then the system rejects the competition creation and shows an error message about the invalid e-mail
 
-    Scenario: Administrator tries to create a private competition with the same e-mail twice in the list
-      Given they choose the private competition option
-      And enter a list of e-mails with the same e-mail twice
-      When they click the "create" button
-      Then the system rejects the competition creation and shows an error message about the repeated e-mail
-
   Rule: Only the administrator can create competitions
 
     Scenario: Non-administrator tries to access the competition creation screen

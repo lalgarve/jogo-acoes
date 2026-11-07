@@ -25,7 +25,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -90,7 +89,7 @@ class DeadLetterBurstIntegrationTest {
                 .when().post("/templates").then().statusCode(201);
         for (int i = 0; i < BURST; i++) {
             request().body(Map.of("templateName", "burst", "recipientEmail", "player" + i + "@example.com"))
-                    .header("Idempotency-Key", UUID.randomUUID().toString()).when().post("/emails").then().statusCode(202);
+                    .when().post("/emails").then().statusCode(202);
         }
         List<JsonNode> queued = receive(BURST);
         sesClient.deleteTemplate(DeleteTemplateRequest.builder().templateName(CLIENT + "__burst").build());

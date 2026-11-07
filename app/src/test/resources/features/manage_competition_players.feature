@@ -81,15 +81,3 @@ Feature: Manage competition players
     And confirms the invitation
     Then the system adds the player to the competition with status "e-mail not sent"
     And sends the e-mail personalized with the name instead of an invite to create an account
-
-  Scenario: Administrator invites an e-mail that is already in the competition
-    Given a private competition already has a player with a given e-mail
-    When the administrator invites that same e-mail again
-    Then the system rejects the invite and shows an error message
-    And the competition still has a single player with that e-mail
-
-  Scenario: Administrator invites a list that repeats an e-mail
-    Given the competition is private
-    When the administrator invites a list in which the same e-mail appears twice
-    Then the system rejects the invite and shows an error message
-    And no player is added to the competition

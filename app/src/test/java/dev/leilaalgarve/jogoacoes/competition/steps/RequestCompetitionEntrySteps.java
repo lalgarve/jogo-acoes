@@ -3,19 +3,11 @@ package dev.leilaalgarve.jogoacoes.competition.steps;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-import dev.leilaalgarve.jogoacoes.api.model.CompleteRegistrationRequest;
 import dev.leilaalgarve.jogoacoes.api.model.EntryRequest;
 import dev.leilaalgarve.jogoacoes.captcha.AltchaCaptchaVerifier;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
-import dev.leilaalgarve.jogoacoes.competition.RequestType;
-import dev.leilaalgarve.jogoacoes.email.SentEmail;
-import dev.leilaalgarve.jogoacoes.link.LinkRecord;
-import dev.leilaalgarve.jogoacoes.link.LinkRecordRepository;
-import dev.leilaalgarve.jogoacoes.log.LogRepository;
-import dev.leilaalgarve.jogoacoes.log.LogType;
-import dev.leilaalgarve.jogoacoes.user.User;
 import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
 import dev.leilaalgarve.jogoacoes.common.testsupport.CompetitionFixtures;
 import dev.leilaalgarve.jogoacoes.common.testsupport.ScenarioWorld;
@@ -25,9 +17,6 @@ import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import org.altcha.altcha.v2.Altcha;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 
 import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
@@ -42,14 +31,10 @@ public class RequestCompetitionEntrySteps {
     private final AltchaCaptchaVerifier captchaService;
     private final ParticipationRepository participationRepository;
     private final SentEmailRepository sentEmailRepository;
-    private final LogRepository logRepository;
-    private final LinkRecordRepository linkRecordRepository;
-    private long statusChangesBefore;
 
     public RequestCompetitionEntrySteps(ScenarioWorld world, UserMother userMother, LoginHelper loginHelper,
                                          CompetitionFixtures competitionFixtures, AltchaCaptchaVerifier captchaService,
-                                         ParticipationRepository participationRepository, SentEmailRepository sentEmailRepository,
-                                         LogRepository logRepository, LinkRecordRepository linkRecordRepository) {
+                                         ParticipationRepository participationRepository, SentEmailRepository sentEmailRepository) {
         this.world = world;
         this.userMother = userMother;
         this.loginHelper = loginHelper;
@@ -57,8 +42,6 @@ public class RequestCompetitionEntrySteps {
         this.captchaService = captchaService;
         this.participationRepository = participationRepository;
         this.sentEmailRepository = sentEmailRepository;
-        this.logRepository = logRepository;
-        this.linkRecordRepository = linkRecordRepository;
     }
 
     @Given("^the player is (unregistered|registered and not logged in|registered and logged in)$")
@@ -189,52 +172,6 @@ public class RequestCompetitionEntrySteps {
         assertThat(sentForEmail).hasSize(2);
     }
 
-    // -- Spec 05-057: confirming entry again changes nothing --
-
-    @Given("a registered player already participates in a public competition")
-    public void a_registered_player_already_participates_in_a_public_competition() {
-        User user = userMother.registeredPlayer();
-        world.setCurrentUser(user);
-        loginHelper.loginAs(world, user);
-        world.setTargetCompetition(competitionFixtures.publicCompetition());
-        Participation participation = new Participation();
-        participation.setCompetition(world.getTargetCompetition());
-        participation.setUser(user);
-        participation.setEmail(user.getEmail());
-        participation.setRequestType(RequestType.REQUEST);
-        participation.setStatus(ParticipationStatus.IN_COMPETITION);
-        participation.setJoinedAt(LocalDate.now().minusDays(3));
-        participation = participationRepository.save(participation);
-        world.setCurrentParticipationId(participation.getId());
-        statusChangesBefore = statusChangesOfCurrentParticipation();
-    }
-
-    @When("they confirm entry into that competition again")
-    public void they_confirm_entry_into_that_competition_again() {
-        submitEntryRequest(null);
-    }
-
-    @Then("their entry date does not change")
-    public void their_entry_date_does_not_change() {
-        assertThat(world.getLastResponse().statusCode()).isEqualTo(200);
-        assertThat(world.getLastResponse().jsonPath().getLong("id")).isEqualTo(world.getCurrentParticipationId());
-        Participation participation = participationRepository.findById(world.getCurrentParticipationId()).orElseThrow();
-        assertThat(participation.getJoinedAt()).isEqualTo(LocalDate.now().minusDays(3));
-        assertThat(participationRepository.findByCompetition_Id(world.getTargetCompetition().getId())).hasSize(1);
-    }
-
-    @Then("no new participation status change is recorded")
-    public void no_new_participation_status_change_is_recorded() {
-        assertThat(statusChangesOfCurrentParticipation()).isEqualTo(statusChangesBefore);
-    }
-
-    private long statusChangesOfCurrentParticipation() {
-        return logRepository.findAll().stream()
-                .filter(log -> log.getLogType() == LogType.PARTICIPATION_STATUS_CHANGED)
-                .filter(log -> world.getCurrentParticipationId().equals(log.getRelatedObjectId()))
-                .count();
-    }
-
     private void submitEntryRequest(EntryRequest body) {
         RequestSpecification spec = world.request();
         if (body != null) {
@@ -246,7 +183,7 @@ public class RequestCompetitionEntrySteps {
 
     private void assertPendingParticipationExists() {
         Participation participation = participationRepository
-                .findByCompetition_IdAndEmailIgnoreCase(world.getTargetCompetition().getId(), world.getCandidateEmail())
+                .findByCompetition_IdAndEmailAndStatusNot(world.getTargetCompetition().getId(), world.getCandidateEmail(), ParticipationStatus.IN_COMPETITION)
                 .orElseThrow();
         assertThat(participation.getStatus()).isEqualTo(ParticipationStatus.EMAIL_SENT);
     }
@@ -271,93 +208,5 @@ public class RequestCompetitionEntrySteps {
         Altcha.Challenge challenge = captchaService.createChallenge();
         Altcha.Solution wrongSolution = new Altcha.Solution(-1, "not-the-right-key", 0L);
         return captchaService.encodeToken(challenge, wrongSolution);
-    }
-
-    // -- Spec 05-058: a repeated entry request resends the same link --
-
-    @Given("requested entry into a public competition twice")
-    public void requested_entry_into_a_public_competition_twice() {
-        requested_entry_into_a_public_competition();
-        submitEntryRequest(new EntryRequest().email(world.getCandidateEmail()).captchaToken(validCaptchaToken()));
-        assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
-    }
-
-    @Given("requested entry into a public competition")
-    public void requested_entry_into_a_public_competition() {
-        world.setTargetCompetition(competitionFixtures.publicCompetition());
-        world.setCandidateEmail(unique("player"));
-        submitEntryRequest(new EntryRequest().email(world.getCandidateEmail()).captchaToken(validCaptchaToken()));
-        assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
-        world.setCurrentLoginLink(linkRecordRepository.findByToken(tokenOf(emailsTo(world.getCandidateEmail()).getFirst()))
-                .orElseThrow());
-    }
-
-    @Given("both e-mails contain the same link")
-    public void both_e_mails_contain_the_same_link() {
-        List<SentEmail> sent = emailsTo(world.getCandidateEmail());
-        assertThat(sent).hasSize(2);
-        assertThat(sent.get(1).getLink()).isEqualTo(sent.get(0).getLink());
-    }
-
-    @Given("that link expires in less than a day")
-    public void that_link_expires_in_less_than_a_day() {
-        LinkRecord link = world.getCurrentLoginLink();
-        link.setExpiresAt(LocalDateTime.now().plusHours(20));
-        world.setCurrentLoginLink(linkRecordRepository.save(link));
-    }
-
-    @When("they open the link from the first e-mail")
-    public void they_open_the_link_from_the_first_e_mail() {
-        String token = tokenOf(emailsTo(world.getCandidateEmail()).getFirst());
-        world.setLastResponse(world.request().when().get("/login-links/{token}", token));
-    }
-
-    @Then("they can finish registration and join the competition")
-    public void they_can_finish_registration_and_join_the_competition() {
-        // 202: the link is valid and waits for the new player's name.
-        assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
-        String token = tokenOf(emailsTo(world.getCandidateEmail()).getFirst());
-        Response response = world.request()
-                .body(new CompleteRegistrationRequest().name("Player 05-058"))
-                .when()
-                .post("/login-links/{token}/registration", token);
-        assertThat(response.statusCode()).isEqualTo(200);
-        Participation participation = participationRepository
-                .findByCompetition_IdAndEmailIgnoreCase(world.getTargetCompetition().getId(), world.getCandidateEmail())
-                .orElseThrow();
-        assertThat(participation.getStatus()).isEqualTo(ParticipationStatus.IN_COMPETITION);
-    }
-
-    @When("they request entry into that competition again")
-    public void they_request_entry_into_that_competition_again() {
-        submitEntryRequest(new EntryRequest().email(world.getCandidateEmail()).captchaToken(validCaptchaToken()));
-    }
-
-    @Then("they receive a new link by e-mail")
-    public void they_receive_a_new_link_by_e_mail() {
-        assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
-        List<SentEmail> sent = emailsTo(world.getCandidateEmail());
-        assertThat(sent).hasSize(2);
-        assertThat(tokenOf(sent.get(1))).isNotEqualTo(world.getCurrentLoginLink().getToken());
-    }
-
-    @Then("the link from the first e-mail still works until it expires")
-    public void the_link_from_the_first_e_mail_still_works_until_it_expires() {
-        LinkRecord first = linkRecordRepository.findById(world.getCurrentLoginLink().getId()).orElseThrow();
-        assertThat(first.getInvalidatedAt()).isNull();
-        Response response = world.request().when().get("/login-links/{token}", first.getToken());
-        // 202: the link is valid and waits for the new player's name.
-        assertThat(response.statusCode()).isEqualTo(202);
-    }
-
-    private List<SentEmail> emailsTo(String email) {
-        return sentEmailRepository.findAll().stream()
-                .filter(sent -> sent.getEmail().equals(email))
-                .sorted(Comparator.comparing(SentEmail::getId))
-                .toList();
-    }
-
-    private static String tokenOf(SentEmail sent) {
-        return sent.getLink().substring(sent.getLink().lastIndexOf('/') + 1);
     }
 }

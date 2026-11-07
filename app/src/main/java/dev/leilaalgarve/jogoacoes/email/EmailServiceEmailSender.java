@@ -34,9 +34,7 @@ class EmailServiceEmailSender implements EmailSender {
 
     @Override
     public void send(OutgoingEmail email) {
-        // Spec 05-059: one key per e-mail, the same in every attempt the gateway makes to send it.
-        UUID emailServiceId = gateway.sendEmail(email.templateName(), email.recipient(), email.templateData(),
-                UUID.randomUUID().toString());
+        UUID emailServiceId = gateway.sendEmail(email.templateName(), email.recipient(), email.templateData());
         sentEmailRecorder.record(email, emailServiceId);
     }
 }

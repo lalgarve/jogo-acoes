@@ -25,7 +25,7 @@ configuração, o que repete e como traduz cada resposta.
 | `PUT /templates/{name}` | Sincronização ao subir (primeira tentativa do upsert) | sim | sim |
 | `POST /templates` | Sincronização, quando o `PUT` responde `404` | não (`409` na segunda vez) | não; um `409` vira um novo `PUT` |
 | `POST /templates/{name}/preview` | Pré-visualização | sim (não muda estado) | sim |
-| `POST /emails` | Envio (spec 05-031) | sim, com o header `Idempotency-Key` (spec 05-059): o `app` gera uma chave por e-mail e manda a mesma em todas as tentativas | sim (spec 05-059) |
+| `POST /emails` | Envio (spec 05-031, a implementar) | não, até a Etapa 4 | **não** |
 
 "Repetida" quer dizer: até 3 tentativas, 200 ms entre elas, só quando o `email-service` não foi
 alcançado ou respondeu `5xx`.
