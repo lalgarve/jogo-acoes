@@ -44,7 +44,8 @@ paths:
         '400':
           description: >
             Validation error — missing name, missing e-mail list (private), invalid e-mail,
-            invalid start date, invalid duration, or invalid brokerage fee.
+            the same e-mail repeated in the list (compared ignoring case, spec 05-057), invalid
+            start date, invalid duration, or invalid brokerage fee.
           content:
             application/json:
               schema:
@@ -309,6 +310,15 @@ paths:
                   items: { type: string, format: email }
       responses:
         '202': { description: "Accepted — players added with status e-mail not sent, then invited. A player whose e-mail domain does not accept e-mail (spec 05-047) stays with e-mail not sent; the others are invited" }
+        '400':
+          description: >
+            Spec 05-057: the whole request is rejected and nothing is added or sent when an
+            e-mail in the list is already in the competition, or the same e-mail appears twice in
+            the list (both compared ignoring case). The message names the e-mails.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '503': { $ref: '#/components/responses/EmailServiceUnavailable' }
 
   /competitions/{competitionId}/players/invite-emails:

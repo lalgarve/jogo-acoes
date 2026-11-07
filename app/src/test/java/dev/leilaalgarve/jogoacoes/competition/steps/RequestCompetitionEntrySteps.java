@@ -8,6 +8,10 @@ import dev.leilaalgarve.jogoacoes.captcha.AltchaCaptchaVerifier;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
+import dev.leilaalgarve.jogoacoes.competition.RequestType;
+import dev.leilaalgarve.jogoacoes.log.LogRepository;
+import dev.leilaalgarve.jogoacoes.log.LogType;
+import dev.leilaalgarve.jogoacoes.user.User;
 import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
 import dev.leilaalgarve.jogoacoes.common.testsupport.CompetitionFixtures;
 import dev.leilaalgarve.jogoacoes.common.testsupport.ScenarioWorld;
@@ -17,6 +21,7 @@ import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import org.altcha.altcha.v2.Altcha;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.unique;
@@ -31,10 +36,13 @@ public class RequestCompetitionEntrySteps {
     private final AltchaCaptchaVerifier captchaService;
     private final ParticipationRepository participationRepository;
     private final SentEmailRepository sentEmailRepository;
+    private final LogRepository logRepository;
+    private long statusChangesBefore;
 
     public RequestCompetitionEntrySteps(ScenarioWorld world, UserMother userMother, LoginHelper loginHelper,
                                          CompetitionFixtures competitionFixtures, AltchaCaptchaVerifier captchaService,
-                                         ParticipationRepository participationRepository, SentEmailRepository sentEmailRepository) {
+                                         ParticipationRepository participationRepository, SentEmailRepository sentEmailRepository,
+                                         LogRepository logRepository) {
         this.world = world;
         this.userMother = userMother;
         this.loginHelper = loginHelper;
@@ -42,6 +50,7 @@ public class RequestCompetitionEntrySteps {
         this.captchaService = captchaService;
         this.participationRepository = participationRepository;
         this.sentEmailRepository = sentEmailRepository;
+        this.logRepository = logRepository;
     }
 
     @Given("^the player is (unregistered|registered and not logged in|registered and logged in)$")
@@ -172,6 +181,52 @@ public class RequestCompetitionEntrySteps {
         assertThat(sentForEmail).hasSize(2);
     }
 
+    // -- Spec 05-057: confirming entry again changes nothing --
+
+    @Given("a registered player already participates in a public competition")
+    public void a_registered_player_already_participates_in_a_public_competition() {
+        User user = userMother.registeredPlayer();
+        world.setCurrentUser(user);
+        loginHelper.loginAs(world, user);
+        world.setTargetCompetition(competitionFixtures.publicCompetition());
+        Participation participation = new Participation();
+        participation.setCompetition(world.getTargetCompetition());
+        participation.setUser(user);
+        participation.setEmail(user.getEmail());
+        participation.setRequestType(RequestType.REQUEST);
+        participation.setStatus(ParticipationStatus.IN_COMPETITION);
+        participation.setJoinedAt(LocalDate.now().minusDays(3));
+        participation = participationRepository.save(participation);
+        world.setCurrentParticipationId(participation.getId());
+        statusChangesBefore = statusChangesOfCurrentParticipation();
+    }
+
+    @When("they confirm entry into that competition again")
+    public void they_confirm_entry_into_that_competition_again() {
+        submitEntryRequest(null);
+    }
+
+    @Then("their entry date does not change")
+    public void their_entry_date_does_not_change() {
+        assertThat(world.getLastResponse().statusCode()).isEqualTo(200);
+        assertThat(world.getLastResponse().jsonPath().getLong("id")).isEqualTo(world.getCurrentParticipationId());
+        Participation participation = participationRepository.findById(world.getCurrentParticipationId()).orElseThrow();
+        assertThat(participation.getJoinedAt()).isEqualTo(LocalDate.now().minusDays(3));
+        assertThat(participationRepository.findByCompetition_Id(world.getTargetCompetition().getId())).hasSize(1);
+    }
+
+    @Then("no new participation status change is recorded")
+    public void no_new_participation_status_change_is_recorded() {
+        assertThat(statusChangesOfCurrentParticipation()).isEqualTo(statusChangesBefore);
+    }
+
+    private long statusChangesOfCurrentParticipation() {
+        return logRepository.findAll().stream()
+                .filter(log -> log.getLogType() == LogType.PARTICIPATION_STATUS_CHANGED)
+                .filter(log -> world.getCurrentParticipationId().equals(log.getRelatedObjectId()))
+                .count();
+    }
+
     private void submitEntryRequest(EntryRequest body) {
         RequestSpecification spec = world.request();
         if (body != null) {
@@ -183,7 +238,7 @@ public class RequestCompetitionEntrySteps {
 
     private void assertPendingParticipationExists() {
         Participation participation = participationRepository
-                .findByCompetition_IdAndEmailAndStatusNot(world.getTargetCompetition().getId(), world.getCandidateEmail(), ParticipationStatus.IN_COMPETITION)
+                .findByCompetition_IdAndEmailIgnoreCase(world.getTargetCompetition().getId(), world.getCandidateEmail())
                 .orElseThrow();
         assertThat(participation.getStatus()).isEqualTo(ParticipationStatus.EMAIL_SENT);
     }

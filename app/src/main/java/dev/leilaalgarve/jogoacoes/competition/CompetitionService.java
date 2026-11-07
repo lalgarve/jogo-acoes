@@ -146,6 +146,13 @@ public class CompetitionService {
                 && (request.getEmails() == null || request.getEmails().isEmpty())) {
             throw new CompetitionValidationException("Missing e-mail list");
         }
+        if (request.getType() == dev.leilaalgarve.jogoacoes.api.model.CompetitionType.PRIVATE) {
+            // Spec 05-057: one participation per e-mail, so a list repeating one is rejected.
+            List<String> repeated = InviteEmails.repeated(request.getEmails());
+            if (!repeated.isEmpty()) {
+                throw new CompetitionValidationException(InviteEmails.repeatedMessage(repeated));
+            }
+        }
         if (request.getStartDate() == null || !request.getStartDate().isAfter(LocalDate.now())) {
             throw new CompetitionValidationException("Invalid start date");
         }

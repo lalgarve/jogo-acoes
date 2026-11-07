@@ -5,9 +5,11 @@ import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,7 +19,29 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
 
     Optional<Participation> findByCompetition_IdAndUser_Id(Long competitionId, Long userId);
 
-    Optional<Participation> findByCompetition_IdAndEmailAndStatusNot(Long competitionId, String email, ParticipationStatus status);
+    /** Spec 05-057: the participation of an e-mail in a competition, whatever its status or case. */
+    Optional<Participation> findByCompetition_IdAndEmailIgnoreCase(Long competitionId, String email);
+
+    /** Spec 05-057: which of {@code lowerEmails} (already lower case) are in the competition, as stored. */
+    @Query("select p.email from Participation p where p.competition.id = :competitionId and lower(p.email) in :lowerEmails")
+    List<String> findEmailsAlreadyIn(@Param("competitionId") Long competitionId,
+                                     @Param("lowerEmails") Collection<String> lowerEmails);
+
+    /**
+     * Spec 05-057: creates the participation unless the competition already has one for this
+     * e-mail (unique index {@code participation_competition_email_uidx}). A concurrent request for
+     * the same e-mail waits on the index for the other transaction and inserts nothing, so both
+     * end up reading the same row with {@link #findByCompetition_IdAndEmailIgnoreCase}.
+     */
+    @Modifying
+    @Query(value = """
+            insert into participation (competition_id, user_id, email, status, request_type)
+            values (:competitionId, :userId, :email, :status, :requestType)
+            on conflict (competition_id, lower(email)) do nothing
+            """, nativeQuery = true)
+    int insertIfAbsent(@Param("competitionId") Long competitionId, @Param("userId") Long userId,
+                       @Param("email") String email, @Param("status") String status,
+                       @Param("requestType") String requestType);
 
     List<Participation> findByCompetition_Id(Long competitionId);
 

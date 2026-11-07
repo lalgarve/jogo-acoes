@@ -51,3 +51,9 @@ Feature: Request entry into a public competition
     And has not finished registration yet
     When they request entry into that same competition again
     Then the system resends the link to finish registration by e-mail
+
+  Scenario: Registered player confirms entry into a competition they already joined
+    Given a registered player already participates in a public competition
+    When they confirm entry into that competition again
+    Then their entry date does not change
+    And no new participation status change is recorded

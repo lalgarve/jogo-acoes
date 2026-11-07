@@ -13,15 +13,15 @@ Leila preferir.
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | `docs/openapi.yaml`: resposta `400` (`Error`) em `invitePlayers`, descrevendo e-mail já na competição e e-mail repetido na lista (pedido inteiro recusado); em `createCompetition`, citar o e-mail repetido na descrição do `400` existente. Regenerar a API (`mvn -pl app generate-sources`) e confirmar que compila | — | [P] | #117 |
-| T002 | Cenários de convite em `manage_competition_players.feature` (texto na `spec.md`): "Administrator invites an e-mail that is already in the competition" e "Administrator invites a list that repeats an e-mail". Passos novos em `ManageCompetitionPlayersSteps` (o e-mail já presente é o mesmo com outra grafia de maiúsculas, para cobrir a comparação). Rodar e confirmar que falham hoje (segunda participação criada) | T001 | | #117 |
-| T003 | Cenário em `create_competition.feature`: criar competição privada com o mesmo e-mail duas vezes na lista dá erro e não cria a competição. Passos em `CreateCompetitionSteps`. Rodar e confirmar que falha hoje | — | [P] | #117 |
-| T004 | Cenário "Registered player confirms entry into a competition they already joined" em `request_competition_entry.feature` (texto na `spec.md`). Passos em `RequestCompetitionEntrySteps`: guardar `joinedAt` e as entradas `PARTICIPATION_STATUS_CHANGED` da participação antes; conferir as duas depois. Rodar e confirmar que falha hoje | — | [P] | #117 |
-| T005 | Testes de concorrência (decisão "Teste de concorrência" do `plan.md`): em `EntryRequestServiceIntegrationTest`, dois `requestEntry` simultâneos (um com o e-mail em maiúsculas) resultam numa participação só e nenhuma exceção; em `PlayerManagementServiceIntegrationTest`, dois `invitePlayers` simultâneos com o mesmo e-mail resultam num sucesso e num `PlayerValidationException`. Mais um teste em `EntryRequestServiceIntegrationTest`: jogador `IN_COMPETITION` pede entrada de novo, recebe o link e a participação continua única e `IN_COMPETITION`. Rodar e confirmar que falham hoje | — | [P] | #117 |
-| T006 | Migration `V10__unique_participation_email_per_competition.sql` (índice único em `(competition_id, lower(email))`) e `ParticipationRepository`: `findByCompetition_IdAndEmailIgnoreCase`, `findEmailsAlreadyIn`, `insertIfAbsent`; remover `findByCompetition_IdAndEmailAndStatusNot`. Confirmar que `SchemaLayoutTest` continua verde | T002–T005 | | #117 |
-| T007 | Código: `CompetitionService.validate` recusa e-mail repetido; `PlayerManagementService.invitePlayers` confere repetição e e-mails já presentes antes do laço e traduz a violação do índice; `EntryRequestService.requestEntry` usa a participação em qualquer status e não rebaixa `IN_COMPETITION`; `confirmEntry` não regrava participação já `IN_COMPETITION`; os dois usam `insertIfAbsent` para criar. Confirmar T002–T005 verdes e os cenários existentes de `manage_competition_players.feature`, `create_competition.feature`, `request_competition_entry.feature` e `login.feature` verdes | T006 | | #117 |
-| T008 | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): classes de exceção criadas (esperado: nenhuma); caminhos de erro novos: `PlayerValidationException` por e-mail já presente (T002), por lista repetida (T002) e pela violação do índice em convite simultâneo (T005); `CompetitionValidationException` por lista repetida (T003). Registrar abaixo | T007 | | #117 |
-| T009 | Rodar `mvn -pl app -am verify` com o ambiente de pé e a chave de teste restaurada (`README.md`), e a suíte `blackbox-tests/` (`./scripts/cloud-blackbox-tests.sh` na nuvem). Corrigir testes ou dados de teste que convidem o mesmo e-mail duas vezes (risco do `plan.md`). Se o container da sessão não rodar algum teste, registrar qual e fechar pelo CI da PR para `development` | T007 | | #117 |
+| ~~T001~~ | `docs/openapi.yaml`: resposta `400` (`Error`) em `invitePlayers`, descrevendo e-mail já na competição e e-mail repetido na lista (pedido inteiro recusado); em `createCompetition`, citar o e-mail repetido na descrição do `400` existente. Regenerar a API (`mvn -pl app generate-sources`) e confirmar que compila | — | [P] | #117 |
+| ~~T002~~ | Cenários de convite em `manage_competition_players.feature` (texto na `spec.md`): "Administrator invites an e-mail that is already in the competition" e "Administrator invites a list that repeats an e-mail". Passos novos em `ManageCompetitionPlayersSteps` (o e-mail já presente é o mesmo com outra grafia de maiúsculas, para cobrir a comparação). Rodar e confirmar que falham hoje (segunda participação criada) | T001 | | #117 |
+| ~~T003~~ | Cenário em `create_competition.feature`: criar competição privada com o mesmo e-mail duas vezes na lista dá erro e não cria a competição. Passos em `CreateCompetitionSteps`. Rodar e confirmar que falha hoje | — | [P] | #117 |
+| ~~T004~~ | Cenário "Registered player confirms entry into a competition they already joined" em `request_competition_entry.feature` (texto na `spec.md`). Passos em `RequestCompetitionEntrySteps`: guardar `joinedAt` e as entradas `PARTICIPATION_STATUS_CHANGED` da participação antes; conferir as duas depois. Rodar e confirmar que falha hoje | — | [P] | #117 |
+| ~~T005~~ | Testes de concorrência (decisão "Teste de concorrência" do `plan.md`): em `EntryRequestServiceIntegrationTest`, dois `requestEntry` simultâneos (um com o e-mail em maiúsculas) resultam numa participação só e nenhuma exceção; em `PlayerManagementServiceIntegrationTest`, dois `invitePlayers` simultâneos com o mesmo e-mail resultam num sucesso e num `PlayerValidationException`. Mais um teste em `EntryRequestServiceIntegrationTest`: jogador `IN_COMPETITION` pede entrada de novo, recebe o link e a participação continua única e `IN_COMPETITION`. Rodar e confirmar que falham hoje | — | [P] | #117 |
+| ~~T006~~ | Migration `V10__unique_participation_email_per_competition.sql` (índice único em `(competition_id, lower(email))`) e `ParticipationRepository`: `findByCompetition_IdAndEmailIgnoreCase`, `findEmailsAlreadyIn`, `insertIfAbsent`; remover `findByCompetition_IdAndEmailAndStatusNot`. Confirmar que `SchemaLayoutTest` continua verde | T002–T005 | | #117 |
+| ~~T007~~ | Código: `CompetitionService.validate` recusa e-mail repetido; `PlayerManagementService.invitePlayers` confere repetição e e-mails já presentes antes do laço e traduz a violação do índice; `EntryRequestService.requestEntry` usa a participação em qualquer status e não rebaixa `IN_COMPETITION`; `confirmEntry` não regrava participação já `IN_COMPETITION`; os dois usam `insertIfAbsent` para criar. Confirmar T002–T005 verdes e os cenários existentes de `manage_competition_players.feature`, `create_competition.feature`, `request_competition_entry.feature` e `login.feature` verdes | T006 | | #117 |
+| ~~T008~~ | Critério de aceite de exceções (`memory/constitution.md`, "Critério de aceite: exceções e caminhos de erro exercitados por teste"): classes de exceção criadas (esperado: nenhuma); caminhos de erro novos: `PlayerValidationException` por e-mail já presente (T002), por lista repetida (T002) e pela violação do índice em convite simultâneo (T005); `CompetitionValidationException` por lista repetida (T003). Registrar abaixo | T007 | | #117 |
+| ~~T009~~ | Rodar `mvn -pl app -am verify` com o ambiente de pé e a chave de teste restaurada (`README.md`), e a suíte `blackbox-tests/` (`./scripts/cloud-blackbox-tests.sh` na nuvem). Corrigir testes ou dados de teste que convidem o mesmo e-mail duas vezes (risco do `plan.md`). Se o container da sessão não rodar algum teste, registrar qual e fechar pelo CI da PR para `development` | T007 | | #117 |
 | T010 | Verificação manual (Leila): rodar o roteiro "Verificação manual (T010)" abaixo e conferir os resultados esperados | T009 | | #117 |
 
 - **[P]** marca tarefas que não dependem umas das outras e podem ser feitas em qualquer
@@ -136,4 +136,30 @@ Para derrubar: `docker compose down -v`.
 
 ## Registro
 
-<preencher conforme as tasks forem concluídas>
+Implementação em 2026-11-07, branch `claude/project-thread-l3kfw8`.
+
+- **Fase vermelha (T002–T005) não rodada.** Os testes novos foram escritos antes do código, mas
+  usam os métodos novos do `ParticipationRepository` (T006) e não compilam sem eles; os cenários
+  Cucumber novos também dependem de passos que consultam por `findByCompetition_IdAndEmailIgnoreCase`.
+  A falha esperada de cada um está descrita na `spec.md` e confere com o código anterior
+  (`invitePlayers` sem checagem, `requestEntry` filtrando por status, `confirmEntry` sempre
+  regravando).
+- **T005, convite simultâneo.** Dois `invitePlayers` disparados juntos quase sempre fazem um ver a
+  linha já gravada do outro na checagem antecipada, sem chegar ao índice. O teste ficou
+  determinístico: uma transação grava a participação e não confirma; o convite passa pela
+  checagem, espera no índice e, quando a outra confirma, recebe a violação, traduzida em
+  `PlayerValidationException` (`anInviteRacingAnotherForTheSameEmailIsRejectedByTheUniqueIndex`).
+  Os dois pedidos de entrada simultâneos (`insertIfAbsent`) seguem como no plano.
+- **T008, critério de aceite de exceções.** Nenhuma classe de exceção nova. Caminhos de erro novos
+  e o teste que exercita cada um:
+  - `PlayerValidationException`, e-mail já na competição: cenário "Administrator invites an
+    e-mail that is already in the competition";
+  - `PlayerValidationException`, e-mail repetido na lista: "Administrator invites a list that
+    repeats an e-mail";
+  - `PlayerValidationException`, violação do índice único: teste de T005 acima;
+  - `CompetitionValidationException`, e-mail repetido na lista: "Administrator tries to create a
+    private competition with the same e-mail twice in the list".
+- **T009.** `mvn -pl app -am verify` com o ambiente da nuvem de pé (`./scripts/cloud-up.sh`):
+  313 testes, `BUILD SUCCESS`. Ambiente reconstruído com o código novo (migration V10 aplicada) e
+  `./scripts/cloud-blackbox-tests.sh`: 2 cenários `behave` e 29 testes `pytest` verdes. Nenhum
+  teste ou dado de teste convidava o mesmo e-mail duas vezes.

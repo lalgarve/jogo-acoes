@@ -53,7 +53,11 @@ public class EntryRequestService {
         this.auditLogService = auditLogService;
     }
 
-    /** Logged-in player confirming entry directly from their session -- no e-mail round trip. */
+    /**
+     * Logged-in player confirming entry directly from their session -- no e-mail round trip.
+     * Spec 05-057: confirming again leaves an IN_COMPETITION participation as it is (same
+     * joinedAt, no new audit entry).
+     */
     @Transactional
     public Participation confirmEntry(Long competitionId) {
         Competition competition = findCompetition(competitionId);
@@ -67,12 +71,15 @@ public class EntryRequestService {
             throw new CompetitionNotFoundException(competitionId);
         }
 
+        if (participation != null && participation.getStatus() == ParticipationStatus.IN_COMPETITION) {
+            return participation;
+        }
         if (participation == null) {
-            participation = new Participation();
-            participation.setCompetition(competition);
+            participation = participationFor(competition, user.getEmail(), user);
+            if (participation.getStatus() == ParticipationStatus.IN_COMPETITION) {
+                return participation;
+            }
             participation.setUser(user);
-            participation.setEmail(user.getEmail());
-            participation.setRequestType(RequestType.REQUEST);
         }
         participation.setStatus(ParticipationStatus.IN_COMPETITION);
         participation.setJoinedAt(LocalDate.now());
@@ -82,7 +89,11 @@ public class EntryRequestService {
         return participation;
     }
 
-    /** Unregistered or logged-out player: e-mail + captcha, gets a link instead of immediate entry. */
+    /**
+     * Unregistered or logged-out player: e-mail + captcha, gets a link instead of immediate entry.
+     * Spec 05-057: a repeated request reuses the e-mail's participation, whatever its status; one
+     * already IN_COMPETITION gets the link again but keeps its status.
+     */
     @Transactional
     public void requestEntry(Long competitionId, EntryRequest request) {
         Competition competition = findCompetition(competitionId);
@@ -100,18 +111,8 @@ public class EntryRequestService {
         }
 
         Optional<User> existingUser = userService.findByEmail(email);
-        Participation participation = participationRepository
-                .findByCompetition_IdAndEmailAndStatusNot(competitionId, email, ParticipationStatus.IN_COMPETITION)
-                .orElseGet(() -> {
-                    Participation p = new Participation();
-                    p.setCompetition(competition);
-                    p.setEmail(email);
-                    p.setUser(existingUser.orElse(null));
-                    p.setStatus(ParticipationStatus.EMAIL_NOT_SENT);
-                    p.setRequestType(RequestType.REQUEST);
-                    return p;
-                });
-        participation = participationRepository.save(participation);
+        Participation participation = participationFor(competition, email, existingUser.orElse(null));
+        boolean alreadyInCompetition = participation.getStatus() == ParticipationStatus.IN_COMPETITION;
 
         Long userId = existingUser.map(User::getId).orElse(null);
         Map<String, String> extra = Map.of(CompetitionLinkHandler.PARTICIPATION_ID_EXTRA_KEY, String.valueOf(participation.getId()));
@@ -124,6 +125,9 @@ public class EntryRequestService {
                 ? CompetitionEmail.loginLink(userId, email, name, competition.getName(), RequestType.REQUEST, created.url())
                 : CompetitionEmail.registrationLink(userId, email, competition.getName(), created.url()));
 
+        if (alreadyInCompetition) {
+            return;
+        }
         if (participation.getFirstEmailSentDate() == null) {
             participation.setFirstEmailSentDate(LocalDate.now());
         }
@@ -131,6 +135,18 @@ public class EntryRequestService {
         participationRepository.save(participation);
         auditLogService.record(LogType.PARTICIPATION_STATUS_CHANGED, participation.getId(), existingUser.orElse(null),
                 "Participation status changed to EMAIL_SENT");
+    }
+
+    /**
+     * The e-mail's participation in the competition, created (EMAIL_NOT_SENT, REQUEST) when there
+     * is none. Spec 05-057: inserted with ON CONFLICT DO NOTHING, so two simultaneous requests for
+     * the same e-mail end up with the same row instead of one failing on the unique index.
+     */
+    private Participation participationFor(Competition competition, String email, User user) {
+        participationRepository.insertIfAbsent(competition.getId(), user != null ? user.getId() : null, email,
+                ParticipationStatus.EMAIL_NOT_SENT.name(), RequestType.REQUEST.name());
+        return participationRepository.findByCompetition_IdAndEmailIgnoreCase(competition.getId(), email)
+                .orElseThrow();
     }
 
     private Competition findCompetition(Long competitionId) {

@@ -19,6 +19,7 @@ import dev.leilaalgarve.jogoacoes.log.LogType;
 import dev.leilaalgarve.jogoacoes.loginsession.CurrentUserService;
 import dev.leilaalgarve.jogoacoes.user.User;
 import dev.leilaalgarve.jogoacoes.user.UserService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,9 +60,15 @@ public class PlayerManagementService {
         return all.stream().filter(p -> p.getStatus() == statusFilter).toList();
     }
 
+    /**
+     * Spec 05-057: the whole list is rejected, before anything is added or sent, when an e-mail
+     * repeats in it or is already in the competition (both ignoring case). An invite racing this
+     * one for the same e-mail hits the unique index on {@code saveAndFlush} and gets the same error.
+     */
     @Transactional
     public void invitePlayers(Long competitionId, List<String> emails) {
         Competition competition = findCompetition(competitionId);
+        rejectRepeatedOrAlreadyIn(competitionId, emails);
         for (String email : emails) {
             Participation participation = new Participation();
             participation.setCompetition(competition);
@@ -72,8 +79,26 @@ public class PlayerManagementService {
             participation.setUser(userService.findRegisteredByEmail(email).orElse(null));
             participation.setStatus(ParticipationStatus.EMAIL_NOT_SENT);
             participation.setRequestType(RequestType.INVITE);
-            participation = participationRepository.save(participation);
+            try {
+                participation = participationRepository.saveAndFlush(participation);
+            } catch (DataIntegrityViolationException invitedMeanwhile) {
+                throw new PlayerValidationException(InviteEmails.alreadyInMessage(List.of(email)));
+            }
             sendInviteEmailUnlessDomainRejected(participation);
+        }
+    }
+
+    private void rejectRepeatedOrAlreadyIn(Long competitionId, List<String> emails) {
+        List<String> repeated = InviteEmails.repeated(emails);
+        if (!repeated.isEmpty()) {
+            throw new PlayerValidationException(InviteEmails.repeatedMessage(repeated));
+        }
+        if (emails.isEmpty()) {
+            return;
+        }
+        List<String> alreadyIn = participationRepository.findEmailsAlreadyIn(competitionId, InviteEmails.normalized(emails));
+        if (!alreadyIn.isEmpty()) {
+            throw new PlayerValidationException(InviteEmails.alreadyInMessage(alreadyIn));
         }
     }
 
