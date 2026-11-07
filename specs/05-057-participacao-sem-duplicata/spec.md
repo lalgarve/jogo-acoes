@@ -2,7 +2,7 @@
 
 **Status:** rascunho
 **Issue:** [#117](https://github.com/lalgarve/jogo-acoes/issues/117) (item 4)
-**Iteração:** iteration-6
+**Iteração:** iteration-5
 
 ## Resumo
 
