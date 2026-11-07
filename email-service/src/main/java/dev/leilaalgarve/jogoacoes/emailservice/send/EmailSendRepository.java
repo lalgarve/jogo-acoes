@@ -6,9 +6,13 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface EmailSendRepository extends JpaRepository<EmailSend, UUID> {
+
+    /** Spec 05-059: the send a client's Idempotency-Key already created, if any. */
+    Optional<EmailSend> findByClientIdAndIdempotencyKey(String clientId, String idempotencyKey);
 
     /**
      * Spec 05-046: the PENDING sends due by {@code now}, locked for the caller's transaction.

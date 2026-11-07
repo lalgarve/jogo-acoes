@@ -79,7 +79,7 @@ class DeadLetterConsumerIntegrationTest {
     void sesDownWhileRecreatingAMissingTemplateCountsAsSesUnavailable(CapturedOutput output) {
         EmailTemplate template = templateRepository.save(new EmailTemplate(CLIENT, "welcome", "Welcome!",
                 "<p>Hi</p>", null, CLIENT + "__welcome", Instant.now()));
-        EmailSend send = new EmailSend(CLIENT, template.getId(), "player@example.com", "no-reply@example.com",
+        EmailSend send = new EmailSend(CLIENT, UUID.randomUUID().toString(), "0".repeat(64), template.getId(), "player@example.com", "no-reply@example.com",
                 template.getSesTemplateName(), "{}", Instant.now().minus(Duration.ofHours(25)));
         send.markQueued(Instant.now());
         UUID id = sendRepository.saveAndFlush(send).getId();
@@ -110,7 +110,7 @@ class DeadLetterConsumerIntegrationTest {
     void dropsAMessageForASendThatIsNoLongerQueued(CapturedOutput output) {
         EmailTemplate template = templateRepository.save(new EmailTemplate(CLIENT, "welcome", "Welcome!",
                 "<p>Hi</p>", null, CLIENT + "__welcome", Instant.now()));
-        EmailSend send = new EmailSend(CLIENT, template.getId(), "player@example.com", "no-reply@example.com",
+        EmailSend send = new EmailSend(CLIENT, UUID.randomUUID().toString(), "0".repeat(64), template.getId(), "player@example.com", "no-reply@example.com",
                 template.getSesTemplateName(), "{}", Instant.now());
         send.fail();
         UUID id = sendRepository.saveAndFlush(send).getId();

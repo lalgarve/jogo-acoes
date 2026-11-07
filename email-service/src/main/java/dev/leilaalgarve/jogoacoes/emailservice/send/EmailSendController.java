@@ -23,11 +23,12 @@ public class EmailSendController implements EmailsApi {
 
     /**
      * 202, not 200: the e-mail is recorded as PENDING, not delivered yet -- email-service publishes
-     * it to the send queue in the background (spec 05-046).
+     * it to the send queue in the background (spec 05-046). A repeat with the same
+     * Idempotency-Key answers the same way, with the id of the send already recorded (spec 05-059).
      */
     @Override
-    public ResponseEntity<SendEmailResponse> sendEmail(SendEmailRequest sendEmailRequest) {
-        UUID id = emailSendService.send(clientIdentityResolver.currentClientId(), sendEmailRequest);
+    public ResponseEntity<SendEmailResponse> sendEmail(String idempotencyKey, SendEmailRequest sendEmailRequest) {
+        UUID id = emailSendService.send(clientIdentityResolver.currentClientId(), idempotencyKey, sendEmailRequest);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(new SendEmailResponse(id, SendEmailResponse.StatusEnum.PENDING));
     }

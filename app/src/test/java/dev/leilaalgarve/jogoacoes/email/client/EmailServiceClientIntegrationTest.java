@@ -126,7 +126,7 @@ class EmailServiceClientIntegrationTest {
 
     @Test
     void sendingWithEveryVariableReturnsEmailServiceId() {
-        assertThat(gateway.sendEmail("login-link-invite", unique("data"), completeLoginLinkInviteData())).isNotNull();
+        assertThat(gateway.sendEmail("login-link-invite", unique("data"), completeLoginLinkInviteData(), newKey())).isNotNull();
     }
 
     @Test
@@ -134,14 +134,29 @@ class EmailServiceClientIntegrationTest {
         Map<String, Object> data = completeLoginLinkInviteData();
         data.put("notInTheTemplate", "ignored");
 
-        assertThat(gateway.sendEmail("login-link-invite", unique("data"), data)).isNotNull();
+        assertThat(gateway.sendEmail("login-link-invite", unique("data"), data, newKey())).isNotNull();
+    }
+
+    /**
+     * Spec 05-059: the repeat a lost response leads to. The same key and the same e-mail answer
+     * with the send email-service already recorded, not a second one.
+     */
+    @Test
+    void sendingTheSameEmailTwiceWithTheSameKeyReturnsTheSameSend() {
+        String recipient = unique("same-key");
+        String key = newKey();
+
+        UUID first = gateway.sendEmail("login-link-invite", recipient, completeLoginLinkInviteData(), key);
+        UUID second = gateway.sendEmail("login-link-invite", recipient, completeLoginLinkInviteData(), key);
+
+        assertThat(second).isEqualTo(first);
     }
 
     /** Spec 05-047: missing.test has no record in the test DNS (docker/dns/test.zone). */
     @Test
     void aRecipientDomainEmailServiceRejectsBecomesItsOwnException() {
         assertThatThrownBy(() -> gateway.sendEmail("login-link-invite",
-                "jogador-" + UUID.randomUUID() + "@missing.test", completeLoginLinkInviteData()))
+                "jogador-" + UUID.randomUUID() + "@missing.test", completeLoginLinkInviteData(), newKey()))
                 .isInstanceOf(RecipientDomainRejectedException.class)
                 .hasMessageContaining("missing.test");
     }
@@ -163,7 +178,7 @@ class EmailServiceClientIntegrationTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("incompleteTemplateData")
     void sendingWithIncompleteDataIsStillAcceptedByEmailService(String description, Map<String, Object> data) {
-        assertThat(gateway.sendEmail("login-link-invite", unique("data"), data)).isNotNull();
+        assertThat(gateway.sendEmail("login-link-invite", unique("data"), data, newKey())).isNotNull();
     }
 
     @Test
@@ -252,7 +267,7 @@ class EmailServiceClientIntegrationTest {
     @ParameterizedTest
     @MethodSource("missingNames")
     void sendingWithoutATemplateNameIsRejectedBeforeCallingEmailService(String name) {
-        assertThatThrownBy(() -> gateway.sendEmail(name, unique("noname"), completeLoginLinkInviteData()))
+        assertThatThrownBy(() -> gateway.sendEmail(name, unique("noname"), completeLoginLinkInviteData(), newKey()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -352,6 +367,10 @@ class EmailServiceClientIntegrationTest {
             chain.add(t);
         }
         return chain;
+    }
+
+    private static String newKey() {
+        return UUID.randomUUID().toString();
     }
 
     /** Every variable login-link-invite renders. */

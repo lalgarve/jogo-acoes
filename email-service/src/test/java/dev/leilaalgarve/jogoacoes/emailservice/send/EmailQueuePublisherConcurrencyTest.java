@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -91,7 +92,7 @@ class EmailQueuePublisherConcurrencyTest {
         Set<String> ids = new HashSet<>();
         for (int i = 0; i < SENDS; i++) {
             ids.add(request().body(Map.of("templateName", "welcome", "recipientEmail", "player" + i + "@example.com"))
-                    .when().post("/emails").then().statusCode(202).body("status", equalTo("PENDING"))
+                    .header("Idempotency-Key", UUID.randomUUID().toString()).when().post("/emails").then().statusCode(202).body("status", equalTo("PENDING"))
                     .extract().jsonPath().getString("id"));
         }
         secondInstance = new SpringApplicationBuilder(EmailServiceApplication.class).run("--server.port=0");

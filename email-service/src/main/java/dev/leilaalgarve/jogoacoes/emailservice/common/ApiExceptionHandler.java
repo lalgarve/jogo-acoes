@@ -6,16 +6,19 @@ import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainImport
 import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainSourceAlreadyExistsException;
 import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainSourceNotFoundException;
 import dev.leilaalgarve.jogoacoes.emailservice.domain.RecipientDomainRejectedException;
+import dev.leilaalgarve.jogoacoes.emailservice.send.IdempotencyKeyReusedException;
 import dev.leilaalgarve.jogoacoes.emailservice.send.SenderNotConfiguredException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.SesUnavailableException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateAlreadyExistsException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateNotFoundException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateRejectedBySesException;
 import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateRenderFailedException;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -80,6 +83,38 @@ public class ApiExceptionHandler {
                 .reduce((a, b) -> a + "; " + b)
                 .orElse("Invalid request");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new Error().message(message));
+    }
+
+    /** Spec 05-059: the same Idempotency-Key with a different body -- nothing new was recorded. */
+    @ExceptionHandler(IdempotencyKeyReusedException.class)
+    public ResponseEntity<Error> handleIdempotencyKeyReused(IdempotencyKeyReusedException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(new Error().message(ex.getMessage()));
+    }
+
+    /** A required header is missing (spec 05-059: Idempotency-Key on POST /emails). */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<Error> handleMissingHeader(MissingRequestHeaderException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new Error().message("Missing header " + ex.getHeaderName()));
+    }
+
+    /**
+     * A parameter outside its declared constraints (spec 05-059: Idempotency-Key empty or too
+     * long). The generated API interface is {@code @Validated}, so method validation reports it as
+     * a {@link ConstraintViolationException}, named by the last node of the path ("idempotencyKey").
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Error> handleInvalidParameter(ConstraintViolationException ex) {
+        String message = ex.getConstraintViolations().stream()
+                .map(violation -> lastNode(violation.getPropertyPath().toString()) + " " + violation.getMessage())
+                .sorted()
+                .reduce((a, b) -> a + "; " + b)
+                .orElse("Invalid request");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new Error().message(message));
+    }
+
+    private static String lastNode(String path) {
+        return path.substring(path.lastIndexOf('.') + 1);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

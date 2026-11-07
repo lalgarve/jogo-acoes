@@ -27,9 +27,9 @@ import java.util.function.Supplier;
  * (spec 05-034, ArchitectureTest): the rest of app sees app types and app exceptions, never
  * Feign or email-service's DTOs.
  *
- * <p>Retries only idempotent calls (GET, PUT, preview) and only when email-service was
- * unreachable or answered 5xx. 401/404/409/4xx get the same answer on a retry. POST /emails
- * will never be retried here until it gets its own idempotency (Stage 4, spec 05-034).
+ * <p>Retries only idempotent calls (GET, PUT, preview, and POST /emails with its Idempotency-Key,
+ * spec 05-059) and only when email-service was unreachable or answered 5xx. 401/404/409/4xx get
+ * the same answer on a retry.
  */
 @Component
 @ConditionalOnProperty("email-service.base-url")
@@ -48,24 +48,31 @@ public class EmailServiceGateway {
 
     /**
      * Asks email-service to send one e-mail from one of app's templates and returns the id it
-     * gave the send (202). Never retried: POST /emails has no idempotency until Stage 4, so a
-     * retry after a lost response could send the e-mail twice (spec 05-034).
+     * gave the send (202). Retried like the other calls (spec 05-059): every attempt carries the
+     * same {@code idempotencyKey} and the same body, so a retry after a lost response gets the
+     * send already recorded instead of a second e-mail.
      *
+     * @param idempotencyKey one per e-mail the caller wants sent
      * @throws RecipientDomainRejectedException when the recipient's domain does not accept e-mail
      */
-    public UUID sendEmail(String templateName, String recipientEmail, Map<String, Object> templateData) {
+    public UUID sendEmail(String templateName, String recipientEmail, Map<String, Object> templateData,
+                          String idempotencyKey) {
         requireName(templateName);
-        try {
-            return emails.sendEmail(new SendEmailRequest()
-                            .templateName(templateName).recipientEmail(recipientEmail).templateData(templateData))
-                    .getBody().getId();
-        } catch (FeignException.UnprocessableEntity e) {
-            // Spec 05-047: the only 422 POST /emails answers -- the recipient's domain.
-            throw new RecipientDomainRejectedException("email-service rejected the recipient's domain on POST /emails ("
-                    + templateName + "): " + e.contentUTF8(), e);
-        } catch (FeignException e) {
-            throw translate("POST /emails (" + templateName + ")", e);
-        }
+        SendEmailRequest request = new SendEmailRequest()
+                .templateName(templateName).recipientEmail(recipientEmail).templateData(templateData);
+        return retrying(() -> {
+            try {
+                return emails.sendEmail(idempotencyKey, request).getBody().getId();
+            } catch (FeignException.UnprocessableEntity e) {
+                // Spec 05-047: the recipient's domain. POST /emails also answers 422 for a key
+                // reused with a different body (spec 05-059), which can't happen here: every
+                // attempt sends the same body with the same key.
+                throw new RecipientDomainRejectedException("email-service rejected the recipient's domain on POST /emails ("
+                        + templateName + "): " + e.contentUTF8(), e);
+            } catch (FeignException e) {
+                throw translate("POST /emails (" + templateName + ")", e);
+            }
+        });
     }
 
     public Optional<EmailServiceTemplate> findTemplate(String name) {

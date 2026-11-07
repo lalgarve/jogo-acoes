@@ -285,6 +285,25 @@ paths:
 
         Before the whitelist and DNS (spec 05-048): a domain on the imported disposable e-mail
         lists, or any subdomain of one, is rejected with 422.
+
+        Spec 05-059: every request carries an `Idempotency-Key`, unique per client. Repeating a
+        request with the same key and the same body answers 202 with the id of the send already
+        recorded, records nothing new and queues nothing new -- also while the first request is
+        still being processed (the repeat waits for it). The same key with a different body is
+        rejected with 422. A rejected request (400, 404, 409, 422) does not keep its key, so it
+        can be repeated with the same key once the problem is fixed. The key is kept as long as
+        the send is (at least the 24 hours the send may take).
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: >
+            Chosen by the client, one per e-mail it wants sent, and the same in every attempt to
+            send that e-mail (spec 05-059).
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -300,8 +319,9 @@ paths:
                 $ref: '#/components/schemas/SendEmailResponse'
         '400':
           description: >
-            Malformed request -- e.g. missing templateName/recipientEmail, or recipientEmail
-            not a syntactically valid address
+            Malformed request -- e.g. missing templateName/recipientEmail, recipientEmail
+            not a syntactically valid address, or the Idempotency-Key header missing, empty or
+            longer than 255 characters (spec 05-059)
           content:
             application/json:
               schema:
@@ -332,7 +352,8 @@ paths:
           description: >
             The recipient's domain does not accept e-mail (spec 05-047), or it is (or is under) a
             disposable e-mail domain imported by the batch (spec 05-048) -- nothing was recorded
-            or queued. The message says which.
+            or queued. Or the Idempotency-Key was already used by this client with a different
+            body (spec 05-059) -- nothing new was recorded. The message says which.
           content:
             application/json:
               schema:
