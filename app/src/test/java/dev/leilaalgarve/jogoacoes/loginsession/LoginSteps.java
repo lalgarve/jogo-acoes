@@ -18,6 +18,8 @@ import dev.leilaalgarve.jogoacoes.competition.Participation;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.RequestType;
+import dev.leilaalgarve.jogoacoes.email.SentEmail;
+import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
 import dev.leilaalgarve.jogoacoes.link.LinkRecord;
 import dev.leilaalgarve.jogoacoes.link.LinkRecordRepository;
 import dev.leilaalgarve.jogoacoes.log.LogRepository;
@@ -50,6 +52,7 @@ public class LoginSteps {
     private final UserRepository userRepository;
     private final LogRepository logRepository;
     private final SwitchableEmailSender emailSender;
+    private final SentEmailRepository sentEmailRepository;
     private final int maxDevicesPerUser;
 
     public LoginSteps(ScenarioWorld world, UserMother userMother, LoginHelper loginHelper,
@@ -57,7 +60,7 @@ public class LoginSteps {
                        CompetitionRepository competitionRepository, ParticipationRepository participationRepository,
                        LinkRecordRepository linkRecordRepository, LoginSessionRepository loginSessionRepository,
                        UserRepository userRepository, LogRepository logRepository, SwitchableEmailSender emailSender,
-                       @Value("${login.max-devices-per-user}") int maxDevicesPerUser) {
+                       SentEmailRepository sentEmailRepository, @Value("${login.max-devices-per-user}") int maxDevicesPerUser) {
         this.world = world;
         this.userMother = userMother;
         this.loginHelper = loginHelper;
@@ -70,6 +73,7 @@ public class LoginSteps {
         this.userRepository = userRepository;
         this.logRepository = logRepository;
         this.emailSender = emailSender;
+        this.sentEmailRepository = sentEmailRepository;
         this.maxDevicesPerUser = maxDevicesPerUser;
     }
 
@@ -382,15 +386,93 @@ public class LoginSteps {
 
     @Given("a registered player has an active login link that has not been used yet")
     public void a_registered_player_has_an_active_login_link_that_has_not_been_used_yet() {
+        // Issued an hour ago with the full validity, so a new request resends it (spec 05-058).
+        givenActiveLoginLinkExpiringAt(LocalDateTime.now().plusDays(7).minusHours(1));
+    }
+
+    @Given("a registered player has an active login link that expires in less than a day")
+    public void a_registered_player_has_an_active_login_link_that_expires_in_less_than_a_day() {
+        givenActiveLoginLinkExpiringAt(LocalDateTime.now().plusHours(20));
+    }
+
+    @Given("a registered player already used their login link")
+    public void a_registered_player_already_used_their_login_link() {
+        a_registered_player_has_an_active_login_link_that_has_not_been_used_yet();
+        Response response = world.request("earlier-device")
+                .when()
+                .get("/login-links/{token}", world.getCurrentLoginLink().getToken());
+        assertThat(response.statusCode()).isEqualTo(200);
+    }
+
+    private void givenActiveLoginLinkExpiringAt(LocalDateTime expiresAt) {
         world.setCurrentUser(userMother.registeredPlayer());
         LinkRecord link = new LinkRecord();
         link.setToken(UUID.randomUUID().toString());
         link.setServiceKey(LoginLinkHandler.KEY);
         link.setEmail(world.getCurrentUser().getEmail());
         link.setUserId(world.getCurrentUser().getId());
-        link.setExpiresAt(LocalDateTime.now().plusHours(1));
+        link.setExtraJson("{}");
+        link.setEmailSentAt(LocalDateTime.now().minusHours(1));
+        link.setExpiresAt(expiresAt);
         link = linkRecordRepository.save(link);
-        world.setCurrentLoginLink(link);
+        // Reloaded so the timestamps carry the database's precision, for the comparisons later.
+        world.setCurrentLoginLink(linkRecordRepository.findById(link.getId()).orElseThrow());
+    }
+
+    @When("they request a login link again")
+    public void they_request_a_login_link_again() {
+        they_request_a_new_login_link();
+    }
+
+    @When("they request a login link to return to a different page")
+    public void they_request_a_login_link_to_return_to_a_different_page() {
+        Response response = world.request()
+                .body(new RequestLoginLinkRequest().email(world.getCurrentUser().getEmail()).returnTo("/competitions/mine"))
+                .when()
+                .post("/login-requests");
+        world.setLastResponse(response);
+    }
+
+    @Then("they receive the same login link by e-mail")
+    public void they_receive_the_same_login_link_by_e_mail() {
+        assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
+        assertThat(tokenOf(lastEmailTo(world.getCurrentUser().getEmail()))).isEqualTo(world.getCurrentLoginLink().getToken());
+        LinkRecord link = linkRecordRepository.findById(world.getCurrentLoginLink().getId()).orElseThrow();
+        assertThat(link.getInvalidatedAt()).isNull();
+        assertThat(link.getExpiresAt()).isEqualTo(world.getCurrentLoginLink().getExpiresAt());
+        assertThat(link.getEmailSentAt()).isAfter(world.getCurrentLoginLink().getEmailSentAt());
+    }
+
+    @Then("that link can be used to log in")
+    public void that_link_can_be_used_to_log_in() {
+        Response attempt = world.request()
+                .when()
+                .get("/login-links/{token}", world.getCurrentLoginLink().getToken());
+        assertThat(attempt.statusCode()).isEqualTo(200);
+    }
+
+    @Then("they receive a new login link by e-mail")
+    public void they_receive_a_new_login_link_by_e_mail() {
+        assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
+        String token = tokenOf(lastEmailTo(world.getCurrentUser().getEmail()));
+        assertThat(token).isNotEqualTo(world.getCurrentLoginLink().getToken());
+        assertThat(linkRecordRepository.findByToken(token)).isPresent();
+    }
+
+    @Then("the previous login link can still be used to log in until it expires")
+    public void the_previous_login_link_can_still_be_used_to_log_in_until_it_expires() {
+        the_previous_login_link_can_still_be_used_to_log_in();
+    }
+
+    private SentEmail lastEmailTo(String email) {
+        return sentEmailRepository.findAll().stream()
+                .filter(sent -> sent.getEmail().equals(email))
+                .max(Comparator.comparing(SentEmail::getId))
+                .orElseThrow();
+    }
+
+    private static String tokenOf(SentEmail sent) {
+        return sent.getLink().substring(sent.getLink().lastIndexOf('/') + 1);
     }
 
     @When("they request a new login link")
@@ -428,6 +510,9 @@ public class LoginSteps {
                 .filteredOn(link -> userId.equals(link.getUserId()))
                 .extracting(LinkRecord::getId)
                 .containsExactly(world.getCurrentLoginLink().getId());
+        // Spec 05-058: the request would have resent this link; the failed send undoes that too.
+        assertThat(linkRecordRepository.findById(world.getCurrentLoginLink().getId()).orElseThrow().getEmailSentAt())
+                .isEqualTo(world.getCurrentLoginLink().getEmailSentAt());
         // Filtered by this scenario's user: the log table is shared with every other test (Issue #41).
         assertThat(logRepository.findAll())
                 .filteredOn(log -> log.getUser() != null && userId.equals(log.getUser().getId()))

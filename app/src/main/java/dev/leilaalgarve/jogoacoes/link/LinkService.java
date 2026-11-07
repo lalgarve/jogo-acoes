@@ -8,8 +8,11 @@ import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,6 +27,12 @@ import java.util.UUID;
 public class LinkService {
 
     private static final int LINK_VALIDITY_DAYS = 7;
+
+    /**
+     * Spec 05-058: a link is resent only while it stays valid at least this long; past that, a
+     * new link goes out, and the old one is spared from invalidation until it expires.
+     */
+    static final Duration RESEND_MIN_VALIDITY = Duration.ofDays(1);
 
     private final LinkRecordRepository linkRecordRepository;
     private final LinkRouter linkRouter;
@@ -52,7 +61,38 @@ public class LinkService {
         record.setEmailSentAt(LocalDateTime.now());
         record.setExpiresAt(LocalDateTime.now().plusDays(LINK_VALIDITY_DAYS));
         record = linkRecordRepository.save(record);
+        return toCreationResult(record);
+    }
+
+    private LinkCreationResult toCreationResult(LinkRecord record) {
         return new LinkCreationResult(record.getId(), record.getToken(), linksProperties.loginLinkUrl(record.getToken()));
+    }
+
+    /**
+     * Spec 05-058: the active link a repeated request should resend -- unused, not invalidated,
+     * valid for at least {@link #RESEND_MIN_VALIDITY}, with the same service key, e-mail (any
+     * case), user and extra. The most recent one if there are several. The caller decides what
+     * to do with it; this module still doesn't know what the extra means.
+     */
+    @Transactional(readOnly = true)
+    public Optional<LinkCreationResult> findActive(String serviceKey, LinkPayload payload) {
+        Map<String, String> extra = payload.extra() == null ? Map.of() : payload.extra();
+        return linkRecordRepository
+                .findByServiceKeyAndEmailIgnoreCaseAndUsedAtIsNullAndInvalidatedAtIsNullAndExpiresAtAfter(
+                        serviceKey, payload.email(), LocalDateTime.now().plus(RESEND_MIN_VALIDITY))
+                .stream()
+                .filter(record -> Objects.equals(record.getUserId(), payload.userId()))
+                .filter(record -> readExtra(record.getExtraJson()).equals(extra))
+                .max(Comparator.comparing(LinkRecord::getId))
+                .map(this::toCreationResult);
+    }
+
+    /** Spec 05-058: the link goes out again as it is; only the time of the last e-mail changes. */
+    @Transactional
+    public void markResent(Long linkId) {
+        LinkRecord record = linkRecordRepository.findById(linkId).orElseThrow();
+        record.setEmailSentAt(LocalDateTime.now());
+        linkRecordRepository.save(record);
     }
 
     @Transactional
@@ -87,11 +127,18 @@ public class LinkService {
         return outcome;
     }
 
-    /** Previous active (unused, not invalidated) links for this user are invalidated before requesting a new one. */
+    /**
+     * Previous active (unused, not invalidated) links for this user are invalidated before requesting a new one --
+     * except those expiring within {@link #RESEND_MIN_VALIDITY}, which keep working until they expire (spec 05-058).
+     */
     @Transactional
     public void invalidateActiveLinksFor(Long userId) {
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime spareUntil = now.plus(RESEND_MIN_VALIDITY);
         for (LinkRecord previous : linkRecordRepository.findByUserIdAndUsedAtIsNullAndInvalidatedAtIsNull(userId)) {
+            if (!previous.getExpiresAt().isAfter(spareUntil)) {
+                continue;
+            }
             previous.setInvalidatedAt(now);
             linkRecordRepository.save(previous);
         }

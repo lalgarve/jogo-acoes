@@ -116,9 +116,7 @@ public class EntryRequestService {
 
         Long userId = existingUser.map(User::getId).orElse(null);
         Map<String, String> extra = Map.of(CompetitionLinkHandler.PARTICIPATION_ID_EXTRA_KEY, String.valueOf(participation.getId()));
-        LinkCreationResult created = linkService.create(CompetitionLinkHandler.KEY, new LinkPayload(userId, email, extra));
-        auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), existingUser.orElse(null),
-                "Entry request login link issued to " + email);
+        LinkCreationResult created = entryLink(new LinkPayload(userId, email, extra), existingUser.orElse(null));
 
         String name = existingUser.map(User::getName).orElse(null);
         emailSender.send(existingUser.filter(User::isRegistered).isPresent()
@@ -142,6 +140,24 @@ public class EntryRequestService {
      * is none. Spec 05-057: inserted with ON CONFLICT DO NOTHING, so two simultaneous requests for
      * the same e-mail end up with the same row instead of one failing on the unique index.
      */
+    /**
+     * Spec 05-058: resends the entry link still valid for at least a day, or creates a new one.
+     * Never invalidates: an older link keeps working until it expires.
+     */
+    private LinkCreationResult entryLink(LinkPayload payload, User user) {
+        Optional<LinkCreationResult> active = linkService.findActive(CompetitionLinkHandler.KEY, payload);
+        if (active.isPresent()) {
+            linkService.markResent(active.get().id());
+            auditLogService.record(LogType.LOGIN_LINK_ISSUED, active.get().id(), user,
+                    "Entry request login link issued to " + payload.email() + " (resent)");
+            return active.get();
+        }
+        LinkCreationResult created = linkService.create(CompetitionLinkHandler.KEY, payload);
+        auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), user,
+                "Entry request login link issued to " + payload.email());
+        return created;
+    }
+
     private Participation participationFor(Competition competition, String email, User user) {
         participationRepository.insertIfAbsent(competition.getId(), user != null ? user.getId() : null, email,
                 ParticipationStatus.EMAIL_NOT_SENT.name(), RequestType.REQUEST.name());

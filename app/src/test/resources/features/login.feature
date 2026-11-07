@@ -87,10 +87,28 @@ Feature: Login via link sent by e-mail
     When they click the login link received by e-mail
     Then the system redirects them to the competition page
 
-  Scenario: Requesting a new login link invalidates the previous one
+  Scenario: Requesting a login link again resends the same link
     Given a registered player has an active login link that has not been used yet
-    When they request a new login link
-    Then the previous login link is invalidated
+    When they request a login link again
+    Then they receive the same login link by e-mail
+    And that link can be used to log in
+
+  Scenario: Requesting a login link after the previous one was used issues a new link
+    Given a registered player already used their login link
+    When they request a login link again
+    Then they receive a new login link by e-mail
+
+  Scenario: Requesting a login link when the active one expires within a day issues a new link
+    Given a registered player has an active login link that expires in less than a day
+    When they request a login link again
+    Then they receive a new login link by e-mail
+    And the previous login link can still be used to log in until it expires
+
+  Scenario: Requesting a login link for a different return page issues a new link and invalidates the previous one
+    Given a registered player has an active login link that has not been used yet
+    When they request a login link to return to a different page
+    Then they receive a new login link by e-mail
+    And the previous login link is invalidated
     And only the new login link can be used to log in
 
   Scenario: Requesting a login link while the e-mail service is unavailable changes nothing

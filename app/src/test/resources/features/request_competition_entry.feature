@@ -57,3 +57,18 @@ Feature: Request entry into a public competition
     When they confirm entry into that competition again
     Then their entry date does not change
     And no new participation status change is recorded
+
+  Scenario: Player requests entry twice and uses the first link
+    Given the player is unregistered
+    And requested entry into a public competition twice
+    And both e-mails contain the same link
+    When they open the link from the first e-mail
+    Then they can finish registration and join the competition
+
+  Scenario: Player requests entry again when the link expires within a day
+    Given the player is unregistered
+    And requested entry into a public competition
+    And that link expires in less than a day
+    When they request entry into that competition again
+    Then they receive a new link by e-mail
+    And the link from the first e-mail still works until it expires

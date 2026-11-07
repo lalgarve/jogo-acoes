@@ -17,6 +17,9 @@ import java.util.Map;
  * Issues a standalone login link and e-mails it (spec 05-056). One transaction around the whole
  * request, like the other flows that send e-mail: if the send fails, the previous links stay
  * valid, the new link is not stored and no {@code LOGIN_LINK_ISSUED} is recorded.
+ *
+ * <p>Spec 05-058: a request with the same {@code returnTo} while an unused link is still valid for
+ * at least a day resends that link; only a new link invalidates the previous ones.
  */
 @Service
 public class LoginLinkRequestService {
@@ -42,13 +45,23 @@ public class LoginLinkRequestService {
             return;
         }
 
-        linkService.invalidateActiveLinksFor(user.getId());
         Map<String, String> extra = ReturnToValidator.validate(returnTo)
                 .map(validReturnTo -> Map.of("returnTo", validReturnTo))
                 .orElse(Map.of());
-        LinkCreationResult created = linkService.create(LoginLinkHandler.KEY, new LinkPayload(user.getId(), email, extra));
-        auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), user, "Login link issued to " + email);
+        LinkPayload payload = new LinkPayload(user.getId(), email, extra);
+        LinkCreationResult link = linkService.findActive(LoginLinkHandler.KEY, payload)
+                .map(active -> {
+                    linkService.markResent(active.id());
+                    auditLogService.record(LogType.LOGIN_LINK_ISSUED, active.id(), user, "Login link issued to " + email + " (resent)");
+                    return active;
+                })
+                .orElseGet(() -> {
+                    linkService.invalidateActiveLinksFor(user.getId());
+                    LinkCreationResult created = linkService.create(LoginLinkHandler.KEY, payload);
+                    auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), user, "Login link issued to " + email);
+                    return created;
+                });
 
-        emailSender.send(new LoginLinkEmail(user.getId(), email, user.getName(), created.url()));
+        emailSender.send(new LoginLinkEmail(user.getId(), email, user.getName(), link.url()));
     }
 }

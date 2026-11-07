@@ -32,9 +32,14 @@ def test_last_email_only_consumes_the_message_it_read():
     """Reading an e-mail deletes only that one message from LocalStack's SES store (spec
     05-023) -- a second, independently sent e-mail to the same address is still there
     afterwards, not wiped out by the first read.
+
+    The second request asks for another return page: a repeated request with the same one would
+    resend the same link (spec 05-058), and the two e-mails would be indistinguishable.
     """
     httpx.post(f"{API_BASE_URL}/login-requests", json={"email": ADMIN_EMAIL}).raise_for_status()
-    httpx.post(f"{API_BASE_URL}/login-requests", json={"email": ADMIN_EMAIL}).raise_for_status()
+    httpx.post(
+        f"{API_BASE_URL}/login-requests", json={"email": ADMIN_EMAIL, "returnTo": "/competitions/mine"}
+    ).raise_for_status()
 
     first = last_email(ADMIN_EMAIL)
     second = last_email(ADMIN_EMAIL)

@@ -123,7 +123,9 @@ paths:
         needs no body — entry is confirmed immediately from the session. A private
         competition without a prior invite always rejects (404, so as not to reveal it
         exists). Requesting again while a request is still pending resends the link instead
-        of creating a duplicate. Also the mechanism behind "confirm entry" from the spec
+        of creating a duplicate: the same link, while it is still valid for at least one more
+        day; otherwise a new link, and the previous one keeps working until it expires
+        (spec 05-058). Also the mechanism behind "confirm entry" from the spec
         05-004 competition details screen (`canConfirmEntry`) — same endpoint, no new one.
       x-roles: []
       parameters:
@@ -166,7 +168,8 @@ paths:
         on success. Covers login.feature's device rules: a link only logs in the device
         that first used it (used on a different device → error, unless already logged in
         on the current device, which just redirects); a fresh link for the same player
-        invalidates any previous unused link; exceeding the configured device limit ends
+        invalidates any previous unused link, except one that expires within a day (a link
+        that is only resent changes nothing, spec 05-058); exceeding the configured device limit ends
         the oldest session instead of blocking the new login.
       x-roles: []
       parameters:
@@ -243,6 +246,11 @@ paths:
         `/`, never `//` right after); anything else is silently ignored, falling back to the
         default, since this endpoint requires no session and an unvalidated redirect target
         would be an open redirect.
+
+        Spec 05-058: requesting again while the player has an unused link with the same
+        `returnTo`, still valid for at least one more day, resends that same link (same
+        token, same expiry). Otherwise a new link is issued and the previous unused links are
+        invalidated, except those that expire within a day.
       x-roles: []
       requestBody:
         required: true
