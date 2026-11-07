@@ -84,5 +84,4 @@ dependem de `link`.
 
 ## Decisões em aberto
 
-Nenhuma. A `spec.md` deixa em aberto juntar a implementação com a 05-056; isto é decisão de
-planejamento, e a 05-056 já está mesclada (PR #210).
+Nenhuma.
