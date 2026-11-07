@@ -521,11 +521,12 @@ Não executar testes no merge que gerem cobrança por uso de API de inteligênci
 ## Fase vermelha: testes antes do código, com prova
 
 Os testes de uma task (cenário Gherkin, teste de integração ou de unidade) são escritos e
-**rodados antes** do código de produção que eles cobrem, e têm de falhar pelo motivo esperado (o
-comportamento ainda não existe), não por erro de compilação ou de ambiente. Se o teste só
-compila com algo novo do código de produção, ajustar o teste para não depender disso (ex.: buscar
-com um método que já existe) ou criar só a assinatura, sem a lógica. Se nada disso der, vale
-"Nunca desviar de uma diretiva sem perguntar": parar e perguntar.
+**rodados contra o código como está**, antes de qualquer mudança de produção, e têm de falhar pelo
+motivo esperado: uma asserção sobre o comportamento que ainda não existe. Falha de compilação, de
+ambiente ou exceção inesperada não conta como vermelho. Se o teste não roda contra o código
+atual, ou falha por outro motivo, a sessão **para e pergunta**, mostrando o obstáculo, sem
+contorná-lo por conta própria (nem mudando o teste, nem adiantando código de produção). Nenhum
+contorno é pré-autorizado aqui ("Nunca desviar de uma diretiva sem perguntar").
 
 Prova, para o desvio ficar visível na revisão:
 

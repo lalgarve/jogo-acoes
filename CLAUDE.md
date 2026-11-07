@@ -46,7 +46,10 @@ quem pediu pode querer algo diferente, mesmo que a sessão não enxergue alterna
 `memory/constitution.md` → "Nunca desviar de uma diretiva sem perguntar".
 
 **Fase vermelha com prova** (constitution, "Fase vermelha: testes antes do código, com prova"):
-os testes entram num commit `test: ... (spec NN-NNN)` antes do commit do código, e o `Registro`
+os testes rodam contra o código como está e falham numa asserção sobre o comportamento que ainda
+não existe; erro de compilação, de ambiente ou exceção inesperada não conta. Se não for assim,
+parar e perguntar, sem contornar (nem mudando o teste, nem adiantando código de produção). Os
+testes entram num commit `test: ... (spec NN-NNN)` antes do commit do código, e o `Registro`
 do `tasks.md` traz o comando e o trecho da saída com cada teste novo falhando pelo motivo
 esperado.
 
