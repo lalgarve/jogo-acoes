@@ -43,8 +43,9 @@ mesclada sem um commit que tinha ficado para trás, a sessão recriou o branch e
 tinham decisões em aberto, e sem ninguém ter pedido. O fluxo padrão é **commit e push no
 branch**; PR só quando pedirem explicitamente ("abre a PR", "pode abrir PR"). Recuperar algo
 que ficou de fora de um merge, ou continuar o trabalho depois de uma PR mesclada, **não** é
-pedido de PR nova. O mesmo vale para editar, mesclar ou fechar PR e para editar ou fechar Issue.
-Criar a Issue-épico de uma spec não depende de pedido: toda spec tem a sua.
+pedido de PR nova. O mesmo vale para editar, mesclar ou fechar PR e para editar Issue.
+A Issue-épico de uma spec é exceção: toda spec tem a sua, criada sem depender de pedido, e ela é
+fechada quando a spec é finalizada, também sem depender de pedido.
 
 `.claude/settings.json` reforça isso: as ferramentas de PR/Issue do GitHub estão em
 `permissions.ask`, então qualquer tentativa pede confirmação antes de executar. Não remover
