@@ -57,6 +57,24 @@ Isso tem consequências diretas em como `spec.md`/`plan.md` são escritas e impl
 atualizada (ou removida) — a partir daí, specs que tocam schema/contrato voltam a precisar
 considerar migração de dado existente e compatibilidade retroativa.
 
+## Nunca desviar de uma diretiva sem perguntar
+
+Se um passo escrito em `tasks.md`, `plan.md` ou nesta constitution parecer impossível,
+inadequado ou mais caro do que vale, a sessão **para antes de desviar**: mostra o obstáculo
+concreto (o que tentou, o que impede) e pergunta como seguir. Enquanto espera, não passa para a
+próxima task nem para a próxima spec. Anotar o desvio no `Registro` do `tasks.md` depois do fato
+**não** é permissão. Vale também quando a sessão não enxerga nenhuma alternativa: quem pediu pode
+querer algo diferente, mesmo que a sessão não saiba como.
+
+Antes de concluir que um passo é impossível, conferir de verdade: o obstáculo costuma ser
+menor do que parece.
+
+**Por quê**: aconteceu na implementação das specs 05-057 a 05-060 (2026-11-07). A sessão concluiu
+que a fase vermelha da 05-057 não dava para rodar ("os testes novos dependem de métodos novos do
+repositório") e seguiu sem ela. Na verdade só duas buscas auxiliares usavam um método novo, e
+bastava trocá-las. Nas 05-059 e 05-060 a fase vermelha nem foi tentada. O desvio só apareceu
+como nota no `Registro`, depois do código pronto.
+
 ## Adoção do spec-kit (Spec-Driven Development) — a partir da Iteração 5
 
 O processo já seguido no projeto desde a Iteração 1 (specs em `.feature` antes do código,
@@ -499,6 +517,29 @@ verdade (ex.: grava numa tabela o que seria enviado) para que o teste possa chec
 asserção, em vez de só confiar que o método foi chamado.
 
 Não executar testes no merge que gerem cobrança por uso de API de inteligência artifical (Gemini).
+
+## Fase vermelha: testes antes do código, com prova
+
+Os testes de uma task (cenário Gherkin, teste de integração ou de unidade) são escritos e
+**rodados contra o código como está**, antes de qualquer mudança de produção, e têm de falhar pelo
+motivo esperado: uma asserção sobre o comportamento que ainda não existe. Falha de compilação, de
+ambiente ou exceção inesperada não conta como vermelho. Se o teste não roda contra o código
+atual, ou falha por outro motivo, a sessão **para e pergunta**, mostrando o obstáculo, sem
+contorná-lo por conta própria (nem mudando o teste, nem adiantando código de produção). Nenhum
+contorno é pré-autorizado aqui ("Nunca desviar de uma diretiva sem perguntar").
+
+Prova, para o desvio ficar visível na revisão:
+
+1. **Commit próprio dos testes, antes do código**: `test: <resumo> (spec NN-NNN)`, seguido do
+   commit `feat:`/`fix:` com o código. Uma PR com `feat:` sem o `test:` antes dele denuncia que a
+   fase vermelha não aconteceu.
+2. **Saída da falha no `Registro` do `tasks.md`**: o comando rodado e o trecho da saída que
+   mostra cada teste novo falhando pelo motivo esperado (asserção e valor obtido). Um teste novo
+   que já passava antes do código também é registrado, com o porquê (ex.: protege um
+   comportamento que já existia).
+
+**Por quê**: um teste que nunca foi visto falhando pode estar passando por outro motivo, e não
+proteger nada. Ver "Nunca desviar de uma diretiva sem perguntar" para o caso que motivou a regra.
 
 ## Testes exigem a infraestrutura de pé
 
