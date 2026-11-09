@@ -7,7 +7,7 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 biblioteca (spec 014 de `lalgarve/api-key`) e a correção. Nenhuma task começa sem pedido explícito
 (constitution, "Nunca começar a implementar sem pedido explícito").
 
-Issue: a criar (épico com as tarefas abaixo como checklist, labels `iteration-5` e `fix`).
+Issue: #213 (épico com as tarefas abaixo como checklist, labels `iteration-5` e `fix`).
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
