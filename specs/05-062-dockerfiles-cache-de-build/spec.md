@@ -3,15 +3,18 @@
 **Status:** rascunho
 **Issue:** a criar
 **Iteração:** iteration-5
+**Depende de:** `api-key-validation` 1.1.1 publicada no Maven Central (spec 014 do repositório
+`lalgarve/api-key`)
 
 ## Resumo
 
 Dois defeitos nos Dockerfiles da raiz (`app`) e do `email-service`:
 
-1. **`email-service`: a biblioteca `api-key-validation` só é baixada quando o Docker resolve
+1. **`email-service`: a biblioteca `api-key-validation` só é instalada quando o Docker resolve
    rodar o passo dela.** Quando o cache do Maven (`/root/.m2`) é apagado e as camadas do build
-   não, o build falha procurando a biblioteca no Maven Central. Passa a ser conferida, e baixada
-   do GitHub se faltar, toda vez que o Maven compila o `email-service`.
+   não, o build falha procurando a biblioteca no Maven Central. A biblioteca passa a ser publicada
+   no Maven Central e o `email-service` passa a depender dela como de qualquer outro artefato: o
+   Maven a baixa quando faltar, e o script de instalação deixa de existir.
 2. **`app` e `email-service` copiam a pasta `docs/` inteira** por causa de um ou dois arquivos
    OpenAPI. Qualquer mudança em `docs/` (um `.md` do diário, um diagrama) faz o Docker refazer a
    compilação. Passam a copiar só os arquivos que a compilação lê.
@@ -55,11 +58,15 @@ dev.leilaalgarve.apikey:api-key-validation:jar:1.1.0 was not found in https://re
 `docker compose build --no-cache email-service` resolve na hora, porque refaz o passo do script,
 mas o defeito volta no próximo intervalo de dois dias sem build.
 
+Com a biblioteca no Maven Central, um cache vazio passa a ser só um download, como para qualquer
+outra dependência. Isso também elimina o passo de instalação no CI, no `scripts/cloud-up.sh` e no
+build local.
+
 O `dependency:go-offline` em camada própria veio do `Dockerfile` do `app`, onde roda sem cache
 mount: lá as dependências ficam gravadas na camada, e a camada evita baixá-las de novo enquanto os
-`pom.xml` não mudam. No `email-service`, com cache mount, o que ele baixa vai para o cache mount,
-não para a camada, e o `package` lê do mesmo cache mount. A camada não poupa nada e só cria mais um
-passo que o Docker pula sem conferir o `~/.m2`.
+`pom.xml` não mudam. No `email-service` e no `config-server`, com cache mount, o que ele baixa vai
+para o cache mount, não para a camada, e o `package` lê do mesmo cache mount. A camada não poupa
+nada.
 
 ### A pasta `docs/` inteira
 
@@ -79,46 +86,46 @@ Verificação (comandos prontos em `tasks.md`):
 
 1. **Cache do Maven apagado, camadas mantidas:** com as camadas do build do `email-service` no
    cache e o cache mount `/root/.m2` apagado, `docker compose build email-service` (depois de uma
-   mudança no `src`) baixa a biblioteca do GitHub e termina com sucesso.
-2. **Biblioteca no cache:** com o `/root/.m2` intacto, o build não acessa o GitHub (o script diz
-   `api-key 1.1.0 already in ... -- nothing to do`).
-3. **Mudança só em `docs/`:** mudar um arquivo de `docs/` que não seja OpenAPI (ex.: um `.md` de
+   mudança no `src`) baixa a biblioteca do Maven Central e termina com sucesso.
+2. **Mudança só em `docs/`:** mudar um arquivo de `docs/` que não seja OpenAPI (ex.: um `.md` de
    `docs/context/`) e refazer o build do `app` e do `email-service`: o passo de compilação vem do
    cache (`CACHED`).
-4. **Mudança no contrato:** mudar `docs/openapi-email-service.yaml` refaz a compilação das duas
+3. **Mudança no contrato:** mudar `docs/openapi-email-service.yaml` refaz a compilação das duas
    imagens; mudar `docs/openapi.yaml` refaz só a do `app`.
+4. **Build sem credencial:** o build das imagens, o CI e o build local resolvem a biblioteca sem
+   `settings.xml`, sem token e sem passo de instalação.
 
 ## Requisitos funcionais
 
-- `email-service/Dockerfile`: `scripts/install-api-key-lib.sh` roda no mesmo `RUN` de todo
-  comando Maven que lê o `~/.m2`, de modo que nenhum desses comandos rode sem o script ter
-  conferido o cache antes.
+- `email-service/pom.xml` depende de `api-key-validation` 1.1.1, resolvida do Maven Central.
+- `scripts/install-api-key-lib.sh` deixa de existir, e nada mais o chama (`email-service/Dockerfile`,
+  `.github/workflows/ci.yml`, `scripts/cloud-up.sh`, `README.md`).
+- `email-service/Dockerfile` e `config-server/Dockerfile` não têm mais o `RUN` do
+  `dependency:go-offline`.
 - `email-service/Dockerfile` copia de `docs/` só `docs/openapi-email-service.yaml`.
 - `Dockerfile` (`app`) copia de `docs/` só `docs/openapi.yaml` e `docs/openapi-email-service.yaml`.
-- Comentários dos dois Dockerfiles atualizados: o motivo de o script rodar junto com o Maven, e
+- Comentários dos Dockerfiles e do `email-service/pom.xml` atualizados: de onde vem a biblioteca e
   quais arquivos de `docs/` cada build lê.
-- As imagens resultantes não mudam: mesmo jar, mesmos agentes do JaCoCo no `app`, mesma
-  `ENTRYPOINT`.
+- As imagens resultantes não mudam, além da versão da biblioteca: mesmos agentes do JaCoCo no
+  `app`, mesma `ENTRYPOINT`.
 
 ## Requisitos não-funcionais
 
-- Com a biblioteca no cache, o build continua sem acessar o GitHub, como pede a spec 05-030.
+- Nenhuma credencial do Maven Central no build deste repositório: ela só é usada para publicar, no
+  repositório `lalgarve/api-key`.
 - O build de um `src` alterado não fica mais lento do que hoje com o cache cheio.
 
 ## Fora de escopo
 
-- Mudar a distribuição da `api-key-validation` (publicar num registro Maven, GitHub Packages).
+- A publicação da biblioteca (spec 014 do repositório `lalgarve/api-key`).
+- A CLI da `api-key` e a chave de teste gerada com ela (`docker/postgres-email-service/test-data/`,
+  `scripts/test-api-key.sh`): continuam na 1.1.0, que grava o mesmo formato.
 - Mudar a política de limpeza do BuildKit do Docker Desktop.
 - Cache mount do `~/.m2` no `Dockerfile` do `app`, que hoje não usa: o `go-offline` dele, sem cache
   mount, funciona como deve.
-- CI (`.github/workflows/ci.yml`) e `scripts/cloud-up.sh`: chamam o script direto, fora de um
-  build Docker, e não têm o problema das camadas.
 - Healthcheck do `app` no Compose (o `up --wait app` volta antes de o Spring ficar pronto,
   visto na mesma verificação da spec 05-056): é outro assunto.
 
 ## Decisões em aberto
 
-- **`config-server/Dockerfile`:** tem o mesmo `dependency:go-offline` em camada própria com cache
-  mount, que não poupa nada. Não quebra (todas as dependências dele estão no Maven Central, e o
-  Maven as baixa de novo se o cache sumir). Entra nesta spec, para os três Dockerfiles seguirem o
-  mesmo padrão, ou fica como está?
+Nenhuma.
