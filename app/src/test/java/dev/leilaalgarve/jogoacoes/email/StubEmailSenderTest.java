@@ -1,6 +1,5 @@
 package dev.leilaalgarve.jogoacoes.email;
 
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.email.SentEmail;
 import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
 import dev.leilaalgarve.jogoacoes.user.User;
@@ -12,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
+import java.util.Map;
 import java.util.UUID;
 
 import static dev.leilaalgarve.jogoacoes.common.testsupport.TestEmails.fixed;
@@ -53,15 +53,14 @@ class StubEmailSenderTest {
         long before = sentEmailRepository.count();
         String link = "https://jogo-acoes.example/login/" + UUID.randomUUID();
 
-        emailSender.send(new EmailRequest(user.getId(), fixed("alice"), user.getName(), null, null,
-                link, EmailTemplate.LOGIN_LINK));
+        emailSender.send(new TestEmail(user.getId(), fixed("alice"), link, "login-link"));
 
         assertThat(sentEmailRepository.count()).isEqualTo(before + 1);
         SentEmail sent = sentEmailRepository.findByLink(link).orElseThrow();
         assertThat(sent.getUser().getId()).isEqualTo(user.getId());
         assertThat(sent.getEmail()).isEqualTo(fixed("alice"));
         assertThat(sent.getLink()).isEqualTo(link);
-        assertThat(sent.getTemplate()).isEqualTo(EmailTemplate.LOGIN_LINK);
+        assertThat(sent.getTemplate()).isEqualTo("login-link");
         assertThat(sent.getSentAt()).isNotNull();
     }
 
@@ -71,13 +70,12 @@ class StubEmailSenderTest {
         long before = sentEmailRepository.count();
         String link = "https://jogo-acoes.example/entry/" + UUID.randomUUID();
 
-        emailSender.send(new EmailRequest(null, fixed("bob"), null, "Copa Jogo de Ações", null,
-                link, EmailTemplate.REGISTRATION_LINK));
+        emailSender.send(new TestEmail(null, fixed("bob"), link, "registration-link"));
 
         assertThat(sentEmailRepository.count()).isEqualTo(before + 1);
         SentEmail sent = sentEmailRepository.findByLink(link).orElseThrow();
         assertThat(sent.getUser()).isNull();
-        assertThat(sent.getTemplate()).isEqualTo(EmailTemplate.REGISTRATION_LINK);
+        assertThat(sent.getTemplate()).isEqualTo("registration-link");
     }
 
     @Test
@@ -87,9 +85,17 @@ class StubEmailSenderTest {
         // Long.MAX_VALUE, not a low fixed ID like 999L: this shared database accumulates
         // rows across the whole test run (see class-level note above), so a low ID could
         // eventually collide with a real user once enough tests have run before this one.
-        assertThatThrownBy(() -> emailSender.send(new EmailRequest(Long.MAX_VALUE, fixed("carol"), null,
-                "Copa Jogo de Ações", null, "https://jogo-acoes.example/invite/qqq", EmailTemplate.INVITE)))
+        assertThatThrownBy(() -> emailSender.send(new TestEmail(Long.MAX_VALUE, fixed("carol"),
+                "https://jogo-acoes.example/invite/qqq", "invite")))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    /** Spec 05-061: the stub only records; which client built the e-mail doesn't matter here. */
+    private record TestEmail(Long userId, String recipient, String link, String templateName) implements OutgoingEmail {
+        @Override
+        public Map<String, Object> templateData() {
+            return Map.of("link", link);
+        }
     }
 
     private EmailSender newStubEmailSender() {

@@ -95,6 +95,9 @@ chaves acima, ele aceita `jogo-acoes` (a chave de teste da aplicação, com a pe
    aparecem para outro.
 8. `envio POST /templates` sem `subject`. Esperado: `400`,
    `{"message":"subject must not be null"}`.
+9. `envio POST /templates/boas-vindas/preview` com `{"variables": {"nome": "Maria"}}`, sem o
+   `link` que o corpo usa. Esperado: `422`, com a mensagem do SES
+   `Attribute 'link' is not present in the rendering data.`
 
 ## Envio
 

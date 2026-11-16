@@ -7,7 +7,9 @@ import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.infrastructure.item.ExecutionContext;
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jdbc.core.JdbcTemplate;
+import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainRepository;
+import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainSource;
+import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainSourceRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
@@ -42,15 +44,17 @@ import java.util.stream.Stream;
 @Component
 public class DownloadListTasklet implements Tasklet {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final DisposableDomainSourceRepository sources;
+    private final DisposableDomainRepository disposableDomains;
     private final Duration timeout;
     private final long maxBytes;
     private final HttpClient http;
 
-    public DownloadListTasklet(JdbcTemplate jdbcTemplate,
+    public DownloadListTasklet(DisposableDomainSourceRepository sources, DisposableDomainRepository disposableDomains,
                                @Value("${email.disposable-domains.download-timeout:30s}") Duration timeout,
                                @Value("${email.disposable-domains.max-size:10MB}") DataSize maxSize) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.sources = sources;
+        this.disposableDomains = disposableDomains;
         this.timeout = timeout;
         this.maxBytes = maxSize.toBytes();
         this.http = HttpClient.newBuilder()
@@ -63,9 +67,10 @@ public class DownloadListTasklet implements Tasklet {
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws IOException {
         Map<String, Object> parameters = chunkContext.getStepContext().getJobParameters();
         long sourceId = (Long) parameters.get(ImportContextKeys.SOURCE_ID);
-        Map<String, Object> source = jdbcTemplate.queryForMap(
-                "SELECT url, content_sha256 FROM disposable_domain_source WHERE id = ?", sourceId);
-        String url = (String) source.get("url");
+        // The import only starts for a registered repository, and repositories are never deleted.
+        DisposableDomainSource source = sources.findById(sourceId)
+                .orElseThrow(() -> new IllegalStateException("No disposable domain repository " + sourceId));
+        String url = source.getUrl();
 
         Path file = Files.createTempFile("disposable-list-", ".conf");
         String sha256;
@@ -79,10 +84,9 @@ public class DownloadListTasklet implements Tasklet {
             throw e;
         }
 
-        jdbcTemplate.update("UPDATE disposable_domain_source SET last_downloaded_at = ? WHERE id = ?",
-                LocalDateTime.now(ZoneOffset.UTC), sourceId);
+        sources.markDownloaded(sourceId, LocalDateTime.now(ZoneOffset.UTC));
 
-        if (sha256.equals(source.get("content_sha256"))) {
+        if (sha256.equals(source.getContentSha256())) {
             Files.deleteIfExists(file);
             contribution.setExitStatus(new ExitStatus(ImportContextKeys.UNCHANGED));
             return RepeatStatus.FINISHED;
@@ -90,8 +94,7 @@ public class DownloadListTasklet implements Tasklet {
         ExecutionContext jobContext = chunkContext.getStepContext().getStepExecution().getJobExecution().getExecutionContext();
         jobContext.putString(ImportContextKeys.LIST_FILE, file.toString());
         jobContext.putString(ImportContextKeys.SHA256, sha256);
-        jobContext.putLong(ImportContextKeys.DOMAINS_BEFORE, jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM disposable_domain WHERE source_id = ?", Long.class, sourceId));
+        jobContext.putLong(ImportContextKeys.DOMAINS_BEFORE, disposableDomains.countBySource(sourceId));
         return RepeatStatus.FINISHED;
     }
 

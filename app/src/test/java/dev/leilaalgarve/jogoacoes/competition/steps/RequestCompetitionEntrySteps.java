@@ -5,7 +5,6 @@ import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import dev.leilaalgarve.jogoacoes.api.model.EntryRequest;
 import dev.leilaalgarve.jogoacoes.captcha.AltchaCaptchaVerifier;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.competition.Participation;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationStatus;
 import dev.leilaalgarve.jogoacoes.competition.ParticipationRepository;
@@ -86,7 +85,7 @@ public class RequestCompetitionEntrySteps {
     public void the_system_adds_the_e_mail_to_the_list_of_requesters() {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
         assertPendingParticipationExists();
-        assertEmailSent(EmailTemplate.REGISTRATION_LINK);
+        assertEmailSent("registration-link");
     }
 
     @Given("confirmed entry into the competition")
@@ -98,7 +97,7 @@ public class RequestCompetitionEntrySteps {
     public void the_system_adds_the_e_mail_personalized_with_the_name_to_the_list_of_requesters() {
         assertThat(world.getLastResponse().statusCode()).isEqualTo(202);
         assertPendingParticipationExists();
-        assertEmailSent(EmailTemplate.LOGIN_LINK);
+        assertEmailSent("login-link-request");
     }
 
     @Then("the system adds the player to the public competition and redirects them to the competition page")
@@ -189,9 +188,9 @@ public class RequestCompetitionEntrySteps {
         assertThat(participation.getStatus()).isEqualTo(ParticipationStatus.EMAIL_SENT);
     }
 
-    private void assertEmailSent(EmailTemplate expectedTemplate) {
+    private void assertEmailSent(String expectedTemplate) {
         boolean sent = sentEmailRepository.findAll().stream()
-                .anyMatch(sentEmail -> sentEmail.getEmail().equals(world.getCandidateEmail()) && sentEmail.getTemplate() == expectedTemplate);
+                .anyMatch(sentEmail -> sentEmail.getEmail().equals(world.getCandidateEmail()) && expectedTemplate.equals(sentEmail.getTemplate()));
         assertThat(sent).isTrue();
     }
 

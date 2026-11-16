@@ -1,7 +1,7 @@
 package dev.leilaalgarve.jogoacoes.common.testsupport;
 
-import dev.leilaalgarve.jogoacoes.email.EmailRequest;
 import dev.leilaalgarve.jogoacoes.email.EmailSender;
+import dev.leilaalgarve.jogoacoes.email.OutgoingEmail;
 import dev.leilaalgarve.jogoacoes.email.StubEmailSender;
 import dev.leilaalgarve.jogoacoes.email.exception.EmailServiceUnavailableException;
 import org.springframework.boot.test.context.TestComponent;
@@ -36,10 +36,10 @@ public class SwitchableEmailSender implements EmailSender {
     }
 
     @Override
-    public void send(EmailRequest request) {
+    public void send(OutgoingEmail email) {
         if (unavailable) {
             throw new EmailServiceUnavailableException("email-service switched off by the scenario", null);
         }
-        stubEmailSender.send(request);
+        stubEmailSender.send(email);
     }
 }

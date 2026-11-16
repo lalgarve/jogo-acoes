@@ -127,16 +127,26 @@ BUILD_FLAG=()
 
 cd "$REPO_ROOT"
 
-# On failure, LocalStack's own reason (e.g. Pro's "License activation failed") is in its log, not
-# in Compose's output.
+# On failure, LocalStack's own reason (e.g. Pro's "License activation failed", or an init script
+# that failed and left it unhealthy, spec 05-055) is in its log, not in Compose's output.
 compose_up() {
   if ! docker compose up -d --wait "$@"; then
-    local localstack_id
+    local localstack_id localstack_state
     localstack_id="$(docker compose ps -a -q localstack 2>/dev/null || true)"
-    if [ -n "$localstack_id" ] &&
-       [ "$(docker inspect -f '{{.State.Status}}' "$localstack_id")" = exited ]; then
-      echo "docker-up: localstack exited; its last log lines:" >&2
-      docker compose logs --no-log-prefix --tail 15 localstack >&2 || true
+    if [ -n "$localstack_id" ]; then
+      localstack_state="$(docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$localstack_id")"
+      case "$localstack_state" in
+        exited*) localstack_state=exited ;;
+        *unhealthy) localstack_state=unhealthy ;;
+        *) localstack_state="" ;;
+      esac
+      # Without the healthcheck's own requests, one every 5 seconds, which would push the reason
+      # out of the last lines.
+      if [ -n "$localstack_state" ]; then
+        echo "docker-up: localstack $localstack_state; its last log lines:" >&2
+        docker compose logs --no-log-prefix localstack 2>&1 |
+          grep -v 'GET /_localstack/init/ready' | tail -n 15 >&2 || true
+      fi
     fi
     fail "docker compose up $* failed"
   fi

@@ -4,8 +4,6 @@ import dev.leilaalgarve.jogoacoes.user.User;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -34,9 +32,9 @@ public class SentEmail {
     @Column(nullable = false)
     private String link;
 
-    @Enumerated(EnumType.STRING)
+    /** Spec 05-061: the name of the template the client picked, e.g. {@code login-link-invite}. */
     @Column(nullable = false)
-    private EmailTemplate template;
+    private String template;
 
     @Column(name = "sent_at", nullable = false)
     private LocalDateTime sentAt;
@@ -77,11 +75,11 @@ public class SentEmail {
         this.link = link;
     }
 
-    public EmailTemplate getTemplate() {
+    public String getTemplate() {
         return template;
     }
 
-    public void setTemplate(EmailTemplate template) {
+    public void setTemplate(String template) {
         this.template = template;
     }
 

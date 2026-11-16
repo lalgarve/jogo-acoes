@@ -23,7 +23,7 @@ public class StubEmailSender implements EmailSender {
     }
 
     @Override
-    public void send(EmailRequest request) {
-        sentEmailRecorder.record(request);
+    public void send(OutgoingEmail email) {
+        sentEmailRecorder.record(email);
     }
 }

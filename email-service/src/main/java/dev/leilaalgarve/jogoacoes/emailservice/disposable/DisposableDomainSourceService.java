@@ -2,7 +2,6 @@ package dev.leilaalgarve.jogoacoes.emailservice.disposable;
 
 import dev.leilaalgarve.jogoacoes.emailservice.api.model.DisposableDomainSourceCreateRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,13 +16,13 @@ public class DisposableDomainSourceService {
 
     private final DisposableDomainSourceRepository sources;
     private final DisposableDomainImportService imports;
-    private final JdbcTemplate jdbcTemplate;
+    private final DisposableDomainRepository disposableDomains;
 
     public DisposableDomainSourceService(DisposableDomainSourceRepository sources, DisposableDomainImportService imports,
-                                         JdbcTemplate jdbcTemplate) {
+                                         DisposableDomainRepository disposableDomains) {
         this.sources = sources;
         this.imports = imports;
-        this.jdbcTemplate = jdbcTemplate;
+        this.disposableDomains = disposableDomains;
     }
 
     /**
@@ -54,8 +53,7 @@ public class DisposableDomainSourceService {
                 .description(source.getDescription())
                 .lastDownloadedAt(toOffset(source.getLastDownloadedAt()))
                 .lastUpdatedAt(toOffset(source.getLastUpdatedAt()))
-                .domainCount(jdbcTemplate.queryForObject(
-                        "SELECT count(*) FROM disposable_domain WHERE source_id = ?", Long.class, source.getId()))
+                .domainCount(disposableDomains.countBySource(source.getId()))
                 .lastImport(imports.lastImportOf(source.getId()).orElse(null));
     }
 

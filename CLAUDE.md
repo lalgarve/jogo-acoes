@@ -35,6 +35,24 @@ implementação"), mesmo com desenho técnico claro na conversa, mesmo se a muda
 — "parecer simples" é julgamento da sessão, não permissão de quem pediu. Detalhe completo:
 `memory/constitution.md` → "Nunca começar a implementar sem pedido explícito".
 
+## Nunca desviar de uma diretiva sem perguntar
+
+Já aconteceu (specs 05-057 a 05-060, 2026-11-07): a sessão concluiu que a fase vermelha não dava
+para rodar, seguiu sem ela e só anotou o desvio no `Registro` do `tasks.md` depois. O obstáculo
+nem era real. Se um passo de `tasks.md`, `plan.md` ou da constitution parecer impossível ou
+inadequado, **parar antes de desviar**, mostrar o obstáculo concreto e perguntar. Não seguir para
+a próxima task nem para a próxima spec enquanto isso. Uma nota depois do fato não é permissão, e
+quem pediu pode querer algo diferente, mesmo que a sessão não enxergue alternativa. Detalhe:
+`memory/constitution.md` → "Nunca desviar de uma diretiva sem perguntar".
+
+**Fase vermelha com prova** (constitution, "Fase vermelha: testes antes do código, com prova"):
+os testes rodam contra o código como está e falham numa asserção sobre o comportamento que ainda
+não existe; erro de compilação, de ambiente ou exceção inesperada não conta. Se não for assim,
+parar e perguntar, sem contornar (nem mudando o teste, nem adiantando código de produção). Os
+testes entram num commit `test: ... (spec NN-NNN)` antes do commit do código, e o `Registro`
+do `tasks.md` traz o comando e o trecho da saída com cada teste novo falhando pelo motivo
+esperado.
+
 ## Nunca abrir PR sem pedido explícito
 
 Já aconteceu: depois que a [PR #145](https://github.com/lalgarve/jogo-acoes/pull/145) foi

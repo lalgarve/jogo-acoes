@@ -137,7 +137,7 @@ public class EmailServiceGateway {
     }
 
     /**
-     * Template names come from app's own code (EmailTemplate, EmailTemplateSynchronizer), so a
+     * Template names come from app's own code (each EmailTemplateSource and OutgoingEmail), so a
      * missing one is a programming error, rejected before any call: unchecked, an empty name
      * would end up in a URL with no template segment, or in a template email-service creates
      * with no name (spec 05-036, D1).

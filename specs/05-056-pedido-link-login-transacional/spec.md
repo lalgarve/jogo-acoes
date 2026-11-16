@@ -1,6 +1,6 @@
 # Spec: pedido de link de login não deixa rastro quando o e-mail não sai
 
-**Status:** implementada (verificação manual T007 pendente; ver `tasks.md`)
+**Status:** implementada e verificada (verificação manual T007 em 2026-11-06, ver `tasks.md`)
 **Issue:** [#135](https://github.com/lalgarve/jogo-acoes/issues/135)
 **Iteração:** iteration-5
 

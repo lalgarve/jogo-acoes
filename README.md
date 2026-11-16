@@ -463,6 +463,20 @@ existe e é mais novo que o `pom.xml` da raiz, o `email-lambda/pom.xml` e tudo e
 `email-lambda/src/`, ele sai na hora sem buildar. Pra forçar o rebuild, apague
 `email-lambda/dist/`.
 
+O `localstack` só fica `healthy` (e o `docker compose up --wait` só termina) quando os três
+scripts de inicialização (`docker/localstack/init/`) terminam sem erro, com a função
+`EmailLambda` em `Active` e o *event source mapping* em `Enabled` (spec 05-055). Se algum falha,
+o container fica `unhealthy` e o motivo está em `docker compose logs localstack`. Para ver o
+estado de cada parte:
+
+```
+./scripts/check-localstack.sh
+```
+
+O CI roda o mesmo script depois de cada subida do LocalStack. Com o LocalStack do
+`cloud-up.sh`, que não é do Compose: `LOCALSTACK_CONTAINER=jogo-acoes-localstack
+./scripts/check-localstack.sh`.
+
 Pra confirmar que uma mensagem foi processada, direto na fila (deve zerar depois que a função
 processa o que estava pendente):
 

@@ -6,13 +6,16 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
 /**
  * A repository of a disposable e-mail domain list (spec 05-048). Times are UTC wall-clock, the
- * same way the import job writes them with JDBC. The job owns the download/update times and the
- * content hash (content_sha256, not mapped here); this entity only creates rows and reads them.
+ * same way the import job writes them. The job owns the download/update times and the content
+ * hash, and changes them only through {@link DisposableDomainSourceRepository}'s updates; this
+ * entity creates rows and reads them.
  */
 @Entity
 @Table(name = "disposable_domain_source")
@@ -36,6 +39,11 @@ public class DisposableDomainSource {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    /** SHA-256 of the list that updated the database last; null before the first import. */
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "content_sha256", length = 64)
+    private String contentSha256;
 
     protected DisposableDomainSource() {
         // JPA
@@ -69,5 +77,9 @@ public class DisposableDomainSource {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public String getContentSha256() {
+        return contentSha256;
     }
 }

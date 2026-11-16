@@ -10,7 +10,6 @@ import dev.leilaalgarve.jogoacoes.common.testsupport.UserMother;
 import dev.leilaalgarve.jogoacoes.competition.Competition;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionRepository;
 import dev.leilaalgarve.jogoacoes.competition.CompetitionStatus;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.email.SentEmailRepository;
 import dev.leilaalgarve.jogoacoes.user.User;
 import io.restassured.response.Response;
@@ -143,7 +142,7 @@ public class CreateCompetitionSteps {
     public void the_system_sends_the_invite_e_mails_to_the_provided_list() {
         List<String> invitedEmails = world.getCompetitionRequest().getEmails();
         long sentCount = sentEmailRepository.findAll().stream()
-                .filter(sentEmail -> sentEmail.getTemplate() == EmailTemplate.INVITE)
+                .filter(sentEmail -> "invite".equals(sentEmail.getTemplate()))
                 .filter(sentEmail -> invitedEmails.contains(sentEmail.getEmail()))
                 .count();
         assertThat(sentCount).isEqualTo(invitedEmails.size());
@@ -217,7 +216,7 @@ public class CreateCompetitionSteps {
     public void the_system_sends_the_e_mail_personalized_with_the_name_to_that_player() {
         boolean sent = sentEmailRepository.findAll().stream()
                 .anyMatch(sentEmail -> sentEmail.getEmail().equals(world.getCandidateEmail())
-                        && sentEmail.getTemplate() == EmailTemplate.LOGIN_LINK);
+                        && "login-link-invite".equals(sentEmail.getTemplate()));
         assertThat(sent).isTrue();
     }
 }

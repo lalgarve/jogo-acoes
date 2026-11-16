@@ -1,6 +1,5 @@
 package dev.leilaalgarve.jogoacoes.emailservice.disposable;
 
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -14,10 +13,10 @@ import java.util.List;
 @Service
 public class DisposableDomainChecker {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final DisposableDomainRepository disposableDomains;
 
-    public DisposableDomainChecker(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public DisposableDomainChecker(DisposableDomainRepository disposableDomains) {
+        this.disposableDomains = disposableDomains;
     }
 
     /** @param domain lower case, ASCII form */
@@ -29,9 +28,6 @@ public class DisposableDomainChecker {
         if (candidates.isEmpty()) {
             return false;
         }
-        String placeholders = String.join(", ", candidates.stream().map(c -> "?").toList());
-        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(
-                "SELECT EXISTS (SELECT 1 FROM disposable_domain WHERE domain IN (" + placeholders + "))",
-                Boolean.class, candidates.toArray()));
+        return disposableDomains.existsAnyOf(candidates);
     }
 }

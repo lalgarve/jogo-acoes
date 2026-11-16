@@ -1,8 +1,6 @@
 package dev.leilaalgarve.jogoacoes.loginsession;
 
-import dev.leilaalgarve.jogoacoes.email.EmailRequest;
 import dev.leilaalgarve.jogoacoes.email.EmailSender;
-import dev.leilaalgarve.jogoacoes.email.EmailTemplate;
 import dev.leilaalgarve.jogoacoes.link.LinkCreationResult;
 import dev.leilaalgarve.jogoacoes.link.LinkService;
 import dev.leilaalgarve.jogoacoes.link.dto.LinkPayload;
@@ -51,7 +49,6 @@ public class LoginLinkRequestService {
         LinkCreationResult created = linkService.create(LoginLinkHandler.KEY, new LinkPayload(user.getId(), email, extra));
         auditLogService.record(LogType.LOGIN_LINK_ISSUED, created.id(), user, "Login link issued to " + email);
 
-        emailSender.send(new EmailRequest(user.getId(), email, user.getName(), null, null,
-                created.url(), EmailTemplate.LOGIN_LINK));
+        emailSender.send(new LoginLinkEmail(user.getId(), email, user.getName(), created.url()));
     }
 }

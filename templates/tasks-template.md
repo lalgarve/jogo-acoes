@@ -15,6 +15,11 @@ Quebra `plan.md` em tarefas pequenas, ordenadas, prontas para virar Issues (ver
 - Cada linha vira um item de checklist na Issue-épico da feature, ou uma Issue própria
   quando grande o suficiente para PR isolada — a Issue leva o label `iteration-N` da
   iteração corrente, além do label de tipo (`feat`/`fix`/...).
+- Fase vermelha (`memory/constitution.md`, "Fase vermelha: testes antes do código, com prova"):
+  os testes de cada task rodam contra o código como está e falham numa asserção sobre o
+  comportamento que ainda não existe (compilação, ambiente ou exceção inesperada não contam),
+  num commit `test:` próprio; o comando e a saída da falha vão para o `Registro`. Se não for
+  assim, parar e perguntar, sem contornar ("Nunca desviar de uma diretiva sem perguntar").
 - Marcar o ID como concluído (`~~T001~~` ou checkbox `[x]`) na mesma PR que resolve a task,
   junto com o registro da verificação (`memory/constitution.md`, "Rastreamento de trabalho via
   Issues") — não deixar a tabela dessincronizada do estado real.

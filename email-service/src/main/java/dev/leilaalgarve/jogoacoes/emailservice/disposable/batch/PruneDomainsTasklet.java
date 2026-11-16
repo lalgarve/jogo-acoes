@@ -5,7 +5,8 @@ import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.infrastructure.item.ExecutionContext;
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
+import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainRepository;
+import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainSourceRepository;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -23,10 +24,12 @@ import java.time.ZoneOffset;
 @Component
 public class PruneDomainsTasklet implements Tasklet {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final DisposableDomainSourceRepository sources;
+    private final DisposableDomainRepository disposableDomains;
 
-    public PruneDomainsTasklet(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public PruneDomainsTasklet(DisposableDomainSourceRepository sources, DisposableDomainRepository disposableDomains) {
+        this.sources = sources;
+        this.disposableDomains = disposableDomains;
     }
 
     @Override
@@ -35,18 +38,14 @@ public class PruneDomainsTasklet implements Tasklet {
         long executionId = chunkContext.getStepContext().getStepExecution().getJobExecutionId();
         ExecutionContext jobContext = chunkContext.getStepContext().getStepExecution().getJobExecution().getExecutionContext();
 
-        long domainsAfterImport = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM disposable_domain WHERE source_id = ?", Long.class, sourceId);
+        long domainsAfterImport = disposableDomains.countBySource(sourceId);
         long added = domainsAfterImport - jobContext.getLong(ImportContextKeys.DOMAINS_BEFORE);
-        long removed = jdbcTemplate.update(
-                "DELETE FROM disposable_domain WHERE source_id = ? AND last_seen_execution_id <> ?", sourceId, executionId);
+        long removed = disposableDomains.deleteNotSeenIn(sourceId, executionId);
 
         if (added > 0 || removed > 0) {
-            jdbcTemplate.update("UPDATE disposable_domain_source SET last_updated_at = ?, content_sha256 = ? WHERE id = ?",
-                    LocalDateTime.now(ZoneOffset.UTC), jobContext.getString(ImportContextKeys.SHA256), sourceId);
+            sources.markUpdated(sourceId, LocalDateTime.now(ZoneOffset.UTC), jobContext.getString(ImportContextKeys.SHA256));
         } else {
-            jdbcTemplate.update("UPDATE disposable_domain_source SET content_sha256 = ? WHERE id = ?",
-                    jobContext.getString(ImportContextKeys.SHA256), sourceId);
+            sources.updateContentHash(sourceId, jobContext.getString(ImportContextKeys.SHA256));
         }
         jobContext.putLong(ImportContextKeys.ADDED, added);
         jobContext.putLong(ImportContextKeys.REMOVED, removed);

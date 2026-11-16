@@ -9,7 +9,8 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.ChunkOrientedStepBuilder;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.infrastructure.item.database.JdbcBatchItemWriter;
+import dev.leilaalgarve.jogoacoes.emailservice.disposable.DisposableDomainRepository;
+import org.springframework.batch.infrastructure.item.ItemWriter;
 import org.springframework.batch.infrastructure.item.file.FlatFileItemReader;
 import org.springframework.batch.infrastructure.item.file.mapping.PassThroughLineMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,7 +22,6 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import javax.sql.DataSource;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -32,7 +32,7 @@ import java.nio.file.Path;
  * The Spring Batch job that imports one repository's list (spec 05-048, the course's batch
  * requirement): {@code downloadStep} (tasklet) → {@code importStep} (chunks of
  * {@value #CHUNK_SIZE} lines: {@link FlatFileItemReader} → {@link DisposableDomainLineProcessor}
- * → {@link JdbcBatchItemWriter}) → {@code pruneStep} (tasklet). A list identical to the last
+ * → {@link DisposableDomainRepository#batchWriter}) → {@code pruneStep} (tasklet). A list identical to the last
  * imported one ends the job right after the download.
  *
  * <p>The writer upserts, so writing the same list again never duplicates a domain: an execution
@@ -66,7 +66,7 @@ public class ImportDisposableDomainsJobConfig {
     @Bean
     public Step importStep(JobRepository jobRepository, PlatformTransactionManager transactionManager,
                            FlatFileItemReader<String> disposableListReader,
-                           JdbcBatchItemWriter<String> disposableDomainWriter) {
+                           ItemWriter<String> disposableDomainWriter) {
         return new ChunkOrientedStepBuilder<String, String>(ImportContextKeys.IMPORT_STEP, jobRepository, CHUNK_SIZE)
                 .reader(disposableListReader)
                 .processor(new DisposableDomainLineProcessor())
@@ -101,20 +101,11 @@ public class ImportDisposableDomainsJobConfig {
 
     @Bean
     @StepScope
-    public JdbcBatchItemWriter<String> disposableDomainWriter(
-            DataSource dataSource,
+    public ItemWriter<String> disposableDomainWriter(
+            DisposableDomainRepository disposableDomains,
             @Value("#{jobParameters['" + ImportContextKeys.SOURCE_ID + "']}") Long sourceId,
             @Value("#{stepExecution.jobExecutionId}") Long executionId) {
-        JdbcBatchItemWriter<String> writer = new JdbcBatchItemWriter<>();
-        writer.setDataSource(dataSource);
-        writer.setSql("INSERT INTO disposable_domain (source_id, domain, last_seen_execution_id) VALUES (?, ?, ?)"
-                + " ON CONFLICT (source_id, domain) DO UPDATE SET last_seen_execution_id = EXCLUDED.last_seen_execution_id");
-        writer.setItemPreparedStatementSetter((domain, statement) -> {
-            statement.setLong(1, sourceId);
-            statement.setString(2, domain);
-            statement.setLong(3, executionId);
-        });
-        return writer;
+        return disposableDomains.batchWriter(sourceId, executionId);
     }
 
     /**
