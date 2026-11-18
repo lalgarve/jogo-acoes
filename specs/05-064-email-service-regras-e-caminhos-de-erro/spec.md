@@ -1,6 +1,6 @@
 # Spec: email-service, regras de arquitetura e caminhos de erro que faltam
 
-**Status:** rascunho
+**Status:** aprovada (Leila, 2026-11-18)
 **Issue:** [#136](https://github.com/lalgarve/jogo-acoes/issues/136)
 **Iteração:** iteration-5
 
