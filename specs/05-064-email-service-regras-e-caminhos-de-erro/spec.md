@@ -35,7 +35,7 @@ nunca foi escrita, mas parte do escopo foi entregue por outras specs. Esta spec 
 | **AWS só nas classes donas da integração** | **Falta.** Hoje só `SesTemplateClient` (`template`), `EmailQueuePublisher` e `DeadLetterConsumer` (`send`) usam AWS, mas nenhuma regra impede |
 | **Toda exceção e todo ramo de erro com teste** | **Falta conferir.** São 13 classes de exceção (a lista da #136 está desatualizada: a `EmailQueuePublishException` não existe mais, e entraram as de domínios descartáveis e de verificação de destinatário). Os testes HTTP cobrem `400`, `404`, `409`, `422` e `503`, mas ninguém conferiu classe por classe e ramo por ramo |
 | **Status de erro do código iguais aos do contrato** | **Falta.** Não há teste. Exemplo de divergência já existente: `POST /templates` devolve `400` para nome em branco (cenário de `register_templates.feature`), e o contrato dessa operação não declara `400` |
-| **Tempo limite dos clientes AWS** | **Falta.** Os clientes do SES e do SQS são os do autoconfigure do Spring Cloud AWS, sem tempo limite configurado. Uma chamada presa segura a requisição (SES) ou o publicador (SQS) |
+| **Tempo limite dos clientes AWS** | **Falta, em parte.** O cliente do SES é o do autoconfigure do Spring Cloud AWS, sem tempo limite configurado: uma chamada presa segura a requisição. O publicador do SQS já desiste de esperar depois de 10 s (`SQS_TIMEOUT_SECONDS` no `EmailQueuePublisher`, com `Future.get`). Mas o valor é fixo no código, não está documentado no `application.yml`, e a chamada do SDK continua rodando depois que o publicador desiste |
 
 ## Cenários (comportamento esperado)
 
@@ -71,8 +71,10 @@ achar um ramo que só se vê pela API, o cenário dele vai para o `.feature` do 
    os status que o código pode devolver com os declarados em `docs/openapi-email-service.yaml`.
    Ele falha se um status devolvido não está no contrato, ou se um status declarado não é
    produzido por nenhum teste.
-5. **Tempo limite nas chamadas ao SES e ao SQS.** Toda chamada aos clientes AWS do
-   `email-service` tem um tempo limite configurado e documentado no `application.yml`. Um SES que
+5. **Tempo limite nas chamadas ao SES e ao SQS.** Toda chamada ao SES e toda publicação no SQS
+   têm um tempo limite configurado e documentado no `application.yml`, e a chamada é encerrada
+   quando o limite estoura. A leitura da fila de devolução pelo `DeadLetterConsumer` fica de
+   fora: ela espera mensagens de propósito (*long polling*). Um SES que
    não responde dentro do limite resulta no mesmo `503` de "SES fora do ar". Um SQS que não
    responde dentro do limite resulta na mesma nova tentativa de "fila fora do ar"
    (`QUEUE_UNAVAILABLE`).
