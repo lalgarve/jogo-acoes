@@ -1,6 +1,6 @@
 # Spec: Dockerfiles que não quebram quando o cache do Maven some
 
-**Status:** rascunho
+**Status:** aprovada (Leila, 2026-11-18)
 **Issue:** #213
 **Iteração:** iteration-5
 **Depende de:** `api-key-validation` 1.1.1 publicada no Maven Central (spec 014 do repositório
