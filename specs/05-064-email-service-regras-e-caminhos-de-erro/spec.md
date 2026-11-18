@@ -69,8 +69,9 @@ achar um ramo que só se vê pela API, o cenário dele vai para o `.feature` do 
    teste").
 4. **Status de erro iguais aos do contrato.** Um teste automático compara, operação por operação,
    os status que o código pode devolver com os declarados em `docs/openapi-email-service.yaml`.
-   Ele falha se um status devolvido não está no contrato, ou se um status declarado não é
-   produzido por nenhum teste.
+   Ele falha se um status devolvido não está no contrato. A direção contrária (um status
+   declarado que nenhum teste produz) é conferida no inventário do requisito 3, não por teste
+   automático (`plan.md`, decisão de 2026-11-18).
 5. **Tempo limite nas chamadas ao SES e ao SQS.** Toda chamada ao SES e toda publicação no SQS
    têm um tempo limite configurado e documentado no `application.yml`, e a chamada é encerrada
    quando o limite estoura. A leitura da fila de devolução pelo `DeadLetterConsumer` fica de
@@ -103,11 +104,13 @@ achar um ramo que só se vê pela API, o cenário dele vai para o `.feature` do 
 
 ## Decisões em aberto
 
-1. **Quem cede quando o código e o contrato divergem** (requisito 4). Proposta: o contrato é a
-   fonte da verdade (contract-first), então o código se ajusta, a não ser que o contrato esteja
-   errado. Cada divergência encontrada é decidida pela Leila e registrada no `plan.md`. No exemplo
-   já conhecido, o `400` de `POST /templates` por nome em branco, a proposta é declarar o `400` no
-   contrato, porque é o mesmo erro de validação que `POST /emails` já declara.
-2. **Valores dos tempos limite** (requisito 5). Proposta: decidir no `plan.md`, a partir do tempo
-   medido de uma chamada normal ao LocalStack. A requisição ao SES fica abaixo do timeout de
-   leitura do cliente Feign do `app` (hoje 5 s, no `application.yml` do `app`), para o `app` receber o `503` em vez de desistir antes.
+Nenhuma. As duas decisões abaixo foram tomadas pela Leila em 2026-11-18 e estão no `plan.md`:
+
+1. **Quem cede quando o código e o contrato divergem** (requisito 4): o contrato é a fonte da
+   verdade (contract-first). O `400` de `POST /templates` por nome em branco entra no contrato,
+   porque é o mesmo erro de validação que `POST /emails` já declara. Outras divergências que o
+   teste achar são decididas pela Leila, caso a caso.
+2. **Valores dos tempos limite** (requisito 5): 3 s para o SES, abaixo dos 5 s de leitura do
+   cliente Feign do `app`, para o `app` receber o `503` em vez de desistir antes; 10 s para a
+   publicação no SQS, o valor de hoje. Uma medição no LocalStack confirma os valores antes do
+   código.
