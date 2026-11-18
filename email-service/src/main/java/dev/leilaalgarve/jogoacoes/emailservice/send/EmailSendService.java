@@ -42,7 +42,7 @@ public class EmailSendService {
     }
 
     @Transactional
-    public UUID send(String clientId, SendEmailRequest request) {
+    public UUID send(String clientId, String idempotencyKey, SendEmailRequest request) {
         ClientSender sender = senderRepository.findById(clientId).orElseThrow(SenderNotConfiguredException::new);
         TemplateReference template = templateService.reference(clientId, request.getTemplateName());
         recipientDomainVerifier.verify(request.getRecipientEmail());

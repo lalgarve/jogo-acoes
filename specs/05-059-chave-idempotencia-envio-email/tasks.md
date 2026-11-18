@@ -12,7 +12,7 @@ As tarefas são acompanhadas como checklist na Issue
 
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
-| T001 | `docs/openapi-email-service.yaml`: header `Idempotency-Key` obrigatório (1 a 255 caracteres) em `POST /emails`; descrição da repetição (mesma chave e corpo → mesmo `202`; corpo diferente → `422`; sem header → `400`). Regenerar os dois lados (`mvn -pl email-service,app -am generate-sources`) e ajustar o que deixar de compilar só com a assinatura nova (`EmailSendController`, `EmailServiceGateway`) passando a chave adiante, sem lógica ainda | — | | #205 |
+| ~~T001~~ | `docs/openapi-email-service.yaml`: header `Idempotency-Key` obrigatório (1 a 255 caracteres) em `POST /emails`; descrição da repetição (mesma chave e corpo → mesmo `202`; corpo diferente → `422`; sem header → `400`). Regenerar os dois lados (`mvn -pl email-service,app -am generate-sources`) e ajustar o que deixar de compilar só com a assinatura nova (`EmailSendController`, `EmailServiceGateway`) passando a chave adiante, sem lógica ainda | — | | #205 |
 | T002 | `EmailSendIdempotencyIntegrationTest` (pacote `send` do `email-service`), com os casos da decisão "Testes do `email-service`" do `plan.md`. Rodar e confirmar que falham hoje (segunda linha gravada, `400` sem corpo `Error`) | T001 | [P] | #205 |
 | T003 | `EmailServiceClientIntegrationTest` (`app`): duas chamadas com a mesma chave devolvem o mesmo `id`, contra o `email-service` real. Rodar e confirmar que falha hoje | T001 | [P] | #205 |
 | T004 | Migration `V8__add_idempotency_key_to_email_send.sql` e campos em `EmailSend`; `EmailSendRepository.findByClientIdAndIdempotencyKey` | T002 | | #205 |
@@ -100,4 +100,20 @@ Para derrubar: `docker compose down -v`.
 
 ## Registro
 
-<preencher conforme as tasks forem concluídas>
+### T001 (2026-11-18)
+
+- `docs/openapi-email-service.yaml`: header `Idempotency-Key` (`required`, 1 a 255 caracteres) em
+  `POST /emails`, com a descrição da repetição; `400` e `422` citam os casos novos.
+- Regenerado com `mvn -pl email-service,app -am generate-sources`: `EmailsApi.sendEmail` ganhou o
+  parâmetro `idempotencyKey` nos dois lados.
+- Ajustes só de assinatura, sem lógica: `EmailSendController` passa a chave a
+  `EmailSendService.send(clientId, idempotencyKey, request)`, que ainda a ignora;
+  `EmailServiceGateway.sendEmail(idempotencyKey, ...)` manda a chave no header, ainda sem repetir;
+  `EmailServiceEmailSender` gera `UUID.randomUUID()` por e-mail; os pointcuts do
+  `EmailServiceLoggingAspect` pulam o primeiro argumento novo (`args(*, templateName, recipientEmail, ..)`).
+- Testes que já faziam `POST /emails` (`SendEmailSteps`, `DeadLetterBurstIntegrationTest`,
+  `EmailQueuePublisherConcurrencyTest`) passam a mandar uma chave nova por pedido: o controller
+  gerado já exige o header, e sem ele esses testes receberiam `400`.
+- Verificado: `mvn -q -pl email-service,app -am test-compile` sem erro. A suíte não foi rodada nesta
+  sessão: o Docker não está disponível no WSL (Docker Desktop parado, integração com o WSL
+  desligada).

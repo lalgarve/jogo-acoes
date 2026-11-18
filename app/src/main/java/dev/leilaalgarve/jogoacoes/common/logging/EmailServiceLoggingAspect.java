@@ -26,7 +26,7 @@ public class EmailServiceLoggingAspect {
     private static final Logger logger = LoggerFactory.getLogger(EmailServiceLoggingAspect.class);
 
     @Before("execution(* dev.leilaalgarve.jogoacoes.email.client.EmailServiceGateway.sendEmail(..)) "
-            + "&& args(templateName, recipientEmail, ..)")
+            + "&& args(*, templateName, recipientEmail, ..)")
     public void logBeforeSend(String templateName, String recipientEmail) {
         logger.debug("--> email-service send {} to {}", templateName, recipientEmail);
     }
@@ -42,7 +42,7 @@ public class EmailServiceLoggingAspect {
      * skips that player and goes on -- this line is the only trace of the skipped e-mail.
      */
     @AfterThrowing(pointcut = "execution(* dev.leilaalgarve.jogoacoes.email.client.EmailServiceGateway.sendEmail(..)) "
-            + "&& args(templateName, recipientEmail, ..)", throwing = "rejected")
+            + "&& args(*, templateName, recipientEmail, ..)", throwing = "rejected")
     public void logRejectedDomain(String templateName, String recipientEmail, RecipientDomainRejectedException rejected) {
         logger.warn("<-- email-service rejected the domain of {} ({} not sent)", recipientEmail, templateName);
     }

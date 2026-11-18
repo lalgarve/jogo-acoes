@@ -34,7 +34,7 @@ class EmailServiceEmailSender implements EmailSender {
 
     @Override
     public void send(OutgoingEmail email) {
-        UUID emailServiceId = gateway.sendEmail(email.templateName(), email.recipient(), email.templateData());
+        UUID emailServiceId = gateway.sendEmail(UUID.randomUUID(), email.templateName(), email.recipient(), email.templateData());
         sentEmailRecorder.record(email, emailServiceId);
     }
 }

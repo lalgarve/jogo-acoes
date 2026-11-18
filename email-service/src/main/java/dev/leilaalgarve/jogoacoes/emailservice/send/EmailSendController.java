@@ -26,8 +26,8 @@ public class EmailSendController implements EmailsApi {
      * it to the send queue in the background (spec 05-046).
      */
     @Override
-    public ResponseEntity<SendEmailResponse> sendEmail(SendEmailRequest sendEmailRequest) {
-        UUID id = emailSendService.send(clientIdentityResolver.currentClientId(), sendEmailRequest);
+    public ResponseEntity<SendEmailResponse> sendEmail(String idempotencyKey, SendEmailRequest sendEmailRequest) {
+        UUID id = emailSendService.send(clientIdentityResolver.currentClientId(), idempotencyKey, sendEmailRequest);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(new SendEmailResponse(id, SendEmailResponse.StatusEnum.PENDING));
     }

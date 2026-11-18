@@ -99,6 +99,7 @@ public class SendEmailSteps {
     public void a_send_request_is_made_without_an_api_key() {
         world.setLastResponse(world.requestWithoutApiKey()
                 .body(Map.of("templateName", "welcome", "recipientEmail", "player@example.com"))
+                .header("Idempotency-Key", UUID.randomUUID().toString())
                 .when().post("/emails"));
     }
 
@@ -245,7 +246,8 @@ public class SendEmailSteps {
     }
 
     private Response send(Map<String, Object> body) {
-        return world.request().body(body).when().post("/emails");
+        return world.request().header("Idempotency-Key", UUID.randomUUID().toString())
+                .body(body).when().post("/emails");
     }
 
     private UUID returnedId() {

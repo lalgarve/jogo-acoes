@@ -285,6 +285,26 @@ paths:
 
         Before the whitelist and DNS (spec 05-048): a domain on the imported disposable e-mail
         lists, or any subdomain of one, is rejected with 422.
+
+        Idempotent with the Idempotency-Key header (spec 05-059): the key is scoped to the
+        calling client (X-API-Key). Repeating a request with a key already used by an accepted
+        send and the same body responds 202 with that send's id, without recording or queueing
+        another one -- even when the template, sender or domain checks would now give another
+        answer. The same key with a different body is rejected with 422. A rejected request
+        (400, 404, 409, 422) does not keep its key: repeating it with the same key is evaluated
+        as a new request. A client may therefore retry this call with the same key and body
+        when the first response was lost.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+          description: >
+            Chosen by the client, one per e-mail it wants sent, and sent unchanged on every
+            attempt of that e-mail (e.g. a UUID). Unique per calling client.
       requestBody:
         required: true
         content:
@@ -300,8 +320,9 @@ paths:
                 $ref: '#/components/schemas/SendEmailResponse'
         '400':
           description: >
-            Malformed request -- e.g. missing templateName/recipientEmail, or recipientEmail
-            not a syntactically valid address
+            Malformed request -- e.g. missing templateName/recipientEmail, recipientEmail
+            not a syntactically valid address, or the Idempotency-Key header missing, empty or
+            longer than 255 characters
           content:
             application/json:
               schema:
@@ -331,8 +352,9 @@ paths:
         '422':
           description: >
             The recipient's domain does not accept e-mail (spec 05-047), or it is (or is under) a
-            disposable e-mail domain imported by the batch (spec 05-048) -- nothing was recorded
-            or queued. The message says which.
+            disposable e-mail domain imported by the batch (spec 05-048), or the Idempotency-Key
+            was already used by this client with a different request (spec 05-059) -- nothing was
+            recorded or queued. The message says which.
           content:
             application/json:
               schema:

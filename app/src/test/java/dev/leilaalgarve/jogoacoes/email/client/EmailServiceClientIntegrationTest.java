@@ -126,7 +126,7 @@ class EmailServiceClientIntegrationTest {
 
     @Test
     void sendingWithEveryVariableReturnsEmailServiceId() {
-        assertThat(gateway.sendEmail("login-link-invite", unique("data"), completeLoginLinkInviteData())).isNotNull();
+        assertThat(gateway.sendEmail(UUID.randomUUID(), "login-link-invite", unique("data"), completeLoginLinkInviteData())).isNotNull();
     }
 
     @Test
@@ -134,13 +134,13 @@ class EmailServiceClientIntegrationTest {
         Map<String, Object> data = completeLoginLinkInviteData();
         data.put("notInTheTemplate", "ignored");
 
-        assertThat(gateway.sendEmail("login-link-invite", unique("data"), data)).isNotNull();
+        assertThat(gateway.sendEmail(UUID.randomUUID(), "login-link-invite", unique("data"), data)).isNotNull();
     }
 
     /** Spec 05-047: missing.test has no record in the test DNS (docker/dns/test.zone). */
     @Test
     void aRecipientDomainEmailServiceRejectsBecomesItsOwnException() {
-        assertThatThrownBy(() -> gateway.sendEmail("login-link-invite",
+        assertThatThrownBy(() -> gateway.sendEmail(UUID.randomUUID(), "login-link-invite",
                 "jogador-" + UUID.randomUUID() + "@missing.test", completeLoginLinkInviteData()))
                 .isInstanceOf(RecipientDomainRejectedException.class)
                 .hasMessageContaining("missing.test");
@@ -163,7 +163,7 @@ class EmailServiceClientIntegrationTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("incompleteTemplateData")
     void sendingWithIncompleteDataIsStillAcceptedByEmailService(String description, Map<String, Object> data) {
-        assertThat(gateway.sendEmail("login-link-invite", unique("data"), data)).isNotNull();
+        assertThat(gateway.sendEmail(UUID.randomUUID(), "login-link-invite", unique("data"), data)).isNotNull();
     }
 
     @Test
@@ -252,7 +252,7 @@ class EmailServiceClientIntegrationTest {
     @ParameterizedTest
     @MethodSource("missingNames")
     void sendingWithoutATemplateNameIsRejectedBeforeCallingEmailService(String name) {
-        assertThatThrownBy(() -> gateway.sendEmail(name, unique("noname"), completeLoginLinkInviteData()))
+        assertThatThrownBy(() -> gateway.sendEmail(UUID.randomUUID(), name, unique("noname"), completeLoginLinkInviteData()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

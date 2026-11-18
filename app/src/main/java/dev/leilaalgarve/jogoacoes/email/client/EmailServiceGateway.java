@@ -53,10 +53,11 @@ public class EmailServiceGateway {
      *
      * @throws RecipientDomainRejectedException when the recipient's domain does not accept e-mail
      */
-    public UUID sendEmail(String templateName, String recipientEmail, Map<String, Object> templateData) {
+    public UUID sendEmail(UUID idempotencyKey, String templateName, String recipientEmail,
+                          Map<String, Object> templateData) {
         requireName(templateName);
         try {
-            return emails.sendEmail(new SendEmailRequest()
+            return emails.sendEmail(idempotencyKey.toString(), new SendEmailRequest()
                             .templateName(templateName).recipientEmail(recipientEmail).templateData(templateData))
                     .getBody().getId();
         } catch (FeignException.UnprocessableEntity e) {
