@@ -7,8 +7,14 @@ import dev.leilaalgarve.jogoacoes.emailservice.template.TemplateService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -48,9 +54,30 @@ public class EmailSendService {
         recipientDomainVerifier.verify(request.getRecipientEmail());
 
         Map<String, Object> templateData = request.getTemplateData() == null ? Map.of() : request.getTemplateData();
-        EmailSend send = sendRepository.save(new EmailSend(clientId, template.id(), request.getRecipientEmail(),
-                sender.getAddress(), template.sesTemplateName(), objectMapper.writeValueAsString(templateData),
-                Instant.now()));
+        EmailSend send = sendRepository.save(new EmailSend(clientId, idempotencyKey,
+                requestHash(request.getTemplateName(), request.getRecipientEmail(), templateData), template.id(),
+                request.getRecipientEmail(), sender.getAddress(), template.sesTemplateName(),
+                objectMapper.writeValueAsString(templateData), Instant.now()));
         return send.getId();
+    }
+
+    /**
+     * Spec 05-059: SHA-256, in hexadecimal, of the request as JSON with every map's keys sorted --
+     * the same templateData sent in another key order is the same request. A missing templateData
+     * counts as an empty one, as it is recorded.
+     */
+    private String requestHash(String templateName, String recipientEmail, Map<String, Object> templateData) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("templateName", templateName);
+        body.put("recipientEmail", recipientEmail);
+        body.put("templateData", templateData);
+        byte[] json = objectMapper.writer().with(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                .writeValueAsString(body).getBytes(StandardCharsets.UTF_8);
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(json));
+        } catch (NoSuchAlgorithmException e) {
+            // Every Java platform is required to provide SHA-256 (MessageDigest's Javadoc).
+            throw new IllegalStateException(e);
+        }
     }
 }

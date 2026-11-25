@@ -20,6 +20,9 @@ import java.util.UUID;
  *
  * <p>Spec 05-046: also the work item of the background publisher -- status, attempts, last error,
  * next attempt. {@link #templateData} (may carry personal data) is kept only while PENDING.
+ *
+ * <p>Spec 05-059: {@link #idempotencyKey} is the client's Idempotency-Key, unique per client, and
+ * {@link #requestHash} tells a repeat of the same request from another request with that key.
  */
 @Entity
 @Table(name = "email_send")
@@ -71,14 +74,24 @@ public class EmailSend {
     @Column(name = "queued_at")
     private Instant queuedAt;
 
+    @Column(name = "idempotency_key", nullable = false)
+    private String idempotencyKey;
+
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "request_hash", nullable = false, length = 64)
+    private String requestHash;
+
     protected EmailSend() {
         // JPA
     }
 
     /** A new PENDING send, due for publishing right away. */
-    public EmailSend(String clientId, Long templateId, String recipientEmail, String senderAddress,
-                     String sesTemplateName, String templateData, Instant createdAt) {
+    public EmailSend(String clientId, String idempotencyKey, String requestHash, Long templateId,
+                     String recipientEmail, String senderAddress, String sesTemplateName, String templateData,
+                     Instant createdAt) {
         this.clientId = clientId;
+        this.idempotencyKey = idempotencyKey;
+        this.requestHash = requestHash;
         this.templateId = templateId;
         this.recipientEmail = recipientEmail;
         this.senderAddress = senderAddress;
@@ -119,6 +132,14 @@ public class EmailSend {
 
     public String getClientId() {
         return clientId;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public String getRequestHash() {
+        return requestHash;
     }
 
     public Long getTemplateId() {

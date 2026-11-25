@@ -15,7 +15,7 @@ As tarefas são acompanhadas como checklist na Issue
 | ~~T001~~ | `docs/openapi-email-service.yaml`: header `Idempotency-Key` obrigatório (1 a 255 caracteres) em `POST /emails`; descrição da repetição (mesma chave e corpo → mesmo `202`; corpo diferente → `422`; sem header → `400`). Regenerar os dois lados (`mvn -pl email-service,app -am generate-sources`) e ajustar o que deixar de compilar só com a assinatura nova (`EmailSendController`, `EmailServiceGateway`) passando a chave adiante, sem lógica ainda | — | | #205 |
 | ~~T002~~ | `EmailSendIdempotencyIntegrationTest` (pacote `send` do `email-service`), com os casos da decisão "Testes do `email-service`" do `plan.md`. Rodar e confirmar que falham hoje (segunda linha gravada, `400` sem corpo `Error`) | T001 | [P] | #205 |
 | ~~T003~~ | `EmailServiceClientIntegrationTest` (`app`): duas chamadas com a mesma chave devolvem o mesmo `id`, contra o `email-service` real. Rodar e confirmar que falha hoje | T001 | [P] | #205 |
-| T004 | Migration `V8__add_idempotency_key_to_email_send.sql` e campos em `EmailSend`; `EmailSendRepository.findByClientIdAndIdempotencyKey` | T002 | | #205 |
+| ~~T004~~ | Migration `V8__add_idempotency_key_to_email_send.sql` e campos em `EmailSend`; `EmailSendRepository.findByClientIdAndIdempotencyKey` | T002 | | #205 |
 | T005 | `EmailSendService.send(clientId, key, request)`: hash do pedido, checagem da chave antes das outras, gravação num `TransactionTemplate` com `saveAndFlush` e tradução da violação do índice. `IdempotencyKeyReusedException` e tratadores de `422`, header faltando e header inválido no `ApiExceptionHandler`. Confirmar T002 verde e a suíte do `email-service` verde | T004 | | #205 |
 | T006 | `app`: `EmailServiceEmailSender` gera a chave por e-mail; `EmailServiceGateway.sendEmail` recebe a chave e passa a usar `retrying`; Javadoc e comentário do `422` atualizados. Confirmar T003 verde | T005 | | #205 |
 | T007 | Documentação: tabela "Operações usadas" de `specs/05-034-fronteira-sincrona-app-email-service/contracts/feign-client.md`; `README.md` (exemplo `curl` com o header, parágrafo sobre repetir o pedido) | T006 | [P] | #205 |
@@ -184,3 +184,35 @@ Para derrubar: `docker compose down -v`.
   `api-key-validation:jar:1.1.0 was not found`: a camada do `install-api-key-lib.sh` vinha do cache
   do BuildKit, mas o cache mount `/root/.m2` tinha sido descartado; resolvido com `docker compose
   build --no-cache email-service`. A correção do `Dockerfile` fica separada desta spec.
+
+### T004 (2026-11-25)
+
+- `V8__add_idempotency_key_to_email_send.sql`: `idempotency_key VARCHAR(255) NOT NULL`,
+  `request_hash CHAR(64) NOT NULL` e `UNIQUE (client_id, idempotency_key)`
+  (`email_send_client_idempotency_key_uq`).
+- `EmailSend`: os dois campos, no construtor e com getters. `request_hash` precisa de
+  `@JdbcTypeCode(SqlTypes.CHAR)`: sem isso, a validação de schema do Hibernate recusa o `CHAR(64)`
+  (`found [bpchar (Types#CHAR)], but expecting [varchar(255)]`), mesmo com `columnDefinition`.
+- `EmailSendRepository.findByClientIdAndIdempotencyKey`.
+- Desvio combinado com a Leila antes de começar: as colunas `NOT NULL` obrigam o
+  `EmailSendService.send` a passar valores já aqui. Por isso o cálculo do `request_hash` (SHA-256
+  hexadecimal do JSON de `{templateName, recipientEmail, templateData}` com
+  `ORDER_MAP_ENTRIES_BY_KEYS`, `templateData` ausente como `{}`) veio da T005 para cá. A checagem da
+  chave, o `TransactionTemplate`, a tradução da violação, a exceção e os tratadores continuam na T005.
+- `DeadLetterConsumerIntegrationTest` cria `EmailSend` direto: passa uma chave nova e um hash fixo.
+- Ambiente: `docker compose down -v` (o banco tinha 12 envios da T003, e a migration `NOT NULL`
+  falharia), depois `docker compose up -d --wait db-email-service localstack dns config-server` e
+  `./scripts/test-api-key.sh restore`. Comando: `mvn -pl email-service -am verify`.
+- Resultado: `Tests run: 177, Failures: 6, Errors: 0, Skipped: 2`. Os 6 que falham são os da T002,
+  que dependem da T005. As repetições agora param no índice único e respondem `500`:
+
+  ```
+  repeatingTheSameRequestWithTheSameKeyGivesTheSameSendAndQueuesItOnce:111  Expected status code <202> but was <500>.
+  theSameTemplateDataInAnotherOrderIsTheSameRequest:133                     Expected status code <202> but was <500>.
+  theSameKeyWithAnotherBodyIsRejectedAndRecordsNothing:147                  expected: 422 but was: 500
+  simultaneousRequestsWithTheSameKeyRecordOneSend:223                       expected: 202 but was: 500
+  withoutTheHeaderTheRequestIsMalformedAndRecordsNothing:177                Expecting actual not to be null
+  aKeyLongerThan255CharactersIsMalformedAndRecordsNothing:187               expected: 400 but was: 500
+  ```
+
+  Os 2 pulados são cenários do `RunCucumberTest`, fora desta spec. O resto da suíte passa.

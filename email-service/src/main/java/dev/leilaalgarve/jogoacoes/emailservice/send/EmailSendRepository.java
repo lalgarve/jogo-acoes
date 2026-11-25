@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface EmailSendRepository extends JpaRepository<EmailSend, UUID> {
@@ -17,4 +18,7 @@ public interface EmailSendRepository extends JpaRepository<EmailSend, UUID> {
     @Query(value = "SELECT * FROM email_send WHERE status = 'PENDING' AND next_attempt_at <= :now"
             + " ORDER BY next_attempt_at LIMIT :limit FOR UPDATE SKIP LOCKED", nativeQuery = true)
     List<EmailSend> lockDue(@Param("now") Instant now, @Param("limit") int limit);
+
+    /** Spec 05-059: the send a client already recorded with this Idempotency-Key, if any. */
+    Optional<EmailSend> findByClientIdAndIdempotencyKey(String clientId, String idempotencyKey);
 }
