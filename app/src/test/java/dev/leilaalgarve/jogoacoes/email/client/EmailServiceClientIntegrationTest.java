@@ -137,6 +137,25 @@ class EmailServiceClientIntegrationTest {
         assertThat(gateway.sendEmail(UUID.randomUUID(), "login-link-invite", unique("data"), data)).isNotNull();
     }
 
+    /**
+     * Spec 05-059: the second call is what the gateway sends when the first 202 was lost -- the
+     * same key and the same body. email-service answers with the send it already has, and the
+     * recipient gets one e-mail.
+     */
+    @Test
+    void repeatingASendWithTheSameKeyReturnsTheSameIdAndSendsOneEmail() throws Exception {
+        String recipient = unique("repeat");
+        UUID key = UUID.randomUUID();
+
+        UUID first = gateway.sendEmail(key, "login-link-invite", recipient, completeLoginLinkInviteData());
+        UUID second = gateway.sendEmail(key, "login-link-invite", recipient, completeLoginLinkInviteData());
+
+        assertThat(second).isEqualTo(first);
+        assertThat(sentToSes(recipient, Duration.ofSeconds(30))).isPresent();
+        Thread.sleep(Duration.ofSeconds(5));
+        assertThat(countSentToSes(recipient)).isEqualTo(1);
+    }
+
     /** Spec 05-047: missing.test has no record in the test DNS (docker/dns/test.zone). */
     @Test
     void aRecipientDomainEmailServiceRejectsBecomesItsOwnException() {
@@ -316,23 +335,35 @@ class EmailServiceClientIntegrationTest {
 
     /** Polls LocalStack's own SES store: email-lambda sends asynchronously, off the queue. */
     private static Optional<JSONObject> sentToSes(String recipient, Duration timeout) throws Exception {
-        HttpClient http = HttpClient.newHttpClient();
-        URI uri = URI.create(SES_STORE + "?email=" + URLEncoder.encode(SENDER, StandardCharsets.UTF_8));
         Instant deadline = Instant.now().plus(timeout);
         while (Instant.now().isBefore(deadline)) {
-            HttpResponse<String> response = http.send(HttpRequest.newBuilder(uri).GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
-            JSONArray messages = new JSONObject(response.body()).getJSONArray("messages");
-            for (int i = 0; i < messages.length(); i++) {
-                JSONObject message = messages.getJSONObject(i);
-                JSONArray to = message.getJSONObject("Destination").getJSONArray("ToAddresses");
-                if (to.length() > 0 && recipient.equals(to.getString(0))) {
-                    return Optional.of(message);
-                }
+            List<JSONObject> sent = sesMessagesTo(recipient);
+            if (!sent.isEmpty()) {
+                return Optional.of(sent.getFirst());
             }
             Thread.sleep(500);
         }
         return Optional.empty();
+    }
+
+    private static int countSentToSes(String recipient) throws Exception {
+        return sesMessagesTo(recipient).size();
+    }
+
+    private static List<JSONObject> sesMessagesTo(String recipient) throws Exception {
+        URI uri = URI.create(SES_STORE + "?email=" + URLEncoder.encode(SENDER, StandardCharsets.UTF_8));
+        HttpResponse<String> response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(uri).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        JSONArray messages = new JSONObject(response.body()).getJSONArray("messages");
+        List<JSONObject> sent = new java.util.ArrayList<>();
+        for (int i = 0; i < messages.length(); i++) {
+            JSONObject message = messages.getJSONObject(i);
+            JSONArray to = message.getJSONObject("Destination").getJSONArray("ToAddresses");
+            if (to.length() > 0 && recipient.equals(to.getString(0))) {
+                sent.add(message);
+            }
+        }
+        return sent;
     }
 
     /** A whole app of its own: the startup sync is what has to fail. */

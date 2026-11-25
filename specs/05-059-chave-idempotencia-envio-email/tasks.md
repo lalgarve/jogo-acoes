@@ -13,8 +13,8 @@ As tarefas são acompanhadas como checklist na Issue
 | ID | Descrição | Depende de | Paralelizável | Issue |
 |---|---|---|---|---|
 | ~~T001~~ | `docs/openapi-email-service.yaml`: header `Idempotency-Key` obrigatório (1 a 255 caracteres) em `POST /emails`; descrição da repetição (mesma chave e corpo → mesmo `202`; corpo diferente → `422`; sem header → `400`). Regenerar os dois lados (`mvn -pl email-service,app -am generate-sources`) e ajustar o que deixar de compilar só com a assinatura nova (`EmailSendController`, `EmailServiceGateway`) passando a chave adiante, sem lógica ainda | — | | #205 |
-| T002 | `EmailSendIdempotencyIntegrationTest` (pacote `send` do `email-service`), com os casos da decisão "Testes do `email-service`" do `plan.md`. Rodar e confirmar que falham hoje (segunda linha gravada, `400` sem corpo `Error`) | T001 | [P] | #205 |
-| T003 | `EmailServiceClientIntegrationTest` (`app`): duas chamadas com a mesma chave devolvem o mesmo `id`, contra o `email-service` real. Rodar e confirmar que falha hoje | T001 | [P] | #205 |
+| ~~T002~~ | `EmailSendIdempotencyIntegrationTest` (pacote `send` do `email-service`), com os casos da decisão "Testes do `email-service`" do `plan.md`. Rodar e confirmar que falham hoje (segunda linha gravada, `400` sem corpo `Error`) | T001 | [P] | #205 |
+| ~~T003~~ | `EmailServiceClientIntegrationTest` (`app`): duas chamadas com a mesma chave devolvem o mesmo `id`, contra o `email-service` real. Rodar e confirmar que falha hoje | T001 | [P] | #205 |
 | T004 | Migration `V8__add_idempotency_key_to_email_send.sql` e campos em `EmailSend`; `EmailSendRepository.findByClientIdAndIdempotencyKey` | T002 | | #205 |
 | T005 | `EmailSendService.send(clientId, key, request)`: hash do pedido, checagem da chave antes das outras, gravação num `TransactionTemplate` com `saveAndFlush` e tradução da violação do índice. `IdempotencyKeyReusedException` e tratadores de `422`, header faltando e header inválido no `ApiExceptionHandler`. Confirmar T002 verde e a suíte do `email-service` verde | T004 | | #205 |
 | T006 | `app`: `EmailServiceEmailSender` gera a chave por e-mail; `EmailServiceGateway.sendEmail` recebe a chave e passa a usar `retrying`; Javadoc e comentário do `422` atualizados. Confirmar T003 verde | T005 | | #205 |
@@ -117,3 +117,70 @@ Para derrubar: `docker compose down -v`.
 - Verificado: `mvn -q -pl email-service,app -am test-compile` sem erro. A suíte não foi rodada nesta
   sessão: o Docker não está disponível no WSL (Docker Desktop parado, integração com o WSL
   desligada).
+
+### T002 (2026-11-24)
+
+- `EmailSendIdempotencyIntegrationTest` (pacote `send` do `email-service`): os casos da decisão
+  "Testes do `email-service`" do `plan.md`, mais o de chave com mais de 255 caracteres (limite do
+  contrato, T001).
+- Ambiente (README, etapa 2): `docker compose up -d --wait db-email-service localstack dns
+  config-server` e `./scripts/test-api-key.sh restore`, sem o container do `email-service`.
+  Comando: `mvn -pl email-service -am test -Dtest=EmailSendIdempotencyIntegrationTest
+  -Dsurefire.failIfNoSpecifiedTests=false`.
+- Resultado: `Tests run: 8, Failures: 6, Errors: 0`. Cada falha é a asserção do comportamento que
+  ainda não existe:
+
+  ```
+  repeatingTheSameRequestWithTheSameKeyGivesTheSameSendAndQueuesItOnce:113
+    expected: "4af7ee45-ba5f-4f38-9358-e89c2742c476"
+     but was: "a2a0b628-1759-4903-a53b-2e89c940c2ac"
+  theSameTemplateDataInAnotherOrderIsTheSameRequest:135
+    expected: "1a5f3ebd-f456-49b1-a866-1b646a6fa538"
+     but was: "1def5919-e165-4924-9016-2afe9ea7f692"
+  theSameKeyWithAnotherBodyIsRejectedAndRecordsNothing:147
+    expected: 422
+     but was: 202
+  withoutTheHeaderTheRequestIsMalformedAndRecordsNothing:177
+    Expecting actual not to be null          (400 sem corpo Error: message nulo)
+  aKeyLongerThan255CharactersIsMalformedAndRecordsNothing:187
+    expected: 400
+     but was: 500
+  simultaneousRequestsWithTheSameKeyRecordOneSend:226
+    Expecting ArrayList: [8 ids diferentes] to contain only: ["e3d72c98-..."]
+  ```
+
+- Passam já hoje, de propósito: `anotherClientMayUseTheSameKey` e
+  `aRejectedRequestDoesNotKeepItsKey`. Hoje todo pedido grava um envio novo, então "outro cliente,
+  envio novo" e "recusado não guarda a chave" já valem; os dois protegem esse comportamento quando
+  a checagem da chave entrar (T005).
+- Para a T005: a chave longa chega como `jakarta.validation.ConstraintViolationException`
+  (`sendEmail.idempotencyKey: size must be between 1 and 255`, sem tratador, por isso `500`), não
+  como `HandlerMethodValidationException`, como dizem a T005 e a T008. O header faltando chega
+  como `MissingRequestHeaderException`, resolvida pelo `DefaultHandlerExceptionResolver` (`400`
+  sem corpo).
+
+### T003 (2026-11-24)
+
+- `EmailServiceClientIntegrationTest.repeatingASendWithTheSameKeyReturnsTheSameIdAndSendsOneEmail`
+  (`app`): duas chamadas de `sendEmail` com a mesma chave, contra o `email-service` real; confere o
+  mesmo `id` e um único e-mail no SES do LocalStack. Os helpers `sesMessagesTo`/`countSentToSes`
+  saem do `sentToSes` existente.
+- Ambiente (README, etapa 1): `db`, `db-email-service`, `localstack`, `dns`, `config-server`,
+  `restore`, `email-service`, `restore`. Comando: `mvn -pl app -am test
+  -Dtest=EmailServiceClientIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false`.
+- Resultado: `Tests run: 38, Failures: 1, Errors: 0`. O teste novo falha na asserção do `id`; os
+  37 já existentes passam:
+
+  ```
+  repeatingASendWithTheSameKeyReturnsTheSameIdAndSendsOneEmail:153
+    expected: 3e84ee75-11be-46d5-9957-8fa8b4b08a4c
+     but was: f13e390b-f638-4380-bf3a-c97b3e84869d
+  ```
+
+- Obstáculos de ambiente resolvidos no caminho, sem mudar código: (1) o LocalStack ficava
+  `unhealthy` com a `EmailLambda` presa em `Pending`, porque um container parado de seis semanas
+  atrás ocupava o nome do container da Lambda; resolvido com `docker rm` desse container e
+  `docker compose restart localstack`. (2) O build da imagem do `email-service` falhava com
+  `api-key-validation:jar:1.1.0 was not found`: a camada do `install-api-key-lib.sh` vinha do cache
+  do BuildKit, mas o cache mount `/root/.m2` tinha sido descartado; resolvido com `docker compose
+  build --no-cache email-service`. A correção do `Dockerfile` fica separada desta spec.
