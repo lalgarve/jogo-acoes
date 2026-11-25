@@ -15,15 +15,20 @@ COPY config-server/pom.xml config-server/pom.xml
 # api-key-validation (spec 05-030) is not on any registry this build reads: the script installs it
 # into ~/.m2 from the GitHub release. The BuildKit cache mount keeps ~/.m2 across builds, so the
 # release is downloaded once, like any Maven dependency -- every RUN that needs ~/.m2 mounts it.
+# The script runs in the same RUN as each mvn command, never in a RUN of its own: BuildKit can
+# keep a layer as CACHED while the cache mount's contents are pruned (e.g. after a Docker Desktop
+# restart), and a separate install layer would then be skipped, leaving the later mvn without the
+# lib. The script is a no-op when the lib is already in ~/.m2, so repeating it costs nothing.
 COPY scripts/install-api-key-lib.sh scripts/install-api-key-lib.sh
-RUN --mount=type=cache,target=/root/.m2 ./scripts/install-api-key-lib.sh
-RUN --mount=type=cache,target=/root/.m2 mvn -B -pl email-service -am dependency:go-offline
+RUN --mount=type=cache,target=/root/.m2 ./scripts/install-api-key-lib.sh \
+    && mvn -B -pl email-service -am dependency:go-offline
 # email-service/pom.xml's openapi-generator-maven-plugin reads ../docs/openapi-email-service.yaml
 # (relative to this module) during `package` -- without this, the build fails as soon as it
 # reaches generate-sources.
 COPY docs docs
 COPY email-service/src email-service/src
-RUN --mount=type=cache,target=/root/.m2 mvn -B -pl email-service -am package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 ./scripts/install-api-key-lib.sh \
+    && mvn -B -pl email-service -am package -DskipTests
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
